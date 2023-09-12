@@ -1,0 +1,29 @@
+( ) - Status: W - work-in-progress; X - done;
+
+TODO ---------------------------------------------------------------------------
+
+( ) Implement export control for enabling GIF palette calculation only 
+    on first frame
+
+( ) Add settings for keyboard and mouse sensitivity for iCameraPosition,
+    iCameraDirection controls
+
+( ) Add info tooltip on iMouse row in Uniform tab
+
+( ) Add font settings for loading/unloading japanese & simplified 
+    Chinese character sets
+
+( ) Add save guards to prevent closing app and/or creating a new project
+    by misting, to prevent loosing existing work
+
+( ) Expand code repository section
+
+( ) Fix (or find workaround) for ImGui window icons disappearing on 
+    ImGui docking/undocking action
+
+( ) Test compilation and running on Linux systems
+
+( ) Add project README with compilation instructions
+
+( ) Record video tutorial(s) of application usage, host them on YouTube, 
+    possibly find a way to add tutorial links within the application.

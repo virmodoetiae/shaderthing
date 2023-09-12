@@ -1,0 +1,540 @@
+#include "data/coderepository.h"
+#include "data/data.h"
+
+#include "vir/include/vir.h"
+
+#include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
+
+namespace ShaderThing
+{
+
+void CodeRepository::renderGui()
+{
+    if (!isGuiOpen_)
+        return;
+
+    if (!isGuiInMenu_)
+    {
+        ImGui::SetNextWindowSize(ImVec2(600,600), ImGuiCond_FirstUseEver);
+        static ImGuiWindowFlags windowFlags
+        (
+            ImGuiWindowFlags_NoCollapse
+        );
+        ImGui::Begin("Code repository", &isGuiOpen_, windowFlags);
+        static bool setIcon(false);
+        if (!setIcon)
+        {
+            setIcon = vir::ImGuiRenderer::setWindowIcon
+            (
+                "Code repository", 
+                IconData::sTIconData, 
+                IconData::sTIconSize,
+                false
+            );
+        }
+    }
+    float fontSize(ImGui::GetFontSize());
+    float textWidth(45.0f*fontSize);
+    auto codeColor =ImVec4(.15f, .6f, 1.f, 1.f);
+    auto codeHighlightColor = ImVec4(1.f, 1.f, .0f, 1.f);
+    ImGui::PushTextWrapPos
+    (
+        isGuiInMenu_ ?
+        (ImGui::GetCursorPos().x+textWidth) : 
+        ImGui::GetContentRegionAvail().x
+    );
+
+    ImGui::Text(
+"This is a repository of helpful GLSL functions that can be copy-pasted into "
+"any fragment shader"
+    );
+    ImGui::Separator();
+
+#define CODE_ENTRY(name, description, code)                                 \
+if (ImGui::TreeNode(name))                                                  \
+{                                                                           \
+    ImGui::SameLine();                                                      \
+    bool textCopied = ImGui::SmallButton("Copy to clipboard");              \
+    bool isCopyClicked = ImGui::IsItemActive();                             \
+    ImGui::Text(description);                                               \
+    static std::string codeString(code);                                    \
+    ImGui::TextColored(                                                     \
+        textCopied || isCopyClicked ?                                       \
+            codeHighlightColor:                                             \
+            codeColor,                                                      \
+        codeString.c_str()                                                  \
+    );                                                                      \
+    if (textCopied)                                                         \
+        ImGui::SetClipboardText(codeString.c_str());                        \
+    ImGui::Unindent();                                                      \
+    ImGui::TreePop();                                                       \
+}
+
+    //------------------------------------------------------------------------//
+    if (ImGui::TreeNode("Miscellaneous")) //----------------------------------//
+    {
+        //--------------------------------------------------------------------//
+        if (ImGui::TreeNode("Color"))
+        {
+            CODE_ENTRY(
+"Color mixing",
+"Mix two colors 'c0', 'c1', using the transparency of 'c1' as a blending "
+"factor",
+R"(vec4 mixColors(vec4 c0, vec4 c1)
+{
+    return (1-c1.a)*c0+vec4(c1.a*c1.rgb,1);
+})")
+        }
+
+        //--------------------------------------------------------------------//
+        if (ImGui::TreeNode("Rotation"))
+        {
+            CODE_ENTRY(
+"2D Rotation",
+"Counter-clock-wise rotation of a 2D vector 'v' by a given angle 't' (in "
+"radians)",
+R"(vec2 rotate(vec2 v, float t)
+{
+    float s = sin(t);
+    float c = cos(t);
+    return mat2(c, s, -s, c)*v;
+})")
+
+            CODE_ENTRY(
+"3D Rotation",
+"Counter-clock-wise rotation of a 3D vector 'v' by a given angle 't' (in "
+"radians) around a given axis 'a'. This implementation leverages quaternions",
+R"(vec3 rotate(vec3 v, float t, vec3 a)
+{
+    vec4 q = vec4(sin(t/2.0)*a.xyz, cos(t/2.0));
+    return v + 2.0*cross(q.xyz, cross(q.xyz, v) + q.w*v);
+})")
+            ImGui::TreePop();
+        }
+        ImGui::TreePop();
+    }
+
+    //------------------------------------------------------------------------//
+    if (ImGui::TreeNode("Ray marching")) //-----------------------------------//
+    {
+        //--------------------------------------------------------------------//
+        if (ImGui::TreeNode("3D Signed Distance Fields (SDFs)"))
+        {
+            ImGui::Text(
+"Please note that all of the following SDFs describe 3D primitives centered at "
+"the origin of the reference frame");
+
+            CODE_ENTRY(
+"Infinite plane",
+"Signed distance of 'p' from the surface of an infinite plane passing through "
+"the origin withh surface normal 'n' and distance 'h' (along the surface "
+"normal) from the origin",
+R"(float infPlaneSDF(vec3 p, vec3 n, float h)
+{
+    return dot(p,normalize(n))+h;
+})")
+
+            CODE_ENTRY(
+"Infinite cylinder",
+"Signed distance of 'p' from the surface of an infinite cylinder of radius 'r' "
+"along the y axis",
+R"(float infCylinderSDF(vec3 p, float r)
+{
+    return length(p.xz)-r;
+})")
+
+            CODE_ENTRY(
+"Infinite cone",
+"Signed distance of 'p' from the surface of an infinite cone of aperature 'a' "
+"(in radians) along the y axis, whose vertex is at the origin",
+R"(float infConeSDF( vec3 p, float a )
+{
+    vec2 c = vec2(sin(a), cos(a));
+    vec2 q = vec2(length(p.xz), -p.y);
+    float d = length(q-c*max(dot(q,c), 0.0));
+    return d*((q.x*c.y-q.y*c.x<0.0)?-1.0:1.0);
+})")
+
+            CODE_ENTRY(
+"Infinite triangular column",
+"Signed distance of 'p' from the surface of an infinite column along the y axis "
+"with a regular-triangular cross-section, such that the inscribing circle has "
+"radius 'r'",
+R"(float infTriangleSDF(vec3 p, float r)
+{
+    const float k = sqrt(3.0);
+    p.x = abs(p.x) - r;
+    p.z = p.z + r/k;
+    if( p.x+k*p.z>0.0 ) p.xz = vec2(p.x-k*p.z,-k*p.x-p.z)/2.0;
+    p.x -= clamp( p.x, -2.0*r, 0.0 );
+    return -length(p.xz)*sign(p.z);
+})")
+
+            CODE_ENTRY(
+"Infinite rectangular column",
+"Signed distance of 'p' from the surface of an infinite rectangular column "
+"along the y axis, with side lengths 'lx', 'lz'",
+R"(float infRectangleSDF(vec3 p, float lx, float lz)
+{
+    vec2 d = abs(p.xz)-vec2(lx, lz);
+    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+})")
+
+            CODE_ENTRY(
+"Infinite pentagonal column",
+"Signed distance of 'p' from the surface of an infinite column along the y axis"
+"with a regular-pentagonal cross-section, such that the inscribing circle has"
+"radius 'r'",
+R"(float infPentagonSDF(vec3 p, float r)
+{
+    const vec3 k = vec3(0.809016994,0.587785252,0.726542528);
+    p.y = p.z;
+    p.x = abs(p.x);
+    p.xy -= 2.0*min(dot(vec2(-k.x,k.y),p.xy),0.0)*vec2(-k.x,k.y);
+    p.xy -= 2.0*min(dot(vec2( k.x,k.y),p.xy),0.0)*vec2( k.x,k.y);
+    p.xy -= vec2(clamp(p.x,-r*k.z,r*k.z),r);    
+    return length(p.xy)*sign(p.y);
+})")
+
+            CODE_ENTRY(
+"Infinite hexagonal column",
+"Signed distance of 'p' from the surface of an infinite column along the y axis"
+"with a regular-hexagonal cross-section, such that the inscribing circle has"
+"radius 'r'",
+R"(float infHexagonSDF(vec3 p, float r)
+{
+    const vec3 k = vec3(-0.866025404,0.5,0.577350269);
+    p.y = p.z;
+    p = abs(p);
+    p.xy -= 2.0*min(dot(k.xy,p.xy),0.0)*k.xy;
+    p.xy -= vec2(clamp(p.x, -k.z*r, k.z*r), r);
+    return length(p.xy)*sign(p.y);
+})")
+
+            CODE_ENTRY(
+"Infinite octagonal column",
+"Signed distance of 'p' from the surface of an infinite column along the y axis"
+"with a regular-octagonal cross-section, such that the inscribing circle has"
+"radius 'r'",
+R"(float infOctagonSDF(vec3 p, float r)
+{
+    const vec3 k = vec3(-0.9238795325, 0.3826834323, 0.4142135623);
+    p.y = p.z;
+    p = abs(p);
+    p.xy -= 2.0*min(dot(vec2( k.x,k.y),p.xy),0.0)*vec2( k.x,k.y);
+    p.xy -= 2.0*min(dot(vec2(-k.x,k.y),p.xy),0.0)*vec2(-k.x,k.y);
+    p.xy -= vec2(clamp(p.x, -k.z*r, k.z*r), r);
+    return length(p.xy)*sign(p.y);
+})")
+
+            CODE_ENTRY(
+"Infinite N-side star column",
+"Signed distance of 'p' from the surface of an infinite column along the y axis"
+"with a regular-'n'-pointed-star cross-section, such that the inscribing "
+"circle has radius 'r' and such that the arm thickness is controlled by "
+"the 'm' parameter (should satisfy 2<'m'<'n'). For a regular star, 'm'='n'/2",
+R"(float infNStarSDF(vec3 p, float r, int n, float m)
+{
+    p.y = p.z;
+    float an = 3.141593/float(n);
+    float en = 3.141593/m;
+    vec2  acs = vec2(cos(an),sin(an));
+    vec2  ecs = vec2(cos(en),sin(en));
+    float bn = mod(atan(p.x,p.y),2.0*an) - an;
+    p.xy = length(p.xy)*vec2(cos(bn),abs(sin(bn)));
+    p.xy -= r*acs;
+    p.xy += ecs*clamp(-dot(p.xy,ecs), 0.0, r*acs.y/ecs.y);
+    return length(p.xy)*sign(p.x);
+})")
+
+            CODE_ENTRY(
+"Sphere",
+"Signed distance of 'p' from the surface of a sphere with radius 'r'",
+R"(float sphereSDF(vec3 p, float r)
+{
+    return length(p)-r;
+})")
+
+            CODE_ENTRY(
+"Torus",
+"Signed distance of 'p' from the surface of a torus in the xy plane with outer "
+"radius ro and inner radius ri",
+R"(float torusSDF(vec3 p, float ro, float ri)
+{
+    vec2 q = vec2(length(p.xz)-ro,p.y);
+    return length(q)-ri;
+})")
+
+            CODE_ENTRY(
+"Rectangular cuboid",
+"Signed distance of 'p' from the surface of a rectangular cuboid with side "
+"lenghts lx, ly, lz",
+R"(float rectCuboidSDF(vec3 p, float lx, float ly, float lz)
+{
+    vec3 q = abs(p)-vec(lx,ly,lz);
+    return length(max(q,0.0))+min(max(q.x,max(q.y,q.z)),0.0);
+})")
+
+            CODE_ENTRY(
+"Rectangular cuboid frame",
+"Signed distance of 'p' from the surface of the frame of a rectangular cuboid "
+"with side lenghts lx, ly, lz, with a square beam cross-section of side length"
+" s",
+R"(float frameSDF(vec3 p, float lx, float ly, float lz, float s)
+{
+    p = abs(p)-b;
+    vec3 q = abs(p+l)-l;
+    return min(min(
+        length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+        length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+        length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
+})")
+
+            CODE_ENTRY(
+"Pyramid",
+"Signed distance of 'p' from the surface of a square pydramid of base length "
+"'s' and height 'h'",
+R"(float pyramidSDF(vec3 p, float s, float h)
+{
+    p.y = (p.y+s)/h;
+    float y0 = p.y;
+    p = abs(p);
+    float m = p.x+p.y+p.z-s;
+    vec3 q;
+    float d = 0;
+    if(3.0*p.x < m) q = p.xyz;
+    else if(3.0*p.y < m) q = p.yzx;
+    else if(3.0*p.z < m) q = p.zxy;
+    else d = m*0.57735027;
+    float k = clamp(0.5*(q.z-q.y+s),0.0,s); 
+    if (d == 0) d=length(vec3(q.x,q.y-s+k,q.z-k)); 
+    return max(d, -y0);
+})")
+
+            CODE_ENTRY(
+"Octahedron",
+"Signed distance of 'p' from the surface of a regular octaheadron with edge "
+"length s",
+R"(float octahedronSDF(vec3 p, float s)
+{
+    p.y+=s;
+    p = abs(p);
+    float m = p.x+p.y+p.z-s;
+    vec3 q;
+    if(3.0*p.x < m) q = p.xyz;
+    else if(3.0*p.y < m) q = p.yzx;
+    else if(3.0*p.z < m) q = p.zxy;
+    else return m*0.57735027;
+    float k = clamp(0.5*(q.z-q.y+s),0.0,s);
+    return length(vec3(q.x,q.y-s+k,q.z-k)); 
+})")
+
+            ImGui::TreePop();
+        }
+
+        //--------------------------------------------------------------------//
+        if (ImGui::TreeNode("SDF Operations"))
+        {
+            CODE_ENTRY(
+"Union",
+"Unite two entities described by signed distance fields 'sdf1', 'sdf2'",
+R"(float uniteSDFs(float sdf1, float sdf2)
+{
+    return min(sdf1, sdf2);
+})")
+
+            CODE_ENTRY(
+"Subtraction",
+"Subtract the second entity from the first, described by signed distance "
+"fields 'sdf1', 'sdf2'",
+R"(float subtractSDFs(float sdf1, float sdf2)
+{
+    return max(-sdf1, sdf2);
+})")
+
+            CODE_ENTRY(
+"Intersection",
+"Intersect two entities described by signed distance fields 'sdf1', 'sdf2'",
+R"(float intersectSDFs(float sdf1, float sdf2)
+{
+    return max(sdf1, sdf2);
+})")
+
+            CODE_ENTRY(
+"Smooth union",
+"Unite two entities described by signed distance fields 'sdf1', 'sdf2' while "
+"smoothing any hard edges resulting from the union, proportionally to 's' (0 "
+"is no smoothing)",
+R"(float smoothUniteSDFs(float sdf1, float sdf2, float s)
+{
+    float h = clamp(0.5+0.5*(sdf2-sdf1)/s, 0.0, 1.0);
+    return mix(sdf2, sdf1, h)-s*h*(1.0-h);
+})")
+
+            CODE_ENTRY(
+"Smooth subtraction",
+"Subtract the second entity from the first, described by signed distance "
+"fields 'sdf1', 'sdf2' while smoothing any hard edges resulting from the "
+"subtraction, proportionally to 's' (0 is no smoothing)",
+R"(float smoothSubtractSDFs(float sdf1, float sdf2, float s)
+{
+    float h = clamp(0.5-0.5*(sdf2+sdf1)/s, 0.0, 1.0);
+    return mix(sdf2, -sdf1, h) + s*h*(1.0-h);
+})")
+
+            CODE_ENTRY(
+"Smooth intersection",
+"Intersect two entities described by signed distance fields 'sdf1', 'sdf2' "
+"while smoothing any hard edges resulting from the union, proportionally to "
+"'s' (0 is no smoothing)",
+R"(float smoothIntersectSDFs(float sdf1, float sdf2, float s)
+{
+    float h = clamp(0.5-0.5*(sdf2-sdf1)/s, 0.0, 1.0);
+    return mix(sdf2, sdf1, h)+s*h*(1.0-h);
+})")
+
+            ImGui::TreePop();
+        }
+
+        //--------------------------------------------------------------------//
+        if (ImGui::TreeNode("Sampling"))
+        {
+            CODE_ENTRY(
+"Camera ray",
+"Assuming a camera located at 'cp' and pointed in direction 'f', this function "
+"returns a camera ray cast from the current screen fragment at position 'uv' "
+"which complies with the provided field-of-view factor 'fov'",
+R"(vec3 cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
+{
+    vec3 l = normalize(cross(vec3(0,1,0),f));
+    vec3 u = normalize(cross(f,l));
+    return normalize(cp+f*fov-uv.x*l+uv.y*u-cp);
+})")
+
+            CODE_ENTRY(
+"Forward-differencing surface normal",
+"Simple calculation of a scene SDF surface normal at a point 'p' based on "
+"forward differencing. The infinitesimal step 'h' can be either set as constant"
+", or, to reduce artifacts, it can be set to be proportional to the distance of"
+" 'p' from the camera",
+R"(vec3 sceneNormal(vec3 p, float h)
+{
+	float d0 = sceneSDF(p);
+	float ddx = sceneSDF(p+vec3(h,0,0))-d0;
+	float ddy = sceneSDF(p+vec3(0,h,0))-d0;
+	float ddz = sceneSDF(p+vec3(0,0,h))-d0;
+	return normalize(vec3(ddx,ddy,ddz));
+})")
+
+            CODE_ENTRY(
+"Four-point surface normal",
+"Advanced 4-point-based calculation of a scene SDF surface normal at a point"
+"'p'. The infinitesimal step 'h' can be either set as constant, or, to reduce"
+"artifacts, it can be set to be proportional to the distance of 'p' from the"
+"camera",
+R"(vec3 sceneNormal(vec3 p, float h)
+{
+	vec2 e = vec2(1.0,-1.0);
+	return normalize(e.xyy*sceneSDF(p+e.xyy*h)+
+					 e.yyx*sceneSDF(p+e.yyx*h)+
+					 e.yxy*sceneSDF(p+e.yxy*h)+
+					 e.xxx*sceneSDF(p+e.xxx*h));
+})")
+
+            ImGui::TreePop();
+        }
+
+        //----------------------------------------------------------------------
+        CODE_ENTRY(
+"Exaxmple ray marcher",
+"Full fragment shader code of a very bare-bones ray marcher with a test scene,"
+" inclusive of a single light source and hard shadows cast by scene entities ",
+R"(#version 460 core
+out vec4 fragColor;
+in vec2 pos;
+#define uv pos
+#define PI 3.1415
+uniform float iTime;
+uniform vec3 iCameraPosition;
+uniform vec3 iCameraDirection;
+
+float sceneSDF(vec3 p)
+{
+	float sphere = length(p-vec3(0,1.5,0))-.75;
+	sphere += .25*sin(5*p.x*p.y+iTime*2*PI);
+	return min(sphere, p.y)/3;
+}
+
+vec3 sceneNormal(vec3 p)
+{
+	float d0 = sceneSDF(p);
+	return normalize(vec3(
+		sceneSDF(p+vec3(1e-3,0,0))-d0,
+		sceneSDF(p+vec3(0,1e-3,0))-d0,
+		sceneSDF(p+vec3(0,0,1e-3))-d0));
+}
+
+struct Ray
+{
+	vec3 origin;
+	vec3 direction;
+};
+
+Ray cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
+{
+	vec3 l = normalize(cross(vec3(0,1,0),f));
+	vec3 u = normalize(cross(f,l));
+	return Ray(cp,normalize(cp+f*fov-uv.x*l+uv.y*u-cp));
+}
+
+float rayMarch(Ray r)
+{
+	float s, ds = 0;
+	for (int step=0; step<500; step++)
+	{
+		ds = sceneSDF(r.origin+r.direction*s);
+		s += ds;
+		if (ds < 1e-3 && ds > 0)
+			return s;
+		if (s > 1e3)
+			return 0;
+	}
+	return s;
+}
+
+void main()
+{
+	const vec3 lightSource = vec3(2,4,2);
+	const vec4 bckgColor = vec4(0,0,0,1);
+	vec3 cameraPosition = vec3(1.5,3,3);
+	vec3 cameraDirection = -normalize(vec3(1.5,1.5,3));
+	
+	Ray r = cameraRay(uv,cameraPosition,cameraDirection,1);
+	float d = rayMarch(r);
+	if (d == 0)
+		fragColor = bckgColor;
+	else
+	{
+		vec3 p = r.origin+r.direction*d;
+		vec3 rld = p-lightSource;
+		Ray rl = Ray(lightSource,normalize(rld));
+		if (rayMarch(rl)<0.999*length(rld))
+			fragColor = bckgColor;
+		else
+		{
+			vec3 n = sceneNormal(p); 
+			float c = max(dot(n,normalize(lightSource-p)),0);
+			fragColor = vec4(c,c,c,1);
+		}
+	}
+})")
+        ImGui::TreePop();
+    }
+
+    ImGui::PopTextWrapPos();
+    if (!isGuiInMenu_)
+        ImGui::End();
+}
+
+}
