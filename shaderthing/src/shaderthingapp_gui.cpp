@@ -30,7 +30,7 @@ else                                                                        \
     *(cmpt->isGuiOpenPtr()) = false;                                        \
 
 
-#define ОБЗЧ_MENU_ENTRY(cmpt, cmptName)                                     \
+#define OZ_MENU_ENTRY(cmpt, cmptName)                                     \
 if(ImGui::SmallButton(cmpt->isGuiInMenu() ? "O" : "Z" ))                    \
     cmpt->toggleIsGuiInMenu();                                              \
 ImGui::SameLine();                                                          \
@@ -179,7 +179,7 @@ void ShaderThingApp::updateGui()
             if (ImGui::MenuItem("Save project as", "Ctrl+Shift+S"))
                 stateFlags_[ST_OPEN_SAVE_DIALOG] = true;
             ImGui::Separator();
-            ОБЗЧ_MENU_ENTRY(exportTool_, "Export")
+            OZ_MENU_ENTRY(exportTool_, "Export")
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings"))
@@ -245,12 +245,12 @@ void ShaderThingApp::updateGui()
         }
         if (ImGui::BeginMenu("Resources"))
         {
-            ОБЗЧ_MENU_ENTRY(resourceManager_, "Resource manager")
+            OZ_MENU_ENTRY(resourceManager_, "Resource manager")
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Effects"))
         {
-            ОБЗЧ_MENU_ENTRY(quantizationTool_, "Quantizer")
+            OZ_MENU_ENTRY(quantizationTool_, "Quantizer")
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
@@ -289,7 +289,7 @@ void ShaderThingApp::updateGui()
     }*/
 
     ImGui::End();
-    ImGui::ShowDemoWindow();
+    //ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 
