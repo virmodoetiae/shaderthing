@@ -116,6 +116,51 @@ R"(vec3 rotate(vec3 v, float t, vec3 a)
     }
 
     //------------------------------------------------------------------------//
+    if (ImGui::TreeNode("Effects"))
+    {
+        CODE_ENTRY(
+"Sobel filter",
+"This complete shader applies a Sobel filter to an input texture 'iTexture0'",
+R"(#version 460 core
+
+out vec4 fragColor;
+in vec2 pos;
+in vec2 txc;
+
+uniform ivec2 iResolution;
+uniform sampler2D iTexture0;
+
+void make_kernel(inout vec4 n[9], sampler2D tex, vec2 coord)
+{
+	float w = 1.0/iResolution.x;
+	float h = 1.0/iResolution.y;
+	n[0] = texture2D(tex, coord+vec2(-w, -h));
+	n[1] = texture2D(tex, coord+vec2(0.0, -h));
+	n[2] = texture2D(tex, coord+vec2(w, -h));
+	n[3] = texture2D(tex, coord+vec2(-w, 0.0));
+	n[4] = texture2D(tex, coord);
+	n[5] = texture2D(tex, coord+vec2(w, 0.0));
+	n[6] = texture2D(tex, coord+vec2(-w, h));
+	n[7] = texture2D(tex, coord+vec2(0.0, h));
+	n[8] = texture2D(tex, coord+vec2(w, h));
+}
+
+void main() 
+{
+	vec4 n[9];
+	make_kernel(n, iTexture0, txc);
+	vec4 sobel_edge_h = n[2]+(2.0*n[5])+n[8]-(n[0]+(2.0*n[3])+n[6]);
+	vec4 sobel_edge_v = n[0]+(2.0*n[1])+n[2]-(n[6]+(2.0*n[7])+n[8]);
+	vec4 sobel = 
+		sqrt((sobel_edge_h*sobel_edge_h)+(sobel_edge_v*sobel_edge_v));
+	fragColor = vec4(sobel.rgb, 1.0);
+})"
+        )
+        
+        ImGui::TreePop();
+    }
+
+    //------------------------------------------------------------------------//
     if (ImGui::TreeNode("Ray marching")) //-----------------------------------//
     {
         //--------------------------------------------------------------------//
@@ -454,25 +499,45 @@ R"(#version 460 core
 out vec4 fragColor;
 in vec2 pos;
 #define uv pos
-#define PI 3.1415
+#define PI 3.14159
 uniform float iTime;
 uniform vec3 iCameraPosition;
 uniform vec3 iCameraDirection;
 
+// Increase this to avoid visual artifacts. However, at the same time, you
+// should increase the number of ray marching steps
+#define SAFETY_FACTOR 3
+
+// Max number of ray marching steps
+#define MAX_STEPS 500 
+
+// Minimum distance from any scene surface below which ray marching stops
+#define MIN_DIST 1e-3
+
+// Maximum distance from any scene surface above which ray marching stops
+#define MAX_DIST 1e3
+
+// Given a point 'p', this function returns the distance between 'p' and the
+// nearest geometry surface. It is this function that describes the 3D geometry
+// of the scene
 float sceneSDF(vec3 p)
 {
 	float sphere = length(p-vec3(0,1.5,0))-.75;
 	sphere += .25*sin(5*p.x*p.y+iTime*2*PI);
-	return min(sphere, p.y)/3;
+	return min(sphere, p.y)/SAFETY_FACTOR;
 }
 
-vec3 sceneNormal(vec3 p)
+// Given a point 'p' close to the 3D geometry scene surface, this function
+// returns the surface normal. The 'h' factor is the step used for the
+// derivative calculation. If too low, visual artifacts will result, if too
+// large, the resulting geometry will loose detail
+vec3 sceneNormal(vec3 p, float h)
 {
-	float d0 = sceneSDF(p);
-	return normalize(vec3(
-		sceneSDF(p+vec3(1e-3,0,0))-d0,
-		sceneSDF(p+vec3(0,1e-3,0))-d0,
-		sceneSDF(p+vec3(0,0,1e-3))-d0));
+	vec2 e = vec2(1.0,-1.0);
+	return normalize(e.xyy*sceneSDF(p+e.xyy*h)+
+					 e.yyx*sceneSDF(p+e.yyx*h)+
+					 e.yxy*sceneSDF(p+e.yxy*h)+
+					 e.xxx*sceneSDF(p+e.xxx*h));
 }
 
 struct Ray
@@ -488,16 +553,19 @@ Ray cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
 	return Ray(cp,normalize(cp+f*fov-uv.x*l+uv.y*u-cp));
 }
 
+// Propagate a ray 'r' along its direction until either a scene surface is 
+// hit or the maximum number of steps has been traversed. Returs the distance
+// to said hit point, otherwise returns 0
 float rayMarch(Ray r)
 {
 	float s, ds = 0;
-	for (int step=0; step<500; step++)
+	for (int step=0; step<MAX_STEPS; step++)
 	{
 		ds = sceneSDF(r.origin+r.direction*s);
 		s += ds;
-		if (ds < 1e-3 && ds > 0)
+		if (ds < MIN_DIST && ds > 0)
 			return s;
-		if (s > 1e3)
+		if (s > MAX_DIST)
 			return 0;
 	}
 	return s;
@@ -505,25 +573,39 @@ float rayMarch(Ray r)
 
 void main()
 {
+    // Define light source position and background color (used when no surface
+    // hit or for shadrows
 	const vec3 lightSource = vec3(2,4,2);
 	const vec4 bckgColor = vec4(0,0,0,1);
+
+    // Feel free to replace these with the iCameraPosition, iCameraDirection
+    // uniforms to have live control over the camera and move in shader-space!
 	vec3 cameraPosition = vec3(1.5,3,3);
 	vec3 cameraDirection = -normalize(vec3(1.5,1.5,3));
 	
+    // Construct ray for this pixel and ray march
 	Ray r = cameraRay(uv,cameraPosition,cameraDirection,1);
 	float d = rayMarch(r);
-	if (d == 0)
-		fragColor = bckgColor;
+	if (d == 0) // If no surfaces hit
+		fragColor = bckgColor; //set to background color
 	else
 	{
-		vec3 p = r.origin+r.direction*d;
-		vec3 rld = p-lightSource;
-		Ray rl = Ray(lightSource,normalize(rld));
-		if (rayMarch(rl)<0.999*length(rld))
+        // Find surface hit point and its distance from light source
+		vec3 p = r.origin+r.direction*d*0.99;
+		vec3 pl = lightSource-p;
+
+        // Ray march from the hit point to the light source
+		Ray rl = Ray(p, normalize(pl));
+		float dl = rayMarch(rl)*SAFETY_FACTOR;
+
+        // If ray marching does not reach light source it means that the point
+        // is in complete shade (hard shadow)
+		if (dl>0 && dl<0.99*length(pl))
 			fragColor = bckgColor;
-		else
+		else 
 		{
-			vec3 n = sceneNormal(p); 
+            // Compute pixel color if fully or partially illuminated
+			vec3 n = sceneNormal(p, 1e-3*d); 
 			float c = max(dot(n,normalize(lightSource-p)),0);
 			fragColor = vec4(c,c,c,1);
 		}

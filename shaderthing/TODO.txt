@@ -23,7 +23,7 @@ TODO ---------------------------------------------------------------------------
 
 ( ) Test compilation and running on Linux systems
 
-( ) Add project README with compilation instructions
+(W) Add project README with compilation instructions
 
 ( ) Record video tutorial(s) of application usage, host them on YouTube, 
     possibly find a way to add tutorial links within the application.
