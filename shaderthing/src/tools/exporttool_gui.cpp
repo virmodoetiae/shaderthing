@@ -113,6 +113,13 @@ framebuffer before the export begins)");
             ImGui::PushItemWidth(entryWidth);
             ImGui::SliderInt("##paletteBitSlider", &gifPaletteBitDepth_, 2, 8);
             ImGui::PopItemWidth();
+            ImGui::Text("Update palette every frame  ");
+            ImGui::SameLine();
+            ImGui::Checkbox
+            (
+                "##updatePaletteEveryFrame", 
+                &updatePaletteEveryFrame_
+            );
             ImGui::Text("Color dithering             ");
             ImGui::SameLine();
             ImGui::PushItemWidth(entryWidth);

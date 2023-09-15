@@ -60,7 +60,8 @@ ExportTool::ExportTool
     gifPaletteBitDepth_(8),
     gifDitheringLevel_(0),
     nRendersPerFrame_(1),
-    multipleRendersOnlyOnFirstFrame_(true)
+    multipleRendersOnlyOnFirstFrame_(true),
+    updatePaletteEveryFrame_(true)
 {}
 
 ExportTool::~ExportTool()
@@ -271,7 +272,8 @@ void ExportTool::exportFrame()
                 delay,
                 gifDitheringLevel_,
                 0.0f,
-                true
+                true,
+                updatePaletteEveryFrame_
             );
             if (frame_ >= nExportFrames_+1)
             {

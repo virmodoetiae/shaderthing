@@ -61,7 +61,8 @@ public:
         int delay,
         uint32_t ditherLevel=0,
         float ditherThreshold=0,
-        bool flipVertically=false
+        bool flipVertically=false,
+        bool updatePalette=true
     );
     
     void encodeFrame
@@ -70,7 +71,8 @@ public:
         int delay,
         uint32_t ditherLevel=0,
         float ditherThreshold=0,
-        bool flipVertically=false
+        bool flipVertically=false,
+        bool updatePalette=true
     );
     
     bool closeFile();

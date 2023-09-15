@@ -2,7 +2,7 @@
 
 TODO ---------------------------------------------------------------------------
 
-( ) Implement export control for enabling GIF palette calculation only 
+(X) Implement export control for enabling GIF palette calculation only 
     on first frame
 
 ( ) Add settings for keyboard and mouse sensitivity for iCameraPosition,
@@ -13,10 +13,16 @@ TODO ---------------------------------------------------------------------------
 ( ) Add font settings for loading/unloading japanese & simplified 
     Chinese character sets
 
+( ) Add support for 3D-textures management in vir, the shaderthing resource
+    manager and uniform system
+
+( ) Add some sort of 2D (and eventually 3D) noise generator and output to
+    either static and/or dynamic textures
+
 ( ) Add save guards to prevent closing app and/or creating a new project
     by misting, to prevent loosing existing work
 
-( ) Expand code repository section
+(W) Expand code repository section
 
 ( ) Fix (or find workaround) for ImGui window icons disappearing on 
     ImGui docking/undocking action
@@ -25,5 +31,13 @@ TODO ---------------------------------------------------------------------------
 
 (W) Add project README with compilation instructions
 
-( ) Record video tutorial(s) of application usage, host them on YouTube, 
+TO-CONSIDER --------------------------------------------------------------------
+
+*   Enable option to use the quantizer palette for GIF quantization on GIF 
+    exporting
+
+*   Record video tutorial(s) of application usage, host them on YouTube, 
     possibly find a way to add tutorial links within the application.
+
+*   Re-work the save system to leverage a more structure storage format, e.g.,
+    JSON-like files

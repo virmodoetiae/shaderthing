@@ -237,7 +237,8 @@ void GifEncoder::encodeFrame
     int delay,
     uint32_t ditherLevel,
     float ditherThreshold,
-    bool flipVertically
+    bool flipVertically,
+    bool updatePalette
 )
 {
     if (quantizer_ == nullptr)
@@ -249,7 +250,7 @@ void GifEncoder::encodeFrame
         nullptr,
         ditherLevel, 
         firstFrame_,
-        true,
+        updatePalette,
         0,
         ditherThreshold,
         -1,
@@ -270,7 +271,8 @@ void GifEncoder::encodeFrame
     int delay,
     uint32_t ditherLevel,
     float ditherThreshold,
-    bool flipVertically
+    bool flipVertically,
+    bool updatePalette
 )
 {
     quantizer_->quantize
@@ -280,7 +282,7 @@ void GifEncoder::encodeFrame
         nullptr,
         ditherLevel, 
         firstFrame_,
-        true,
+        updatePalette,
         0,
         ditherThreshold,
         -1,

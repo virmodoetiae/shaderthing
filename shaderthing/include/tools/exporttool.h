@@ -72,6 +72,7 @@ private:
 
     int nRendersPerFrame_;
     bool multipleRendersOnlyOnFirstFrame_;
+    bool updatePaletteEveryFrame_;
 
     void exportButtonGui
     (
