@@ -10,8 +10,8 @@ TODO ---------------------------------------------------------------------------
 
 ( ) Add info tooltip on iMouse row in Uniform tab
 
-( ) Add font settings for loading/unloading japanese & simplified 
-    Chinese character sets
+(X) Add font settings for loading japanese & simplified 
+    Chinese character sets (unloading missing but not very important...)
 
 ( ) Add support for 3D-textures management in vir, the shaderthing resource
     manager and uniform system

@@ -142,4 +142,9 @@ bool ImGuiRenderer::setWindowIcon
     );
 }
 
+void ImGuiRenderer::destroyDeviceObjects()
+{
+    GlobalPtr<ImGuiRenderer>::instance()->destroyDeviceObjectsImpl();
+}
+
 }

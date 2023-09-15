@@ -19,10 +19,10 @@ protected:
         uint32_t dataSize, 
         bool isDataRaw
     ) override;
+    void destroyDeviceObjectsImpl() override;
 public:
     GLFWOpenGLImGuiRenderer();
     ~GLFWOpenGLImGuiRenderer();
-
 };
 
 }

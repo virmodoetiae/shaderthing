@@ -22,6 +22,7 @@ protected:
         uint32_t dataSize, 
         bool isDataRaw
     ) = 0;
+    virtual void destroyDeviceObjectsImpl() = 0; 
 
 public:
 
@@ -54,6 +55,7 @@ public:
         uint32_t dataSize, 
         bool isDataRaw
     );
+    static void destroyDeviceObjects();
 };
 
 }

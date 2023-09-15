@@ -13,6 +13,10 @@
 
 #include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
 
+#include "thirdparty/imgui/imgui_internal.h"
+#include "thirdparty/imgui/backends/imgui_impl_glfw.h"
+#include "thirdparty/imgui/backends/imgui_impl_opengl3.h"
+
 namespace ShaderThing
 {
 
@@ -57,9 +61,9 @@ void ShaderThingApp::updateGui()
     // Load ImGui font
     static bool fontLoaded(false);
     static ImFont* font = nullptr;
+    static ImFontConfig config; 
     if (!fontLoaded)
     {
-        ImFontConfig config; 
         config.PixelSnapH = true;
         config.OversampleV = 3.0;
         config.OversampleH = 3.0;
@@ -94,24 +98,7 @@ void ShaderThingApp::updateGui()
             &config,
             io.Fonts->GetGlyphRangesGreek()
         );
-        /*
-        io.Fonts->AddFontFromMemoryCompressedTTF
-        (
-            (void*)FontData::DroidSansFallbackData,
-            FontData::DroidSansFallbackSize,
-            36.5,
-            &config,
-            io.Fonts->GetGlyphRangesJapanese()
-        );
-        io.Fonts->AddFontFromMemoryCompressedTTF
-        (
-            (void*)FontData::DroidSansFallbackData, 
-            FontData::DroidSansFallbackSize,
-            36.5,
-            &config,
-            io.Fonts->GetGlyphRangesChineseSimplifiedCommon()
-        );
-        io.Fonts->AddFontFromMemoryCompressedTTF
+        /*io.Fonts->AddFontFromMemoryCompressedTTF
         (
             (void*)FontData::DroidSansFallbackData, 
             FontData::DroidSansFallbackSize,
@@ -123,6 +110,28 @@ void ShaderThingApp::updateGui()
         fontLoaded = true;
         font->Scale = 0.6;
     }
+
+#define CHECK_BUILD_CHARACTER_SET(name, data, dataSize, size)               \
+static bool name##SetBuilt(false);                                          \
+static bool name##SetBuilt0(false);                                         \
+if (name##SetBuilt && name##SetBuilt != name##SetBuilt0){                   \
+    io.Fonts->AddFontFromMemoryCompressedTTF(                               \
+        (void*)data, dataSize, size, &config,                               \
+        io.Fonts->GetGlyphRanges##name());                                  \
+    io.Fonts->Build();                                                      \
+    vir::ImGuiRenderer::destroyDeviceObjects();}                            \
+name##SetBuilt0 = name##SetBuilt;
+    
+    CHECK_BUILD_CHARACTER_SET(
+        Japanese, 
+        FontData::DroidSansFallbackData, 
+        FontData::DroidSansFallbackSize, 
+        36.5)
+    CHECK_BUILD_CHARACTER_SET(
+        ChineseSimplifiedCommon, 
+        FontData::DroidSansFallbackData, 
+        FontData::DroidSansFallbackSize, 
+        36.5)
 
     // Frame beginning, all other subcomponents' renderGui functions are to be
     // called after this point
@@ -211,24 +220,12 @@ void ShaderThingApp::updateGui()
                     ImGui::EndMenu();
                 }
             }
-            /*
-            Layer*& activeGuiLayer(layerManager_->activeGuiLayer());
-            if (activeGuiLayer != nullptr)
-            {
-                std::string layerSettingsName = "Layer ["+activeGuiLayer->name()+"]";
-                if (ImGui::BeginMenu(layerSettingsName.c_str()))
-                {
-                    activeGuiLayer->renderGuiSettings();
-                    ImGui::EndMenu();
-                }
-            }
-            */
             ImGui::Separator();
             if (ImGui::BeginMenu("Font"))
             {
                 ImGui::Text("Scale");
                 ImGui::SameLine();
-                ImGui::PushItemWidth(8.0*fontSize);
+                ImGui::PushItemWidth(-1);
                 ImGui::DragFloat
                 (
                     "##fontScale", 
@@ -239,6 +236,73 @@ void ShaderThingApp::updateGui()
                     "%.1f"
                 );
                 ImGui::PopItemWidth();
+                ImGui::Separator();
+                if (ImGui::BeginMenu("Load character sets"))
+                {
+                    static bool alwaysBuiltSet(true);
+                    
+                    ImGui::Text("Latin    ");
+                    ImGui::SameLine();
+                    ImGui::BeginDisabled();
+                    ImGui::Checkbox("##loadLatin", &alwaysBuiltSet);
+                    ImGui::EndDisabled();
+
+                    ImGui::Text("Cyrillic ");
+                    ImGui::SameLine();
+                    ImGui::BeginDisabled();
+                    ImGui::Checkbox("##loadCyrillic", &alwaysBuiltSet);
+                    ImGui::EndDisabled();
+
+                    ImGui::Text("Greek    ");
+                    ImGui::SameLine();
+                    ImGui::BeginDisabled();
+                    ImGui::Checkbox("##loadGreek", &alwaysBuiltSet);
+                    ImGui::EndDisabled();
+
+                    ImGui::Text("Japanese ");
+                    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                    {
+                        ImGui::Text(
+"Warning: loading Japanese characters can take several hundreds of MB of RAM,\n"
+"depending on your system. They can only be unloaded by exiting the program"
+                        );
+                        ImGui::EndTooltip();
+                    }
+                    ImGui::SameLine();
+                    if (JapaneseSetBuilt) 
+                        ImGui::BeginDisabled();
+                    if (ImGui::Checkbox("##loadJapanese", &JapaneseSetBuilt))
+                        JapaneseSetBuilt = true;
+                    else if (JapaneseSetBuilt) 
+                        ImGui::EndDisabled();
+                    
+                    ImGui::Text("Chinese  ");
+                    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                    {
+                        ImGui::Text("Simplified Chinese only");
+                        ImGui::Separator();
+                        ImGui::Text(
+"Warning: loading Chinese characters can take several hundreds of MB of RAM,\n"
+"depending on your system. They can only be unloaded by exiting the program"
+                        );
+                        ImGui::EndTooltip();
+                    }
+                    ImGui::SameLine();
+                    if (ChineseSimplifiedCommonSetBuilt) 
+                        ImGui::BeginDisabled();
+                    if 
+                    (
+                        ImGui::Checkbox
+                        (
+                            "##loadChineseFull", 
+                            &ChineseSimplifiedCommonSetBuilt
+                        )
+                    )
+                        ChineseSimplifiedCommonSetBuilt = true;
+                    else if (ChineseSimplifiedCommonSetBuilt) 
+                        ImGui::EndDisabled();
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();

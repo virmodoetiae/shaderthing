@@ -90,4 +90,9 @@ bool GLFWOpenGLImGuiRenderer::setWindowIconImpl
     return true;
 }
 
+void GLFWOpenGLImGuiRenderer::destroyDeviceObjectsImpl()
+{
+    ImGui_ImplOpenGL3_DestroyDeviceObjects();
+}
+
 }
