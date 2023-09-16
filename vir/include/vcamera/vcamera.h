@@ -141,7 +141,8 @@ public:
     const float& nearPlane() const {return nearPlane_;}
     const float& farPlane() const {return farPlane_;}
     const glm::mat4& projectionViewMatrix(){return projectionViewMatrix_;}
-    
+    float& keySensitivityRef(){return keySensitivity_;}
+    float& mouseSensitivityRef(){return mouseSensitivity_;}
 };
 
 }

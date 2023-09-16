@@ -5,31 +5,38 @@ TODO ---------------------------------------------------------------------------
 (X) Implement export control for enabling GIF palette calculation only 
     on first frame
 
-( ) Add settings for keyboard and mouse sensitivity for iCameraPosition,
+(X) Add settings for keyboard and mouse sensitivity for iCameraPosition,
     iCameraDirection controls
 
 ( ) Add info tooltip on iMouse row in Uniform tab
 
-(X) Add font settings for loading japanese & simplified 
+(X) Add font settings for loading Japanese & simplified 
     Chinese character sets (unloading missing but not very important...)
 
-( ) Add support for 3D-textures management in vir, the shaderthing resource
+( ) Prevent Ctrl+S causing project save when iCameraPosition changing due to 
+    keyboard inputs
+
+( ) Add save guards to prevent closing app and/or creating a new project
+    by misting, to prevent loosing existing work
+
+( ) Add support for 3D-textures management in vir, the ShaderThing resource
     manager and uniform system
 
 ( ) Add some sort of 2D (and eventually 3D) noise generator and output to
     either static and/or dynamic textures
 
-( ) Add save guards to prevent closing app and/or creating a new project
-    by misting, to prevent loosing existing work
-
 (W) Expand code repository section
 
 ( ) Fix (or find workaround) for ImGui window icons disappearing on 
-    ImGui docking/undocking action
+    ImGui docking/undocking actions
 
 ( ) Test compilation and running on Linux systems
 
-(W) Add project README with compilation instructions
+(X) Add project README with compilation instructions
+
+( ) Expand project README with demo images and GIFs
+
+( ) Add example projects that can be loaded in ShaderThings as demos/tutorials
 
 TO-CONSIDER --------------------------------------------------------------------
 

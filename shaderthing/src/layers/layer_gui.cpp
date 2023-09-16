@@ -455,19 +455,57 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
 }
             else if (uniform->name == "iCameraPosition")
             {
-                bool enabled = app_.isCameraPositionInputEnabled();
-                std::string text = enabled ? "Disable" : "Enable";
-                if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
-                    app_.setShaderCameraPositionInputsEnabled(!enabled);
-                ENABLE_DISABLE_APP_INPUT_TOOLTIP(keyboard inputs)
+                if (ImGui::Button("Settings", ImVec2(-1, 0)))
+                    ImGui::OpenPopup("##iCameraPositionSettings");
+                if (ImGui::BeginPopup("##iCameraPositionSettings"))
+                {
+                    bool enabled = app_.isCameraPositionInputEnabled();
+                    std::string text = enabled ? "Disable" : "Enable";
+                    if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+                    {
+                        app_.setShaderCameraPositionInputsEnabled(!enabled);
+                    }
+                    ENABLE_DISABLE_APP_INPUT_TOOLTIP(keyboard inputs)
+                    ImGui::Text("Keyboard sensitivity ");
+                    ImGui::SameLine();
+                    ImGui::PushItemWidth(-1);
+                    ImGui::SliderFloat
+                    (
+                        "##iCameraPositionSensitivity", 
+                        &shaderCamera_.keySensitivityRef(),
+                        1e-1,
+                        50
+                    );
+                    ImGui::PopItemWidth();
+                    ImGui::EndPopup();
+                }
             }
             else if (uniform->name == "iCameraDirection")
             {
-                bool enabled = app_.isCameraDirectionInputEnabled();
-                std::string text = enabled ? "Disable" : "Enable";
-                if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
-                    app_.setShaderCameraDirectionInputsEnabled(!enabled);
-                ENABLE_DISABLE_APP_INPUT_TOOLTIP(keyboard inputs)
+                if (ImGui::Button("Settings", ImVec2(-1, 0)))
+                    ImGui::OpenPopup("##iCameraDirectionSettings");
+                if (ImGui::BeginPopup("##iCameraDirectionSettings"))
+                {
+                    bool enabled = app_.isCameraDirectionInputEnabled();
+                    std::string text = enabled ? "Disable" : "Enable";
+                    if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+                    {
+                        app_.setShaderCameraDirectionInputsEnabled(!enabled);
+                    }
+                    ENABLE_DISABLE_APP_INPUT_TOOLTIP(keyboard inputs)
+                    ImGui::Text("Mouse sensitivity ");
+                    ImGui::SameLine();
+                    ImGui::PushItemWidth(-1);
+                    ImGui::SliderFloat
+                    (
+                        "##iCameraDirectionSensitivity", 
+                        &shaderCamera_.mouseSensitivityRef(),
+                        1e-3,
+                        1
+                    );
+                    ImGui::PopItemWidth();
+                    ImGui::EndPopup();
+                }
             }
             else if (uniform->name == "iMouse")
             {
