@@ -8,7 +8,7 @@ TODO ---------------------------------------------------------------------------
 (X) Add settings for keyboard and mouse sensitivity for iCameraPosition,
     iCameraDirection controls
 
-( ) Add info tooltip on iMouse row in Uniform tab
+(X) Add info tooltip on iMouse row in Uniform tab
 
 (X) Add font settings for loading Japanese & simplified 
     Chinese character sets (unloading missing but not very important...)

@@ -492,7 +492,7 @@ R"(vec3 sceneNormal(vec3 p, float h)
 
         //----------------------------------------------------------------------
         CODE_ENTRY(
-"Exaxmple ray marcher",
+"Example ray marcher",
 "Full fragment shader code of a very bare-bones ray marcher with a test scene,"
 " inclusive of a single light source and hard shadows cast by scene entities ",
 R"(#version 460 core

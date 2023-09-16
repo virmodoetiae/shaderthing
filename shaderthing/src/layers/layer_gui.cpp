@@ -822,6 +822,17 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
                             std::to_string(app_.mouseRef().z)+", "+
                             std::to_string(app_.mouseRef().w);
                         ImGui::Text(data.c_str());
+                        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                        {
+                            ImGui::Text(
+R"(The first two components (x, y) are the current x, y coordinates (with respect
+to the lower-left corner of the ShaderThing window) of the mouse cursor if the
+left mouse button is currently being held down. The last two components (z, w)
+represent the x, y coordinates of the last left mouse button click, with their 
+sign reversed. If the sign of the z component is positive, then the left mouse
+is currently being held down)");
+                            ImGui::EndTooltip();
+                        }
                     }
                     else
                         input = ImGui::SliderInt4
