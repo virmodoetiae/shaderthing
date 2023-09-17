@@ -18,6 +18,7 @@ namespace ShaderThing
 #define ST_IS_CAMERA_POSITION_INPUT_ENABLED 7
 #define ST_IS_CAMERA_DIRECTION_INPUT_ENABLED 8
 #define ST_IS_MOUSE_INPUT_ENABLED 9
+#define ST_NEW_PROJECT_CONFIRMATION_PENDING 10
 
 class Layer;
 class LayerManager;
@@ -35,7 +36,7 @@ class ShaderThingApp : public vir::Event::Receiver
 private:
 
     // Generic state flags (see ST_ defines)
-    bool stateFlags_[10];
+    bool stateFlags_[11];
 
     // Window state
     float time_ = 0.0;
@@ -68,6 +69,7 @@ private:
     void restart();
     void update();
     void updateGui();
+    void renderGuiNewProject();
     void renderGuiSaveProject();
     void renderGuiLoadProject();
 

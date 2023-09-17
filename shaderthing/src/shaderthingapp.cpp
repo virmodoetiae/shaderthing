@@ -258,8 +258,8 @@ void ShaderThingApp::restart()
     cameraPosition = glm::vec3(0,0,-1);
     shaderCamera_->setPosition(cameraPosition);
     shaderCamera_->setZPlusIsLookDirection(true);
-    for (int i=0; i<10; i++)
-        stateFlags_[i] = (i>6);
+    for (int i=0; i<11; i++)
+        stateFlags_[i] = (i>6 && i<10);
 
     // Restart app components
     layerManager_->reset();

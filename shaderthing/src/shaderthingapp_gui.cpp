@@ -14,8 +14,6 @@
 #include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
 
 #include "thirdparty/imgui/imgui_internal.h"
-#include "thirdparty/imgui/backends/imgui_impl_glfw.h"
-#include "thirdparty/imgui/backends/imgui_impl_opengl3.h"
 
 namespace ShaderThing
 {
@@ -34,7 +32,7 @@ else                                                                        \
     *(cmpt->isGuiOpenPtr()) = false;                                        \
 
 
-#define OZ_MENU_ENTRY(cmpt, cmptName)                                     \
+#define OZ_MENU_ENTRY(cmpt, cmptName)                                       \
 if(ImGui::SmallButton(cmpt->isGuiInMenu() ? "O" : "Z" ))                    \
     cmpt->toggleIsGuiInMenu();                                              \
 ImGui::SameLine();                                                          \
@@ -98,14 +96,6 @@ void ShaderThingApp::updateGui()
             &config,
             io.Fonts->GetGlyphRangesGreek()
         );
-        /*io.Fonts->AddFontFromMemoryCompressedTTF
-        (
-            (void*)FontData::DroidSansFallbackData, 
-            FontData::DroidSansFallbackSize,
-            36.5,
-            &config,
-            io.Fonts->GetGlyphRangesChineseFull()
-        );*/
         io.Fonts->Build();
         fontLoaded = true;
         font->Scale = 0.6;
@@ -157,7 +147,9 @@ name##SetBuilt0 = name##SetBuilt;
     float fontSize = ImGui::GetFontSize();
 
     // Check status of Ctrl+X key presses
-    if (Misc::isCtrlKeyPressed(ImGuiKey_O)) // Open
+    if (Misc::isCtrlKeyPressed(ImGuiKey_N)) // New
+        stateFlags_[ST_NEW_PROJECT_CONFIRMATION_PENDING] = true;
+    else if (Misc::isCtrlKeyPressed(ImGuiKey_O)) // Open
         stateFlags_[ST_OPEN_LOAD_DIALOG] = true;
     else if (Misc::isCtrlShiftKeyPressed(ImGuiKey_S)) // Save as
         stateFlags_[ST_OPEN_SAVE_DIALOG] = true;
@@ -174,8 +166,8 @@ name##SetBuilt0 = name##SetBuilt;
     {
         if (ImGui::BeginMenu("Project"))
         {
-            if (ImGui::MenuItem("New project"))
-                stateFlags_[ST_NEW_PROJECT] = true;
+            if (ImGui::MenuItem("New project", "Ctrl+N"))
+                stateFlags_[ST_NEW_PROJECT_CONFIRMATION_PENDING] = true;
             if (ImGui::MenuItem("Load project", "Ctrl+O"))
                 stateFlags_[ST_OPEN_LOAD_DIALOG] = true;
             if (ImGui::MenuItem("Save project", "Ctrl+S"))
@@ -260,6 +252,13 @@ name##SetBuilt0 = name##SetBuilt;
                     ImGui::EndDisabled();
 
                     ImGui::Text("Japanese ");
+                    ImGui::SameLine();
+                    if (JapaneseSetBuilt) 
+                        ImGui::BeginDisabled();
+                    if (ImGui::Checkbox("##loadJapanese", &JapaneseSetBuilt))
+                        JapaneseSetBuilt = true;
+                    else if (JapaneseSetBuilt)
+                        ImGui::EndDisabled();
                     if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                     {
                         ImGui::Text(
@@ -268,25 +267,8 @@ name##SetBuilt0 = name##SetBuilt;
                         );
                         ImGui::EndTooltip();
                     }
-                    ImGui::SameLine();
-                    if (JapaneseSetBuilt) 
-                        ImGui::BeginDisabled();
-                    if (ImGui::Checkbox("##loadJapanese", &JapaneseSetBuilt))
-                        JapaneseSetBuilt = true;
-                    else if (JapaneseSetBuilt) 
-                        ImGui::EndDisabled();
                     
                     ImGui::Text("Chinese  ");
-                    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-                    {
-                        ImGui::Text("Simplified Chinese only");
-                        ImGui::Separator();
-                        ImGui::Text(
-"Warning: loading Chinese characters can take several hundreds of MB of RAM,\n"
-"depending on your system. They can only be unloaded by exiting the program"
-                        );
-                        ImGui::EndTooltip();
-                    }
                     ImGui::SameLine();
                     if (ChineseSimplifiedCommonSetBuilt) 
                         ImGui::BeginDisabled();
@@ -301,6 +283,16 @@ name##SetBuilt0 = name##SetBuilt;
                         ChineseSimplifiedCommonSetBuilt = true;
                     else if (ChineseSimplifiedCommonSetBuilt) 
                         ImGui::EndDisabled();
+                    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                    {
+                        ImGui::Text("Simplified Chinese only");
+                        ImGui::Separator();
+                        ImGui::Text(
+"Warning: loading Chinese characters can take several hundreds of MB of RAM,\n"
+"depending on your system. They can only be unloaded by exiting the program"
+                        );
+                        ImGui::EndTooltip();
+                    }
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
@@ -331,6 +323,7 @@ name##SetBuilt0 = name##SetBuilt;
         ImGui::EndMenuBar();
     }
 
+    renderGuiNewProject();
     renderGuiLoadProject();
     renderGuiSaveProject();
     layerManager_->renderGui();
@@ -341,20 +334,46 @@ name##SetBuilt0 = name##SetBuilt;
     if (!exportTool_->isGuiInMenu())
         exportTool_->renderGui();
 
-    /*if (exportTool_->isExporting() && ImGui::BeginTooltip())
-    {
-        ImGui::Text("Exporting...");
-        ImGui::ProgressBar
-        (
-            exportTool_->exportProgress(), 
-            ImVec2(fontSize*25, 0.0f)
-        );
-        ImGui::EndTooltip();
-    }*/
-
     ImGui::End();
     //ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
+}
+
+//----------------------------------------------------------------------------//
+
+void ShaderThingApp::renderGuiNewProject()
+{
+    bool& confirmationPending(stateFlags_[ST_NEW_PROJECT_CONFIRMATION_PENDING]);
+    std::string text("New project");
+    if (confirmationPending)
+        ImGui::OpenPopup(text.c_str());
+    if 
+    (
+        ImGui::BeginPopupModal
+        (
+            text.c_str(), 
+            nullptr, 
+            ImGuiWindowFlags_AlwaysAutoResize
+        )
+    )
+    {
+        ImGui::Text(
+R"(Are you sure you want to start a new project?
+Any unsaved changes to the current project will be lost!)");
+        if (ImGui::Button("Confirm"))
+        {
+            stateFlags_[ST_NEW_PROJECT] = true;
+            confirmationPending = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+        {
+            confirmationPending = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -378,9 +397,9 @@ void ShaderThingApp::renderGuiSaveProject()
     {
         if (ImGuiFileDialog::Instance()->IsOk())
         {
-            projectFilepath_ = ImGuiFileDialog::Instance()->GetFilePathName();
-            projectFilename_ = ImGuiFileDialog::Instance()->GetCurrentFileName();
-            lastOpenedPath = ImGuiFileDialog::Instance()->GetCurrentPath()+"/";
+            projectFilepath_=ImGuiFileDialog::Instance()->GetFilePathName();
+            projectFilename_=ImGuiFileDialog::Instance()->GetCurrentFileName();
+            lastOpenedPath=ImGuiFileDialog::Instance()->GetCurrentPath()+"/";
         }
         stateFlags_[ST_SAVE_PROJECT] = true;
         ImGuiFileDialog::Instance()->Close();
@@ -409,9 +428,9 @@ void ShaderThingApp::renderGuiLoadProject()
     {
         if (ImGuiFileDialog::Instance()->IsOk())
         {
-            projectFilepath_ = ImGuiFileDialog::Instance()->GetFilePathName();
-            projectFilename_ = ImGuiFileDialog::Instance()->GetCurrentFileName();
-            lastOpenedPath = ImGuiFileDialog::Instance()->GetCurrentPath()+"/";
+            projectFilepath_=ImGuiFileDialog::Instance()->GetFilePathName();
+            projectFilename_=ImGuiFileDialog::Instance()->GetCurrentFileName();
+            lastOpenedPath=ImGuiFileDialog::Instance()->GetCurrentPath()+"/";
             layerManager_->preLoadAdjustment();
             stateFlags_[ST_LOAD_PROJECT] = true;
         }

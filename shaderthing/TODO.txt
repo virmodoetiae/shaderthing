@@ -16,7 +16,7 @@ TODO ---------------------------------------------------------------------------
 ( ) Prevent Ctrl+S causing project save when iCameraPosition changing due to 
     keyboard inputs
 
-( ) Add save guards to prevent closing app and/or creating a new project
+(X) Add save guards to prevent closing app and/or creating a new project
     by misting, to prevent loosing existing work
 
 ( ) Add support for 3D-textures management in vir, the ShaderThing resource
