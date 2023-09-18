@@ -140,6 +140,14 @@ private :
     //
     std::unordered_map<vir::Shader::Uniform*, bool> uniformUsesColorPicker_;
 
+    // If a another layer was among the list of sampler2D-type uniforms to
+    // this layer, there is not guarantee that the latter layer will be
+    // loaded before this layer on project loading. Thus, their names are
+    // cached and used for uniform re-setting after all layers have been
+    // loaded (done in resetPostLoadLayerUniforms())
+    std::unordered_map<vir::Shader::Uniform*, std::string> 
+        uniformLayerNamesToBeSet_;
+
     //
     void createStaticShaders();
     void compileShader();
@@ -174,6 +182,9 @@ public:
 
     // Removes the given resorces from this buffer's uniforms list, if present
     void removeResourceFromUniforms(Resource* resource);
+
+    //
+    void reBindLayerUniforms();
 
     // Render the shader to the provided framebuffer (or to the window if no
     // framebuffer provided)

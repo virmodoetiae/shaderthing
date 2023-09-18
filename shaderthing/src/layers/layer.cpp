@@ -146,7 +146,8 @@ frame_(app.frameRef()),
 screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
-shaderId0_(-1)
+shaderId0_(-1),
+uniformLayerNamesToBeSet_(0)
 {
     std::random_device dev;
     std::mt19937 rng(dev());
@@ -413,7 +414,8 @@ frame_(app.frameRef()),
 screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
-shaderId0_(-1)
+shaderId0_(-1),
+uniformLayerNamesToBeSet_(0)
 {
     std::string headerSource;
     while(true)
@@ -580,14 +582,21 @@ shaderId0_(-1)
                 );
                 min = 0;
                 max = 0;
+                bool found = false;
                 for (auto r : app.resourceManagerRef().resourcesRef())
                 {
                     if (r->name() == resourceName)
                     {
                         uniform->setValuePtr<Resource>(r);
+                        found = true;
                         break;
                     }
                 }
+                if (!found)
+                    uniformLayerNamesToBeSet_.insert
+                    (
+                        {uniform, resourceName}
+                    );
                 break;
             }
         }
@@ -785,6 +794,26 @@ void Layer::saveState(std::ofstream& file)
         }
         file << data << " " << u->name << std::endl;
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::reBindLayerUniforms()
+{
+    for (auto& entry : uniformLayerNamesToBeSet_)
+    {
+        auto* uniform = entry.first;
+        auto& layerName = entry.second;
+        for (auto r : app_.resourceManagerRef().resourcesRef())
+        {
+            if (r->name() == layerName)
+            {
+                uniform->setValuePtr<Resource>(r);
+                break;
+            }
+        }
+    }
+    uniformLayerNamesToBeSet_.clear();
 }
 
 //----------------------------------------------------------------------------//

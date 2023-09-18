@@ -130,6 +130,13 @@ void LayerManager::loadState(std::string& source, uint32_t& index)
         );
         layers_.push_back(layer);
     }
+
+    // Re-establish dependencies between Layers (i.e., when a layer is
+    // being used as a sampler2D uniform by another layer)
+    for (auto* layer : layers_)
+    {
+        layer->reBindLayerUniforms();
+    }
 }
 
 //----------------------------------------------------------------------------//
