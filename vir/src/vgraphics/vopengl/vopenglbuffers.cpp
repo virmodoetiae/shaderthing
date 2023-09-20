@@ -98,6 +98,8 @@ OpenGLTextureBuffer2D::OpenGLTextureBuffer2D
     else
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
 
+    GLint internalFormat = format;
+
     // Bind it to the loaded image. First arg is the buffer we are operating on
     // (and it is GL_TEXTURE_2D since that is the target buffer). Second arg is
     // the mipmap level for which we want to create a texture (0). Third arg is
@@ -110,12 +112,12 @@ OpenGLTextureBuffer2D::OpenGLTextureBuffer2D
     (
         GL_TEXTURE_2D, 
         0, 
-        format, 
+        internalFormat, 
         tw, 
         th, 
         0, 
         format, 
-        GL_UNSIGNED_BYTE, 
+        internalFormat == GL_RGBA32F ? GL_FLOAT : GL_UNSIGNED_BYTE, 
         data
     );
     // Swizzling setting
@@ -173,7 +175,7 @@ TextureBuffer2D(data, width, height, nChannels)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, 
         filterModeToGLint_.at(minFilterMode_));
 
-    GLint interalFormat = 
+    GLint format = 
         (nChannels_ == 1) ? GL_RED : 
         (
             (nChannels_ == 2) ? GL_RG : 
@@ -181,23 +183,28 @@ TextureBuffer2D(data, width, height, nChannels)
                 (nChannels_ == 3) ? GL_RGB : GL_RGBA
             )
         );
-    if (interalFormat != GL_RGBA)
+    if (format != GL_RGBA)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     else
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
+
+    GLint internalFormat = format;
+    //if (data == NULL && nChannels_ == 4)
+    //    internalFormat = GL_RGBA32F;
 
     glTexImage2D
     (
         GL_TEXTURE_2D, 
         0, 
-        interalFormat, 
+        internalFormat, 
         width_, 
         height_, 
         0, 
-        interalFormat, 
-        GL_UNSIGNED_BYTE, 
+        format, 
+        internalFormat == GL_RGBA32F ? GL_FLOAT : GL_UNSIGNED_BYTE, 
         data
     );
+    
     // Swizzling setting
     if (nChannels_ == 1) 
     {
@@ -291,7 +298,8 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
     glGenTextures(1, &id_);
     glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
 
-    GLint interalFormat;
+    GLint format;
+    GLint internalFormat;
     stbi_set_flip_vertically_on_load(false);
     for (unsigned int i = 0; i < 6; i++)
     {
@@ -309,7 +317,7 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
             width_ = (uint32_t)tw;
             height_ = (uint32_t)th;
             nChannels_ = requestedChannels ? requestedChannels : (uint32_t)nc;
-            interalFormat = 
+            format = 
                 (nChannels_ == 1) ? GL_RED : 
                 (
                     (nChannels_ == 2) ? GL_RG : 
@@ -317,10 +325,11 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
                         (nChannels_ == 3) ? GL_RGB : GL_RGBA
                     )
                 );
-            if (interalFormat != GL_RGBA)
+            if (format != GL_RGBA)
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
             else
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
+            internalFormat = format;
         }
         else if 
         (
@@ -337,12 +346,12 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
         (
             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
             0, 
-            interalFormat, 
+            internalFormat, 
             width_, 
             height_, 
             0, 
-            interalFormat, 
-            GL_UNSIGNED_BYTE, 
+            format, 
+            internalFormat == GL_RGBA32F ? GL_FLOAT : GL_UNSIGNED_BYTE, 
             data
         );
         stbi_image_free(data);
@@ -384,7 +393,7 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
     width_ = width;
     height_ = height;
     nChannels_ = nChannels;
-    GLint interalFormat = 
+    GLint format = 
         (nChannels_ == 1) ? GL_RED : 
         (
             (nChannels_ == 2) ? GL_RG : 
@@ -392,21 +401,22 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
                 (nChannels_ == 3) ? GL_RGB : GL_RGBA
             )
         );
-    if (interalFormat != GL_RGBA)
+    if (format != GL_RGBA)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     else
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
+    GLint internalFormat = format;
     for (unsigned int i = 0; i < 6; i++)
         glTexImage2D
         (
             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
             0, 
-            interalFormat, 
+            internalFormat, 
             width_, 
             height_, 
             0, 
-            interalFormat, 
-            GL_UNSIGNED_BYTE, 
+            format, 
+            internalFormat == GL_RGBA32F ? GL_FLOAT : GL_UNSIGNED_BYTE, 
             faceData[i]
         );
     // Zoom in filter

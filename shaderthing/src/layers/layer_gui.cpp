@@ -685,16 +685,6 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
                         uLimits.y = std::max(value.y, (int)uLimits.y);
                     }
                     bool input(false);
-                    if (uniform->name == "iResolution")
-                    {
-                        std::string resolution
-                        (
-                            std::to_string(resolution_.x)+" x "+
-                            std::to_string(resolution_.y)
-                        );
-                        ImGui::Text(resolution.c_str());
-                    }
-                    else 
                     {
                         ImGui::SmallButton("Δ"); ImGui::SameLine();
                         if (ImGui::IsItemActive())
@@ -904,6 +894,16 @@ is currently being held down)");
                         uLimits.y = std::max(value.y, uLimits.y);
                     }
                     bool input(false);
+                    if (uniform->name == "iResolution")
+                    {
+                        std::string resolution
+                        (
+                            std::to_string(resolution_.x)+" x "+
+                            std::to_string(resolution_.y)
+                        );
+                        ImGui::Text(resolution.c_str());
+                    }
+                    else 
                     {
                         ImGui::SmallButton("Δ"); ImGui::SameLine();
                         if (ImGui::IsItemActive())

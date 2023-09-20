@@ -222,7 +222,13 @@ public:
     float depth() const {return depth_;}
     std::string name() const {return name_;}
     std::string& nameRef() {return name_;}
-    vir::Framebuffer*& readOnlyFramebuffer() {return readOnlyFramebuffer_;}
+    vir::Framebuffer*& readOnlyFramebuffer() 
+    {
+        // Should be readOnlyFramebuffer_, right? Well, yes, but I am
+        // experimenting with a different approach (yes, I am still double-
+        // buffering and no, it hasn't become useless because of this)
+        return writeOnlyFramebuffer_;
+    }
     vir::Framebuffer*& writeOnlyFramebuffer() {return writeOnlyFramebuffer_;}
 
     // Setters

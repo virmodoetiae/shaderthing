@@ -127,7 +127,7 @@ out vec4 fragColor;
 in vec2 pos;
 in vec2 txc;
 
-uniform ivec2 iResolution;
+uniform vec2 iResolution;
 uniform sampler2D iTexture0;
 
 void make_kernel(inout vec4 n[9], sampler2D tex, vec2 coord)

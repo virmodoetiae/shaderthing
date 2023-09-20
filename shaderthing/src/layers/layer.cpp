@@ -122,7 +122,7 @@ in vec2 txc;
 uniform uint iFrame;
 uniform float iAspectRatio;
 uniform float iTime;
-uniform ivec2 iResolution;
+uniform vec2 iResolution;
 uniform ivec4 iMouse;
 uniform vec3 iCameraPosition;
 uniform vec3 iCameraDirection;
@@ -977,7 +977,7 @@ void Layer::initializeDefaultUniforms()
     // iResolution
     auto resolutionUniform = new vir::Shader::Uniform();
     resolutionUniform->name = "iResolution";
-    resolutionUniform->type = vir::Shader::Variable::Type::Int2;
+    resolutionUniform->type = vir::Shader::Variable::Type::Float2;
     resolutionUniform->setValuePtr(&targetResolution_);
     defaultUniforms_.emplace_back(resolutionUniform);
     uniformLimits_.insert({resolutionUniform, glm::vec2(1.0f, 4096.0f)});
@@ -1025,6 +1025,10 @@ void Layer::setDefaultAndSamplerUniforms()
     static const glm::vec3& cameraPosition(shaderCamera_.position());
     static const glm::vec3& cameraDirection(shaderCamera_.z());
     static const glm::ivec4& mouse(app_.mouseRef());
+    static const float& aspectRatio
+    (
+        vir::GlobalPtr<vir::Window>::instance()->aspectRatio()
+    );
     shader_->bind();
 
     // Set default uniforms
@@ -1043,7 +1047,8 @@ void Layer::setDefaultAndSamplerUniforms()
     }
     if (resolution0_ != resolution_ || forceSet)
     {
-        shader_->setUniformInt2("iResolution", resolution_);
+        shader_->setUniformFloat("iAspectRatio", aspectRatio);
+        shader_->setUniformFloat2("iResolution", resolution_);
         resolution0_ = resolution_;
     }
     if (cameraPosition0_ != shaderCamera_.position()  || forceSet)
@@ -1078,7 +1083,13 @@ void Layer::setDefaultAndSamplerUniforms()
         auto resource = u->getValuePtr<Resource>();
         if (resource == nullptr)
             continue;
-        resource->bind(unit);
+        // These two lines are required when returning writeOnlyFramebuffer_
+        // in readOnlyFramebuffer() to avoid visual artifacts. Depending on
+        // the outcome of my experiments, I might keep this approach
+        if (resource->namePtr() == &name_)
+            readOnlyFramebuffer_->bindColorBuffer(unit);
+        else
+            resource->bind(unit);
         shader_->setUniformInt(u->name, unit);
         unit++;
     }
