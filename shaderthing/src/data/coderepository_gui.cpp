@@ -132,28 +132,27 @@ uniform sampler2D iTexture0;
 
 void make_kernel(inout vec4 n[9], sampler2D tex, vec2 coord)
 {
-	float w = 1.0/iResolution.x;
-	float h = 1.0/iResolution.y;
-	n[0] = texture2D(tex, coord+vec2(-w, -h));
-	n[1] = texture2D(tex, coord+vec2(0.0, -h));
-	n[2] = texture2D(tex, coord+vec2(w, -h));
-	n[3] = texture2D(tex, coord+vec2(-w, 0.0));
-	n[4] = texture2D(tex, coord);
-	n[5] = texture2D(tex, coord+vec2(w, 0.0));
-	n[6] = texture2D(tex, coord+vec2(-w, h));
-	n[7] = texture2D(tex, coord+vec2(0.0, h));
-	n[8] = texture2D(tex, coord+vec2(w, h));
+    float w = 1.0/iResolution.x;
+    float h = 1.0/iResolution.y;
+    n[0] = texture(tex, coord+vec2(-w, -h));
+    n[1] = texture(tex, coord+vec2(0.0, -h));
+    n[2] = texture(tex, coord+vec2(w, -h));
+    n[3] = texture(tex, coord+vec2(-w, 0.0));
+    n[4] = texture(tex, coord);
+    n[5] = texture(tex, coord+vec2(w, 0.0));
+    n[6] = texture(tex, coord+vec2(-w, h));
+    n[7] = texture(tex, coord+vec2(0.0, h));
+    n[8] = texture(tex, coord+vec2(w, h));
 }
 
 void main() 
 {
-	vec4 n[9];
-	make_kernel(n, iTexture0, txc);
-	vec4 sobel_edge_h = n[2]+(2.0*n[5])+n[8]-(n[0]+(2.0*n[3])+n[6]);
-	vec4 sobel_edge_v = n[0]+(2.0*n[1])+n[2]-(n[6]+(2.0*n[7])+n[8]);
-	vec4 sobel = 
-		sqrt((sobel_edge_h*sobel_edge_h)+(sobel_edge_v*sobel_edge_v));
-	fragColor = vec4(sobel.rgb, 1.0);
+    vec4 n[9];
+    make_kernel(n, iTexture0, txc);
+    vec4 sobel_edge_h = n[2]+(2.0*n[5])+n[8]-(n[0]+(2.0*n[3])+n[6]);
+    vec4 sobel_edge_v = n[0]+(2.0*n[1])+n[2]-(n[6]+(2.0*n[7])+n[8]);
+    vec4 sobel = sqrt((sobel_edge_h*sobel_edge_h)+(sobel_edge_v*sobel_edge_v));
+    fragColor = vec4(sobel.rgb, 1.0);
 })"
         )
         
@@ -465,11 +464,11 @@ R"(vec3 cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
 " 'p' from the camera",
 R"(vec3 sceneNormal(vec3 p, float h)
 {
-	float d0 = sceneSDF(p);
-	float ddx = sceneSDF(p+vec3(h,0,0))-d0;
-	float ddy = sceneSDF(p+vec3(0,h,0))-d0;
-	float ddz = sceneSDF(p+vec3(0,0,h))-d0;
-	return normalize(vec3(ddx,ddy,ddz));
+    float d0 = sceneSDF(p);
+    float ddx = sceneSDF(p+vec3(h,0,0))-d0;
+    float ddy = sceneSDF(p+vec3(0,h,0))-d0;
+    float ddz = sceneSDF(p+vec3(0,0,h))-d0;
+    return normalize(vec3(ddx,ddy,ddz));
 })")
 
             CODE_ENTRY(
@@ -480,11 +479,11 @@ R"(vec3 sceneNormal(vec3 p, float h)
 "camera",
 R"(vec3 sceneNormal(vec3 p, float h)
 {
-	vec2 e = vec2(1.0,-1.0);
-	return normalize(e.xyy*sceneSDF(p+e.xyy*h)+
-					 e.yyx*sceneSDF(p+e.yyx*h)+
-					 e.yxy*sceneSDF(p+e.yxy*h)+
-					 e.xxx*sceneSDF(p+e.xxx*h));
+    vec2 e = vec2(1.0,-1.0);
+    return normalize(e.xyy*sceneSDF(p+e.xyy*h)+
+                     e.yyx*sceneSDF(p+e.yyx*h)+
+                     e.yxy*sceneSDF(p+e.yxy*h)+
+                     e.xxx*sceneSDF(p+e.xxx*h));
 })")
 
             ImGui::TreePop();
@@ -522,9 +521,9 @@ uniform vec3 iCameraDirection;
 // of the scene
 float sceneSDF(vec3 p)
 {
-	float sphere = length(p-vec3(0,1.5,0))-.75;
-	sphere += .25*sin(5*p.x*p.y+iTime*2*PI);
-	return min(sphere, p.y)/SAFETY_FACTOR;
+    float sphere = length(p-vec3(0,1.5,0))-.75;
+    sphere += .25*sin(5*p.x*p.y+iTime*2*PI);
+    return min(sphere, p.y)/SAFETY_FACTOR;
 }
 
 // Given a point 'p' close to the 3D geometry scene surface, this function
@@ -533,24 +532,24 @@ float sceneSDF(vec3 p)
 // large, the resulting geometry will loose detail
 vec3 sceneNormal(vec3 p, float h)
 {
-	vec2 e = vec2(1.0,-1.0);
-	return normalize(e.xyy*sceneSDF(p+e.xyy*h)+
-					 e.yyx*sceneSDF(p+e.yyx*h)+
-					 e.yxy*sceneSDF(p+e.yxy*h)+
-					 e.xxx*sceneSDF(p+e.xxx*h));
+    vec2 e = vec2(1.0,-1.0);
+    return normalize(e.xyy*sceneSDF(p+e.xyy*h)+
+                     e.yyx*sceneSDF(p+e.yyx*h)+
+                     e.yxy*sceneSDF(p+e.yxy*h)+
+                     e.xxx*sceneSDF(p+e.xxx*h));
 }
 
 struct Ray
 {
-	vec3 origin;
-	vec3 direction;
+    vec3 origin;
+    vec3 direction;
 };
 
 Ray cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
 {
-	vec3 l = normalize(cross(vec3(0,1,0),f));
-	vec3 u = normalize(cross(f,l));
-	return Ray(cp,normalize(cp+f*fov-uv.x*l+uv.y*u-cp));
+    vec3 l = normalize(cross(vec3(0,1,0),f));
+    vec3 u = normalize(cross(f,l));
+    return Ray(cp,normalize(cp+f*fov-uv.x*l+uv.y*u-cp));
 }
 
 // Propagate a ray 'r' along its direction until either a scene surface is 
@@ -558,58 +557,58 @@ Ray cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
 // to said hit point, otherwise returns 0
 float rayMarch(Ray r)
 {
-	float s, ds = 0;
-	for (int step=0; step<MAX_STEPS; step++)
-	{
-		ds = sceneSDF(r.origin+r.direction*s);
-		s += ds;
-		if (ds < MIN_DIST && ds > 0)
-			return s;
-		if (s > MAX_DIST)
-			return 0;
-	}
-	return s;
+    float s, ds = 0;
+    for (int step=0; step<MAX_STEPS; step++)
+    {
+        ds = sceneSDF(r.origin+r.direction*s);
+        s += ds;
+        if (ds < MIN_DIST && ds > 0)
+            return s;
+        if (s > MAX_DIST)
+            return 0;
+    }
+    return s;
 }
 
 void main()
 {
     // Define light source position and background color (used when no surface
     // hit or for shadrows
-	const vec3 lightSource = vec3(2,4,2);
-	const vec4 bckgColor = vec4(0,0,0,1);
+    const vec3 lightSource = vec3(2,4,2);
+    const vec4 bckgColor = vec4(0,0,0,1);
 
     // Feel free to replace these with the iCameraPosition, iCameraDirection
     // uniforms to have live control over the camera and move in shader-space!
-	vec3 cameraPosition = vec3(1.5,3,3);
-	vec3 cameraDirection = -normalize(vec3(1.5,1.5,3));
-	
+    vec3 cameraPosition = vec3(1.5,3,3);
+    vec3 cameraDirection = -normalize(vec3(1.5,1.5,3));
+    
     // Construct ray for this pixel and ray march
-	Ray r = cameraRay(uv,cameraPosition,cameraDirection,1);
-	float d = rayMarch(r);
-	if (d == 0) // If no surfaces hit
-		fragColor = bckgColor; //set to background color
-	else
-	{
+    Ray r = cameraRay(uv,cameraPosition,cameraDirection,1);
+    float d = rayMarch(r);
+    if (d == 0) // If no surfaces hit
+        fragColor = bckgColor; //set to background color
+    else
+    {
         // Find surface hit point and its distance from light source
-		vec3 p = r.origin+r.direction*d*0.99;
-		vec3 pl = lightSource-p;
+        vec3 p = r.origin+r.direction*d*0.99;
+        vec3 pl = lightSource-p;
 
         // Ray march from the hit point to the light source
-		Ray rl = Ray(p, normalize(pl));
-		float dl = rayMarch(rl)*SAFETY_FACTOR;
+        Ray rl = Ray(p, normalize(pl));
+        float dl = rayMarch(rl)*SAFETY_FACTOR;
 
         // If ray marching does not reach light source it means that the point
         // is in complete shade (hard shadow)
-		if (dl>0 && dl<0.99*length(pl))
-			fragColor = bckgColor;
-		else 
-		{
+        if (dl>0 && dl<0.99*length(pl))
+            fragColor = bckgColor;
+        else 
+        {
             // Compute pixel color if fully or partially illuminated
-			vec3 n = sceneNormal(p, 1e-3*d); 
-			float c = max(dot(n,normalize(lightSource-p)),0);
-			fragColor = vec4(c,c,c,1);
-		}
-	}
+            vec3 n = sceneNormal(p, 1e-3*d); 
+            float c = max(dot(n,normalize(lightSource-p)),0);
+            fragColor = vec4(c,c,c,1);
+        }
+    }
 })")
         ImGui::TreePop();
     }

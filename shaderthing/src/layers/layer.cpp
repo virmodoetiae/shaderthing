@@ -117,7 +117,7 @@ R"(#version 460 core
 out vec4 fragColor;
 in vec2 pos;
 in vec2 txc;
-#define uv txc
+#define uv pos
 
 uniform uint iFrame;
 uniform float iAspectRatio;
@@ -126,16 +126,16 @@ uniform vec2 iResolution;
 uniform ivec4 iMouse;
 uniform vec3 iCameraPosition;
 uniform vec3 iCameraDirection;
-uniform sampler2D iTexture0;
+uniform sampler2D iResource0;
 
 void main()
 {
     fragColor = vec4
     (
-    	.125*sin(uv.x*cos(uv.y-cos(2.5*iTime))*3.-1.5*iTime)+.125,
-    	.125*cos(uv.y*sin(uv.x-cos(2.0*iTime))*2.-2*iTime)+.500,
-    	.125*cos(uv.x*cos(uv.y-sin(1.5*iTime))*1.-2.5*iTime)+.700,
-    	1.0
+        .125*sin(uv.x*cos(uv.y-cos(2.5*iTime))*3.-1.5*iTime)+.125,
+        .125*cos(uv.y*sin(uv.x-cos(2.0*iTime))*2.-2*iTime)+.500,
+        .125*cos(uv.x*cos(uv.y-sin(1.5*iTime))*1.-2.5*iTime)+.700,
+        1.0
     );
 })"
 ),

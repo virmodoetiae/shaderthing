@@ -13,18 +13,18 @@ ShaderThing is a cross-platform GUI-based tool for live shader editing written i
 
 Compared to Shadertoy, some features are currently missing, primarily sound/video input-related features as well as 3D-texture uniforms, though support for these will likely be added at some point in the future. 
 
-Whether you are merely curious about or already have solid skills in the field of shaders, give it a try! Both the source code and the executable(s) (the latter is not included in the repository yet) are distribued under a permissive modified [zlib/linpng license](https://opensource.org/license/zlib/).
+Whether you are merely curious about or already have solid skills in the field of shaders, give it a try! Both the source code and the [executables](https://github.com/virmodoetiae/shaderthing/releases/) are distributed under a permissive modified [zlib/linpng license](https://opensource.org/license/zlib/).
 
 # Repository structure
 
 This repository consists of:
 * the top-level ShaderThing app (in shaderthing/);
-* the vir (static) library (a high-level wrapper for graphics, window & input management, in vir/);
-* a collection of third-party libraries (ranging from [GLFW](https://www.glfw.org/) to ImGui) compiled into a single static library.
+* the vir library (a high-level wrapper for graphics, window & input management, in vir/);
+* a collection of third-party libraries (ranging from [GLFW](https://www.glfw.org/) to ImGui), compiled into a single one.
 
 The vir and third-party libraries are statically linked to the final ShaderThing executable, making it stand-alone. 
 
-The vir library (whose development both predates and partially motivated the development of ShaderThing) currently only wraps OpenGL (for graphics management) and GLFW (for window & input management), but it is structured to possibly accomodate for other rendering and window/input-management platforms (though no such plans exists as of now).
+The vir library (whose development both predates and partially led to the development of ShaderThing) currently only wraps OpenGL (for graphics management) and GLFW (for window & input management), but it is structured to possibly accomodate for other rendering and window/input-management platforms (though no such plans exists for the time being).
 
 # How to compile
 
@@ -50,7 +50,7 @@ Once the build files have been built, compile by running:
 cmake --build shaderthing/build --parallel N
 ~~~
 
-Replace N with the desired number of cores to be used for the compilation. On reasonably moredn hardware, it should take about a minute on 4 cores. The executable will then be located in shaderthing/build/shaderthing.exe.
+Replace N with the desired number of cores to be used for the compilation. On reasonably modern hardware, it should take about a minute on 4 cores. The executable will then be located in shaderthing/build/shaderthing.exe.
 
 ## On Linux-based systems
 
