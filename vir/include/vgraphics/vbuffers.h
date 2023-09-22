@@ -215,7 +215,13 @@ protected:
     Framebuffer():id_(0){};
 public:
     virtual ~Framebuffer(){}
-    static Framebuffer* create(uint32_t, uint32_t);
+    static Framebuffer* create
+    (
+        uint32_t width, 
+        uint32_t height, 
+        TextureBuffer::InternalFormat format = 
+            TextureBuffer::InternalFormat::RGBA_UNI_8
+    );
     static Framebuffer*& activeOne(){return activeOne_;}
     virtual void bind() = 0;
     virtual void unbind() = 0;

@@ -76,7 +76,12 @@ public:
 class OpenGLFramebuffer : public Framebuffer
 {
 public:
-    OpenGLFramebuffer(uint32_t, uint32_t);
+    OpenGLFramebuffer
+    (
+        uint32_t width, 
+        uint32_t height, 
+        TextureBuffer::InternalFormat internalFormat
+    );
     ~OpenGLFramebuffer();
     void bind() override;
     void unbind() override;

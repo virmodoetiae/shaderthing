@@ -593,7 +593,12 @@ void OpenGLCubeMapBuffer::setMinFilterMode
 
 // Frame buffer --------------------------------------------------------------//
 
-OpenGLFramebuffer::OpenGLFramebuffer(uint32_t width, uint32_t height)
+OpenGLFramebuffer::OpenGLFramebuffer
+(
+    uint32_t width, 
+    uint32_t height,
+    TextureBuffer::InternalFormat internalFormat
+)
 {
     width_ = width;
     height_ = height;
@@ -607,7 +612,7 @@ OpenGLFramebuffer::OpenGLFramebuffer(uint32_t width, uint32_t height)
         NULL, 
         width, 
         height, 
-        TextureBuffer::InternalFormat::RGBA_SF_32
+        internalFormat
     );
 
     colorBufferId_ = colorBuffer_->id();

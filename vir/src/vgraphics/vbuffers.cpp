@@ -122,7 +122,12 @@ CubeMapBuffer* CubeMapBuffer::create
 
 Framebuffer* Framebuffer::activeOne_ = nullptr;
 
-Framebuffer* Framebuffer::create(uint32_t width, uint32_t height)
+Framebuffer* Framebuffer::create
+(
+    uint32_t width, 
+    uint32_t height,
+    TextureBuffer::InternalFormat format
+)
 {
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
@@ -130,7 +135,7 @@ Framebuffer* Framebuffer::create(uint32_t width, uint32_t height)
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLFramebuffer(width, height);
+            return new OpenGLFramebuffer(width, height, format);
     }
     return nullptr;
 }

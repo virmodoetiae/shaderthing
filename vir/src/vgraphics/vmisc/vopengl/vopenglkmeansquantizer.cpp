@@ -760,7 +760,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         GL_FALSE, 
         0, 
         GL_READ_WRITE, 
-        GL_RGBA32F // 8UI
+        isSF32 ? GL_RGBA32F : GL_RGBA8UI
     );
     
     // Palette data texture
@@ -839,12 +839,12 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             (
                 GL_TEXTURE_2D, 
                 0, 
-                GL_RGBA32F, // GL_RGBA
+                isSF32 ? GL_RGBA32F : GL_RGBA8,
                 width, 
                 height, 
                 0, 
                 GL_RGBA, 
-                GL_FLOAT, // GL_UNSIGNED_BYTE, 
+                isSF32 ? GL_FLOAT : GL_UNSIGNED_BYTE, 
                 NULL
             );
             glGenerateMipmap(GL_TEXTURE_2D);
@@ -863,7 +863,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             GL_FALSE, 
             0, 
             GL_READ_WRITE, 
-            GL_RGBA32F // 8UI
+            isSF32 ? GL_RGBA32F : GL_RGBA8UI // 8UI
         );
     }
 
@@ -1181,7 +1181,16 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     // Quantize input with k-means-determined palettes
     glActiveTexture(GL_TEXTURE0+inputUnit);
     glBindTexture(GL_TEXTURE_2D, id);
-    glBindImageTexture(inputUnit, id, 0, GL_FALSE, 0, GL_READ_WRITE,GL_RGBA32F); //8UI);
+    glBindImageTexture
+    (
+        inputUnit, 
+        id, 
+        0, 
+        GL_FALSE, 
+        0, 
+        GL_READ_WRITE, 
+        isSF32 ? GL_RGBA32F : GL_RGBA8UI
+    );
     quantizeInput->use();
     quantizeInput->run(width, height, 1);
 
@@ -1337,12 +1346,12 @@ firstWaitSyncCall_(true)
     (
         GL_TEXTURE_2D, 
         0, 
-        GL_RGBA32F, //GL_RGBA
+        GL_RGBA,
         1, 
         1, 
         0, 
         GL_RGBA, 
-        GL_FLOAT, //GL_UNSIGNED_BYTE, 
+        GL_UNSIGNED_BYTE, 
         NULL
     );
 
