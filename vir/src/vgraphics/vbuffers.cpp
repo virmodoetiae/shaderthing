@@ -35,7 +35,7 @@ const std::unordered_map<TextureBuffer::FilterMode, std::string>
 TextureBuffer2D* TextureBuffer2D::create
 (
     std::string filepath, 
-    uint32_t requestedChannels
+    InternalFormat internalFormat
 )
 {
     Window* window = nullptr;
@@ -44,7 +44,7 @@ TextureBuffer2D* TextureBuffer2D::create
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLTextureBuffer2D(filepath, requestedChannels);
+            return new OpenGLTextureBuffer2D(filepath, internalFormat);
     }
     return nullptr;
 }
@@ -54,7 +54,7 @@ TextureBuffer2D* TextureBuffer2D::create
     const unsigned char* data, 
     uint32_t width,
     uint32_t height,
-    uint32_t nChannels
+    InternalFormat internalFormat
 )
 {
     Window* window = nullptr;
@@ -68,7 +68,7 @@ TextureBuffer2D* TextureBuffer2D::create
                 data, 
                 width, 
                 height,
-                nChannels
+                internalFormat
             );
     }
     return nullptr;
@@ -79,7 +79,7 @@ TextureBuffer2D* TextureBuffer2D::create
 CubeMapBuffer* CubeMapBuffer::create
 (
     std::string filepaths[6], 
-    uint32_t requestedChannels
+    InternalFormat internalFormat
 )
 {
     Window* window = nullptr;
@@ -88,7 +88,7 @@ CubeMapBuffer* CubeMapBuffer::create
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLCubeMapBuffer(filepaths, requestedChannels);
+            return new OpenGLCubeMapBuffer(filepaths, internalFormat);
     }
     return nullptr;
 }
@@ -98,7 +98,7 @@ CubeMapBuffer* CubeMapBuffer::create
     const unsigned char* faceData[6], 
     uint32_t width,
     uint32_t height,
-    uint32_t nChannels
+    InternalFormat internalFormat
 )
 {
     Window* window = nullptr;
@@ -112,7 +112,7 @@ CubeMapBuffer* CubeMapBuffer::create
                 faceData, 
                 width, 
                 height,
-                nChannels
+                internalFormat
             );
     }
     return nullptr;

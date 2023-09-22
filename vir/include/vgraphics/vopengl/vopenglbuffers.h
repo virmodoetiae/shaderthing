@@ -13,16 +13,26 @@ extern const std::unordered_map<uint32_t, GLint> wrapIndexToGLint_;
 extern const std::unordered_map<TextureBuffer::FilterMode, GLint> 
     filterModeToGLint_;
 
+static GLint OpenGLInternalFormat(TextureBuffer::InternalFormat internalFormat);
+
+static GLint OpenGLFormat(TextureBuffer::InternalFormat internalFormat);
+
+static GLint OpenGLType(TextureBuffer::InternalFormat internalFormat);
+
 class OpenGLTextureBuffer2D : public TextureBuffer2D
 {
 public:
-    OpenGLTextureBuffer2D(std::string filepath, uint32_t requestedChannels=0);
+    OpenGLTextureBuffer2D
+    (
+        std::string filepath, 
+        InternalFormat internalFormat=InternalFormat::Undefined
+    );
     OpenGLTextureBuffer2D
     (
         const unsigned char* data, 
         uint32_t width,
         uint32_t height,
-        uint32_t nChannels
+        InternalFormat internalFormat
     );
     ~OpenGLTextureBuffer2D();
     void setWrapMode
@@ -39,13 +49,17 @@ public:
 class OpenGLCubeMapBuffer : public CubeMapBuffer
 {
 public:
-    OpenGLCubeMapBuffer(std::string filepaths[6], uint32_t requestedChannels=0);
+    OpenGLCubeMapBuffer
+    (
+        std::string filepaths[6], 
+        InternalFormat internalFormat=InternalFormat::Undefined
+    );
     OpenGLCubeMapBuffer
     (
         const unsigned char* data[6], 
         uint32_t width,
         uint32_t height,
-        uint32_t nChannels
+        InternalFormat internalFormat
     );
     ~OpenGLCubeMapBuffer();
     void setWrapMode

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <iostream>
 #include "vgraphics/vshader.h"
 
 namespace vir
@@ -13,6 +14,27 @@ namespace vir
 class TextureBuffer 
 {
 public:
+    // Format of a single element stored in the texture on the device (GPU)
+    // side. The number of letters before the first underscore is the number of
+    // channels. The letters after the second underscore mean:
+    // - UNI, unsigned normalized integer, [0-255] but treated as [0.0-1.0]
+    // - UI, unsigned integer
+    // - SF, signed float
+    // The last number is the bit depth of each component.
+    // A very limited number of formats is implemented for now
+    enum class InternalFormat
+    {
+        Undefined,
+        R_UNI_8,
+        R_UI_8,
+        RG_UNI_8,
+        RG_UI_8,
+        RGB_UNI_8,
+        RGB_UI_8,
+        RGBA_UNI_8,
+        RGBA_UI_8,
+        RGBA_SF_32
+    };
     enum class WrapMode
     {
         ClampToBorder,
@@ -34,11 +56,14 @@ public:
 protected:
     uint32_t id_;
     uint32_t nDimensions_;
+    uint32_t nChannels_;
+    InternalFormat internalFormat_;
     WrapMode wrapModes_[3];
     FilterMode magFilterMode_;
     FilterMode minFilterMode_;
-    TextureBuffer():
-    id_(0)
+    TextureBuffer(InternalFormat internalFormat = InternalFormat::Undefined):
+    id_(0),
+    nChannels_(nChannels(internalFormat))
     {
         for (int i=0; i<3; i++) 
             wrapModes_[i] = WrapMode::ClampToBorder;
@@ -48,6 +73,8 @@ protected:
 public:
     virtual ~TextureBuffer(){}
     uint32_t id() const {return id_;}
+    uint32_t nChannels() const {return nChannels_;}
+    InternalFormat internalFormat() const {return internalFormat_;}
     WrapMode wrapMode(uint32_t index) const {return wrapModes_[index];}
     FilterMode magFilterMode() const {return magFilterMode_;}
     FilterMode minFilterMode() const {return minFilterMode_;}
@@ -64,6 +91,43 @@ public:
     {
         return id_ == rhs.id();
     }
+    static uint32_t nChannels(InternalFormat internalFormat)
+    {
+        switch (internalFormat)
+        {
+            case InternalFormat::Undefined :
+                return 0;
+            case InternalFormat::R_UNI_8 :
+            case InternalFormat::R_UI_8 :
+                return 1;
+            case InternalFormat::RG_UNI_8 :
+            case InternalFormat::RG_UI_8 :
+                return 2;
+            case InternalFormat::RGB_UNI_8 :
+            case InternalFormat::RGB_UI_8 :
+                return 3;
+            case InternalFormat::RGBA_UNI_8 :
+            case InternalFormat::RGBA_UI_8 :
+                return 4;
+            case InternalFormat::RGBA_SF_32 :
+                return 4;
+        }
+    }
+    static InternalFormat defaultInternalFormat(uint32_t nChannels)
+    {
+        switch (nChannels)
+        {
+            case 1 :
+                return InternalFormat::R_UNI_8;
+            case 2 :
+                return InternalFormat::RG_UNI_8;
+            case 3 : 
+                return InternalFormat::RGB_UNI_8;
+            case 4 :
+                return InternalFormat::RGBA_UNI_8;
+        }
+        return InternalFormat::Undefined;
+    }
 };
 
 //----------------------------------------------------------------------------//
@@ -73,28 +137,32 @@ class TextureBuffer2D : public TextureBuffer
 protected:
     uint32_t width_;
     uint32_t height_;
-    uint32_t nChannels_;
+    
     TextureBuffer2D(){nDimensions_=2;}
     TextureBuffer2D
     (
         const unsigned char* data, 
         uint32_t width,
         uint32_t height,
-        uint32_t nChannels
-    ):width_(width),height_(height),nChannels_(nChannels){}
+        InternalFormat internalFormat
+    ):TextureBuffer(internalFormat),width_(width),height_(height){}
 public:
     ~TextureBuffer2D(){}
-    static TextureBuffer2D* create(std::string, uint32_t requestedChannels=0);
+    static TextureBuffer2D* create
+    (
+        std::string, 
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
     static TextureBuffer2D* create
     (
         const unsigned char* data, 
         uint32_t width,
         uint32_t height,
-        uint32_t nChannels
+        InternalFormat internalFormat
     );
-    uint32_t width(){return width_;}
-    uint32_t height(){return height_;}
-    uint32_t nChannels(){return nChannels_;}
+    uint32_t width() const {return width_;}
+    uint32_t height() const {return height_;}
+    
 };
 
 //----------------------------------------------------------------------------//
@@ -108,21 +176,21 @@ protected:
         const unsigned char* faceData[6], 
         uint32_t width,
         uint32_t height,
-        uint32_t nChannels
-    ):TextureBuffer2D(nullptr, width, height, nChannels){}
+        InternalFormat internalFormat
+    ):TextureBuffer2D(nullptr, width, height, internalFormat){}
 public:
     ~CubeMapBuffer(){}
     static CubeMapBuffer* create
     (
         std::string filepaths[6], 
-        uint32_t requestedChannels=0
+        InternalFormat internalFormat = InternalFormat::Undefined
     );
     static CubeMapBuffer* create
     (
         const unsigned char* faceData[6], 
         uint32_t width,
         uint32_t height,
-        uint32_t nChannels
+        InternalFormat internalFormat
     );
 };
 

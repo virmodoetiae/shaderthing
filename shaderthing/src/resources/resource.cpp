@@ -228,7 +228,14 @@ bool Resource::set(std::string filepath)
     int a = 0;
     try
     {
-        set(vir::TextureBuffer2D::create(filepath, 4));
+        set
+        (
+            vir::TextureBuffer2D::create
+            (
+                filepath, 
+                vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+            )
+        );
     }
     catch(const std::exception& e)
     {
@@ -294,7 +301,16 @@ bool Resource::set(Resource* faces[6])
     // Build cubemap
     try
     {
-        set(vir::CubeMapBuffer::create(faceData, width, height, 4));
+        set
+        (
+            vir::CubeMapBuffer::create
+            (
+                faceData, 
+                width, 
+                height, 
+                vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+            )
+        );
     }
     catch(const std::exception& e)
     {
@@ -329,7 +345,7 @@ bool Resource::set(const unsigned char* data, unsigned int size)
         loadedData, 
         w,
         h,
-        nc
+        vir::TextureBuffer::defaultInternalFormat(nc)
     ); 
     stbi_image_free(loadedData);
     return this->set(texture);
