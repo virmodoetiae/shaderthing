@@ -24,12 +24,12 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand code repository section
 
-( ) [IMPORTANT] Either move to a GL_RGBA32F format for framebuffer color 
+(W) [IMPORTANT] Either move to a GL_RGBA32F format for framebuffer color 
     attachment internal format or enable support for it, with framebuffer-
     rendered layers having an additional option to change the internal
     format, if needed
 
-( ) Check if possible to add support for GL_RGBA32F-formatted framebuffers
+(W) Check if possible to add support for GL_RGBA32F-formatted framebuffers
     to the OpenGLKMeansQuantizer
 
 ( ) Prevent Ctrl+S causing project save when iCameraPosition changing due to 

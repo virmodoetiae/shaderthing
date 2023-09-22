@@ -189,8 +189,8 @@ TextureBuffer2D(data, width, height, nChannels)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
 
     GLint internalFormat = format;
-    //if (data == NULL && nChannels_ == 4)
-    //    internalFormat = GL_RGBA32F;
+    if (data == NULL && nChannels_ == 4)
+        internalFormat = GL_RGBA32F;
 
     glTexImage2D
     (

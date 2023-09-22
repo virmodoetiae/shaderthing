@@ -116,9 +116,13 @@ R"(#version 460 core
 uniform int counter;
 uniform int paletteSize;
 layout(binding=0) uniform atomic_uint clusteringError;
-layout(rgba8ui, binding=0) uniform uimage2D image;
+layout(rgba32f, binding=0) uniform image2D image;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+uvec4 to8ui(vec4 v)
+{
+    return uvec4(255.0*min(max(v, 0), 1)+.5);
+}
 void main()
 {
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
@@ -127,7 +131,7 @@ void main()
     {
         if (gid == ivec2(0,0))
         {
-            uvec4 img = imageLoad(image, gid);
+            uvec4 img = to8ui(imageLoad(image, gid));
             for (int i=0; i<3*paletteSize; i++)
             {
                 for (int j=0; j<3; j++)
@@ -144,7 +148,7 @@ void main()
         return;
     }
     uint d2m = 195075;
-    ivec3 img = ivec3(imageLoad(image, gid).rgb);
+    ivec3 img = ivec3(to8ui(imageLoad(image, gid)).rgb);
     for (int i=0; i<counter; i++)
     {
         uint pr = imageLoad(paletteData, ivec2(3*i, 0)).r;
@@ -171,16 +175,20 @@ OpenGLKMeansQuantizer::ComputeShaderStage
 R"(#version 460 core
 uniform int counter;
 uniform int paletteSize;
-layout(rgba8ui, binding=0) uniform uimage2D image;
+layout(rgba32f, binding=0) uniform image2D image;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+uvec4 to8ui(vec4 v)
+{
+    return uvec4(255*min(max(v, 0), 1)+.5);
+}
 void main()
 {
     if (counter == 0)
         return;
     uint x = imageLoad(paletteData, ivec2(paletteSize+2,2)).r;
     uint y = imageLoad(paletteData, ivec2(paletteSize+3,2)).r;
-    uvec4 img = imageLoad(image, ivec2(x,y));
+    uvec4 img = to8ui(imageLoad(image, ivec2(x,y)));
     imageStore(paletteData, ivec2(3*counter,0), uvec4(img.r,0,0,1));
     imageStore(paletteData, ivec2(3*counter+1,0), uvec4(img.g,0,0,1));
     imageStore(paletteData, ivec2(3*counter+2,0), uvec4(img.b,0,0,1));
@@ -194,13 +202,17 @@ OpenGLKMeansQuantizer::ComputeShaderStage
 R"(#version 460 core
 uniform int paletteSize;
 layout(binding=0) uniform atomic_uint clusteringError;
-layout(rgba8ui, binding=1) uniform uimage2D image;
+layout(rgba32f, binding=1) uniform image2D image;
 layout(r32ui, binding=2) uniform uimage2D paletteData;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+uvec4 to8ui(vec4 v)
+{
+    return uvec4(255*min(max(v, 0), 1)+.5);
+}
 void main() 
 { 
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
-    uvec4 img = uvec4(imageLoad(image, gid));
+    uvec4 img = to8ui(imageLoad(image, gid));
     int d2m = 195075; // max d2 is 3*255*255 = 195075
     int index = 0;
     for (int i=0; i<paletteSize; i++)
@@ -229,13 +241,17 @@ OpenGLKMeansQuantizer::ComputeShaderStage
 R"(#version 460 core
 layout(binding=0) uniform atomic_uint clusteringError;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
-layout(rgba8ui, binding=2) uniform uimage2D image;
+layout(rgba32f, binding=2) uniform image2D image;
 uniform int imageWidth;
 uniform int imageHeight;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 float rand(vec2 seed)
 {
 	return fract(sin(dot(seed.xy, vec2(12.9898, 78.233)))*43758.5453);
+}
+uvec4 to8ui(vec4 v)
+{
+    return uvec4(255*min(max(v, 0), 1)+.5);
 }
 void main() 
 { 
@@ -253,7 +269,7 @@ void main()
         float h = imageHeight - 1;
         int x = int(rand(vec2(error/w, h*(1+gid)))*w);
         int y = int(rand(vec2(w*(1+gid), error/h))*h);
-        uvec4 col = imageLoad(image, ivec2(x,y));
+        uvec4 col = to8ui(imageLoad(image, ivec2(x,y)));
         r = col.r;
         g = col.g;
         b = col.b;
@@ -273,12 +289,11 @@ uniform int ditherLevel;
 uniform float ditherThreshold;
 uniform int alphaCutoff;
 uniform bool computeDelta;
-layout(rgba8ui, binding=0) uniform uimage2D image;
+layout(rgba32f, binding=0) uniform image2D image;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(r8ui, binding=2) uniform uimage2D indexedImage;
-layout(rgba8ui, binding=3) uniform uimage2D oldQuantizedImage;
+layout(rgba32f, binding=3) uniform image2D oldQuantizedImage;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-
 const float ditherMask2x2[4] = float[4]
 (
     0.0 /4.0-3.0/8.0,
@@ -309,11 +324,18 @@ const float ditherMask4x4[16] = float[16]
     13.0 /16.0-15.0/32.0,
     5.0 /16.0-15.0/32.0
 );
-
+uvec4 to8ui(vec4 v)
+{
+    return uvec4(255*min(max(v, 0), 1)+.5);
+}
+vec4 to32f(uvec4 v)
+{
+    return vec4(v)/255.0;
+}
 void main() 
 { 
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
-    uvec4 img = uvec4(imageLoad(image, gid));
+    uvec4 img = to8ui(imageLoad(image, gid));
     switch (ditherLevel)
     {
         case 0 :
@@ -355,14 +377,14 @@ void main()
     uvec4 newColor = uvec4(r,g,b,a);
     if (computeDelta)
     {
-        uvec4 oldColor = imageLoad(oldQuantizedImage, gid);
+        uvec4 oldColor = to8ui(imageLoad(oldQuantizedImage, gid));
         if (oldColor.a > 0 && newColor.rgb == oldColor.rgb)
         {
             index = paletteSize;
         }
-        imageStore(oldQuantizedImage, gid, newColor);
+        imageStore(oldQuantizedImage, gid, to32f(newColor));
     }
-    imageStore(image, gid, newColor);
+    imageStore(image, gid, to32f(newColor));
     imageStore(indexedImage, gid, uvec4(index, 0, 0, 0));
 })" );
 
@@ -448,7 +470,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         GL_FALSE, 
         0, 
         GL_READ_WRITE, 
-        GL_RGBA8UI
+        GL_RGBA32F // 8UI
     );
     
     // Palette data texture
@@ -527,12 +549,12 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             (
                 GL_TEXTURE_2D, 
                 0, 
-                GL_RGBA, 
+                GL_RGBA32F, // GL_RGBA
                 width, 
                 height, 
                 0, 
                 GL_RGBA, 
-                GL_UNSIGNED_BYTE, 
+                GL_FLOAT, // GL_UNSIGNED_BYTE, 
                 NULL
             );
             glGenerateMipmap(GL_TEXTURE_2D);
@@ -551,7 +573,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             GL_FALSE, 
             0, 
             GL_READ_WRITE, 
-            GL_RGBA8UI
+            GL_RGBA32F // 8UI
         );
     }
 
@@ -869,7 +891,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     // Quantize input with k-means-determined palettes
     glActiveTexture(GL_TEXTURE0+inputUnit);
     glBindTexture(GL_TEXTURE_2D, id);
-    glBindImageTexture(inputUnit, id, 0, GL_FALSE, 0, GL_READ_WRITE,GL_RGBA8UI);
+    glBindImageTexture(inputUnit, id, 0, GL_FALSE, 0, GL_READ_WRITE,GL_RGBA32F); //8UI);
     computeShader_quantizeInput.use();
     computeShader_quantizeInput.run(width, height, 1);
 
@@ -1020,12 +1042,12 @@ firstWaitSyncCall_(true)
     (
         GL_TEXTURE_2D, 
         0, 
-        GL_RGBA, 
+        GL_RGBA32F, //GL_RGBA
         1, 
         1, 
         0, 
         GL_RGBA, 
-        GL_UNSIGNED_BYTE, 
+        GL_FLOAT, //GL_UNSIGNED_BYTE, 
         NULL
     );
 
