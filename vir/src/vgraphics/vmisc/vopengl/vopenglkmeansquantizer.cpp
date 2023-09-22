@@ -110,7 +110,7 @@ void OpenGLKMeansQuantizer::ComputeShaderStage::run
 bool OpenGLKMeansQuantizer::computeShaderStagesCompiled = false;
 
 OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_findMaxSqrDistCol
+    OpenGLKMeansQuantizer::computeShader_findMaxSqrDistColSF32
     (
 R"(#version 460 core
 uniform int counter;
@@ -170,7 +170,7 @@ void main()
 })" );
 
 OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_setNextPaletteCol
+    OpenGLKMeansQuantizer::computeShader_setNextPaletteColSF32
     (
 R"(#version 460 core
 uniform int counter;
@@ -197,7 +197,7 @@ void main()
 })" );
 
 OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_buildClustersFromPalette
+    OpenGLKMeansQuantizer::computeShader_buildClustersFromPaletteSF32
     (
 R"(#version 460 core
 uniform int paletteSize;
@@ -236,7 +236,7 @@ void main()
 })" );
 
 OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_updatePaletteFromClusters
+    OpenGLKMeansQuantizer::computeShader_updatePaletteFromClustersSF32
     (
 R"(#version 460 core
 layout(binding=0) uniform atomic_uint clusteringError;
@@ -281,7 +281,7 @@ void main()
 })" );
 
 OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_quantizeInput
+    OpenGLKMeansQuantizer::computeShader_quantizeInputSF32
     (
 R"(#version 460 core
 uniform int paletteSize;
@@ -388,6 +388,267 @@ void main()
     imageStore(indexedImage, gid, uvec4(index, 0, 0, 0));
 })" );
 
+// Same compute shaders as above, but to operate on unsigned int and unsigned
+// normlaized int -type of textures
+
+OpenGLKMeansQuantizer::ComputeShaderStage 
+    OpenGLKMeansQuantizer::computeShader_findMaxSqrDistColUI8
+    (
+R"(#version 460 core
+uniform int counter;
+uniform int paletteSize;
+layout(binding=0) uniform atomic_uint clusteringError;
+layout(rgba8ui, binding=0) uniform uimage2D image;
+layout(r32ui, binding=1) uniform uimage2D paletteData;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 d2MaxPos = ivec2(paletteSize+1,2);
+    if (counter == 0)
+    {
+        if (gid == ivec2(0,0))
+        {
+            uvec4 img = imageLoad(image, gid);
+            for (int i=0; i<3*paletteSize; i++)
+            {
+                for (int j=0; j<3; j++)
+                {
+                    imageAtomicExchange(paletteData, ivec2(i,j), 0);
+                }
+            }
+            imageAtomicExchange(paletteData, ivec2(0, 0), img.r);
+            imageAtomicExchange(paletteData, ivec2(1, 0), img.g);
+            imageAtomicExchange(paletteData, ivec2(2, 0), img.b);
+            imageAtomicExchange(paletteData, d2MaxPos, 0);
+            atomicCounterExchange(clusteringError, 0);
+        }
+        return;
+    }
+    uint d2m = 195075;
+    ivec3 img = ivec3(imageLoad(image, gid).rgb);
+    for (int i=0; i<counter; i++)
+    {
+        uint pr = imageLoad(paletteData, ivec2(3*i, 0)).r;
+        uint pg = imageLoad(paletteData, ivec2(3*i+1, 0)).r;
+        uint pb = imageLoad(paletteData, ivec2(3*i+2, 0)).r;
+        ivec3 dif = img-ivec3(pr,pg,pb);
+        uint d2 = dif.x*dif.x + dif.y*dif.y + dif.z*dif.z;
+        if (d2 < d2m)
+        {
+            d2m = d2;
+        }
+    }
+    uint d2m0 = imageAtomicMax(paletteData, d2MaxPos, d2m);
+    if (d2m0 < d2m)
+    {
+        imageAtomicExchange(paletteData, ivec2(paletteSize+2,2), uint(gid.x));
+        imageAtomicExchange(paletteData, ivec2(paletteSize+3,2), uint(gid.y));
+    }
+})" );
+
+OpenGLKMeansQuantizer::ComputeShaderStage 
+    OpenGLKMeansQuantizer::computeShader_setNextPaletteColUI8
+    (
+R"(#version 460 core
+uniform int counter;
+uniform int paletteSize;
+layout(rgba8ui, binding=0) uniform uimage2D image;
+layout(r32ui, binding=1) uniform uimage2D paletteData;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    if (counter == 0)
+        return;
+    uint x = imageLoad(paletteData, ivec2(paletteSize+2,2)).r;
+    uint y = imageLoad(paletteData, ivec2(paletteSize+3,2)).r;
+    uvec4 img = imageLoad(image, ivec2(x,y));
+    imageStore(paletteData, ivec2(3*counter,0), uvec4(img.r,0,0,1));
+    imageStore(paletteData, ivec2(3*counter+1,0), uvec4(img.g,0,0,1));
+    imageStore(paletteData, ivec2(3*counter+2,0), uvec4(img.b,0,0,1));
+    ivec2 d2MaxPos = ivec2(paletteSize+1,2);
+    imageStore(paletteData, d2MaxPos, uvec4(0,0,0,0));
+})" );
+
+OpenGLKMeansQuantizer::ComputeShaderStage 
+    OpenGLKMeansQuantizer::computeShader_buildClustersFromPaletteUI8
+    (
+R"(#version 460 core
+uniform int paletteSize;
+layout(binding=0) uniform atomic_uint clusteringError;
+layout(rgba8ui, binding=1) uniform uimage2D image;
+layout(r32ui, binding=2) uniform uimage2D paletteData;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() 
+{ 
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    uvec4 img = uvec4(imageLoad(image, gid));
+    int d2m = 195075; // max d2 is 3*255*255 = 195075
+    int index = 0;
+    for (int i=0; i<paletteSize; i++)
+    {
+        ivec3 d = ivec3(img);
+        d.x -= int(imageLoad(paletteData, ivec2(i*3,   0)).r);
+        d.y -= int(imageLoad(paletteData, ivec2(i*3+1, 0)).r);
+        d.z -= int(imageLoad(paletteData, ivec2(i*3+2, 0)).r);
+        int d2 = d.x*d.x + d.y*d.y + d.z*d.z;
+        if (d2 < d2m)
+        {
+            d2m = d2;
+            index = i;
+        }
+    }
+    imageAtomicAdd(paletteData, ivec2(index*3,   1), img.r);
+    imageAtomicAdd(paletteData, ivec2(index*3+1, 1), img.g);
+    imageAtomicAdd(paletteData, ivec2(index*3+2, 1), img.b);
+    imageAtomicAdd(paletteData, ivec2(index,     2), 1);
+    atomicCounterAdd(clusteringError, uint(d2m));
+})" );
+
+OpenGLKMeansQuantizer::ComputeShaderStage 
+    OpenGLKMeansQuantizer::computeShader_updatePaletteFromClustersUI8
+    (
+R"(#version 460 core
+layout(binding=0) uniform atomic_uint clusteringError;
+layout(r32ui, binding=1) uniform uimage2D paletteData;
+layout(rgba8ui, binding=2) uniform uimage2D image;
+uniform int imageWidth;
+uniform int imageHeight;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+float rand(vec2 seed)
+{
+	return fract(sin(dot(seed.xy, vec2(12.9898, 78.233)))*43758.5453);
+}
+void main() 
+{ 
+    uint gid = gl_GlobalInvocationID.x;
+    // Read & clear accumulators for next counter loop iteration
+    uint r = imageAtomicExchange(paletteData, ivec2(gid*3, 1), 0);
+    uint g = imageAtomicExchange(paletteData, ivec2(gid*3+1, 1), 0);
+    uint b = imageAtomicExchange(paletteData, ivec2(gid*3+2, 1), 0);
+    uint count = imageAtomicExchange(paletteData, ivec2(gid, 2), 0);
+    float error = float(atomicCounterExchange(clusteringError, 0));
+    if (count == 0)
+    {
+        count = 1;
+        float w = imageWidth - 1;
+        float h = imageHeight - 1;
+        int x = int(rand(vec2(error/w, h*(1+gid)))*w);
+        int y = int(rand(vec2(w*(1+gid), error/h))*h);
+        uvec4 col = imageLoad(image, ivec2(x,y));
+        r = col.r;
+        g = col.g;
+        b = col.b;
+    }
+    imageAtomicExchange(paletteData, ivec2(gid*3,   0), uint(float(r)/count));
+    imageAtomicExchange(paletteData, ivec2(gid*3+1, 0), uint(float(g)/count));
+    imageAtomicExchange(paletteData, ivec2(gid*3+2, 0), uint(float(b)/count));
+    
+})" );
+
+OpenGLKMeansQuantizer::ComputeShaderStage 
+    OpenGLKMeansQuantizer::computeShader_quantizeInputUI8
+    (
+R"(#version 460 core
+uniform int paletteSize;
+uniform int ditherLevel;
+uniform float ditherThreshold;
+uniform int alphaCutoff;
+uniform bool computeDelta;
+layout(rgba8ui, binding=0) uniform uimage2D image;
+layout(r32ui, binding=1) uniform uimage2D paletteData;
+layout(r8ui, binding=2) uniform uimage2D indexedImage;
+layout(rgba8ui, binding=3) uniform uimage2D oldQuantizedImage;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+const float ditherMask2x2[4] = float[4]
+(
+    0.0 /4.0-3.0/8.0,
+    2.0 /4.0-3.0/8.0,
+
+    3.0 /4.0-3.0/8.0,
+    1.0 /4.0-3.0/8.0
+);
+const float ditherMask4x4[16] = float[16]
+(
+    0.0 /16.0-15.0/32.0,
+    8.0 /16.0-15.0/32.0,
+    2.0 /16.0-15.0/32.0,
+    10.0 /16.0-15.0/32.0,
+
+    12.0 /16.0-15.0/32.0,
+    4.0 /16.0-15.0/32.0,
+    14.0 /16.0-15.0/32.0,
+    6.0 /16.0-15.0/32.0,
+
+    3.0 /16.0-15.0/32.0,
+    11.0 /16.0-15.0/32.0,
+    1.0 /16.0-15.0/32.0,
+    9.0 /16.0-15.0/32.0,
+
+    15.0 /16.0-15.0/32.0,
+    7.0 /16.0-15.0/32.0,
+    13.0 /16.0-15.0/32.0,
+    5.0 /16.0-15.0/32.0
+);
+
+void main() 
+{ 
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    uvec4 img = uvec4(imageLoad(image, gid));
+    switch (ditherLevel)
+    {
+        case 0 :
+        {
+            break;
+        }
+        case 1 :
+        {
+            float maski = 256.0*ditherMask2x2[2*(gid.y%2)+(gid.x%2)];
+            img = uvec4(ivec3(img.rgb)+int(maski*ditherThreshold+0.5), img.a);
+            break;
+        }
+        case 2 :
+        {
+            float maski = 256.0*ditherMask4x4[4*(gid.y%4)+(gid.x%4)];
+            img = uvec4(ivec3(img.rgb)+int(maski*ditherThreshold+0.5), img.a);
+            break;
+        }
+    }
+    int d2m = 195075; // max d2 is 3*255*255 = 195075
+    int index = 0;
+    for (int i=0; i<paletteSize; i++)
+    {
+        ivec3 d = ivec3(img);
+        d.x -= int(imageLoad(paletteData, ivec2(i*3,   0)).r);
+        d.y -= int(imageLoad(paletteData, ivec2(i*3+1, 0)).r);
+        d.z -= int(imageLoad(paletteData, ivec2(i*3+2, 0)).r);
+        int d2 = d.x*d.x + d.y*d.y + d.z*d.z;
+        if (d2 < d2m)
+        {
+            d2m = d2;
+            index = i;
+        }
+    }
+    uint r = imageLoad(paletteData, ivec2(index*3,   0)).r;
+    uint g = imageLoad(paletteData, ivec2(index*3+1, 0)).r;
+    uint b = imageLoad(paletteData, ivec2(index*3+2, 0)).r;
+    uint a = (alphaCutoff != -1) ? ((img.a >= alphaCutoff ? 255 : 0)) : img.a;
+    uvec4 newColor = uvec4(r,g,b,a);
+    if (computeDelta)
+    {
+        uvec4 oldColor = imageLoad(oldQuantizedImage, gid);
+        if (oldColor.a > 0 && newColor.rgb == oldColor.rgb)
+        {
+            index = paletteSize;
+        }
+        imageStore(oldQuantizedImage, gid, newColor);
+    }
+    imageStore(image, gid, newColor);
+    imageStore(indexedImage, gid, uvec4(index, 0, 0, 0));
+})" );
+
+
 //----------------------------------------------------------------------------//
 // Private member functions
 
@@ -407,7 +668,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     bool regenerateMipmap,
     bool fastKMeans,
     bool computeDelta,
-    uint32_t inputUnit
+    uint32_t inputUnit,
+    bool isSF32
 )
 {
     //
@@ -420,6 +682,34 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     // Input image
     glActiveTexture(GL_TEXTURE0+inputUnit);
     glBindTexture(GL_TEXTURE_2D, id);
+    
+    // Figure out which compute shaders to use based on input texture
+    // internal format
+    ComputeShaderStage* findMaxSqrDistCol;
+    ComputeShaderStage* setNextPaletteCol;
+    ComputeShaderStage* buildClustersFromPalette;
+    ComputeShaderStage* updatePaletteFromClusters;
+    ComputeShaderStage* quantizeInput;
+    if(isSF32)
+    {
+        findMaxSqrDistCol = &computeShader_findMaxSqrDistColSF32;
+        setNextPaletteCol = &computeShader_setNextPaletteColSF32;
+        buildClustersFromPalette = 
+            &computeShader_buildClustersFromPaletteSF32;
+        updatePaletteFromClusters = 
+            &computeShader_updatePaletteFromClustersSF32;
+        quantizeInput = &computeShader_quantizeInputSF32;
+    }
+    else
+    {
+        findMaxSqrDistCol = &computeShader_findMaxSqrDistColUI8;
+        setNextPaletteCol = &computeShader_setNextPaletteColUI8;
+        buildClustersFromPalette = 
+            &computeShader_buildClustersFromPaletteUI8;
+        updatePaletteFromClusters = 
+            &computeShader_updatePaletteFromClustersUI8;
+        quantizeInput = &computeShader_quantizeInputUI8;
+    }
 
     uint32_t targetLevel = 0;
     int mWidth = width;
@@ -643,17 +933,17 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
         
         // Reset uniforms
-        computeShader_findMaxSqrDistCol.setUniformInt
+        findMaxSqrDistCol->setUniformInt
         (
             "paletteSize", 
             paletteSize
         );
-        computeShader_setNextPaletteCol.setUniformInt
+        setNextPaletteCol->setUniformInt
         (
             "paletteSize", 
             paletteSize
         );
-        computeShader_buildClustersFromPalette.setUniformInt
+        buildClustersFromPalette->setUniformInt
         (
             "paletteSize", 
             paletteSize
@@ -704,84 +994,84 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             {
                 // Determine the pixel of the image which is the furthest away
                 // (in color-space) from the last palette color in paletteData
-                computeShader_findMaxSqrDistCol.setUniformInt
+                findMaxSqrDistCol->setUniformInt
                 (
                     "counter", 
                     counter
                 );
                 if (counter == 0)
                 {
-                    computeShader_findMaxSqrDistCol.setUniformInt
+                    findMaxSqrDistCol->setUniformInt
                     (
                         "image", 
                         inputUnit, 
                         false
                     );
-                    computeShader_findMaxSqrDistCol.setUniformInt
+                    findMaxSqrDistCol->setUniformInt
                     (
                         "paletteData",
                         paletteDataUnit,
                         false
                     );
                 }
-                computeShader_findMaxSqrDistCol.run(mWidth, mHeight, 1);
+                findMaxSqrDistCol->run(mWidth, mHeight, 1);
 
                 // Add the previously selected image pixel to the palette set,
                 // reset max distance
-                computeShader_setNextPaletteCol.setUniformInt
+                setNextPaletteCol->setUniformInt
                 (
                     "counter", 
                     counter
                 );
                 if (counter == 0)
                 {
-                    computeShader_setNextPaletteCol.setUniformInt
+                    setNextPaletteCol->setUniformInt
                     (
                         "image", 
                         inputUnit, 
                         false
                     );
-                    computeShader_setNextPaletteCol.setUniformInt
+                    setNextPaletteCol->setUniformInt
                     (
                         "paletteData",
                         paletteDataUnit, 
                         false
                     );
                 }
-                computeShader_setNextPaletteCol.run(1, 1, 1);
+                setNextPaletteCol->run(1, 1, 1);
             }
         }
 
         // Set uniforms
-        computeShader_buildClustersFromPalette.setUniformInt
+        buildClustersFromPalette->setUniformInt
         (
             "image", 
             inputUnit
         );
-        computeShader_buildClustersFromPalette.setUniformInt
+        buildClustersFromPalette->setUniformInt
         (
             "paletteData", 
             paletteDataUnit, 
             false
         );
-        computeShader_updatePaletteFromClusters.setUniformInt
+        updatePaletteFromClusters->setUniformInt
         (
             "paletteData", 
             paletteDataUnit
         );
-        computeShader_updatePaletteFromClusters.setUniformInt
+        updatePaletteFromClusters->setUniformInt
         (
             "image", 
             inputUnit, 
             false
         );
-        computeShader_updatePaletteFromClusters.setUniformInt
+        updatePaletteFromClusters->setUniformInt
         (
             "imageWidth", 
             mWidth, 
             false
         );
-        computeShader_updatePaletteFromClusters.setUniformInt
+        updatePaletteFromClusters->setUniformInt
         (
             "imageHeight", 
             mHeight, 
@@ -797,8 +1087,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         while(true)
         {
             // Cluster colors around current palette colors
-            computeShader_buildClustersFromPalette.use();
-            computeShader_buildClustersFromPalette.run(mWidth, mHeight, 1);
+            buildClustersFromPalette->use();
+            buildClustersFromPalette->run(mWidth, mHeight, 1);
 
             // Read clustering error
             glGetBufferSubData
@@ -815,8 +1105,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             sqErr0 = *sqErrPtr;
             
             // Update palettes based on current clusters
-            computeShader_updatePaletteFromClusters.use();
-            computeShader_updatePaletteFromClusters.run(paletteSize, 1, 1);
+            updatePaletteFromClusters->use();
+            updatePaletteFromClusters->run(paletteSize, 1, 1);
             iter++;
         }
         delete sqErrPtr;
@@ -824,42 +1114,42 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     }
 
     // Bind quantizer inputs
-    computeShader_quantizeInput.setUniformInt
+    quantizeInput->setUniformInt
     (
         "image", 
         inputUnit
     );
-    computeShader_quantizeInput.setUniformInt
+    quantizeInput->setUniformInt
     (
         "paletteData", 
         paletteDataUnit, 
         false
     );
-    computeShader_quantizeInput.setUniformInt
+    quantizeInput->setUniformInt
     (
         "paletteSize", 
         paletteSize, 
         false
     );
-    computeShader_quantizeInput.setUniformInt
+    quantizeInput->setUniformInt
     (
         "indexedImage", 
         indexedDataUnit, 
         false
     );
-    computeShader_quantizeInput.setUniformInt
+    quantizeInput->setUniformInt
     (
         "ditherLevel", 
         ditherLevel, 
         false
     );
-    computeShader_quantizeInput.setUniformInt
+    quantizeInput->setUniformInt
     (
         "alphaCutoff", 
         alphaCutoff, 
         false
     );
-    computeShader_quantizeInput.setUniformInt
+    quantizeInput->setUniformInt
     (
         "computeDelta", 
         int(computeDelta), 
@@ -871,7 +1161,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             ditherThreshold = 1.0f/std::sqrt(float(paletteSize));
         else 
             ditherThreshold = std::min(std::max(ditherThreshold,0.0f),1.0f);
-        computeShader_quantizeInput.setUniformFloat
+        quantizeInput->setUniformFloat
         (
             "ditherThreshold", 
             ditherThreshold, 
@@ -880,7 +1170,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     } 
     if (computeDelta)
     {
-        computeShader_quantizeInput.setUniformInt
+        quantizeInput->setUniformInt
         (
             "oldQuantizedImage", 
             oldQuantizedInputUnit, 
@@ -892,8 +1182,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     glActiveTexture(GL_TEXTURE0+inputUnit);
     glBindTexture(GL_TEXTURE_2D, id);
     glBindImageTexture(inputUnit, id, 0, GL_FALSE, 0, GL_READ_WRITE,GL_RGBA32F); //8UI);
-    computeShader_quantizeInput.use();
-    computeShader_quantizeInput.run(width, height, 1);
+    quantizeInput->use();
+    quantizeInput->run(width, height, 1);
 
     // Copy the palette to the PBO (GPU-to-GPU) so that it can be
     // read via the permanent mapping at mappedPaletteData_
@@ -969,11 +1259,16 @@ firstWaitSyncCall_(true)
     // Compile compute shader stages
     if (!OpenGLKMeansQuantizer::computeShaderStagesCompiled)
     {
-        computeShader_findMaxSqrDistCol.compile();
-        computeShader_setNextPaletteCol.compile();
-        computeShader_buildClustersFromPalette.compile();
-        computeShader_updatePaletteFromClusters.compile();
-        computeShader_quantizeInput.compile();
+        computeShader_findMaxSqrDistColSF32.compile();
+        computeShader_setNextPaletteColSF32.compile();
+        computeShader_buildClustersFromPaletteSF32.compile();
+        computeShader_updatePaletteFromClustersSF32.compile();
+        computeShader_quantizeInputSF32.compile();
+        computeShader_findMaxSqrDistColUI8.compile();
+        computeShader_setNextPaletteColUI8.compile();
+        computeShader_buildClustersFromPaletteUI8.compile();
+        computeShader_updatePaletteFromClustersUI8.compile();
+        computeShader_quantizeInputUI8.compile();
         OpenGLKMeansQuantizer::computeShaderStagesCompiled = true;
     }
 
@@ -1111,7 +1406,8 @@ void OpenGLKMeansQuantizer::quantize
         regenerateMipmap,
         fastKMeans,
         computeDelta,
-        inputUnit
+        inputUnit,
+        input->internalFormat() == TextureBuffer::InternalFormat::RGBA_SF_32
     );
 }
 
@@ -1151,7 +1447,9 @@ void OpenGLKMeansQuantizer::quantize
         regenerateMipmap,
         fastKMeans,
         computeDelta,
-        inputUnit
+        inputUnit,
+        input->colorBufferInternalFormat() == 
+            TextureBuffer::InternalFormat::RGBA_SF_32
     );
 }
 

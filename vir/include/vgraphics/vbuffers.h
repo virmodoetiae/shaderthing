@@ -61,9 +61,11 @@ protected:
     WrapMode wrapModes_[3];
     FilterMode magFilterMode_;
     FilterMode minFilterMode_;
-    TextureBuffer(InternalFormat internalFormat = InternalFormat::Undefined):
+    TextureBuffer(InternalFormat internalFormat=InternalFormat::Undefined):
     id_(0),
-    nChannels_(nChannels(internalFormat))
+    nDimensions_(0),
+    nChannels_(nChannels(internalFormat)),
+    internalFormat_(internalFormat)
     {
         for (int i=0; i<3; i++) 
             wrapModes_[i] = WrapMode::ClampToBorder;
@@ -145,7 +147,10 @@ protected:
         uint32_t width,
         uint32_t height,
         InternalFormat internalFormat
-    ):TextureBuffer(internalFormat),width_(width),height_(height){}
+    ):TextureBuffer(internalFormat),width_(width),height_(height)
+    {
+        nDimensions_=2;
+    }
 public:
     ~TextureBuffer2D(){}
     static TextureBuffer2D* create
@@ -221,20 +226,24 @@ public:
     uint32_t colorBufferId() const {return colorBufferId_;}
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
-    uint32_t colorBufferDataSize(){return width_*height_*4;}
-    TextureBuffer::WrapMode colorBufferWrapMode(uint32_t index)
+    uint32_t colorBufferDataSize() const {return width_*height_*4;}
+    TextureBuffer::InternalFormat colorBufferInternalFormat() const
+    {
+        return colorBuffer_->internalFormat();
+    }
+    TextureBuffer::WrapMode colorBufferWrapMode(uint32_t index) const
     {
         if (colorBuffer_ == nullptr)
             return TextureBuffer::WrapMode::ClampToBorder;
         return colorBuffer_->wrapMode(index);
     }
-    TextureBuffer::FilterMode colorBufferMagFilterMode()
+    TextureBuffer::FilterMode colorBufferMagFilterMode() const
     {
         if (colorBuffer_ == nullptr)
             return TextureBuffer::FilterMode::Nearest;
         return colorBuffer_->magFilterMode();
     }
-    TextureBuffer::FilterMode colorBufferMinFilterMode()
+    TextureBuffer::FilterMode colorBufferMinFilterMode() const
     {
         if (colorBuffer_ == nullptr)
             return TextureBuffer::FilterMode::Nearest;

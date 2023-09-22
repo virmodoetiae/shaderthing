@@ -38,11 +38,16 @@ protected:
     };
 
     static bool computeShaderStagesCompiled;
-    static ComputeShaderStage computeShader_findMaxSqrDistCol;
-    static ComputeShaderStage computeShader_setNextPaletteCol;
-    static ComputeShaderStage computeShader_buildClustersFromPalette;
-    static ComputeShaderStage computeShader_updatePaletteFromClusters;
-    static ComputeShaderStage computeShader_quantizeInput;
+    static ComputeShaderStage computeShader_findMaxSqrDistColSF32;
+    static ComputeShaderStage computeShader_setNextPaletteColSF32;
+    static ComputeShaderStage computeShader_buildClustersFromPaletteSF32;
+    static ComputeShaderStage computeShader_updatePaletteFromClustersSF32;
+    static ComputeShaderStage computeShader_quantizeInputSF32;
+    static ComputeShaderStage computeShader_findMaxSqrDistColUI8;
+    static ComputeShaderStage computeShader_setNextPaletteColUI8;
+    static ComputeShaderStage computeShader_buildClustersFromPaletteUI8;
+    static ComputeShaderStage computeShader_updatePaletteFromClustersUI8;
+    static ComputeShaderStage computeShader_quantizeInputUI8;
 
     // R32UI Texture_2D used to store data required by the algorithm on the GPU,
     // primarily palette colors, quantization error
@@ -89,7 +94,8 @@ protected:
         bool regenerateMipmap=true,
         bool fastKMeans=true,
         bool computeDelta=false,
-        uint32_t inputUnit=0
+        uint32_t inputUnit=0,
+        bool isSF32=false
     );
 
     //
