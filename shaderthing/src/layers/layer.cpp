@@ -322,14 +322,39 @@ void Layer::update()
     screenQuad_->update(viewport_.x, viewport_.y, depth_);
 
     // Resize framebuffers
-    framebufferA_->unbind();
-    framebufferB_->unbind();
-    if (framebufferA_ != nullptr)
-        delete framebufferA_;
-    if (framebufferB_ != nullptr)
-        delete framebufferB_;
-    framebufferA_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
-    framebufferB_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
+
+    // Cache parameters for re-set after re-size (which involves framebuffer
+    // deletion and re-creation)
+    auto internalFormatA = framebufferA_->colorBufferInternalFormat();
+
+    auto resizeFramebuffer = []
+    (
+        vir::Framebuffer*& framebuffer, 
+        const glm::ivec2& resolution
+    )
+    {
+        auto internalFormat = framebuffer->colorBufferInternalFormat();
+        auto wrapModeX = framebuffer->colorBufferWrapMode(0);
+        auto wrapModeY = framebuffer->colorBufferWrapMode(1);
+        auto minFilterMode = framebuffer->colorBufferMinFilterMode();
+        auto magFilterMode = framebuffer->colorBufferMagFilterMode();
+        framebuffer->unbind();
+        if (framebuffer != nullptr)
+            delete framebuffer;
+        framebuffer = vir::Framebuffer::create
+        (
+            resolution.x, 
+            resolution.y, 
+            internalFormat
+        );
+        framebuffer->setColorBufferWrapMode(0, wrapModeX);
+        framebuffer->setColorBufferWrapMode(1, wrapModeY);
+        framebuffer->setColorBufferMinFilterMode(minFilterMode);
+        framebuffer->setColorBufferMagFilterMode(magFilterMode);
+    };
+
+    resizeFramebuffer(framebufferA_, resolution_);
+    resizeFramebuffer(framebufferB_, resolution_);
     writeOnlyFramebuffer_ = flipFramebuffers_?framebufferA_:framebufferB_;
     readOnlyFramebuffer_ = flipFramebuffers_?framebufferB_:framebufferA_;
 }

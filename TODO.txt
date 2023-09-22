@@ -26,18 +26,16 @@ TODO ---------------------------------------------------------------------------
     to the OpenGLKMeansQuantizer [It is possible, OpenGLKMeansQuantizer 
     modified to achieve this]
 
-(W) [IMPORTANT] Either move to a GL_RGBA32F format for framebuffer color 
-    attachment internal format or enable support for it, with framebuffer-
-    rendered layers having an additional option to change the internal
-    format, if needed
+(X) Fix layer resolution change resulting in reset of internal framebuffer 
+    filtering and magnification/minimization settings to default values
+
+(W) Implement layer option to select framebuffer data format (i.e., either
+    store data as unsigned normalized 8-bit int or as signed 32-bit float)
 
 (W) Expand code repository section
 
 ( ) Prevent Ctrl+S causing project save when iCameraPosition changing due to 
     keyboard inputs
-
-( ) Fix layer resolution change resulting in reset of internal framebuffer 
-    filtering and magnification/minimization settings to default values
 
 ( ) Fix text replace tool not triggering appearence of fragment shader 
     compilation button if some text was actually replaced
