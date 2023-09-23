@@ -13,6 +13,15 @@ class KMeansQuantizer
 {
 protected:
 
+    // Depending on the KMeansQuantizer implementation, it might not be able to
+    // run under certain systems. For example, the current implementation of
+    // the OpenGLKMeansQuantizer can only run if the min available OpenGL 
+    // version in use by the host system is OpenGL 4.3, because the current
+    // OpenGL implentation of the quantizer runs entirely off compute shaders,
+    // which are unavailable prior to OGL 4.3
+    bool canRunOnDeviceInUse_;
+    std::string errorMessage_;
+
     // Size of the last quantized image
     uint32_t width_;
     uint32_t height_;
@@ -22,7 +31,11 @@ protected:
     
     // Protected constructor as any instances of KMeansQuantizer are meant to be
     // created via the static create function
-    KMeansQuantizer():width_(0),height_(0),paletteSize_(0){};
+    KMeansQuantizer():
+        canRunOnDeviceInUse_(true),
+        width_(0),
+        height_(0),
+        paletteSize_(0){};
 
 public:
 
@@ -33,6 +46,8 @@ public:
     virtual ~KMeansQuantizer(){};
 
     // Accessors
+    bool canRunOnDeviceInUse() const {return canRunOnDeviceInUse_;}
+    const std::string& errorMessage() const {return errorMessage_;}
     uint32_t width(){return width_;}
     uint32_t height(){return height_;}
     uint32_t paletteSize(){return paletteSize_;}

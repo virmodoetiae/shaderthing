@@ -54,6 +54,26 @@ QuantizationTool::~QuantizationTool()
 
 //----------------------------------------------------------------------------//
 
+bool QuantizationTool::canRunOnDeviceInUse() 
+{
+    if (quantizer_ == nullptr)  // Ehhh don't hate on me, If we could only have
+                                // virtual static functions in C++ this would
+                                // not have to look like this
+        quantizer_ = vir::KMeansQuantizer::create();
+    return quantizer_->canRunOnDeviceInUse();
+}
+
+const std::string& QuantizationTool::errorMessage()
+{
+    if (quantizer_ == nullptr)  // Ehhh don't hate on me, If we could only have
+                                // virtual static functions in C++ this would
+                                // not have to look like this
+        quantizer_ = vir::KMeansQuantizer::create();
+    return quantizer_->errorMessage();
+}
+
+//----------------------------------------------------------------------------//
+
 void QuantizationTool::reset()
 {
     isGuiOpen_ = false;

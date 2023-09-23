@@ -47,6 +47,9 @@ public:
     GifEncoder();
     ~GifEncoder();
 
+    bool canRunOnDeviceInUse() const {return quantizer_->canRunOnDeviceInUse();}
+    const std::string& errorMessage() const {return quantizer_->errorMessage();}
+
     bool openFile
     (
         const std::string& filepath, 

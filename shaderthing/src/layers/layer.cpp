@@ -6,7 +6,6 @@
 #include "tools/quantizationtool.h"
 #include "tools/exporttool.h"
 #include "misc/misc.h"
-
 #include "vir/include/vir.h"
 
 #include <random>

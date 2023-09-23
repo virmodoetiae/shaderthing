@@ -49,6 +49,35 @@ if (cmpt->isGuiInMenu())                                                    \
 }                                                                           \
 else if(ImGui::MenuItem(cmptName, NULL, cmpt->isGuiOpenPtr())){}
 
+#define OZ_MENU_ENTRY_DISABLEABLE(cmpt, cmptName, disable, disableText)     \
+if (disable) ImGui::BeginDisabled();                                        \
+if(ImGui::SmallButton(cmpt->isGuiInMenu() ? "O" : "Z" ))                    \
+    cmpt->toggleIsGuiInMenu();                                              \
+ImGui::SameLine();                                                          \
+if (cmpt->isGuiInMenu())                                                    \
+{                                                                           \
+    if (ImGui::BeginMenu(cmptName))                                         \
+    {                                                                       \
+        if (disable)                                                        \
+        {                                                                   \
+            float textWidth(40.0f*fontSize);                                \
+            ImGui::PushTextWrapPos(40.0f*fontSize);                         \
+            ImGui::Text(disableText);                                       \
+            ImGui::PopTextWrapPos();                                        \
+        }                                                                   \
+        else                                                                \
+        {                                                                   \
+            *(cmpt->isGuiOpenPtr()) = true;                                 \
+            cmpt->renderGui();                                              \
+        }                                                                   \
+        ImGui::EndMenu();                                                   \
+    }                                                                       \
+    else                                                                    \
+        *(cmpt->isGuiOpenPtr()) = false;                                    \
+}                                                                           \
+else if(ImGui::MenuItem(cmptName, NULL, cmpt->isGuiOpenPtr())){}            \
+if (disable) ImGui::EndDisabled(); 
+
 void ShaderThingApp::updateGui()
 {
     // Disable reading/writing from/to imgui.ini
@@ -306,7 +335,13 @@ name##SetBuilt0 = name##SetBuilt;
         }
         if (ImGui::BeginMenu("Effects"))
         {
-            OZ_MENU_ENTRY(quantizationTool_, "Quantizer")
+            OZ_MENU_ENTRY_DISABLEABLE
+            (
+                quantizationTool_, 
+                "Quantizer", 
+                !quantizationTool_->canRunOnDeviceInUse(),
+                quantizationTool_->errorMessage().c_str()
+            )
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))

@@ -57,8 +57,10 @@ public:
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
     void renderGui();
 
-    bool* isGuiOpenPtr(){return &isGuiOpen_;}
-    bool isGuiInMenu(){return isGuiInMenu_;}
+    bool canRunOnDeviceInUse();
+    const std::string& errorMessage();
+    bool* isGuiOpenPtr() {return &isGuiOpen_;}
+    bool isGuiInMenu() {return isGuiInMenu_;}
     Layer*& targetLayer() {return targetLayer_;}
 };
 

@@ -1270,17 +1270,28 @@ void OpenGLKMeansQuantizer::resetSync()
 // Constructor, destructor
 
 OpenGLKMeansQuantizer::OpenGLKMeansQuantizer() :
-validOpenGLVersion_(true),
 firstWaitSyncCall_(true)
 {
     auto context = GlobalPtr<Window>::instance()->context();
     if (context->versionMajor() < 4)
-        validOpenGLVersion_ = false;
+        canRunOnDeviceInUse_ = false;
     else if (context->versionMinor() < 3)
-        validOpenGLVersion_ = false;
-
-    if (!validOpenGLVersion_)
+        canRunOnDeviceInUse_ = false;
+    if (!canRunOnDeviceInUse_)
+    {
+        auto* context(GlobalPtr<Window>::instance()->context());
+        std::string glVersion
+        ( 
+            std::to_string(context->versionMajor())+"."+
+            std::to_string(context->versionMinor())
+        );
+        std::string deviceName(GlobalPtr<Renderer>::instance()->deviceName());
+        errorMessage_ =
+R"(The quantizer requires an OpenGL version >= 4.3 to run, but your 
+graphics card in use ()"+deviceName+R"() only supports OpenGL up to version )"+
+glVersion;
         return;
+    }
 
     // Compile compute shader stages
     if (!OpenGLKMeansQuantizer::computeShaderStagesCompiled)
@@ -1388,6 +1399,8 @@ firstWaitSyncCall_(true)
 
 OpenGLKMeansQuantizer::~OpenGLKMeansQuantizer()
 {
+    if (!canRunOnDeviceInUse_)
+        return;
     glDeleteTextures(1, &paletteData_);
     glDeleteBuffers(1, &paletteDataPBO_);
     glDeleteTextures(1, &indexedData_);
@@ -1414,6 +1427,8 @@ void OpenGLKMeansQuantizer::quantize
     uint32_t inputUnit
 )
 {
+    if (!canRunOnDeviceInUse_)
+        return;
     if (input == nullptr)
         return;
     quantizeOpenGLTexture
@@ -1455,6 +1470,8 @@ void OpenGLKMeansQuantizer::quantize
     uint32_t inputUnit
 )
 {
+    if (!canRunOnDeviceInUse_)
+        return;
     if (input == nullptr)
         return;
     quantizeOpenGLTexture
@@ -1481,6 +1498,8 @@ void OpenGLKMeansQuantizer::quantize
 
 void OpenGLKMeansQuantizer::getPalette(unsigned char*& data, bool allocate)
 {
+    if (!canRunOnDeviceInUse_)
+        return;
     int paletteSize = deltaComputed_ ? paletteSize_ + 1 : paletteSize_;
     if (allocate)
         data = new unsigned char[3*paletteSize];
@@ -1506,6 +1525,8 @@ void OpenGLKMeansQuantizer::getIndexedTexture
     bool allocate
 )
 {
+    if (!canRunOnDeviceInUse_)
+        return;
     int nPixels(width_*height_);
     if (allocate)
         data = new unsigned char[nPixels];

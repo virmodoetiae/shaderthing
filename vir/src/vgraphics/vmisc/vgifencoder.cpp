@@ -157,10 +157,12 @@ GifEncoder::GifEncoder():
     height_(0),
     paletteSize_(0)
 {
+    quantizer_ = vir::KMeansQuantizer::create();
 }
 
 GifEncoder::~GifEncoder()
 {
+    delete quantizer_;
 }
 
 bool GifEncoder::openFile
@@ -196,7 +198,7 @@ bool GifEncoder::openFile
 
     fputs("GIF89a", file_);
 
-    // screen descriptor
+    // Screen descriptor
     fputc(width & 0xff, file_);
     fputc((width >> 8) & 0xff, file_);
     fputc(height & 0xff, file_);
@@ -225,9 +227,6 @@ bool GifEncoder::openFile
     fputc(0, file_); // Loop infinitely (byte 1)
     fputc(0, file_); // Block terminator
 
-    // If we survived til here, initialize the quantizer
-    quantizer_ = vir::KMeansQuantizer::create();
-
     return true;
 }
 
@@ -241,7 +240,7 @@ void GifEncoder::encodeFrame
     bool updatePalette
 )
 {
-    if (quantizer_ == nullptr)
+    if (file_ == nullptr)
         return;
     quantizer_->quantize
     (
@@ -275,6 +274,8 @@ void GifEncoder::encodeFrame
     bool updatePalette
 )
 {
+    if (file_ == nullptr)
+        return;
     quantizer_->quantize
     (
         frame, 
@@ -291,10 +292,6 @@ void GifEncoder::encodeFrame
         false //
     );
     quantizer_->getIndexedTexture(indexedTexture_, firstFrame_);
-    //for (int i=0; i<32; i++)
-    //{
-    //    std::cout << (int)indexedTexture_[i] << " ";
-    //}
     quantizer_->getPalette(palette_, firstFrame_);
     if (firstFrame_)
         firstFrame_ = false;
