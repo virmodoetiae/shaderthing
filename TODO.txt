@@ -23,19 +23,21 @@ TODO ---------------------------------------------------------------------------
     selection
 
 (X) Check if possible to add support for GL_RGBA32F-formatted framebuffers
-    to the OpenGLKMeansQuantizer [It is possible, OpenGLKMeansQuantizer 
-    modified to achieve this]
+    to the OpenGLKMeansQuantizer (it is possible, OpenGLKMeansQuantizer 
+    modified to achieve this)
 
 (X) Fix layer resolution change resulting in reset of internal framebuffer 
     filtering and magnification/minimization settings to default values
+
+(X) Prevent Ctrl+S causing project save when iCameraPosition changing due to 
+    keyboard inputs (Fixed by re-mapping the LCTRL camera key to LSHIFT, not
+    very creative, but the controls are likely to be reviewed anyway in the
+    future)
 
 (W) Implement layer option to select framebuffer data format (i.e., either
     store data as unsigned normalized 8-bit int or as signed 32-bit float)
 
 (W) Expand code repository section
-
-( ) Prevent Ctrl+S causing project save when iCameraPosition changing due to 
-    keyboard inputs
 
 ( ) Fix text replace tool not triggering appearence of fragment shader 
     compilation button if some text was actually replaced

@@ -75,12 +75,12 @@ void InputCamera::update()
     bool D = pressedKeys[VIR_KEY_D];
     bool Q = pressedKeys[VIR_KEY_Q];
     bool E = pressedKeys[VIR_KEY_E];
-    bool RCTRL = pressedKeys[VIR_KEY_LEFT_CONTROL];
+    bool RSHFT = pressedKeys[VIR_KEY_LEFT_SHIFT];
     bool SPACE = pressedKeys[VIR_KEY_SPACE];
     bool keyPressEnabled = canCurrentlyReceive(vir::Event::Type::KeyPress);
     if 
     (
-        (W || A || S || D || Q || E || RCTRL || SPACE) && 
+        (W || A || S || D || Q || E || RSHFT || SPACE) && 
         keyPressEnabled
     )
         updated_ = false;
@@ -122,7 +122,7 @@ void InputCamera::update()
             dPos -= sign*ksdt*x_;
         if (SPACE)
             dPos += ksdt*y_;
-        else if (RCTRL)
+        else if (RSHFT)
             dPos -= ksdt*y_;
         position_ += dPos;
         pivot_ += dPos;
