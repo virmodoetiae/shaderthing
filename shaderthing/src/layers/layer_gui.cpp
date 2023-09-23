@@ -324,13 +324,14 @@ void Layer::renderGuiMain()
     };
     static ImVec4 ctrlBColor = ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
 
-#define TEXT_EDITOR_CONTROLS(editor)                                        \
+#define TEXT_EDITOR_CONTROLS(editor, editorFlag)                            \
     bool someControlsOpen(                                                  \
         uncompiledVertexEditorChanges_ ||                                   \
         uncompiledFragmentEditorChanges_ ||                                 \
         app_.findReplaceTextToolRef().isGuiOpen());                         \
     app_.findReplaceTextToolRef().renderGui();                              \
-    app_.findReplaceTextToolRef().findReplaceTextInEditor(editor);          \
+    editorFlag = editorFlag ||                                              \
+        app_.findReplaceTextToolRef().findReplaceTextInEditor(editor);      \
     if (uncompiledVertexEditorChanges_ || uncompiledFragmentEditorChanges_){\
         ImGui::PushStyleColor(ImGuiCol_Button, compileButtonColor);         \
         if (ImGui::ArrowButton("##right",ImGuiDir_Right))toBeCompiled_=true;\
@@ -349,13 +350,21 @@ void Layer::renderGuiMain()
         if (isVertexEditorVisible_)
             if (ImGui::BeginTabItem("Vertex shader"))
             {
-                TEXT_EDITOR_CONTROLS(vertexEditor_)
+                TEXT_EDITOR_CONTROLS
+                (
+                    vertexEditor_, 
+                    uncompiledVertexEditorChanges_
+                )
                 vertexEditor_.Render("##vertexEditor");
                 ImGui::EndTabItem();
             }
         if (ImGui::BeginTabItem("Fragment shader"))
         {
-            TEXT_EDITOR_CONTROLS(fragmentEditor_)
+            TEXT_EDITOR_CONTROLS
+            (
+                fragmentEditor_, 
+                uncompiledFragmentEditorChanges_
+            )
             fragmentEditor_.Render("##fragmentEditor");
             ImGui::EndTabItem();
         }

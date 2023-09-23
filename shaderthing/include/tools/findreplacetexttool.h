@@ -41,7 +41,7 @@ public:
     bool isGuiOpen(){return isGuiOpen_;}
     std::string& textToBeFound(){return textToBeFound_;}
     
-    void findReplaceTextInEditor(ImGuiExtd::TextEditor& editor);
+    bool findReplaceTextInEditor(ImGuiExtd::TextEditor& editor);
     void reset();
     void renderGui();
     void renderGuiMenu();

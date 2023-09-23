@@ -85,11 +85,12 @@ void FindReplaceTextTool::update()
 
 //----------------------------------------------------------------------------//
 
-void FindReplaceTextTool::findReplaceTextInEditor
+bool FindReplaceTextTool::findReplaceTextInEditor
 (
     ImGuiExtd::TextEditor& editor
 )
 {
+    bool madeReplacements(false);
     if (isTextInFocus_)
         editor.SetHandleKeyboardInputs(false);
     else 
@@ -102,7 +103,7 @@ void FindReplaceTextTool::findReplaceTextInEditor
             foundTextCounter_ = 0;
             foundTextCounter0_ = foundTextCounter_;
         }
-        return;
+        return false;
     }
     int n(textToBeFound_.size());
     if (!replaceText_)
@@ -124,7 +125,7 @@ void FindReplaceTextTool::findReplaceTextInEditor
             editor.SetCursorPosition(c0);
             editor.SetSelection(c0, c1);
             foundTextCounter0_ = foundTextCounter_;
-            return;
+            return false;
         }
         else if (textToBeFound_ == "" || textToBeFound_ == textToBeFound0_)
         {
@@ -137,7 +138,7 @@ void FindReplaceTextTool::findReplaceTextInEditor
                     foundTextCounter0_ = foundTextCounter_;
                 }
             }
-            return;
+            return false;
         }
     }
     else
@@ -156,6 +157,8 @@ void FindReplaceTextTool::findReplaceTextInEditor
                 editor.Delete(true);
                 editor.SetCursorPosition(s0);
                 editor.InsertText(replaceTextWith_, true, true);
+                if (!madeReplacements)
+                    madeReplacements = true;
             }
             foundTextLineCols_.clear();
         }
@@ -208,6 +211,7 @@ void FindReplaceTextTool::findReplaceTextInEditor
     textToBeFound0_ = textToBeFound_;
     foundTextCounter_ = std::min(foundTextCounter_, nFound);
     foundTextCounter0_ = foundTextCounter_;
+    return madeReplacements;
 }
 
 }

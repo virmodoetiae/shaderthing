@@ -34,19 +34,24 @@ TODO ---------------------------------------------------------------------------
     very creative, but the controls are likely to be reviewed anyway in the
     future)
 
-(W) Implement layer option to select framebuffer data format (i.e., either
+(X) Implement layer option to select framebuffer data format (i.e., either
     store data as unsigned normalized 8-bit int or as signed 32-bit float)
+
+(X) Fix text replace tool not triggering appearence of fragment shader 
+    compilation button if some text was actually replaced
 
 (W) Expand code repository section
 
-( ) Fix text replace tool not triggering appearence of fragment shader 
-    compilation button if some text was actually replaced
+( ) Implement "replace next" occurence of found text in the find/replace tool,
+    as currently only a "replace all" can be performed
 
 ( ) Add support for 3D-textures management in vir, the ShaderThing resource
     manager and uniform system
 
 ( ) Add some sort of 2D (and eventually 3D) noise generator and output to
-    either static and/or dynamic textures
+    either static and/or dynamic textures (probably it is just better to
+    add some dedicated code repository functions that can be copy-pasted with
+    ease into the fragment shader, rather than a dedicated generator tool)
 
 ( ) Fix (or find workaround) for ImGui window icons disappearing on 
     ImGui docking/undocking actions
