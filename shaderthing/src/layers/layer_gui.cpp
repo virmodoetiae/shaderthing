@@ -100,6 +100,46 @@ void Layer::renderGuiSettings()
     {
         if (ImGui::CollapsingHeader("Framebuffer color attachment settings"))
         {
+            ImGui::Text("Internal data format ");
+            ImGui::SameLine();
+            ImGui::SameLine();
+            ImGui::PushItemWidth(selectableWidth);
+            if 
+            (
+                ImGui::BeginCombo
+                (
+                    "##layerInternalFormatCombo",
+                    vir::TextureBuffer::internalFormatToName.at
+                    (
+                        writeOnlyFramebuffer_->
+                            colorBufferInternalFormat()
+                    ).c_str()
+                )
+            )
+            {
+                for (auto internalFormat : supportedInternalFormats)
+                {
+                    if 
+                    (
+                        ImGui::Selectable
+                        (
+                            vir::TextureBuffer::internalFormatToName.at
+                            (
+                                internalFormat
+                            ).c_str()
+                        )
+                    )
+                        rebuildFramebuffers
+                        (
+                            internalFormat,
+                            resolution_
+                        );
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopItemWidth();
+
+            //
             std::string selectedWrapModeX = "";
             std::string selectedWrapModeY = "";
             std::string selectedMagFilterMode = "";

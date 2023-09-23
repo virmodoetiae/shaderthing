@@ -51,6 +51,8 @@ public:
         NearestMipmapLinear,
         LinearMipmapLinear
     };
+    static const std::unordered_map<InternalFormat, std::string> 
+        internalFormatToName;
     static const std::unordered_map<WrapMode, std::string> wrapModeToName;
     static const std::unordered_map<FilterMode, std::string> filterModeToName;
 protected:

@@ -33,6 +33,7 @@ public:
     static std::unordered_map<vir::TextureBuffer::WrapMode, std::string> 
         wrapModeToName;
     static std::string supportedUniformTypeNames[11];
+    static vir::TextureBuffer::InternalFormat supportedInternalFormats[2];
 
 private :
 
@@ -155,10 +156,15 @@ private :
     void setDefaultAndSamplerUniforms();
     void setNonDefaultUniforms();
     void adjustTargetResolution();
+    void rebuildFramebuffers
+    (
+        const vir::TextureBuffer::InternalFormat& internalFormat, 
+        const glm::ivec2& resolution
+    );
     void renderGuiMain();
     void renderGuiConfirmDeletion(); 
     void renderGuiUniforms();
-    
+
 public:
 
     Layer

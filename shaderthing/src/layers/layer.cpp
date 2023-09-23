@@ -59,6 +59,12 @@ std::string Layer::supportedUniformTypeNames[11] = {
     vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube]
 };
 
+vir::TextureBuffer::InternalFormat Layer::supportedInternalFormats[2] = 
+{
+    vir::TextureBuffer::InternalFormat::RGBA_UNI_8, 
+    vir::TextureBuffer::InternalFormat::RGBA_SF_32
+};
+
 //----------------------------------------------------------------------------//
 // Public functions ----------------------------------------------------------//
 
@@ -321,42 +327,15 @@ void Layer::update()
     viewport_.y = std::min(1.0f, 1.0f/aspectRatio);
     screenQuad_->update(viewport_.x, viewport_.y, depth_);
 
-    // Resize framebuffers
-
-    // Cache parameters for re-set after re-size (which involves framebuffer
-    // deletion and re-creation)
-    auto internalFormatA = framebufferA_->colorBufferInternalFormat();
-
-    auto resizeFramebuffer = []
+    // Resize framebuffers by rebuilding them with the new resolution and with
+    // the same internal format as before (by construction both the front
+    // and back-buffers need to have the same internal format for the color
+    // attachment texture)
+    rebuildFramebuffers
     (
-        vir::Framebuffer*& framebuffer, 
-        const glm::ivec2& resolution
-    )
-    {
-        auto internalFormat = framebuffer->colorBufferInternalFormat();
-        auto wrapModeX = framebuffer->colorBufferWrapMode(0);
-        auto wrapModeY = framebuffer->colorBufferWrapMode(1);
-        auto minFilterMode = framebuffer->colorBufferMinFilterMode();
-        auto magFilterMode = framebuffer->colorBufferMagFilterMode();
-        framebuffer->unbind();
-        if (framebuffer != nullptr)
-            delete framebuffer;
-        framebuffer = vir::Framebuffer::create
-        (
-            resolution.x, 
-            resolution.y, 
-            internalFormat
-        );
-        framebuffer->setColorBufferWrapMode(0, wrapModeX);
-        framebuffer->setColorBufferWrapMode(1, wrapModeY);
-        framebuffer->setColorBufferMinFilterMode(minFilterMode);
-        framebuffer->setColorBufferMagFilterMode(magFilterMode);
-    };
-
-    resizeFramebuffer(framebufferA_, resolution_);
-    resizeFramebuffer(framebufferB_, resolution_);
-    writeOnlyFramebuffer_ = flipFramebuffers_?framebufferA_:framebufferB_;
-    readOnlyFramebuffer_ = flipFramebuffers_?framebufferB_:framebufferA_;
+        framebufferA_->colorBufferInternalFormat(), 
+        resolution_
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -1229,6 +1208,46 @@ void Layer::adjustTargetResolution()
             )
         );
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::rebuildFramebuffers
+(
+    const vir::TextureBuffer::InternalFormat& internalFormat, 
+    const glm::ivec2& resolution
+)
+{
+    auto rebuildFramebuffer = []
+    (
+        vir::Framebuffer*& framebuffer, 
+        const vir::TextureBuffer::InternalFormat& internalFormat, 
+        const glm::ivec2& resolution
+    )
+    {
+        auto wrapModeX = framebuffer->colorBufferWrapMode(0);
+        auto wrapModeY = framebuffer->colorBufferWrapMode(1);
+        auto minFilterMode = framebuffer->colorBufferMinFilterMode();
+        auto magFilterMode = framebuffer->colorBufferMagFilterMode();
+        framebuffer->unbind();
+        if (framebuffer != nullptr)
+            delete framebuffer;
+        framebuffer = vir::Framebuffer::create
+        (
+            resolution.x, 
+            resolution.y, 
+            internalFormat
+        );
+        framebuffer->setColorBufferWrapMode(0, wrapModeX);
+        framebuffer->setColorBufferWrapMode(1, wrapModeY);
+        framebuffer->setColorBufferMinFilterMode(minFilterMode);
+        framebuffer->setColorBufferMagFilterMode(magFilterMode);
+    };
+
+    rebuildFramebuffer(framebufferA_, internalFormat, resolution);
+    rebuildFramebuffer(framebufferB_, internalFormat, resolution);
+    writeOnlyFramebuffer_ = flipFramebuffers_?framebufferA_:framebufferB_;
+    readOnlyFramebuffer_ = flipFramebuffers_?framebufferB_:framebufferA_;
 }
 
 }

@@ -394,10 +394,22 @@ not affect any cubemaps using this texture)");
                 ImGui::SetCursorPosX(startx + offset);
                 ImVec2 uv0{0,1};
                 ImVec2 uv1{1,0};
-                ImGui::Image((void*)(r->id()), previewSize, uv0, uv1);
+                ImGui::Image
+                (
+                    (void*)(uintptr_t)(r->id()), 
+                    previewSize, 
+                    uv0, 
+                    uv1
+                );
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                 {
-                    ImGui::Image((void*)(r->id()), hoverSize, uv0, uv1);
+                    ImGui::Image
+                    (
+                        (void*)(uintptr_t)(r->id()), 
+                        hoverSize, 
+                        uv0, 
+                        uv1
+                    );
                     ImGui::EndTooltip();
                 }
             };

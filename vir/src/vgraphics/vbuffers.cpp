@@ -10,6 +10,34 @@ namespace vir
 
 // Texture base --------------------------------------------------------------//
 
+/*
+Undefined,
+R_UNI_8,
+R_UI_8,
+RG_UNI_8,
+RG_UI_8,
+RGB_UNI_8,
+RGB_UI_8,
+RGBA_UNI_8,
+RGBA_UI_8,
+RGBA_SF_32
+*/
+
+const std::unordered_map<TextureBuffer::InternalFormat, std::string> 
+    TextureBuffer::internalFormatToName =
+{
+    {TextureBuffer::InternalFormat::Undefined, "Undefined"},
+    {TextureBuffer::InternalFormat::R_UNI_8, "R uint 8-bit norm."},
+    {TextureBuffer::InternalFormat::R_UI_8, "R uint 8-bit"},
+    {TextureBuffer::InternalFormat::RG_UNI_8, "RG uint 8-bit norm."},
+    {TextureBuffer::InternalFormat::RG_UI_8, "RG uint 8-bit)"},
+    {TextureBuffer::InternalFormat::RGB_UNI_8, "RGB uint 8-bit norm."},
+    {TextureBuffer::InternalFormat::RGB_UI_8, "RGB uint 8-bit)"},
+    {TextureBuffer::InternalFormat::RGBA_UNI_8, "RGBA uint 8-bit norm."},
+    {TextureBuffer::InternalFormat::RGBA_UI_8, "RGBA uint 8-bit"},
+    {TextureBuffer::InternalFormat::RGBA_SF_32, "RGBA float 32-bit"},
+};
+
 const std::unordered_map<TextureBuffer::WrapMode, std::string> 
     TextureBuffer::wrapModeToName =
 {
