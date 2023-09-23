@@ -28,7 +28,7 @@ protected:
 
 public:
 
-    OpenGLRenderer(){api_ = new OpenGLRendererAPI();}
+    OpenGLRenderer();
 
     void beginScene() override;
     void endScene() override;

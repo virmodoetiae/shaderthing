@@ -2,6 +2,7 @@
 #define V_GRAPHICS_CONTEXT
 
 #include <iostream>
+#include <string>
 
 namespace vir
 {
@@ -13,22 +14,20 @@ public:
     {
         OpenGL
     };
+protected:
+    std::string name_;
+    int versionMajor_;
+    int versionMinor_;
 public:
-    GraphicsContext()
-    {
-        #if DEBUG
-        std::cout << "Graphics context constructor" << std::endl; 
-        #endif
-    }
-    virtual ~GraphicsContext()
-    {
-        #if DEBUG
-        std::cout << "Graphics context destroyed" << std::endl;
-        #endif
-    }
+    GraphicsContext() = default;
+    virtual ~GraphicsContext(){}
+
+    const std::string& name() const {return name_;}
+    int versionMajor() const {return versionMajor_;}
+    int versionMinor() const {return versionMinor_;}
+
     virtual Type type() const = 0;
     virtual void initialize(void* nativeWindow) = 0;
-    virtual void swapBuffers() = 0;
     virtual void printErrors() const = 0;
 };
 

@@ -434,14 +434,15 @@ uniformLayerNamesToBeSet_(0)
 
     auto layerName = new char[headerSource.size()];
     uint32_t rendersTo, isVertexEditorVisible, showSelfPreview, vertexSourceSize, 
-        fragmentSourceSize, nUniforms, xWrap, yWrap, magFilter, minFilter;
+        fragmentSourceSize, nUniforms, internalFormat, xWrap, yWrap, magFilter, 
+        minFilter;
     sscanf
     (
         headerSource.c_str(),
-        "%s %d %d %f %f %d %d %d %d %d %d %d %d %d",
+        "%s %d %d %f %f %d %d %d %d %d %d %d %d %d %d",
         layerName, 
         &resolution_.x, &resolution_.y, &depth_, &resolutionScale_, 
-        &rendersTo, &isVertexEditorVisible,
+        &rendersTo, &isVertexEditorVisible, &internalFormat,
         &xWrap, &yWrap, &magFilter, &minFilter,
         &vertexSourceSize, &fragmentSourceSize, &nUniforms
     );
@@ -654,9 +655,19 @@ uniformLayerNamesToBeSet_(0)
 
     // Init framebuffers
     flipFramebuffers_ = false;
-    framebufferA_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
+    framebufferA_ = vir::Framebuffer::create
+    (
+        resolution_.x, 
+        resolution_.y, 
+        (vir::TextureBuffer::InternalFormat)internalFormat
+    );
     readOnlyFramebuffer_ = framebufferA_;
-    framebufferB_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
+    framebufferB_ = vir::Framebuffer::create
+    (
+        resolution_.x, 
+        resolution_.y, 
+        (vir::TextureBuffer::InternalFormat)internalFormat
+    );
     writeOnlyFramebuffer_ = framebufferB_;
 
     // Set framebuffer color attachment wrapping and filtering options
@@ -701,9 +712,12 @@ void Layer::saveState(std::ofstream& file)
     char data[200];
     
     // Self-rendered texture wrapping and filtering options
-    int xWrap = 0, yWrap = 0, magFilter = 0, minFilter = 0;
+    int internalFormat = 0, xWrap = 0, yWrap = 0, magFilter = 0, 
+        minFilter = 0;
     if (readOnlyFramebuffer_ != nullptr)
     {
+        internalFormat = 
+            int(readOnlyFramebuffer_->colorBufferInternalFormat());
         xWrap = int(readOnlyFramebuffer_->colorBufferWrapMode(0));
         yWrap = int(readOnlyFramebuffer_->colorBufferWrapMode(1));
         magFilter = int(readOnlyFramebuffer_->colorBufferMagFilterMode());
@@ -712,11 +726,11 @@ void Layer::saveState(std::ofstream& file)
     sprintf
     (
         data, 
-        "%s %d %d %.9f %.9f %d %d %d %d %d %d %d %d %d", 
+        "%s %d %d %.9f %.9f %d %d %d %d %d %d %d %d %d %d", 
         name_.c_str(), 
         resolution_.x, resolution_.y, 
         depth_, resolutionScale_, 
-        (int)rendersTo_, (int)isVertexEditorVisible_, 
+        (int)rendersTo_, (int)isVertexEditorVisible_, internalFormat,
         xWrap, yWrap, magFilter, minFilter,
         vertexSource_.size(), fragmentSource_.size(), (int)uniforms_.size()
     );

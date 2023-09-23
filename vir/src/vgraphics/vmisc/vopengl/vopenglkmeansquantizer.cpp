@@ -1263,8 +1263,18 @@ void OpenGLKMeansQuantizer::resetSync()
 // Constructor, destructor
 
 OpenGLKMeansQuantizer::OpenGLKMeansQuantizer() :
+validOpenGLVersion_(true),
 firstWaitSyncCall_(true)
 {
+    auto context = GlobalPtr<Window>::instance()->context();
+    if (context->versionMajor() < 4)
+        validOpenGLVersion_ = false;
+    else if (context->versionMinor() < 3)
+        validOpenGLVersion_ = false;
+
+    if (!validOpenGLVersion_)
+        return;
+
     // Compile compute shader stages
     if (!OpenGLKMeansQuantizer::computeShaderStagesCompiled)
     {

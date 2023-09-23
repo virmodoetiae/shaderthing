@@ -1,14 +1,6 @@
 #include "vpch.h"
 #include "vgraphics/vopengl/vopenglrenderer.h"
 
-#if defined(__WIN32__)
-#include "windows.h"
-extern "C" {
-    __declspec(dllexport) DWORD NvOptimusEnablement = 1;
-    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
-}
-#endif
-
 namespace vir
 {
 
@@ -66,6 +58,12 @@ void OpenGLRendererAPI::setBlending(bool flag)
 }
 
 // Renderer ------------------------------------------------------------------//
+
+OpenGLRenderer::OpenGLRenderer()
+{
+    api_ = new OpenGLRendererAPI();
+    deviceName_ = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+}
 
 void OpenGLRenderer::beginScene()
 {

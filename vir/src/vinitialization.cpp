@@ -49,10 +49,11 @@ void initialize
     }
     window->tuneIn();
     InputState::initialize()->tuneIn();
-    Renderer::initialize();
-    GlobalPtr<Renderer>::instance()->setDepthTesting(true);
-    // Remove dangling ptrs
-    window = nullptr;
+    auto renderer = Renderer::initialize();
+    renderer->setDepthTesting(true);
+    
+    std::cout << "Context: " << window->context()->name() << std::endl;
+    std::cout << "Device: " << renderer->deviceName() << std::endl;
 }
 
 }

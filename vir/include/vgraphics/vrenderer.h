@@ -24,6 +24,9 @@ class Renderer
 {
 protected:
 
+    // Name of the rendering device (i.e., the graphics card)
+    std::string deviceName_;
+
     // Actual (low-level) api-specific rendering commands
     RendererAPI* api_;
 
@@ -39,6 +42,9 @@ protected:
 public:
 
     virtual ~Renderer();
+
+    // Accessors
+    const std::string& deviceName() const {return deviceName_;}
 
     // Use this to initialize the GlobalPtr to Renderer
     static Renderer* initialize();

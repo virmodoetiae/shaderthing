@@ -10,31 +10,51 @@ namespace vir
 
 GLFWOpenGLWindow::GLFWOpenGLWindow
 (
-    uint32_t w, 
-    uint32_t h, 
-    std::string n, 
-    bool r
+    uint32_t width, 
+    uint32_t height, 
+    std::string name, 
+    bool resizable
 ) :
-    Window(w, h, n, r)
+    Window(width, height, name, resizable)
 {
     time_ = Time::initialize<GLFWTime>();
     context_ = new OpenGLContext();
-    // OpenGL 4.3 minimum version supporting compute shaders
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); 
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    //glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
-    if (r)
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    else
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    glfwWindow_ = glfwCreateWindow(w, h, n.c_str(), NULL, NULL);
+
+    // This is a very peculiar (read 'stupid') approach to finding the
+    // highest supported OpenGL version on the system. Actually untested on
+    // systems that do not support 4.6, so I am not sure this will work, but
+    // in all honestly, we are talking about 5-6+ year old graphics cards (as of
+    // late 2023)
+    std::vector<std::pair<int, int>> glVersions = 
+    {
+        {4,6},
+        {4,5},
+        {4,4},
+        {4,3}, // <- Minimum version supporting compute shaders
+        {4,2},
+        {4,1},
+        {4,0},
+        {3,3} // <- I don't care about supporting OpenGL versions below this one
+    };
+    for (auto glVersion : glVersions)
+    {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, glVersion.first);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, glVersion.second);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); 
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        //glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+        if (resizable)
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+        else
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindow_ = glfwCreateWindow(width, height, name.c_str(), NULL, NULL);
+        if (glfwWindow_ != NULL)
+            break;
+    }
     if (glfwWindow_ == NULL)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
-        throw std::exception();
+        throw std::runtime_error("Failed to create GLFW window");
     }
     context_->initialize(glfwWindow_); 
     setVSync(true);
@@ -128,7 +148,7 @@ bool GLFWOpenGLWindow::isOpen()
 void GLFWOpenGLWindow::update()
 {
     time_->update();
-    context_->swapBuffers();
+    glfwSwapBuffers(glfwWindow_);
     glfwPollEvents();
 }
 

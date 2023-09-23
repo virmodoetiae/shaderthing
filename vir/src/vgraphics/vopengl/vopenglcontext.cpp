@@ -19,22 +19,13 @@ void OpenGLContext::initialize(void* nativeWindow)
         }
         gladInitialized_ = true;
     }
-    const unsigned char* glr(glGetString(GL_RENDERER));
-    std::cout << "Rendered: ";
-    std::cout << glr << std::endl;
-}
-
-void OpenGLContext::swapBuffers()
-{
-    // It seems that at any point there are two buffers for the screen
-    // pixels: one is the one used for drawing only (not visible), the other
-    // is the one actually rendered to the screen (not operated on). So, the
-    // program writes on the hidden buffer while the visibile one is 
-    // displayed on screen, and at the next frame, when the writing to the
-    // hidden buffer has finished, they are swapped so that we get a screen
-    // updated. This is called double buffer. The visible is know as the
-    // front buffer, the hidden as back buffer
-    glfwSwapBuffers(glfwWindow_);
+    name_ = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    name_ = "OpenGL "+name_;
+    GLint majorVersion, minorVersion, patch, profile;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+    versionMajor_ = int(majorVersion);
+    versionMinor_ = int(minorVersion);
 }
 
 void OpenGLContext::printErrors() const

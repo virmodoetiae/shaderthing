@@ -15,6 +15,8 @@ class OpenGLKMeansQuantizer : public KMeansQuantizer
 {
 protected:
 
+    bool validOpenGLVersion_;
+
     class ComputeShaderStage
     {
     protected:

@@ -1,6 +1,18 @@
 #include "vpch.h"
 #include "vgraphics/vopengl/vopenglrenderer.h"
 
+// This bit of code ensures that the most powerful GPU on the system (if there
+// are more than one) is used, at least on Windows. On other systems, I have
+// no clue, but I suspect it cannot be set from ease from the C++ side of
+// things
+#if defined(__WIN32__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+#include "windows.h"
+extern "C" {
+    __declspec(dllexport) DWORD NvOptimusEnablement = 1;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
+
 namespace vir
 {
 

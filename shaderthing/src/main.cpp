@@ -1,4 +1,4 @@
-#ifdef _WIN32
+#if defined(__WIN32__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #include <windows.h>
 #endif
 
@@ -9,7 +9,7 @@ int main()
 {
 
 // Hide console if running on Windows
-#ifdef _WIN32
+#if defined(__WIN32__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32)
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 #endif
     ShaderThing::ShaderThingApp();

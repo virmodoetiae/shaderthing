@@ -18,7 +18,6 @@ public:
     Type type() const override {return Type::OpenGL;} 
     GLFWwindow* glfwWindow(){return glfwWindow_;}
     void initialize(void* nativeWindow) override;
-    void swapBuffers() override;
     void printErrors() const override;
 };
 
