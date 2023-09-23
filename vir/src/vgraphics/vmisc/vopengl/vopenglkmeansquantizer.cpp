@@ -669,20 +669,9 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     bool fastKMeans,
     bool computeDelta,
     uint32_t inputUnit,
-    bool isSF32
+    bool isFloat32
 )
 {
-    //
-    deltaComputed_ = computeDelta;
-
-    // Limit palette size (honestly, you cannot tell a difference above 256)
-    paletteSize = std::min(std::max(paletteSize,2u),(computeDelta)?255u:256u);
-    
-    // Bind buffers
-    // Input image
-    glActiveTexture(GL_TEXTURE0+inputUnit);
-    glBindTexture(GL_TEXTURE_2D, id);
-    
     // Figure out which compute shaders to use based on input texture
     // internal format
     ComputeShaderStage* findMaxSqrDistCol;
@@ -690,7 +679,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     ComputeShaderStage* buildClustersFromPalette;
     ComputeShaderStage* updatePaletteFromClusters;
     ComputeShaderStage* quantizeInput;
-    if(isSF32)
+    if(isFloat32)
     {
         findMaxSqrDistCol = &computeShader_findMaxSqrDistColSF32;
         setNextPaletteCol = &computeShader_setNextPaletteColSF32;
@@ -711,6 +700,21 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         quantizeInput = &computeShader_quantizeInputUI8;
     }
 
+    // Cache for possibly re-initializing buffers
+    static bool isFloat320(isFloat32);
+    bool reInitializeBuffers(isFloat320 != isFloat32);
+    
+    //
+    deltaComputed_ = computeDelta;
+
+    // Limit palette size (honestly, you cannot tell a difference above 256)
+    paletteSize = std::min(std::max(paletteSize,2u),(computeDelta)?255u:256u);
+    
+    // Bind buffers
+    // Input image
+    glActiveTexture(GL_TEXTURE0+inputUnit);
+    glBindTexture(GL_TEXTURE_2D, id);
+
     uint32_t targetLevel = 0;
     int mWidth = width;
     int mHeight = height;
@@ -719,7 +723,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         fastKMeans && 
         (
             paletteSize_ != paletteSize || 
-            recalculatePalette
+            recalculatePalette ||
+            reInitializeBuffers
         )
     )
     {
@@ -760,7 +765,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         GL_FALSE, 
         0, 
         GL_READ_WRITE, 
-        isSF32 ? GL_RGBA32F : GL_RGBA8UI
+        isFloat32 ? GL_RGBA32F : GL_RGBA8UI
     );
     
     // Palette data texture
@@ -784,7 +789,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         clusteringError_);
 
     // Resize indexedData if necessary
-    if (width_ != width || height_ != height)
+    if (width_ != width || height_ != height || reInitializeBuffers)
     {
         width_ = width;
         height_ = height;
@@ -839,12 +844,12 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             (
                 GL_TEXTURE_2D, 
                 0, 
-                isSF32 ? GL_RGBA32F : GL_RGBA8,
+                isFloat32 ? GL_RGBA32F : GL_RGBA8,
                 width, 
                 height, 
                 0, 
                 GL_RGBA, 
-                isSF32 ? GL_FLOAT : GL_UNSIGNED_BYTE, 
+                isFloat32 ? GL_FLOAT : GL_UNSIGNED_BYTE, 
                 NULL
             );
             glGenerateMipmap(GL_TEXTURE_2D);
@@ -863,12 +868,12 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             GL_FALSE, 
             0, 
             GL_READ_WRITE, 
-            isSF32 ? GL_RGBA32F : GL_RGBA8UI // 8UI
+            isFloat32 ? GL_RGBA32F : GL_RGBA8UI // 8UI
         );
     }
 
     // Resize paletteData if necessary
-    if (paletteSize_ != paletteSize)
+    if (paletteSize_ != paletteSize || reInitializeBuffers)
     {
         reseedPalette = true;
         recalculatePalette = true;
@@ -981,14 +986,14 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     }
 
-    if (recalculatePalette)
+    if (recalculatePalette || reInitializeBuffers)
     {
         // Build initial palette
 
         // I suspect that that the largest bottleneck is this first CPU-based 
         // loop from which async OpenGL commands are issued. Is there a 
         // smarter way?
-        if (reseedPalette)
+        if (reseedPalette || reInitializeBuffers)
         {
             for (int counter = 0; counter < paletteSize; counter++)
             {
@@ -1189,7 +1194,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         GL_FALSE, 
         0, 
         GL_READ_WRITE, 
-        isSF32 ? GL_RGBA32F : GL_RGBA8UI
+        isFloat32 ? GL_RGBA32F : GL_RGBA8UI
     );
     quantizeInput->use();
     quantizeInput->run(width, height, 1);
@@ -1234,6 +1239,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         glBindTexture(GL_TEXTURE_2D, id);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
+
+    isFloat320 = isFloat32;
 }
 
 void OpenGLKMeansQuantizer::waitSync()
