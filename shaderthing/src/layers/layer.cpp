@@ -190,9 +190,19 @@ uniformLayerNamesToBeSet_(0)
 
     // Init framebuffers
     flipFramebuffers_ = false;
-    framebufferA_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
+    framebufferA_ = 
+        vir::Framebuffer::create
+        (
+            resolution_.x, 
+            resolution_.y
+        );
     readOnlyFramebuffer_ = framebufferA_;
-    framebufferB_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
+    framebufferB_ = 
+        vir::Framebuffer::create
+        (
+            resolution_.x, 
+            resolution_.y
+        );
     writeOnlyFramebuffer_ = framebufferB_;
 
     // Init default uniforms
