@@ -40,6 +40,11 @@ TODO ---------------------------------------------------------------------------
 (X) Fix text replace tool not triggering appearence of fragment shader 
     compilation button if some text was actually replaced
 
+(X) Add rendering controls (to iFrame uniform) to allow pausing/resetting
+    overall rendering flow. This is separate from the iTime pause/resume
+    controls as in iTime is simply a time-like varying uniform that is
+    not bound to the rendering process itself
+
 (W) Expand code repository section
 
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
