@@ -306,7 +306,6 @@ bool GifEncoder::closeFile()
     fclose(file_);
     file_ = nullptr;
     firstFrame_ = false;
-    delete quantizer_;
     delete[] indexedTexture_;
     delete[] palette_;
     return true;
