@@ -53,6 +53,14 @@ void LayerManager::reset()
 
 //----------------------------------------------------------------------------//
 
+void LayerManager::clearFramebuffers()
+{
+    for (auto* layer : layers_)
+        layer->clearFramebuffers();
+}
+
+//----------------------------------------------------------------------------//
+
 bool LayerManager::update()
 {
     uint32_t i = 0;

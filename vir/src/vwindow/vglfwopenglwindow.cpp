@@ -145,10 +145,11 @@ bool GLFWOpenGLWindow::isOpen()
     return !glfwWindowShouldClose(glfwWindow_);
 }
 
-void GLFWOpenGLWindow::update()
+void GLFWOpenGLWindow::update(bool swapBuffers)
 {
     time_->update();
-    glfwSwapBuffers(glfwWindow_);
+    if (swapBuffers)
+        glfwSwapBuffers(glfwWindow_);
     glfwPollEvents();
 }
 

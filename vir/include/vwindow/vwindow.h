@@ -86,8 +86,8 @@ public:
     // True as long as the window is open
     virtual bool isOpen() = 0;
 
-    // Window update (e.g. swap context buffers, etc.)
-    virtual void update() = 0; 
+    // Window update
+    virtual void update(bool swapBuffers=true) = 0; 
 
     // Accessors
     Time* time() {return time_;}

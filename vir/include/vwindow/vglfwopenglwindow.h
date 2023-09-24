@@ -50,7 +50,7 @@ public :
 
     bool isOpen() override;
 
-    void update() override;
+    void update(bool swapBuffers=true) override;
 
     // Separate events by *, then delcare the appropriately overridden 
     // onReceive()

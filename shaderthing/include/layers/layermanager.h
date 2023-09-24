@@ -31,6 +31,8 @@ public:
     ~LayerManager();
     
     void removeResourceFromUniforms(Resource* resource);
+
+    void clearFramebuffers();
     
     void reset();
 

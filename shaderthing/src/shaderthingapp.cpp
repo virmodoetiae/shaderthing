@@ -72,16 +72,19 @@ ShaderThingApp::ShaderThingApp()
     auto renderer = vir::GlobalPtr<vir::Renderer>::instance();
     while(window->isOpen())
     {
-        renderer->beginScene();
-        vir::Framebuffer* renderTarget = 
-            exportTool_->isExporting() ? 
-            exportTool_->exportFramebuffer() : 
-            nullptr;
-        int nRendersPerFrame = exportTool_->isExporting() ?
-            exportTool_->nRendersPerFrame() : 1;
-        for (int i=0; i<nRendersPerFrame; i++)
-            renderLayersTo(renderTarget);
-        renderer->endScene();
+        if (!isRenderingPausedCRef())
+        {
+            renderer->beginScene();
+            vir::Framebuffer* renderTarget = 
+                exportTool_->isExporting() ? 
+                exportTool_->exportFramebuffer() : 
+                nullptr;
+            int nRendersPerFrame = exportTool_->isExporting() ?
+                exportTool_->nRendersPerFrame() : 1;
+            for (int i=0; i<nRendersPerFrame; i++)
+                renderLayersTo(renderTarget);
+            renderer->endScene();
+        }
         updateGui();
         update();
     }
@@ -138,6 +141,15 @@ void ShaderThingApp::setMouseInputsEnabled(bool status)
         this->disableCurrentlyReceiving(vir::Event::MouseMotion);
         this->disableCurrentlyReceiving(vir::Event::MouseButtonRelease);
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void ShaderThingApp::restartRendering()
+{
+    frame_ = -1;
+    time_ = 0.f;
+    layerManager_->clearFramebuffers();
 }
 
 //----------------------------------------------------------------------------//
@@ -258,7 +270,7 @@ void ShaderThingApp::restart()
     cameraPosition = glm::vec3(0,0,-1);
     shaderCamera_->setPosition(cameraPosition);
     shaderCamera_->setZPlusIsLookDirection(true);
-    for (int i=0; i<11; i++)
+    for (int i=0; i<12; i++)
         stateFlags_[i] = (i>6 && i<10);
 
     // Restart app components
@@ -381,6 +393,7 @@ void ShaderThingApp::loadProject()
     setShaderCameraDirectionInputsEnabled(isCameraDirectionInputEnabled);
     setMouseInputsEnabled(isMouseInputEnabled);
     frame_ = 0; // Frame never saved as it might be used by shaders for init.
+    stateFlags_[ST_IS_RENDERING_PAUSED] = false;
     shaderCamera_->setPosition(cp);
     shaderCamera_->setDirection(cd);
     auto window = vir::GlobalPtr<vir::Window>::instance();
@@ -425,10 +438,27 @@ void ShaderThingApp::update()
     }
     
     if (exportTool_->isExporting())
+    {
         time_ += exportTool_->exportTimeStep();
-    else if (!stateFlags_[ST_IS_TIME_PAUSED])
-        time_ += window->time()->outerTimestep();
-    frame_++;
+        frame_++;
+    }
+    else
+    {
+        // Recall that time is just a uniform with a one-way coupling to
+        // rendering: if the rendering is going as usual, time is governed
+        // by its own pause control, it the rendering is paused, pause the
+        // time uniform as well for good measure
+        static bool& isRenderingPaused(stateFlags_[ST_IS_RENDERING_PAUSED]);
+        static bool& isTimePaused(stateFlags_[ST_IS_TIME_PAUSED]);
+        if (!isRenderingPaused)
+        {
+            frame_++;
+            if (!isTimePaused)
+                time_ += window->time()->outerTimestep();
+        }
+        else if (!isTimePaused)
+            isTimePaused = true;
+    }
 
     // Update window title
     std::string projectTitle
@@ -461,7 +491,7 @@ void ShaderThingApp::update()
     }
 
     //
-    window->update();
+    window->update(!stateFlags_[ST_IS_RENDERING_PAUSED]);
 }
 
 }

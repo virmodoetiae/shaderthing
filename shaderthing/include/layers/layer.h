@@ -186,6 +186,9 @@ public:
 
     ~Layer();
 
+    //
+    void clearFramebuffers();
+
     // Removes the given resorces from this buffer's uniforms list, if present
     void removeResourceFromUniforms(Resource* resource);
 

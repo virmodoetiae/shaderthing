@@ -1273,4 +1273,15 @@ void Layer::rebuildFramebuffers
     readOnlyFramebuffer_ = flipFramebuffers_?framebufferB_:framebufferA_;
 }
 
+//----------------------------------------------------------------------------//
+
+void Layer::clearFramebuffers()
+{
+    rebuildFramebuffers
+    ( 
+        framebufferA_->colorBufferInternalFormat(), 
+        resolution_
+    );
+}
+
 }

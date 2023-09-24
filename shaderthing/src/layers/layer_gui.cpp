@@ -5,6 +5,7 @@
 #include "resources/resourcemanager.h"
 #include "tools/findreplacetexttool.h"
 #include "misc/misc.h"
+#include "data/data.h"
 
 #include "vir/include/vir.h"
 
@@ -483,9 +484,42 @@ void Layer::renderGuiUniforms()
                 if (ImGui::Button("Delete", ImVec2(-1, 0)))
                     deleteRow = row-nDefaultUniforms;
             }
+            else if (uniform->name == "iFrame")
+            {
+                if (ImGui::Button(ICON_FA_UNDO, ImVec2(2.2*fontSize, 0)))
+                    app_.restartRendering();
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    static ImVec4 ctrlRColor = 
+                        ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
+                    ImGui::Text("Restart rendering");
+                    ImGui::SameLine();
+                    ImGui::PushStyleColor(ImGuiCol_Text, ctrlRColor);
+                    ImGui::Text("Ctrl+R");
+                    ImGui::PopStyleColor();
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                static bool& isRenderingPaused(app_.isRenderingPausedRef());
+                static bool& isTimePaused(app_.isTimePausedRef());
+                // Pause/resume rendering, which also affects iTime (but the
+                // opposite is not true)
+                if 
+                (
+                    ImGui::Button
+                    (
+                        isRenderingPaused ? ICON_FA_PLAY : ICON_FA_PAUSE, 
+                        ImVec2(-1, 0)
+                    )
+                )
+                {
+                    isRenderingPaused = !isRenderingPaused;
+                    isTimePaused = isRenderingPaused;
+                }
+            }
             else if (uniform->name == "iTime")
             {
-                std::string text = (timePaused_) ? "Resume" : "Pause";
+                std::string text = (timePaused_) ? ICON_FA_PLAY : ICON_FA_PAUSE;
                 if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
                     timePaused_ = !timePaused_;
             }
@@ -667,7 +701,7 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
                     }
                     bool input(false);
                     if (uniform->name == "iFrame")
-                        ImGui::Text(std::to_string(frame_).c_str());
+                        ImGui::Text(std::to_string(std::max(frame_,0)).c_str());
                     else
                     {
                         input = ImGui::SliderInt

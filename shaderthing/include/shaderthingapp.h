@@ -19,6 +19,7 @@ namespace ShaderThing
 #define ST_IS_CAMERA_DIRECTION_INPUT_ENABLED 8
 #define ST_IS_MOUSE_INPUT_ENABLED 9
 #define ST_NEW_PROJECT_CONFIRMATION_PENDING 10
+#define ST_IS_RENDERING_PAUSED 11
 
 class Layer;
 class LayerManager;
@@ -36,7 +37,7 @@ class ShaderThingApp : public vir::Event::Receiver
 private:
 
     // Generic state flags (see ST_ defines)
-    bool stateFlags_[11];
+    bool stateFlags_[12];
 
     // Window state
     float time_ = 0.0;
@@ -82,10 +83,22 @@ public:
     void setShaderCameraPositionInputsEnabled(bool status);
     void setShaderCameraDirectionInputsEnabled(bool status);
     void setMouseInputsEnabled(bool status);
+    
+    // Clears all layer framebuffers, rersets frame_ and time_ to 0
+    void restartRendering();
 
     // Accessors -------------------------------------------------------------//
     float& timeRef(){return time_;}
     bool& isTimePausedRef(){return stateFlags_[ST_IS_TIME_PAUSED];}
+    const bool& isTimePausedCRef() const 
+    {
+        return stateFlags_[ST_IS_TIME_PAUSED];
+    }
+    bool& isRenderingPausedRef() {return stateFlags_[ST_IS_RENDERING_PAUSED];}
+    const bool& isRenderingPausedCRef() const 
+    {
+        return stateFlags_[ST_IS_RENDERING_PAUSED];
+    }
     int& frameRef(){return frame_;}
     glm::ivec2& resolutionRef(){return resolution_;}
     glm::vec2& viewportRef(){return viewport_;}

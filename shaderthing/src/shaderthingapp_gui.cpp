@@ -12,7 +12,6 @@
 #include "misc/misc.h"
 
 #include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
-
 #include "thirdparty/imgui/imgui_internal.h"
 
 namespace ShaderThing
@@ -91,6 +90,7 @@ void ShaderThingApp::updateGui()
     static ImFontConfig config; 
     if (!fontLoaded)
     {
+        float baseFontSize = 26.f;
         config.PixelSnapH = true;
         config.OversampleV = 3.0;
         config.OversampleH = 3.0;
@@ -103,7 +103,7 @@ void ShaderThingApp::updateGui()
         (
             (void*)FontData::CousineRegularData,
             FontData::CousineRegularSize, 
-            26,
+            baseFontSize,
             &config,
             io.Fonts->GetGlyphRangesDefault()
         );
@@ -113,7 +113,7 @@ void ShaderThingApp::updateGui()
         (
             (void*)FontData::CousineRegularData, 
             FontData::CousineRegularSize,
-            26,
+            baseFontSize,
             &config,
             io.Fonts->GetGlyphRangesCyrillic()
         );
@@ -121,10 +121,27 @@ void ShaderThingApp::updateGui()
         (
             (void*)FontData::CousineRegularData, 
             FontData::CousineRegularSize,
-            26,
+            baseFontSize,
             &config,
             io.Fonts->GetGlyphRangesGreek()
         );
+
+        // Font icons from FontAwesome5 (free)
+        float iconFontSize = baseFontSize*2.f/3.f;
+        static const ImWchar iconRanges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
+        ImFontConfig iconConfig; 
+        iconConfig.MergeMode = true; 
+        iconConfig.PixelSnapH = true; 
+        iconConfig.GlyphMinAdvanceX = iconFontSize;
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        ( 
+            (void*)FontData::FontAwesome5FreeSolid900Data, 
+            FontData::FontAwesome5FreeSolid900Size, 
+            iconFontSize,
+            &iconConfig, 
+            iconRanges
+        );
+
         io.Fonts->Build();
         fontLoaded = true;
         font->Scale = 0.6;
@@ -189,6 +206,9 @@ name##SetBuilt0 = name##SetBuilt;
         else 
             stateFlags_[ST_SAVE_PROJECT] = true;
     }
+    else if (Misc::isCtrlKeyPressed(ImGuiKey_R)) // Restart rendering
+        restartRendering();
+
 
     // Menu bar ----------------------------------------------------------------
     if (ImGui::BeginMenuBar())
@@ -211,6 +231,7 @@ name##SetBuilt0 = name##SetBuilt;
             ImGui::Separator();
             OZ_MENU_ENTRY(exportTool_, "Export")
             ImGui::EndMenu();
+            
         }
         if (ImGui::BeginMenu("Settings"))
         {
@@ -370,7 +391,7 @@ name##SetBuilt0 = name##SetBuilt;
         exportTool_->renderGui();
 
     ImGui::End();
-    //ImGui::ShowDemoWindow();
+    ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 
