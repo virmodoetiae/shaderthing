@@ -390,7 +390,7 @@ name##SetBuilt0 = name##SetBuilt;
         exportTool_->renderGui();
 
     ImGui::End();
-    ImGui::ShowDemoWindow();
+    //ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 
