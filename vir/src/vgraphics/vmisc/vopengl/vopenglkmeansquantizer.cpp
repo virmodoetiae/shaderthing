@@ -1287,9 +1287,8 @@ firstWaitSyncCall_(true)
         );
         std::string deviceName(GlobalPtr<Renderer>::instance()->deviceName());
         errorMessage_ =
-R"(The quantizer requires an OpenGL version >= 4.3 to run, but your 
-graphics card in use ()"+deviceName+R"() only supports OpenGL up to version )"+
-glVersion;
+R"(This feature requires an OpenGL version >= 4.3, but your graphics card in 
+use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
         return;
     }
 

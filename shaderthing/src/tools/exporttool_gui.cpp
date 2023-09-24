@@ -46,6 +46,22 @@ void ExportTool::renderGui()
 
     //--------------------------------------------------------------------------
 
+    // Unorthodox way to get and store any errors
+    static bool firstCall(true);
+    static bool isGifSupported(true);
+    static std::string isGifSupportedErrorMessage;
+    if (firstCall)
+    {
+        auto gifEncoder = new vir::GifEncoder();
+        isGifSupported = gifEncoder->canRunOnDeviceInUse();
+        if (!isGifSupported)
+            isGifSupportedErrorMessage = gifEncoder->errorMessage();
+        delete gifEncoder;
+        firstCall = false;
+    }
+
+    static vir::GifEncoder gifEncoder;
+
     float x0 = ImGui::GetCursorPosX();
     ImGui::Text("Export type                 ");
     ImGui::SameLine();
@@ -62,8 +78,17 @@ void ExportTool::renderGui()
     {
         for(auto e : exportTypeToName)
         {
-            if (ImGui::Selectable(e.second.c_str()))
+            bool disabled(e.first == ExportType::GIF && !isGifSupported);
+            std::string entryName = e.second;
+            if (disabled)
+            {
+                ImGui::BeginDisabled();
+                entryName = "GIF (requires OpenGL v4.3 or above)";
+            }
+            if (ImGui::Selectable(entryName.c_str()))
                 exportType_ = e.first;
+            if (disabled)
+                ImGui::EndDisabled();
         }
         ImGui::EndCombo();
     }

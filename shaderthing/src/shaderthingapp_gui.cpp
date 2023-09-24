@@ -59,7 +59,6 @@ if (cmpt->isGuiInMenu())                                                    \
     {                                                                       \
         if (disable)                                                        \
         {                                                                   \
-            float textWidth(40.0f*fontSize);                                \
             ImGui::PushTextWrapPos(40.0f*fontSize);                         \
             ImGui::Text(disableText);                                       \
             ImGui::PopTextWrapPos();                                        \
