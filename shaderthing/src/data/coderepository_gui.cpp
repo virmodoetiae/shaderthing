@@ -83,8 +83,11 @@ if (ImGui::TreeNode(name))                                                  \
 "factor",
 R"(vec4 mixColors(vec4 c0, vec4 c1)
 {
+    c0.a = min(max(c0.a,0),1);
+    c1.a = min(max(c1.a,0),1);
     return (1-c1.a)*c0+vec4(c1.a*c1.rgb,1);
 })")
+            ImGui::TreePop();
         }
 
         //--------------------------------------------------------------------//

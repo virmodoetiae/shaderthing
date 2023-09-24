@@ -15,6 +15,12 @@ Compared to Shadertoy, some features are currently missing, primarily sound/vide
 
 Whether you are merely curious about or already have solid skills in the field of shaders, give it a try! Both the source code and the [executables](https://github.com/virmodoetiae/shaderthing/releases/) are distributed under a permissive modified [zlib/linpng license](https://opensource.org/license/zlib/).
 
+# Requirements for running
+
+ShaderThing does not directly deal with OpenGL code, that is what the vir library is for (it can be thought of as a (fairly) rudimentary "engine"). Nonetheless, the only graphics API currently supported by the vir library is OpenGL.
+
+As of the latest release, ShaderThing requires a GPU supporting at least **OpenGL v3.3**, which is the case for virtually all consumer GPUs built in the last decade (as of late 2023). Please consider, howerever, that OpenGL v4.3 or greater is recommended for access to the GIF exporter tool (since it is based on compute shaders) and the color quantizer tool (also based on compute shaders). Otherwise, the code will run just as fine but said features will be disabled.
+
 # Repository structure
 
 This repository consists of:

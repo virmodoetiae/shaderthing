@@ -47,6 +47,18 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand code repository section
 
+( ) Find a way to differentiate between global/shared uniforms and uniforms
+    that are specific to the Layer under consideration in the Uniforms tab
+
+( ) Re-work shader controls logic: 
+    manage automatic fragment shader header addition with automatic uniform
+    manager, so the user only needs to manage them via the Uniforms tab,
+    instead of having to type in the uniform declarations in the shader code
+    
+( ) Add a "Commons" shader header which is automatically embedded in every
+    fragment shader to enable the user to avoid core repetition (e.g., like
+    in ShaderToy)
+
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
 
@@ -77,11 +89,15 @@ TODO ---------------------------------------------------------------------------
 
 TO-CONSIDER --------------------------------------------------------------------
 
+*   Remove vertex shader edition controls: it will just be more difficult to
+    manage the shared/automatic fragment shader headers generation part, when 
+    implemented, and it brings (at least in my eyes) very few benefits
+
 *   Enable option to use the quantizer palette for GIF quantization on GIF 
     exporting
 
 *   Record video tutorial(s) of application usage, host them on YouTube, 
     possibly find a way to add tutorial links within the application.
 
-*   Re-work the save system to leverage a more structure storage format, e.g.,
-    JSON-like files
+*   Re-work the save system to leverage a more structured and update-resilient
+    storage format, e.g., JSON-like files
