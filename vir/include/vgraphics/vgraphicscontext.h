@@ -18,6 +18,7 @@ protected:
     std::string name_;
     int versionMajor_;
     int versionMinor_;
+    std::string shadingLanguageVersion_;
 public:
     GraphicsContext() = default;
     virtual ~GraphicsContext(){}
@@ -25,6 +26,10 @@ public:
     const std::string& name() const {return name_;}
     int versionMajor() const {return versionMajor_;}
     int versionMinor() const {return versionMinor_;}
+    const std::string& shadingLanguageVersion() const 
+    {
+        return shadingLanguageVersion_;
+    }
 
     virtual Type type() const = 0;
     virtual void initialize(void* nativeWindow) = 0;

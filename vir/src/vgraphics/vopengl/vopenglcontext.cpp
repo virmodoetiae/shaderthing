@@ -26,6 +26,10 @@ void OpenGLContext::initialize(void* nativeWindow)
     glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
     versionMajor_ = int(majorVersion);
     versionMinor_ = int(minorVersion);
+    shadingLanguageVersion_ = 
+        std::to_string(versionMajor_) +
+        std::to_string(versionMinor_) +
+        "0";
 }
 
 void OpenGLContext::printErrors() const
