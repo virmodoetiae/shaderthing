@@ -124,11 +124,10 @@ R"(vec3 rotate(vec3 v, float t, vec3 a)
         CODE_ENTRY(
 "Sobel filter",
 "This complete shader applies a Sobel filter to an input texture 'iTexture0'",
-R"(#version 460 core
+R"(#version 330 core
 
 out vec4 fragColor;
-in vec2 pos;
-in vec2 txc;
+in vec2 tc;
 
 uniform vec2 iResolution;
 uniform sampler2D iTexture0;
@@ -151,7 +150,7 @@ void make_kernel(inout vec4 n[9], sampler2D tex, vec2 coord)
 void main() 
 {
     vec4 n[9];
-    make_kernel(n, iTexture0, txc);
+    make_kernel(n, iTexture0, tc);
     vec4 sobel_edge_h = n[2]+(2.0*n[5])+n[8]-(n[0]+(2.0*n[3])+n[6]);
     vec4 sobel_edge_v = n[0]+(2.0*n[1])+n[2]-(n[6]+(2.0*n[7])+n[8]);
     vec4 sobel = sqrt((sobel_edge_h*sobel_edge_h)+(sobel_edge_v*sobel_edge_v));
@@ -450,13 +449,13 @@ R"(float smoothIntersectSDFs(float sdf1, float sdf2, float s)
             CODE_ENTRY(
 "Camera ray",
 "Assuming a camera located at 'cp' and pointed in direction 'f', this function "
-"returns a camera ray cast from the current screen fragment at position 'uv' "
+"returns a camera ray cast from the current screen fragment at position 'qc' "
 "which complies with the provided field-of-view factor 'fov'",
-R"(vec3 cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
+R"(vec3 cameraRay(vec2 qc, vec3 cp, vec3 f, float fov)
 {
     vec3 l = normalize(cross(vec3(0,1,0),f));
     vec3 u = normalize(cross(f,l));
-    return normalize(cp+f*fov-uv.x*l+uv.y*u-cp);
+    return normalize(cp+f*fov-qc.x*l+qc.y*u-cp);
 })")
 
             CODE_ENTRY(
@@ -499,8 +498,8 @@ R"(vec3 sceneNormal(vec3 p, float h)
 " inclusive of a single light source and hard shadows cast by scene entities ",
 R"(#version 460 core
 out vec4 fragColor;
-in vec2 pos;
-#define uv pos
+in vec2 qc;
+#define uv qc
 #define PI 3.14159
 uniform float iTime;
 uniform vec3 iCameraPosition;

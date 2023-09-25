@@ -194,7 +194,7 @@ vir::TextureBuffer::FilterMode Resource::magFilterMode()
 
 vir::TextureBuffer::FilterMode Resource::minFilterMode()
 {
-    if (valid()) return vir::TextureBuffer::FilterMode::Nearest;
+    if (valid())
         CALL_NATIVE_RESOURCE_FUNC_HETERO(colorBufferMinFilterMode(), 
             minFilterMode())
     return vir::TextureBuffer::FilterMode::Nearest;
@@ -225,7 +225,6 @@ bool Resource::set(vir::CubeMapBuffer* nativeResource)
 template<>
 bool Resource::set(std::string filepath)
 {
-    int a = 0;
     try
     {
         set

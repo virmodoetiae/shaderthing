@@ -37,6 +37,10 @@ public:
 
 private :
 
+    // Default shader sources
+    static std::string defaultVertexSource_;
+    static std::string defaultFragmentSource_;
+
     // Transparent shader rendered to screen when the buffer is rendering to
     // framebuffers to avoid visual glitches
     static vir::Shader* voidShader_;
@@ -59,7 +63,6 @@ private :
     bool toBeCompiled_;
     bool isGuiRendered_;
     bool isGuiDeletionConfirmationPending_;
-    bool isVertexEditorVisible_;
 
     // Z coordinate of the screen quad associated with this buffer
     float depth_;
@@ -84,8 +87,6 @@ private :
 
     // Actual source code (as string) of the vertex shader and editor
     std::string vertexSource_;
-    ImGuiExtd::TextEditor vertexEditor_;
-    bool uncompiledVertexEditorChanges_;
 
     // Actual source code (as string) of the fragment shader and editor
     std::string fragmentSource_;

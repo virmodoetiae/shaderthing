@@ -302,9 +302,6 @@ void Layer::renderGuiSettings()
             ImGui::PopItemWidth();
         }
     }
-    ImGui::Text("Show vertex shader   ");
-    ImGui::SameLine();
-    ImGui::Checkbox("##isVertexEditorVisible", &isVertexEditorVisible_);
 }
 
 //----------------------------------------------------------------------------//
@@ -323,49 +320,38 @@ void Layer::renderGuiMain()
         .5f*glm::sin(6.283f*(time/3+2.f/3))+.3f,
         1.f
     };
-    static ImVec4 ctrlBColor = ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
-
-#define TEXT_EDITOR_CONTROLS(editor, editorFlag)                            \
-    bool someControlsOpen(                                                  \
-        uncompiledVertexEditorChanges_ ||                                   \
-        uncompiledFragmentEditorChanges_ ||                                 \
-        app_.findReplaceTextToolRef().isGuiOpen());                         \
-    app_.findReplaceTextToolRef().renderGui();                              \
-    editorFlag = editorFlag ||                                              \
-        app_.findReplaceTextToolRef().findReplaceTextInEditor(editor);      \
-    if (uncompiledVertexEditorChanges_ || uncompiledFragmentEditorChanges_){\
-        ImGui::PushStyleColor(ImGuiCol_Button, compileButtonColor);         \
-        if (ImGui::ArrowButton("##right",ImGuiDir_Right))toBeCompiled_=true;\
-        ImGui::PopStyleColor();                                             \
-        ImGui::SameLine();                                                  \
-        ImGui::Text("Compile shader");                                      \
-        ImGui::SameLine();                                                  \
-        ImGui::PushStyleColor(ImGuiCol_Text, ctrlBColor);                   \
-        ImGui::Text("Ctrl+B");                                              \
-        ImGui::PopStyleColor();}                                            \
-    if (someControlsOpen) ImGui::Separator();
 
     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
     if (ImGui::BeginTabBar("##layerTabBar", tab_bar_flags)) //------------------
     {
-        if (isVertexEditorVisible_)
-            if (ImGui::BeginTabItem("Vertex shader"))
-            {
-                TEXT_EDITOR_CONTROLS
-                (
-                    vertexEditor_, 
-                    uncompiledVertexEditorChanges_
-                )
-                vertexEditor_.Render("##vertexEditor");
-                ImGui::EndTabItem();
-            }
         if (ImGui::BeginTabItem("Fragment shader"))
         {
-            TEXT_EDITOR_CONTROLS
+            static ImVec4 ctrlBColor = 
+                ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
+            bool someControlsOpen
             (
-                fragmentEditor_, 
-                uncompiledFragmentEditorChanges_
-            )
+                uncompiledFragmentEditorChanges_ ||
+                app_.findReplaceTextToolRef().isGuiOpen()
+            );
+            app_.findReplaceTextToolRef().renderGui();
+            uncompiledFragmentEditorChanges_=
+                uncompiledFragmentEditorChanges_ ||
+                app_.findReplaceTextToolRef().findReplaceTextInEditor
+                (
+                    fragmentEditor_
+                );
+            if (uncompiledFragmentEditorChanges_){
+                ImGui::PushStyleColor(ImGuiCol_Button, compileButtonColor);
+                if (ImGui::ArrowButton("##right",ImGuiDir_Right))
+                    toBeCompiled_=true;
+                ImGui::PopStyleColor();
+                ImGui::SameLine();
+                ImGui::Text("Compile shader");
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Text, ctrlBColor);
+                ImGui::Text("Ctrl+B");
+                ImGui::PopStyleColor();}
+            if (someControlsOpen) ImGui::Separator();
             fragmentEditor_.Render("##fragmentEditor");
             ImGui::EndTabItem();
         }

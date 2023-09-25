@@ -64,6 +64,46 @@ vir::TextureBuffer::InternalFormat Layer::supportedInternalFormats[2] =
     vir::TextureBuffer::InternalFormat::RGBA_SF_32
 };
 
+std::string Layer::defaultVertexSource_ = 
+R"(#version 330 core
+layout (location=0) in vec3 iqc;
+layout (location=1) in vec2 itc;
+out vec2 qc;
+out vec2 tc;
+uniform mat4 mvp;
+void main()
+{
+    gl_Position = mvp*vec4(iqc, 1.);
+    qc = iqc.xy;
+    tc = itc;
+})";
+
+std::string Layer::defaultFragmentSource_ = 
+R"(#version 330 core
+out vec4 fragColor;
+in vec2 qc;
+in vec2 tc;
+
+uniform uint iFrame;
+uniform float iAspectRatio;
+uniform float iTime;
+uniform vec2 iResolution;
+uniform ivec4 iMouse;
+uniform vec3 iCameraPosition;
+uniform vec3 iCameraDirection;
+uniform sampler2D iResource0;
+
+void main()
+{
+    fragColor = vec4
+    (
+        .125*sin(qc.x*cos(qc.y-cos(2.5*iTime))*3.-1.5*iTime)+.125,
+        .125*cos(qc.y*sin(qc.x-cos(2.0*iTime))*2.-2*iTime)+.500,
+        .125*cos(qc.x*cos(qc.y-sin(1.5*iTime))*1.-2.5*iTime)+.700,
+        1.0
+    );
+})";
+
 //----------------------------------------------------------------------------//
 // Public functions ----------------------------------------------------------//
 
@@ -82,8 +122,6 @@ toBeRenamed_(false),
 toBeCompiled_(false),
 isGuiRendered_(false),
 isGuiDeletionConfirmationPending_(false),
-isVertexEditorVisible_(false),
-uncompiledVertexEditorChanges_(false),
 uncompiledFragmentEditorChanges_(false),
 depth_(depth),
 resolution_(resolution),
@@ -98,52 +136,8 @@ viewport_
             float(resolution.y)/float(resolution.x)
     }
 ),
-vertexSource_
-(
-R"(#version 460 core
-
-layout (location=0) in vec3 ipos;
-layout (location=1) in vec2 itxc;
-out vec2 pos;
-out vec2 txc;
-
-uniform mat4 mvp;
-
-void main()
-{
-    gl_Position = mvp*vec4(ipos, 1.);
-    pos = ipos.xy;
-    txc = itxc;
-})"
-),
-fragmentSource_(
-R"(#version 460 core
-
-out vec4 fragColor;
-in vec2 pos;
-in vec2 txc;
-#define uv pos
-
-uniform uint iFrame;
-uniform float iAspectRatio;
-uniform float iTime;
-uniform vec2 iResolution;
-uniform ivec4 iMouse;
-uniform vec3 iCameraPosition;
-uniform vec3 iCameraDirection;
-uniform sampler2D iResource0;
-
-void main()
-{
-    fragColor = vec4
-    (
-        .125*sin(uv.x*cos(uv.y-cos(2.5*iTime))*3.-1.5*iTime)+.125,
-        .125*cos(uv.y*sin(uv.x-cos(2.0*iTime))*2.-2*iTime)+.500,
-        .125*cos(uv.x*cos(uv.y-sin(1.5*iTime))*1.-2.5*iTime)+.700,
-        1.0
-    );
-})"
-),
+vertexSource_(defaultVertexSource_),
+fragmentSource_(defaultFragmentSource_),
 screenQuad_(new vir::Quad(viewport_.x, viewport_.y, depth)),
 time_(app.timeRef()),
 timePaused_(app.isTimePausedRef()),
@@ -162,12 +156,6 @@ uniformLayerNamesToBeSet_(0)
         1000000000
     );
     id_ = distribution(rng)+(int(time_)%1000);
-    vertexEditor_.SetText(vertexSource_);
-    vertexEditor_.SetLanguageDefinition
-    (
-        ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
-    );
-    vertexEditor_.ResetTextChanged();
     fragmentEditor_.SetText(fragmentSource_);
     fragmentEditor_.SetLanguageDefinition
     (
@@ -321,9 +309,6 @@ void Layer::update()
     if (fragmentEditor_.IsTextChanged())
         uncompiledFragmentEditorChanges_ = 
             fragmentSource_!=fragmentEditor_.GetText();
-    if (isVertexEditorVisible_ && vertexEditor_.IsTextChanged())
-        uncompiledVertexEditorChanges_ = 
-            vertexSource_!=vertexEditor_.GetText();
 
     if (resolution_ == targetResolution_)
         return;
@@ -418,8 +403,6 @@ toBeRenamed_(false),
 isGuiRendered_(isGuiRendered),
 isGuiDeletionConfirmationPending_(false),
 toBeCompiled_(false),
-isVertexEditorVisible_(false),
-uncompiledVertexEditorChanges_(false),
 uncompiledFragmentEditorChanges_(false),
 time_(app.timeRef()),
 timePaused_(app.isTimePausedRef()),
@@ -428,7 +411,8 @@ screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
 shaderId0_(-1),
-uniformLayerNamesToBeSet_(0)
+uniformLayerNamesToBeSet_(0),
+vertexSource_(defaultVertexSource_)
 {
     std::string headerSource;
     while(true)
@@ -442,35 +426,28 @@ uniformLayerNamesToBeSet_(0)
     index++;
 
     auto layerName = new char[headerSource.size()];
-    uint32_t rendersTo, isVertexEditorVisible, showSelfPreview, vertexSourceSize, 
-        fragmentSourceSize, nUniforms, internalFormat, xWrap, yWrap, magFilter, 
-        minFilter;
+    int rendersTo, fragmentSourceSize, nUniforms, internalFormat, xWrap, 
+        yWrap, magFilter, minFilter;
+
     sscanf
     (
         headerSource.c_str(),
-        "%s %d %d %f %f %d %d %d %d %d %d %d %d %d %d",
+        //Layer1 128 128 0.000000000 0.250000000 2  7  0  0  0  0  3641 0
+        "%s %d %d %f %f %d %d %d %d %d %d %d %d", 
         layerName, 
         &resolution_.x, &resolution_.y, &depth_, &resolutionScale_, 
-        &rendersTo, &isVertexEditorVisible, &internalFormat,
+        &rendersTo, &internalFormat,
         &xWrap, &yWrap, &magFilter, &minFilter,
-        &vertexSourceSize, &fragmentSourceSize, &nUniforms
+        &fragmentSourceSize, &nUniforms
     );
     name_ = layerName;
     targetName_ = layerName;
     delete[] layerName;
     rendersTo_ = (RendersTo)rendersTo;
-    isVertexEditorVisible_ = (bool)isVertexEditorVisible;
-    vertexSource_.resize(vertexSourceSize);
     fragmentSource_.resize(fragmentSourceSize);
 
-    // Parse vertex, fragment source -------------------------------------------
+    // Parse fragment source ---------------------------------------------------
     uint32_t index0(index);
-    while(index-index0 < vertexSourceSize)
-    {
-        vertexSource_[index-index0] = source[index];
-        index++;
-    }
-    index0 = ++index;
     while(index-index0 < fragmentSourceSize)
     {
         fragmentSource_[index-index0] = source[index];
@@ -637,12 +614,6 @@ uniformLayerNamesToBeSet_(0)
     viewport_.y = (resolution_.y > resolution_.x) ? 1.0 : 
         float(resolution_.y)/float(resolution_.x);
     screenQuad_ = new vir::Quad(viewport_.x, viewport_.y, depth_);
-    vertexEditor_.SetText(vertexSource_);
-    vertexEditor_.SetLanguageDefinition
-    (
-        ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
-    );
-    vertexEditor_.ResetTextChanged();
     fragmentEditor_.SetText(fragmentSource_);
     fragmentEditor_.SetLanguageDefinition
     (
@@ -735,18 +706,16 @@ void Layer::saveState(std::ofstream& file)
     sprintf
     (
         data, 
-        "%s %d %d %.9f %.9f %d %d %d %d %d %d %d %d %d %d", 
+        "%s %d %d %.9f %.9f %d %d %d %d %d %d %d %d", 
         name_.c_str(), 
-        resolution_.x, resolution_.y, 
-        depth_, resolutionScale_, 
-        (int)rendersTo_, (int)isVertexEditorVisible_, internalFormat,
+        resolution_.x, resolution_.y, depth_, resolutionScale_, 
+        (int)rendersTo_, internalFormat,
         xWrap, yWrap, magFilter, minFilter,
-        vertexSource_.size(), fragmentSource_.size(), (int)uniforms_.size()
+        fragmentSource_.size(), (int)uniforms_.size()
     );
     file << data << std::endl;
 
-    // Vertex, fragment data
-    file << vertexSource_ << std::endl;
+    // Fragment source data
     file << fragmentSource_ << std::endl;
     
     // Uniform data
@@ -848,10 +817,9 @@ void Layer::reBindLayerUniforms()
 
 void Layer::compileShader()
 {
-    if (!uncompiledVertexEditorChanges_ && !uncompiledFragmentEditorChanges_)
+    if (!uncompiledFragmentEditorChanges_)
         return;
 
-    vertexSource_ = vertexEditor_.GetText();
     fragmentSource_ = fragmentEditor_.GetText();
 
     vir::Shader* tmp = nullptr;
@@ -869,9 +837,7 @@ void Layer::compileShader()
         delete shader_;
         shader_ = tmp;
         tmp = nullptr;
-        vertexEditor_.SetErrorMarkers({});
         fragmentEditor_.SetErrorMarkers({});
-        uncompiledVertexEditorChanges_ = false;
         uncompiledFragmentEditorChanges_ = false;
         return;
     }
@@ -880,14 +846,15 @@ void Layer::compileShader()
     {
         // If the compilation fails, parse the error and show it
         // on the editor
-        uncompiledVertexEditorChanges_ = true;
         uncompiledFragmentEditorChanges_ = true;
         std::string exception(e.what());
         std::cout << exception << std::endl;
-        bool isVertex = true;
+        bool isFragmentException = false;
         if (exception[0] == '[' && exception[1] == 'F' &&
             exception[2] == ']')
-            isVertex = false;
+            isFragmentException = true;
+        if (!isFragmentException)
+            return;
         bool readErrorIndex = true;
         int firstErrorIndex = -1;
         int errorIndex = 0;
@@ -924,18 +891,9 @@ void Layer::compileShader()
             }
             i++;
         }
-        if (isVertex)
-        {
-            vertexEditor_.SetErrorMarkers(errors);
-            auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);
-            vertexEditor_.SetCursorPosition(pos);
-        }
-        else 
-        {
-            fragmentEditor_.SetErrorMarkers(errors);
-            auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);
-            fragmentEditor_.SetCursorPosition(pos);
-        }
+        fragmentEditor_.SetErrorMarkers(errors);
+        auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);
+        fragmentEditor_.SetCursorPosition(pos);
     }
 }
 
@@ -946,11 +904,11 @@ void Layer::createStaticShaders()
     if (Layer::voidShader_ == nullptr)
     {
         std::string fragmentSource = 
-R"(#version 460 core
+R"(#version 330 core
 out vec4 fragColor;
-in vec2 pos;
-in vec2 txc;
-void main(){fragColor = vec4(0.0,0,0,0.0);})";
+in vec2 qc;
+in vec2 tc;
+void main(){fragColor = vec4(0, 0, 0, 0);})";
         Layer::voidShader_ = vir::Shader::create
         (
             vertexSource_, 
@@ -961,12 +919,12 @@ void main(){fragColor = vec4(0.0,0,0,0.0);})";
     if (Layer::internalFramebufferShader_ == nullptr)
     {
         std::string fragmentSource = 
-R"(#version 460 core
+R"(#version 330 core
 out vec4 fragColor;
-in vec2 pos;
-in vec2 txc;
+in vec2 qc;
+in vec2 tc;
 uniform sampler2D self;
-void main(){fragColor = texture(self,txc);})";
+void main(){fragColor = texture(self, tc);})";
         Layer::internalFramebufferShader_ = vir::Shader::create
         (
             vertexSource_, 
