@@ -86,6 +86,7 @@ private :
     std::string targetName_;
 
     // Actual source code (as string) of the fragment shader and editor
+    std::string fragmentSourceHeader_;
     std::string fragmentSource_;
     ImGuiExtd::TextEditor fragmentEditor_;
     bool uncompiledFragmentEditorChanges_;

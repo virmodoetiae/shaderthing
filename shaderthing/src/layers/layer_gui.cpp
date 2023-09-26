@@ -326,7 +326,7 @@ void Layer::renderGuiMain()
     {
         if (ImGui::BeginTabItem("Fragment shader"))
         {
-            static ImVec4 ctrlBColor = 
+            static ImVec4 grayColor = 
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
             bool someControlsOpen
             (
@@ -340,7 +340,8 @@ void Layer::renderGuiMain()
                 (
                     fragmentEditor_
                 );
-            if (uncompiledFragmentEditorChanges_){
+            if (uncompiledFragmentEditorChanges_)
+            {
                 ImGui::PushStyleColor(ImGuiCol_Button, compileButtonColor);
                 if (ImGui::ArrowButton("##right",ImGuiDir_Right))
                     toBeCompiled_=true;
@@ -348,10 +349,48 @@ void Layer::renderGuiMain()
                 ImGui::SameLine();
                 ImGui::Text("Compile shader");
                 ImGui::SameLine();
-                ImGui::PushStyleColor(ImGuiCol_Text, ctrlBColor);
+                ImGui::PushStyleColor(ImGuiCol_Text, grayColor);
                 ImGui::Text("Ctrl+B");
-                ImGui::PopStyleColor();}
-            if (someControlsOpen) ImGui::Separator();
+                ImGui::PopStyleColor();
+            }
+            if (someControlsOpen) 
+                ImGui::Separator();
+            ImGui::PushItemWidth(-1);
+            ImGui::Indent();
+            if (ImGui::TreeNode("Header"))
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, grayColor);
+                ImGui::Text(fragmentSourceHeader_.c_str());
+                ImGui::PopStyleColor();
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::PushTextWrapPos(40.0f*fontSize);
+                    ImGui::Text("Header information:");
+                    ImGui::Bullet();ImGui::Text(
+"the highest possible GLSL version (based on your hardware) is used;");
+                    ImGui::Bullet();ImGui::Text(
+"the quad coordinate 'qc' varies in the [-.5,.5] range across the (current) "
+"shortest side of the window, and from [-x,x] across its longest side, wherein "
+"'x' is the ratio between the lengths of the longest and the shortest window "
+"sides. In practice, any line between e.g., two points described via  "
+"this coordinate will maintain its angle if the window aspect ratio is "
+"changed by resizing. The origin is at the window center;");
+                    ImGui::Bullet();ImGui::Text(
+"the texture coordinate 'tc' varies in the [0-1] range across both sides of "
+"the window, regardless of the window size. The origin is at the bottom-left "
+"corner of the window;");
+                    ImGui::Bullet();ImGui::Text(
+"uniform declarations are added automatically (on shader compilation) based "
+"on the uniforms you specify in this layer's 'Uniforms' tab.");
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndTooltip();
+                }
+                
+                ImGui::TreePop();
+                ImGui::Separator();
+            }
+            ImGui::Unindent();
+            ImGui::PopItemWidth();
             fragmentEditor_.Render("##fragmentEditor");
             ImGui::EndTabItem();
         }

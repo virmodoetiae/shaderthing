@@ -137,6 +137,7 @@ viewport_
             float(resolution.y)/float(resolution.x)
     }
 ),
+fragmentSourceHeader_(""),
 fragmentSource_(defaultFragmentSource_),
 screenQuad_(new vir::Quad(viewport_.x, viewport_.y, depth)),
 time_(app.timeRef()),
@@ -393,6 +394,7 @@ toBeRenamed_(false),
 isGuiRendered_(isGuiRendered),
 isGuiDeletionConfirmationPending_(false),
 toBeCompiled_(false),
+fragmentSourceHeader_(""),
 uncompiledFragmentEditorChanges_(false),
 time_(app.timeRef()),
 timePaused_(app.isTimePausedRef()),
@@ -421,7 +423,6 @@ uniformLayerNamesToBeSet_(0)
     sscanf
     (
         headerSource.c_str(),
-        //Layer1 128 128 0.000000000 0.250000000 2  7  0  0  0  0  3641 0
         "%s %d %d %f %f %d %d %d %d %d %d %d %d", 
         layerName, 
         &resolution_.x, &resolution_.y, &depth_, &resolutionScale_, 
@@ -818,10 +819,10 @@ std::string Layer::assembleFragmentSource
         shadingLanguageVersion()+
         " core\nin vec2 qc;\nin vec2 tc;\nout vec4 fragColor;\n"
     );
-    std::string uniformsHeader = "";
+    fragmentSourceHeader_ = versionInOutHeader;
     for (auto* u : defaultUniforms_)
     {
-        uniformsHeader += 
+        fragmentSourceHeader_ += 
             "uniform "+vir::Shader::uniformTypeToName[u->type]+" "+u->name+
             ";\n";
         ++nLines;
@@ -844,12 +845,12 @@ std::string Layer::assembleFragmentSource
                 typeName = vir::Shader::uniformTypeToName[u->type];
                 break;
         }
-        uniformsHeader += "uniform "+typeName+" "+u->name+";\n";
+        fragmentSourceHeader_ += "uniform "+typeName+" "+u->name+";\n";
         ++nLines;
     }
     if (nHeaderLines != nullptr)
         *nHeaderLines = nLines;
-    return versionInOutHeader+uniformsHeader+source;
+    return fragmentSourceHeader_+source;
 }
 
 //----------------------------------------------------------------------------//
