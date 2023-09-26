@@ -65,8 +65,7 @@ vir::TextureBuffer::InternalFormat Layer::supportedInternalFormats[2] =
 };
 
 std::string Layer::defaultVertexSource_ = 
-R"(#version 330 core
-layout (location=0) in vec3 iqc;
+R"(layout (location=0) in vec3 iqc;
 layout (location=1) in vec2 itc;
 out vec2 qc;
 out vec2 tc;
@@ -79,21 +78,7 @@ void main()
 })";
 
 std::string Layer::defaultFragmentSource_ = 
-R"(#version 330 core
-out vec4 fragColor;
-in vec2 qc;
-in vec2 tc;
-
-uniform uint iFrame;
-uniform float iAspectRatio;
-uniform float iTime;
-uniform vec2 iResolution;
-uniform ivec4 iMouse;
-uniform vec3 iCameraPosition;
-uniform vec3 iCameraDirection;
-uniform sampler2D iResource0;
-
-void main()
+R"(void main()
 {
     fragColor = vec4
     (
@@ -103,6 +88,22 @@ void main()
         1.0
     );
 })";
+
+const std::string& Layer::assembleVertexSource()
+{
+    if (defaultVertexSource_[0] != '#')
+    {
+        static std::string version
+        (
+            "#version "+
+            vir::GlobalPtr<vir::Window>::instance()->context()->
+            shadingLanguageVersion()+
+            " core\n"
+        );
+        defaultVertexSource_ = version+defaultVertexSource_;
+    }
+    return defaultVertexSource_;
+}
 
 //----------------------------------------------------------------------------//
 // Public functions ----------------------------------------------------------//
@@ -136,7 +137,6 @@ viewport_
             float(resolution.y)/float(resolution.x)
     }
 ),
-vertexSource_(defaultVertexSource_),
 fragmentSource_(defaultFragmentSource_),
 screenQuad_(new vir::Quad(viewport_.x, viewport_.y, depth)),
 time_(app.timeRef()),
@@ -163,12 +163,15 @@ uniformLayerNamesToBeSet_(0)
     );
     fragmentEditor_.ResetTextChanged();
 
+    // Init default uniforms (must be done before assembleFragmentSource)
+    initializeDefaultUniforms();
+
     // Init shader
     shader_ =
         vir::Shader::create
         (
-            vertexSource_, 
-            fragmentSource_,
+            Layer::assembleVertexSource(), 
+            assembleFragmentSource(fragmentSource_),
             vir::Shader::ConstructFrom::String
         );
 
@@ -177,23 +180,10 @@ uniformLayerNamesToBeSet_(0)
 
     // Init framebuffers
     flipFramebuffers_ = false;
-    framebufferA_ = 
-        vir::Framebuffer::create
-        (
-            resolution_.x, 
-            resolution_.y
-        );
+    framebufferA_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
     readOnlyFramebuffer_ = framebufferA_;
-    framebufferB_ = 
-        vir::Framebuffer::create
-        (
-            resolution_.x, 
-            resolution_.y
-        );
+    framebufferB_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
     writeOnlyFramebuffer_ = framebufferB_;
-
-    // Init default uniforms
-    initializeDefaultUniforms();
 
     ++LayerManager::nLayersSinceNewProject_;
 }
@@ -411,8 +401,7 @@ screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
 shaderId0_(-1),
-uniformLayerNamesToBeSet_(0),
-vertexSource_(defaultVertexSource_)
+uniformLayerNamesToBeSet_(0)
 {
     std::string headerSource;
     while(true)
@@ -621,12 +610,15 @@ vertexSource_(defaultVertexSource_)
     );
     fragmentEditor_.ResetTextChanged();
 
+    // Init default uniforms (must be done before assembleFragmentSource)
+    initializeDefaultUniforms();
+
     // Init shader
     shader_ =
         vir::Shader::create
         (
-            vertexSource_, 
-            fragmentSource_,
+            Layer::assembleVertexSource(),
+            assembleFragmentSource(fragmentSource_),
             vir::Shader::ConstructFrom::String
         );
 
@@ -678,9 +670,6 @@ vertexSource_(defaultVertexSource_)
     //
     if (rendersTo_ != RendersTo::Window)
         app.resourceManagerRef().addLayerAsResource(this);
-
-    // Init default uniforms
-    initializeDefaultUniforms();
 
     ++LayerManager::nLayersSinceNewProject_;
 }
@@ -815,6 +804,56 @@ void Layer::reBindLayerUniforms()
 //----------------------------------------------------------------------------//
 // Private functions ---------------------------------------------------------//
 
+std::string Layer::assembleFragmentSource
+(
+    const std::string& source,
+    int* nHeaderLines
+)
+{
+    int nLines = 4;
+    static std::string versionInOutHeader
+    (
+        "#version "+
+        vir::GlobalPtr<vir::Window>::instance()->context()->
+        shadingLanguageVersion()+
+        " core\nin vec2 qc;\nin vec2 tc;\nout vec4 fragColor;\n"
+    );
+    std::string uniformsHeader = "";
+    for (auto* u : defaultUniforms_)
+    {
+        uniformsHeader += 
+            "uniform "+vir::Shader::uniformTypeToName[u->type]+" "+u->name+
+            ";\n";
+        ++nLines;
+    }
+    for (auto* u : uniforms_)
+    {
+        // All names in uniformTypeToName map 1:1 to GLSL uniform names, except
+        // for sampler2D (which maps to texture2D) and samplerCube (which maps
+        // to cubemap). I should re-organize the mappings a bit 
+        std::string typeName; 
+        switch (u->type)
+        {
+            case vir::Shader::Variable::Type::Sampler2D :
+                typeName = "sampler2D";
+                break;
+            case vir::Shader::Variable::Type::SamplerCube :
+                typeName = "samplerCube";
+                break;
+            default :
+                typeName = vir::Shader::uniformTypeToName[u->type];
+                break;
+        }
+        uniformsHeader += "uniform "+typeName+" "+u->name+";\n";
+        ++nLines;
+    }
+    if (nHeaderLines != nullptr)
+        *nHeaderLines = nLines;
+    return versionInOutHeader+uniformsHeader+source;
+}
+
+//----------------------------------------------------------------------------//
+
 void Layer::compileShader()
 {
     if (!uncompiledFragmentEditorChanges_)
@@ -824,10 +863,11 @@ void Layer::compileShader()
 
     vir::Shader* tmp = nullptr;
     std::exception_ptr exceptionPtr;
+    int nHeaderLines = 0;
     tmp = vir::Shader::create
     (
-        vertexSource_, 
-        fragmentSource_, 
+        assembleVertexSource(),
+        assembleFragmentSource(fragmentSource_, &nHeaderLines), 
         vir::Shader::ConstructFrom::String,
         &exceptionPtr
     );
@@ -871,7 +911,7 @@ void Layer::compileShader()
                 i += 2;
                 while(exception[i] != ')' && exception[i] != ':')
                     errorIndexString += exception[i++];
-                errorIndex = std::stoi(errorIndexString);
+                errorIndex = std::stoi(errorIndexString)-nHeaderLines;
                 errorIndexString = "";
                 if (firstErrorIndex == -1)
                     firstErrorIndex = errorIndex;
@@ -901,17 +941,22 @@ void Layer::compileShader()
 
 void Layer::createStaticShaders()
 {
+    static std::string version(
+    "#version "+
+    vir::GlobalPtr<vir::Window>::instance()->context()->
+    shadingLanguageVersion()+
+    " core\n");
     if (Layer::voidShader_ == nullptr)
     {
         std::string fragmentSource = 
-R"(#version 330 core
-out vec4 fragColor;
+version+
+R"(out vec4 fragColor;
 in vec2 qc;
 in vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, 0);})";
         Layer::voidShader_ = vir::Shader::create
         (
-            vertexSource_, 
+            Layer::assembleVertexSource(), 
             fragmentSource,
             vir::Shader::ConstructFrom::String
         );
@@ -919,15 +964,15 @@ void main(){fragColor = vec4(0, 0, 0, 0);})";
     if (Layer::internalFramebufferShader_ == nullptr)
     {
         std::string fragmentSource = 
-R"(#version 330 core
-out vec4 fragColor;
+version+
+R"(out vec4 fragColor;
 in vec2 qc;
 in vec2 tc;
 uniform sampler2D self;
 void main(){fragColor = texture(self, tc);})";
         Layer::internalFramebufferShader_ = vir::Shader::create
         (
-            vertexSource_, 
+            Layer::assembleVertexSource(), 
             fragmentSource,
             vir::Shader::ConstructFrom::String
         );

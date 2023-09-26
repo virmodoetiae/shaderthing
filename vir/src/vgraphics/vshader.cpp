@@ -160,8 +160,8 @@ void Shader::Uniform::resetValue()
 
 Shader* Shader::create
 (
-    std::string& vs, 
-    std::string& fs, 
+    const std::string& vs, 
+    const std::string& fs, 
     ConstructFrom cf, 
     std::exception_ptr* ep
 )

@@ -427,16 +427,16 @@ void Layer::renderGuiUniforms()
 
         ImGui::TableHeadersRow();
         int nDefaultUniforms(defaultUniforms_.size());
-        int nUniforms(uniforms_.size()+defaultUniforms_.size());
+        int nTotalUniforms(uniforms_.size()+defaultUniforms_.size());
         
         // Actual rendering ----------------------------------------------------
-        for (int row = 0; row < nUniforms+1; row++)
+        for (int row = 0; row < nTotalUniforms+1; row++)
         {
             ImGui::PushID(row);
             ImGui::TableNextRow(0, 1.6*fontSize);
             int col = 0;
 
-            if (row == nUniforms)
+            if (row == nTotalUniforms)
             {
                 ImGui::TableSetColumnIndex(col++);
                 ImGui::PushItemWidth(-1);

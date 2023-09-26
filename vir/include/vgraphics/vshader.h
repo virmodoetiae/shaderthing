@@ -138,8 +138,8 @@ protected:
 public:
     static Shader* create
     (
-        std::string& vertexSource, 
-        std::string& fragmentSource, 
+        const std::string& vertexSource, 
+        const std::string& fragmentSource, 
         ConstructFrom constructFrom, 
         std::exception_ptr* exceptionPtr = nullptr
     ); 

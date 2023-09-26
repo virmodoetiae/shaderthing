@@ -85,9 +85,6 @@ private :
     // A temporary placeholder to allow for live buffer name editing
     std::string targetName_;
 
-    // Actual source code (as string) of the vertex shader and editor
-    std::string vertexSource_;
-
     // Actual source code (as string) of the fragment shader and editor
     std::string fragmentSource_;
     ImGuiExtd::TextEditor fragmentEditor_;
@@ -147,10 +144,19 @@ private :
     // loaded before this layer on project loading. Thus, their names are
     // cached and used for uniform re-setting after all layers have been
     // loaded (done in resetPostLoadLayerUniforms())
-    std::unordered_map<vir::Shader::Uniform*, std::string> 
+    std::unordered_map<vir::Shader::Uniform*, std::string>
         uniformLayerNamesToBeSet_;
 
-    //
+    // These functions are responsible for generating the full GLSL source
+    // code by adding required #version/in/out/uniform lines to the headers of
+    // the provided source files
+    static const std::string& assembleVertexSource();
+    std::string assembleFragmentSource
+    (
+        const std::string& source, 
+        int* nHeaderLines=nullptr
+    );
+    
     void createStaticShaders();
     void compileShader();
     void initializeDefaultUniforms();
