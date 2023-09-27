@@ -45,15 +45,16 @@ TODO ---------------------------------------------------------------------------
     controls as in iTime is simply a time-like varying uniform that is
     not bound to the rendering process itself
 
+(X) Re-work shader controls logic: 
+    manage automatic fragment shader header addition with automatic uniform
+    manager, so the user only needs to manage them via the Uniforms tab,
+    instead of having to type in the uniform declarations in the shader code.
+    Remove vertex shader editing in the process
+
 (W) Expand code repository section
 
 ( ) Find a way to differentiate between global/shared uniforms and uniforms
     that are specific to the Layer under consideration in the Uniforms tab
-
-( ) Re-work shader controls logic: 
-    manage automatic fragment shader header addition with automatic uniform
-    manager, so the user only needs to manage them via the Uniforms tab,
-    instead of having to type in the uniform declarations in the shader code
     
 ( ) Add a "Commons" shader header which is automatically embedded in every
     fragment shader to enable the user to avoid core repetition (e.g., like
@@ -65,13 +66,12 @@ TODO ---------------------------------------------------------------------------
 ( ) Add support for 3D-textures management in vir, the ShaderThing resource
     manager and uniform system
 
-( ) Add some sort of 2D (and eventually 3D) noise generator and output to
-    either static and/or dynamic textures (probably it is just better to
-    add some dedicated code repository functions that can be copy-pasted with
-    ease into the fragment shader, rather than a dedicated generator tool)
-
 ( ) Fix (or find workaround) for ImGui window icons disappearing on 
     ImGui docking/undocking actions
+
+( ) Add example projects that can be loaded in ShaderThings as demos/tutorials
+
+( ) Expand project README with demo images and GIFs
 
 ( ) Test compilation and running on Linux systems
 
@@ -83,15 +83,7 @@ TODO ---------------------------------------------------------------------------
     For the time being, the releases are compiled without optimizations 
     (-O0)
 
-( ) Expand project README with demo images and GIFs
-
-( ) Add example projects that can be loaded in ShaderThings as demos/tutorials
-
 TO-CONSIDER --------------------------------------------------------------------
-
-*   Remove vertex shader edition controls: it will just be more difficult to
-    manage the shared/automatic fragment shader headers generation part, when 
-    implemented, and it brings (at least in my eyes) very few benefits
 
 *   Enable option to use the quantizer palette for GIF quantization on GIF 
     exporting
