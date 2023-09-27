@@ -123,16 +123,9 @@ R"(vec3 rotate(vec3 v, float t, vec3 a)
     {
         CODE_ENTRY(
 "Sobel filter",
-"This complete shader applies a Sobel filter to an input texture 'iTexture0'",
-R"(#version 330 core
-
-out vec4 fragColor;
-in vec2 tc;
-
-uniform vec2 iResolution;
-uniform sampler2D iTexture0;
-
-void make_kernel(inout vec4 n[9], sampler2D tex, vec2 coord)
+"This complete shader applies a Sobel filter to an input texture 'iTexture0', ",
+"which needs to be added to the uniforms list via the 'Uniforms' tab"
+R"(void make_kernel(inout vec4 n[9], sampler2D tex, vec2 coord)
 {
     float w = 1.0/iResolution.x;
     float h = 1.0/iResolution.y;
@@ -496,14 +489,7 @@ R"(vec3 sceneNormal(vec3 p, float h)
 "Example ray marcher",
 "Full fragment shader code of a very bare-bones ray marcher with a test scene,"
 " inclusive of a single light source and hard shadows cast by scene entities ",
-R"(#version 460 core
-out vec4 fragColor;
-in vec2 qc;
-#define uv qc
-#define PI 3.14159
-uniform float iTime;
-uniform vec3 iCameraPosition;
-uniform vec3 iCameraDirection;
+R"(#define PI 3.14159
 
 // Increase this to avoid visual artifacts. However, at the same time, you
 // should increase the number of ray marching steps
@@ -585,7 +571,7 @@ void main()
     vec3 cameraDirection = -normalize(vec3(1.5,1.5,3));
     
     // Construct ray for this pixel and ray march
-    Ray r = cameraRay(uv,cameraPosition,cameraDirection,1);
+    Ray r = cameraRay(qc,cameraPosition,cameraDirection,1);
     float d = rayMarch(r);
     if (d == 0) // If no surfaces hit
         fragColor = bckgColor; //set to background color
