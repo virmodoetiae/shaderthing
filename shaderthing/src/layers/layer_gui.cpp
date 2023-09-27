@@ -312,14 +312,6 @@ void Layer::renderGuiMain()
     isGuiRendered_ = true;
     app_.layerManagerRef().setActiveGuiLayer(this);
     float fontSize = ImGui::GetFontSize();
-    float time = vir::GlobalPtr<vir::Time>::instance()->outerTime();
-    ImVec4 compileButtonColor = 
-    {
-        .5f*glm::sin(6.283f*(time/3+0.f/3))+.3f,
-        .5f*glm::sin(6.283f*(time/3+1.f/3))+.3f,
-        .5f*glm::sin(6.283f*(time/3+2.f/3))+.3f,
-        1.f
-    };
 
     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
     if (ImGui::BeginTabBar("##layerTabBar", tab_bar_flags)) //------------------
@@ -328,32 +320,14 @@ void Layer::renderGuiMain()
         {
             static ImVec4 grayColor = 
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
-            bool someControlsOpen
-            (
-                uncompiledFragmentEditorChanges_ ||
-                app_.findReplaceTextToolRef().isGuiOpen()
-            );
             app_.findReplaceTextToolRef().renderGui();
-            uncompiledFragmentEditorChanges_=
-                uncompiledFragmentEditorChanges_ ||
+            hasUncompiledChanges_=
+                hasUncompiledChanges_ ||
                 app_.findReplaceTextToolRef().findReplaceTextInEditor
                 (
                     fragmentEditor_
                 );
-            if (uncompiledFragmentEditorChanges_)
-            {
-                ImGui::PushStyleColor(ImGuiCol_Button, compileButtonColor);
-                if (ImGui::ArrowButton("##right",ImGuiDir_Right))
-                    toBeCompiled_=true;
-                ImGui::PopStyleColor();
-                ImGui::SameLine();
-                ImGui::Text("Compile shader");
-                ImGui::SameLine();
-                ImGui::PushStyleColor(ImGuiCol_Text, grayColor);
-                ImGui::Text("Ctrl+B");
-                ImGui::PopStyleColor();
-            }
-            if (someControlsOpen) 
+            if (app_.findReplaceTextToolRef().isGuiOpen()) 
                 ImGui::Separator();
             ImGui::PushItemWidth(-1);
             ImGui::Indent();
@@ -402,12 +376,6 @@ void Layer::renderGuiMain()
         ImGui::EndTabBar();
     }
 
-    if 
-    (
-        Misc::isCtrlKeyPressed(ImGuiKey_B) &&
-        ImGui::GetIO().WantCaptureKeyboard
-    )
-        toBeCompiled_ = true;
     app_.findReplaceTextToolRef().update(); // Ctrl+F/Ctrl+H to open
 }
 

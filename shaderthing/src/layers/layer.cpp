@@ -123,7 +123,7 @@ toBeRenamed_(false),
 toBeCompiled_(false),
 isGuiRendered_(false),
 isGuiDeletionConfirmationPending_(false),
-uncompiledFragmentEditorChanges_(false),
+hasUncompiledChanges_(false),
 depth_(depth),
 resolution_(resolution),
 targetResolution_(resolution),
@@ -298,7 +298,7 @@ void Layer::update()
     }
 
     if (fragmentEditor_.IsTextChanged())
-        uncompiledFragmentEditorChanges_ = 
+        hasUncompiledChanges_ = 
             fragmentSource_!=fragmentEditor_.GetText();
 
     if (resolution_ == targetResolution_)
@@ -395,7 +395,7 @@ isGuiRendered_(isGuiRendered),
 isGuiDeletionConfirmationPending_(false),
 toBeCompiled_(false),
 fragmentSourceHeader_(""),
-uncompiledFragmentEditorChanges_(false),
+hasUncompiledChanges_(false),
 time_(app.timeRef()),
 timePaused_(app.isTimePausedRef()),
 frame_(app.frameRef()),
@@ -857,7 +857,7 @@ std::string Layer::assembleFragmentSource
 
 void Layer::compileShader()
 {
-    if (!uncompiledFragmentEditorChanges_)
+    if (!hasUncompiledChanges_)
         return;
 
     fragmentSource_ = fragmentEditor_.GetText();
@@ -879,7 +879,7 @@ void Layer::compileShader()
         shader_ = tmp;
         tmp = nullptr;
         fragmentEditor_.SetErrorMarkers({});
-        uncompiledFragmentEditorChanges_ = false;
+        hasUncompiledChanges_ = false;
         return;
     }
     try {std::rethrow_exception(exceptionPtr);}
@@ -887,7 +887,7 @@ void Layer::compileShader()
     {
         // If the compilation fails, parse the error and show it
         // on the editor
-        uncompiledFragmentEditorChanges_ = true;
+        hasUncompiledChanges_ = true;
         std::string exception(e.what());
         std::cout << exception << std::endl;
         bool isFragmentException = false;
@@ -902,11 +902,12 @@ void Layer::compileShader()
         std::string errorIndexString = "";
         std::string error = "";
         ImGuiExtd::TextEditor::ErrorMarkers errors;
-        uint32_t i = 3;
-        while(i < exception.size())
+        int i = 3;
+        int n = exception.size();
+        while(i < n)
         {
             char ei(exception[i]);
-            char eip1(exception[std::min((uint32_t)exception.size()-1, i+1)]);
+            char eip1(exception[std::min(n-1, i+1)]);
             if (readErrorIndex && (ei == '0' && (eip1 == '(' || eip1 == ':')))
             {
                 i += 2;
@@ -917,20 +918,24 @@ void Layer::compileShader()
                 if (firstErrorIndex == -1)
                     firstErrorIndex = errorIndex;
                 readErrorIndex = false;
-                i++;
+                ++i;
+                while (exception[i] == ' ' || exception[i] == ':')
+                    ++i;
+                --i;
             }
-            else
+            else if (firstErrorIndex != -1)
             {
                 if (ei != '\n')
                     error += ei;
                 else
                 {
+                    std::cout << "---" << std::endl;
                     errors.insert({errorIndex, error});
                     error = "";
                     readErrorIndex = true;
                 }
             }
-            i++;
+            ++i;
         }
         fragmentEditor_.SetErrorMarkers(errors);
         auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);

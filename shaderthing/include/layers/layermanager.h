@@ -32,6 +32,7 @@ public:
     
     void removeResourceFromUniforms(Resource* resource);
 
+    void markAllShadersForCompilation();
     void clearFramebuffers();
     
     void reset();

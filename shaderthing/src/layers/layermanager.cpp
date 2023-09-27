@@ -53,6 +53,14 @@ void LayerManager::reset()
 
 //----------------------------------------------------------------------------//
 
+void LayerManager::markAllShadersForCompilation()
+{
+    for (auto* layer : layers_)
+        layer->markForCompilation();
+}
+
+//----------------------------------------------------------------------------//
+
 void LayerManager::clearFramebuffers()
 {
     for (auto* layer : layers_)

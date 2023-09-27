@@ -89,7 +89,7 @@ private :
     std::string fragmentSourceHeader_;
     std::string fragmentSource_;
     ImGuiExtd::TextEditor fragmentEditor_;
-    bool uncompiledFragmentEditorChanges_;
+    bool hasUncompiledChanges_;
     
     // Screen quad associated with this buffer which is used a canvas for the
     // shader
@@ -159,7 +159,6 @@ private :
     );
     
     void createStaticShaders();
-    void compileShader();
     void initializeDefaultUniforms();
     void setDefaultAndSamplerUniforms();
     void setNonDefaultUniforms();
@@ -169,6 +168,7 @@ private :
         const vir::TextureBuffer::InternalFormat& internalFormat, 
         const glm::ivec2& resolution
     );
+    void compileShader();
     void renderGuiMain();
     void renderGuiConfirmDeletion(); 
     void renderGuiUniforms();
@@ -239,6 +239,11 @@ public:
     float depth() const {return depth_;}
     std::string name() const {return name_;}
     std::string& nameRef() {return name_;}
+    const std::map<int, std::string>& compilationErrors() const
+    {
+        return fragmentEditor_.GetErrorMarkers();
+    }
+    bool hasUncompiledChanges() const {return hasUncompiledChanges_;}
     vir::Framebuffer*& readOnlyFramebuffer() 
     {
         // Should be readOnlyFramebuffer_, right? Well, yes, but I am
@@ -252,6 +257,7 @@ public:
     void setDepth(float);
     void setName(std::string);
     void setTargetResolution(glm::ivec2, bool rescale=true);
+    void markForCompilation(){toBeCompiled_ = true;}
 
     // Operators
     bool operator==(const Layer& rhs) {return id_ == rhs.id();}
