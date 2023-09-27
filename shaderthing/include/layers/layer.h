@@ -138,6 +138,7 @@ private :
     glm::ivec4 mouse0_;
 
     //
+    std::vector<vir::Shader::Uniform*> uncompiledUniforms_;
     std::unordered_map<vir::Shader::Uniform*, bool> uniformUsesColorPicker_;
 
     // If a another layer was among the list of sampler2D-type uniforms to

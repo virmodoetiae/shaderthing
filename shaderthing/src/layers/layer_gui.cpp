@@ -451,6 +451,7 @@ void Layer::renderGuiUniforms()
                 {
                     auto uniform = new vir::Shader::Uniform();
                     uniforms_.emplace_back(uniform);
+                    uncompiledUniforms_.emplace_back(uniform);
                     uniformLimits_.insert({uniform, glm::vec2({0.0f, 1.0f})});
                     uniformUsesColorPicker_.insert({uniform, false});
                 }
@@ -469,6 +470,14 @@ void Layer::renderGuiUniforms()
             }
             else 
                 uniform = defaultUniforms_[row];
+
+            // These are used to check wheter the uniform name or type has
+            // changed. If so, it is added to the list of uncompiled uniforms
+            // to enable the appearance of the compilation button (managed by
+            // the LayerManager)
+            auto uniformName0 = uniform->name;
+            auto uniformType0 = uniform->type;
+
             // Column 0 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
@@ -1260,8 +1269,15 @@ is currently being held down)");
                     break;
                 }
             }
-            ImGui::PopItemWidth();
 
+            if 
+            (
+                uniform->name != uniformName0 ||
+                uniform->type != uniformType0
+            )
+                uncompiledUniforms_.emplace_back(uniform);
+
+            ImGui::PopItemWidth();
             ImGui::PopID();
         }
         ImGui::EndTable();

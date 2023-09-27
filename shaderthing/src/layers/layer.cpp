@@ -147,6 +147,7 @@ screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
 shaderId0_(-1),
+uncompiledUniforms_(0),
 uniformLayerNamesToBeSet_(0)
 {
     std::random_device dev;
@@ -301,6 +302,20 @@ void Layer::update()
         hasUncompiledChanges_ = 
             fragmentSource_!=fragmentEditor_.GetText();
 
+    if (uncompiledUniforms_.size() > 0)
+    {
+        bool allUniformsAreNamed = true;
+        for (auto* uniform : uncompiledUniforms_)
+        {
+            if (uniform->name.size()>0)
+                continue;
+            allUniformsAreNamed = false;
+            break;
+        }
+        if (allUniformsAreNamed)
+            hasUncompiledChanges_ = true;
+    }
+
     if (resolution_ == targetResolution_)
         return;
     resolution_ = targetResolution_;
@@ -403,6 +418,7 @@ screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
 shaderId0_(-1),
+uncompiledUniforms_(0),
 uniformLayerNamesToBeSet_(0)
 {
     std::string headerSource;
@@ -879,6 +895,7 @@ void Layer::compileShader()
         shader_ = tmp;
         tmp = nullptr;
         fragmentEditor_.SetErrorMarkers({});
+        uncompiledUniforms_.clear();
         hasUncompiledChanges_ = false;
         return;
     }
@@ -889,7 +906,7 @@ void Layer::compileShader()
         // on the editor
         hasUncompiledChanges_ = true;
         std::string exception(e.what());
-        std::cout << exception << std::endl;
+        //std::cout << exception << std::endl;
         bool isFragmentException = false;
         if (exception[0] == '[' && exception[1] == 'F' &&
             exception[2] == ']')
@@ -913,7 +930,8 @@ void Layer::compileShader()
                 i += 2;
                 while(exception[i] != ')' && exception[i] != ':')
                     errorIndexString += exception[i++];
-                errorIndex = std::stoi(errorIndexString)-nHeaderLines;
+                errorIndex = 
+                    std::max(std::stoi(errorIndexString)-nHeaderLines, 0);
                 errorIndexString = "";
                 if (firstErrorIndex == -1)
                     firstErrorIndex = errorIndex;
@@ -929,7 +947,6 @@ void Layer::compileShader()
                     error += ei;
                 else
                 {
-                    std::cout << "---" << std::endl;
                     errors.insert({errorIndex, error});
                     error = "";
                     readErrorIndex = true;
