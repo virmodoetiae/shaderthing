@@ -22,7 +22,6 @@ void LayerManager::renderGui()
     if (layersToBeRenamed)
         layersToBeRenamed = false;
     
-
     // Logic for compilation button and, possibly, summary of compilation errors    
     static ImVec4 redColor = {1,0,0,1};
     static bool atLeastOneCompilationError(false);
@@ -54,7 +53,7 @@ void LayerManager::renderGui()
         ImGui::Text("Ctrl+B");
         ImGui::PopStyleColor();
     }
-    static bool errorColorPushed = false;
+    bool errorColorPushed = false;
     if (atLeastOneCompilationError)
     {
         ImGui::Separator();
@@ -64,16 +63,40 @@ void LayerManager::renderGui()
     }
     atLeastOneCompilationError = false;
     atLeasOneUncompiledChange = false;
+    auto& sharedCompilationErrors(Layer::sharedCompilationErrors());
+    if (sharedCompilationErrors.size() > 0)
+    {
+        if (!atLeastOneCompilationError)
+            atLeastOneCompilationError = true;
+        ImGui::Bullet();ImGui::Text("Common");
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            for (auto& error : sharedCompilationErrors)
+            {
+                // First is line no., second is actual error text
+                std::string errorText = 
+                    "Line "+std::to_string(error.first)+": "+error.second;
+                ImGui::Text(errorText.c_str());
+            }
+            ImGui::EndTooltip();
+        }
+    }
     for (auto* layer : layers_)
     {
         auto& compilationErrors(layer->compilationErrors());
-        if (compilationErrors.size() > 0)
+        if (compilationErrors.size() > 0 || layer->hasHeaderErrors())
         {
             if (!atLeastOneCompilationError)
                 atLeastOneCompilationError = true;
             ImGui::Bullet();ImGui::Text(layer->name().c_str());
             if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
             {
+                if (layer->hasHeaderErrors())
+                {
+                    std::string errorText =  
+"Header: invalid uniform declaration(s), edit uniform name(s)";
+                    ImGui::Text(errorText.c_str());
+                }
                 for (auto& error : compilationErrors)
                 {
                     // First is line no., second is actual error text
@@ -87,22 +110,27 @@ void LayerManager::renderGui()
         if (layer->hasUncompiledChanges() && !atLeasOneUncompiledChange)
             atLeasOneUncompiledChange = true;
     }
-    if (atLeastOneCompilationError || errorColorPushed)
-    {
-        ImGui::PopStyleColor();
+    if (atLeastOneCompilationError)
         ImGui::Separator();
-    }
+    if (errorColorPushed)
+        ImGui::PopStyleColor();
 
     // Actual rendering of layer tabs
     if (ImGui::BeginTabBar("##layerTabBar", tab_bar_flags))
     {
-        // Check if a new tab (i.e., layer) should be added
+        // Check if a new tab (i.e., layer) should be added. However, disable
+        // addition tab/button if there are any current compilation errors
+        // in the shared/common fragment code section
+        if (Layer::sharedHasErrors())
+            ImGui::BeginDisabled();
         if 
         (
             ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing) || 
             layers_.size() == 0
         )
             addLayer();
+        if (Layer::sharedHasErrors())
+            ImGui::EndDisabled();
 
         // Render gui of layer in selection
         for (auto layer : layers_)

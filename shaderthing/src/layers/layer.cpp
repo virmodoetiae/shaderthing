@@ -18,6 +18,9 @@ namespace ShaderThing
 
 vir::Shader* Layer::voidShader_ = nullptr;
 vir::Shader* Layer::internalFramebufferShader_ = nullptr;
+ImGuiExtd::TextEditor Layer::sharedEditor_ = ImGuiExtd::TextEditor();
+bool Layer::sharedHasErrors_ = false;
+
 Layer::RendersTo Layer::rendererTargets[3] = 
 {
     Layer::RendersTo::Window,
@@ -124,6 +127,7 @@ toBeCompiled_(false),
 isGuiRendered_(false),
 isGuiDeletionConfirmationPending_(false),
 hasUncompiledChanges_(false),
+hasHeaderErrors_(false),
 depth_(depth),
 resolution_(resolution),
 targetResolution_(resolution),
@@ -158,12 +162,8 @@ uniformLayerNamesToBeSet_(0)
         1000000000
     );
     id_ = distribution(rng)+(int(time_)%1000);
-    fragmentEditor_.SetText(fragmentSource_);
-    fragmentEditor_.SetLanguageDefinition
-    (
-        ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
-    );
-    fragmentEditor_.ResetTextChanged();
+    
+    initializeEditors();
 
     // Init default uniforms (must be done before assembleFragmentSource)
     initializeDefaultUniforms();
@@ -223,6 +223,7 @@ Layer::~Layer()
         if (Layer::internalFramebufferShader_ != nullptr)
             delete Layer::internalFramebufferShader_;
         Layer::internalFramebufferShader_ = nullptr;
+        Layer::sharedEditor_ = ImGuiExtd::TextEditor();
     }
 }
 
@@ -411,6 +412,7 @@ isGuiDeletionConfirmationPending_(false),
 toBeCompiled_(false),
 fragmentSourceHeader_(""),
 hasUncompiledChanges_(false),
+hasHeaderErrors_(false),
 time_(app.timeRef()),
 timePaused_(app.isTimePausedRef()),
 frame_(app.frameRef()),
@@ -620,12 +622,7 @@ uniformLayerNamesToBeSet_(0)
     viewport_.y = (resolution_.y > resolution_.x) ? 1.0 : 
         float(resolution_.y)/float(resolution_.x);
     screenQuad_ = new vir::Quad(viewport_.x, viewport_.y, depth_);
-    fragmentEditor_.SetText(fragmentSource_);
-    fragmentEditor_.SetLanguageDefinition
-    (
-        ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
-    );
-    fragmentEditor_.ResetTextChanged();
+    initializeEditors();
 
     // Init default uniforms (must be done before assembleFragmentSource)
     initializeDefaultUniforms();
@@ -864,9 +861,10 @@ std::string Layer::assembleFragmentSource
         fragmentSourceHeader_ += "uniform "+typeName+" "+u->name+";\n";
         ++nLines;
     }
+    int nSharedLines = Layer::sharedEditor_.GetTotalLines();
     if (nHeaderLines != nullptr)
-        *nHeaderLines = nLines;
-    return fragmentSourceHeader_+source;
+        *nHeaderLines = nLines+nSharedLines;
+    return fragmentSourceHeader_+Layer::sharedEditor_.GetText()+source;
 }
 
 //----------------------------------------------------------------------------//
@@ -888,12 +886,15 @@ void Layer::compileShader()
         vir::Shader::ConstructFrom::String,
         &exceptionPtr
     );
+    hasHeaderErrors_ = false;
+    sharedHasErrors_ = false;
     if (tmp != nullptr)
     {
         frame_ = 0;
         delete shader_;
         shader_ = tmp;
         tmp = nullptr;
+        sharedEditor_.SetErrorMarkers({});
         fragmentEditor_.SetErrorMarkers({});
         uncompiledUniforms_.clear();
         hasUncompiledChanges_ = false;
@@ -914,11 +915,12 @@ void Layer::compileShader()
         if (!isFragmentException)
             return;
         bool readErrorIndex = true;
+        bool sharedError = false;
         int firstErrorIndex = -1;
         int errorIndex = 0;
         std::string errorIndexString = "";
         std::string error = "";
-        ImGuiExtd::TextEditor::ErrorMarkers errors;
+        ImGuiExtd::TextEditor::ErrorMarkers errors, sharedErrors;
         int i = 3;
         int n = exception.size();
         while(i < n)
@@ -930,8 +932,23 @@ void Layer::compileShader()
                 i += 2;
                 while(exception[i] != ')' && exception[i] != ':')
                     errorIndexString += exception[i++];
-                errorIndex = 
-                    std::max(std::stoi(errorIndexString)-nHeaderLines, 0);
+                errorIndex = std::stoi(errorIndexString)-nHeaderLines;
+                sharedError = false;
+                if (errorIndex < 1)
+                {
+                    int nSharedLines = Layer::sharedEditor_.GetTotalLines();
+                    if (errorIndex > -nSharedLines)
+                    {
+                        sharedError = true;
+                        sharedHasErrors_ = true;
+                        errorIndex += nSharedLines;
+                    }
+                    else
+                    {
+                        hasHeaderErrors_ = true;
+                        errorIndex = -1;
+                    }
+                }
                 errorIndexString = "";
                 if (firstErrorIndex == -1)
                     firstErrorIndex = errorIndex;
@@ -947,17 +964,53 @@ void Layer::compileShader()
                     error += ei;
                 else
                 {
-                    errors.insert({errorIndex, error});
+                    if (sharedError)
+                        sharedErrors.insert({errorIndex, error});
+                    else
+                        errors.insert({errorIndex+1, error});
                     error = "";
                     readErrorIndex = true;
                 }
             }
             ++i;
         }
-        fragmentEditor_.SetErrorMarkers(errors);
-        auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);
-        fragmentEditor_.SetCursorPosition(pos);
+        if (errors.size() > 0)
+        {
+            fragmentEditor_.SetErrorMarkers(errors);
+            auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);
+            fragmentEditor_.SetCursorPosition(pos);
+        }
+        if (sharedErrors.size() > 0)
+        {
+            sharedEditor_.SetErrorMarkers(sharedErrors);
+        }
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::initializeEditors()
+{
+    fragmentEditor_.SetText(fragmentSource_);
+    fragmentEditor_.SetLanguageDefinition
+    (
+        ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
+    );
+    fragmentEditor_.ResetTextChanged();
+    if (Layer::sharedEditor_.GetText().size() > 0)
+        return;
+    Layer::sharedEditor_.SetLanguageDefinition
+    (
+        ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
+    );
+    Layer::sharedEditor_.SetText
+    (
+R"(// Code written here in the Common section is shared by all fragment shaders 
+// across all layers
+)"
+    );
+    Layer::sharedEditor_.ResetTextChanged();
+
 }
 
 //----------------------------------------------------------------------------//

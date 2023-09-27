@@ -48,6 +48,10 @@ private :
     // Shader for rendering the internal framebuffer
     static vir::Shader* internalFramebufferShader_;
 
+    // Editor for the shared section of fragment code
+    static ImGuiExtd::TextEditor sharedEditor_;
+    static bool sharedHasErrors_;
+
     // Ref to top level app
     ShaderThingApp& app_;
     
@@ -90,6 +94,7 @@ private :
     std::string fragmentSource_;
     ImGuiExtd::TextEditor fragmentEditor_;
     bool hasUncompiledChanges_;
+    bool hasHeaderErrors_;
     
     // Screen quad associated with this buffer which is used a canvas for the
     // shader
@@ -160,6 +165,7 @@ private :
     );
     
     void createStaticShaders();
+    void initializeEditors();
     void initializeDefaultUniforms();
     void setDefaultAndSamplerUniforms();
     void setNonDefaultUniforms();
@@ -240,6 +246,12 @@ public:
     float depth() const {return depth_;}
     std::string name() const {return name_;}
     std::string& nameRef() {return name_;}
+    bool hasHeaderErrors() const {return hasHeaderErrors_;}
+    static bool sharedHasErrors() {return Layer::sharedHasErrors_;}
+    static const std::map<int, std::string>& sharedCompilationErrors()
+    {
+        return sharedEditor_.GetErrorMarkers();
+    }
     const std::map<int, std::string>& compilationErrors() const
     {
         return fragmentEditor_.GetErrorMarkers();

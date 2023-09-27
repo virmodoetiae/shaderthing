@@ -318,8 +318,11 @@ void Layer::renderGuiMain()
     {
         if (ImGui::BeginTabItem("Fragment shader"))
         {
+            static ImVec4 redColor = {1,0,0,1};
             static ImVec4 grayColor = 
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
+            static ImVec4 defaultColor = 
+                ImGui::GetStyle().Colors[ImGuiCol_Text];
             app_.findReplaceTextToolRef().renderGui();
             hasUncompiledChanges_=
                 hasUncompiledChanges_ ||
@@ -329,16 +332,29 @@ void Layer::renderGuiMain()
                 );
             if (app_.findReplaceTextToolRef().isGuiOpen()) 
                 ImGui::Separator();
-            ImGui::PushItemWidth(-1);
             ImGui::Indent();
+            
+            if (hasHeaderErrors_)
+                ImGui::PushStyleColor(ImGuiCol_Text, redColor);
             if (ImGui::TreeNode("Header"))
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, grayColor);
                 ImGui::Text(fragmentSourceHeader_.c_str());
-                ImGui::PopStyleColor();
+                ImGui::PopStyleColor(); 
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                 {
                     ImGui::PushTextWrapPos(40.0f*fontSize);
+                    if (hasHeaderErrors_)
+                    {
+                        std::string error = 
+"Header has error(s), likely due to invalid uniform declaration(s), correct "
+"uniform name(s)";
+                        ImGui::PushStyleColor(ImGuiCol_Text, redColor);
+                        ImGui::Text(error.c_str());
+                        ImGui::PopStyleColor();
+                        ImGui::Separator();
+                    }
+                    ImGui::PushStyleColor(ImGuiCol_Text, defaultColor);
                     ImGui::Text("Header information:");
                     ImGui::Bullet();ImGui::Text(
 "the highest possible GLSL version (based on your hardware) is used;");
@@ -357,14 +373,41 @@ void Layer::renderGuiMain()
 "uniform declarations are added automatically (on shader compilation) based "
 "on the uniforms you specify in this layer's 'Uniforms' tab.");
                     ImGui::PopTextWrapPos();
+                    ImGui::PopStyleColor();
                     ImGui::EndTooltip();
                 }
-                
                 ImGui::TreePop();
                 ImGui::Separator();
             }
+            if (hasHeaderErrors_)
+                ImGui::PopStyleColor();
+            bool showCommon(false);
+            float commonHeight(0.0f);
+            if (sharedHasErrors_)
+                ImGui::PushStyleColor(ImGuiCol_Text, redColor);
+            if (ImGui::TreeNode("Common"))
+            {
+                commonHeight = 
+                    Layer::sharedEditor_.GetTotalLines() *
+                    ImGui::GetTextLineHeight();
+                showCommon = true;
+                ImGui::TreePop();
+            }
+            if (sharedHasErrors_)
+                ImGui::PopStyleColor();
             ImGui::Unindent();
-            ImGui::PopItemWidth();
+            if (showCommon)
+            {
+                Layer::sharedEditor_.Render
+                (
+                    "##sharedEditor", 
+                    ImVec2(-1, commonHeight)
+                );
+                ImGui::Separator();
+                hasUncompiledChanges_ = 
+                    hasUncompiledChanges_ || 
+                    sharedEditor_.IsTextChanged();
+            }
             fragmentEditor_.Render("##fragmentEditor");
             ImGui::EndTabItem();
         }
