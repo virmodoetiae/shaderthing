@@ -39,6 +39,7 @@ TextEditor::TextEditor()
     , mScrollToTop(false)
     , mTextChanged(false)
     , mColorizerEnabled(true)
+    , mUseSetTextStart(false)
     , mTextStart(20.0f)
     , mLeftMargin(10)
     , mCursorPositionChanged(false)
@@ -901,10 +902,9 @@ void TextEditor::Render()
     auto globalLineMax = (int)mLines.size();
     auto lineMax = std::max(0, std::min((int)mLines.size() - 1, lineNo + (int)floor((scrollY + contentSize.y) / mCharAdvance.y)));
 
-    // Deduce mTextStart by evaluating mLines size (global lineMax) plus two spaces as text width
     char buf[16];
-    snprintf(buf, 16, " %d ", globalLineMax);
-    mTextStart = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, buf, nullptr, nullptr).x + mLeftMargin;
+    if (!mUseSetTextStart)
+        mTextStart = GetRequiredTextStart();
 
     if (!mLines.empty())
     {
@@ -1132,6 +1132,8 @@ void TextEditor::Render()
         ImGui::SetWindowFocus();
         mScrollToCursor = false;
     }
+
+    mUseSetTextStart = false;
 }
 
 void TextEditor::Render(const char* aTitle, const ImVec2& aSize, bool aBorder)
@@ -3238,4 +3240,12 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Lua()
         inited = true;
     }
     return langDef;
+}
+
+float TextEditor::GetRequiredTextStart() const
+{
+    // Deduce mTextStart by evaluating mLines size (global lineMax) plus two spaces as text width
+    char buf[16];
+    snprintf(buf, 16, " %d ", (int)mLines.size());
+    return ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, buf, nullptr, nullptr).x + mLeftMargin;
 }

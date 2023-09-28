@@ -239,6 +239,9 @@ public:
     void SetTabSize(int aValue);
     inline int GetTabSize() const { return mTabSize; }
 
+    void SetTextStart(float aTextStart){mUseSetTextStart = true; mTextStart = aTextStart;}
+    float GetRequiredTextStart() const;
+
     void InsertText(const std::string& aValue, bool aRegisterUndo=false, bool aPropagateUndo=false);
     void InsertText(const char* aValue, bool aRegisterUndo=false, bool aPropagateUndo=false);
 
@@ -351,6 +354,7 @@ private:
     std::string GetWordUnderCursor() const;
     std::string GetWordAt(const Coordinates& aCoords) const;
     ImU32 GetGlyphColor(const Glyph& aGlyph) const;
+    
 
     void HandleKeyboardInputs();
     void HandleMouseInputs();
@@ -370,6 +374,7 @@ private:
     bool mScrollToTop;
     bool mTextChanged;
     bool mColorizerEnabled;
+    bool mUseSetTextStart;
     float mTextStart;                   // position (in pixels) where a code line starts relative to the left of the TextEditor.
     int  mLeftMargin;
     bool mCursorPositionChanged;

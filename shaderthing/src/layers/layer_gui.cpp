@@ -396,8 +396,15 @@ void Layer::renderGuiMain()
             if (sharedHasErrors_)
                 ImGui::PopStyleColor();
             ImGui::Unindent();
+            float lineNumberColumnWidth = 
+                std::max
+                (
+                    Layer::sharedEditor_.GetRequiredTextStart(),
+                    fragmentEditor_.GetRequiredTextStart()
+                );
             if (showCommon)
             {
+                Layer::sharedEditor_.SetTextStart(lineNumberColumnWidth);
                 Layer::sharedEditor_.Render
                 (
                     "##sharedEditor", 
@@ -408,6 +415,7 @@ void Layer::renderGuiMain()
                     hasUncompiledChanges_ || 
                     sharedEditor_.IsTextChanged();
             }
+            fragmentEditor_.SetTextStart(lineNumberColumnWidth);
             fragmentEditor_.Render("##fragmentEditor");
             ImGui::EndTabItem();
         }
