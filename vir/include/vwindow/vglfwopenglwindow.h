@@ -44,7 +44,7 @@ public :
 
     void setViewport(uint32_t, uint32_t) override;
 
-    void setSize(uint32_t, uint32_t) override;
+    void setSize(uint32_t, uint32_t, bool broadcast=true) override;
 
     void data(unsigned char*) override;
 

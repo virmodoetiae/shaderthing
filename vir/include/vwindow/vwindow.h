@@ -77,8 +77,9 @@ public:
     // Set rendering viewport size
     virtual void setViewport(uint32_t, uint32_t) = 0;
 
-    // Set window size and rendering viewport size
-    virtual void setSize(uint32_t, uint32_t) = 0;
+    // Set window size and rendering viewport size, optinally broadcast the
+    // resize as a WindowResizeEvent
+    virtual void setSize(uint32_t, uint32_t, bool broadcast=true) = 0;
 
     // Retrieve window color data
     virtual void data(unsigned char*) = 0;

@@ -241,12 +241,19 @@ name##SetBuilt0 = name##SetBuilt;
                 ImGui::PushItemWidth(8.0*fontSize);
                 glm::ivec2 resolution = resolution_;
                 glm::ivec2 resolution0 = resolution_;
-                if (ImGui::InputInt2("##resInput", glm::value_ptr(resolution)))
+                if 
+                (
+                    ImGui::InputInt2
+                    (
+                        "##windowResolution", 
+                        glm::value_ptr(resolution)
+                    )
+                )
                 {
                     if (resolution0 != resolution)
                     {
                         auto window = vir::GlobalPtr<vir::Window>::instance();
-                        window->setSize(resolution.x, resolution.y);
+                        window->setSize(resolution.x, resolution.y, false);
                     }
                 }
                 ImGui::PopItemWidth();

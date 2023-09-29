@@ -123,14 +123,27 @@ void GLFWOpenGLWindow::setViewport(uint32_t vwidth, uint32_t vheight)
     glViewport(0, 0, viewportWidth_, viewportHeight_);
 }
 
-void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height)
+void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height, bool broadcast)
 {
     if (width == width_ && height == height_)
         return;
+    
+    // This is called automatically when the window is resized manually by
+    // dragging its corners, but here, I need to call it myself
+    glfwSetWindowSize(glfwWindow_, width, height);
+
+    // The width_, height_, viewport will be set in the onReceive method of
+    // this class once the event is broadcast to all listeners (which inclue
+    // the window itself), hence the return (void)
+    if (broadcast)
+        return GlobalPtr<Event::Broadcaster>::instance()->broadcast
+        (
+            Event::WindowResizeEvent(width, height)
+        );
     width_ = width;
     height_ = height;
+    aspectRatio_ = float(width_)/float(height_);
     setViewport(width, height);
-    glfwSetWindowSize(glfwWindow_, width, height);
 }
 
 void GLFWOpenGLWindow::data(unsigned char* data)
@@ -158,13 +171,7 @@ void GLFWOpenGLWindow::onReceive(Event::WindowResizeEvent& e)
     width_ = e.width();
     height_ = e.height();
     aspectRatio_ = float(width_)/float(height_);
-    if (width_ != viewportWidth_ || height_ != viewportHeight_)
-    {
-        viewportWidth_ = width_;
-        viewportHeight_ = height_;
-        glViewport(0, 0, viewportWidth_, viewportHeight_);
-    }
-    //std::cout << "WindowResize " << width_ << " " << height_ << std::endl;
+    setViewport(width_, height_);
 }
 
 void GLFWOpenGLWindow::onReceive(Event::WindowFocusEvent& e)
