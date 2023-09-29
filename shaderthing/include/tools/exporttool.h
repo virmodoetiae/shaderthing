@@ -30,7 +30,7 @@ public:
     {
         glm::ivec2 resolution;
         glm::ivec2 backupResolution;
-        float resolutionScale = 1.0;
+        glm::vec2 resolutionScale = {1.f,1.f};
         bool resolutionLocked = false;
 
     };

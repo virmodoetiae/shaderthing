@@ -186,6 +186,9 @@ void ShaderThingApp::onReceive(vir::Event::WindowResizeEvent& e)
     viewport_.y = std::min(1.0f, 1.0f/aspectRatio);
     screenCamera_->setViewportHeight(viewport_.y);
     screenCamera_->update();
+
+    // Lightweight version of render restart
+    frame_ = -1;
 }
 
 //----------------------------------------------------------------------------//

@@ -56,6 +56,12 @@ TODO ---------------------------------------------------------------------------
     in ShaderToy), inclusive of de/serialization mechanism (saves before this
     feature will not longer be compatible)
 
+(X) Enalbe unlocking layer resolution aspect ratio from window aspect
+    ratio if the layer is rendering to its internal framebuffer
+
+(X) Implement rendering restart on window resize (to clear framebuffers) |
+    For now, only iFrame is reset
+
 (W) Expand code repository section
 
 ( ) Add samplerResolution auto uniforms on sampler2D-type uniform addition
@@ -63,8 +69,6 @@ TODO ---------------------------------------------------------------------------
 ( ) Add keyboard-based inputs as custom uniforms in addition to the currently 
     existing and unreboundable WASD-based iCameraPosition. Probably not too
     trivial but not particularly complex either
-
-( ) Implement rendering restart on window resize (to clear framebuffers)
 
 ( ) Find a way to differentiate between global/shared uniforms and uniforms
     that are specific to the Layer under consideration in the Uniforms tab

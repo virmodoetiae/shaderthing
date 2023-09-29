@@ -110,10 +110,11 @@ isGuiRendered_(false),
 isGuiDeletionConfirmationPending_(false),
 hasUncompiledChanges_(false),
 hasHeaderErrors_(false),
+isAspectRatioBoundToWindow_(true),
 depth_(depth),
 resolution_(resolution),
 targetResolution_(resolution),
-resolutionScale_(1.0),
+resolutionScale_({1,1}),
 viewport_
 (
     {
@@ -316,6 +317,9 @@ void Layer::update()
         framebufferA_->colorBufferInternalFormat(), 
         resolution_
     );
+
+    // Lightweight version of render restart
+    app_.frameRef() = -1;
 }
 
 //----------------------------------------------------------------------------//
@@ -392,6 +396,7 @@ toBeCompiled_(false),
 fragmentSourceHeader_(""),
 hasUncompiledChanges_(false),
 hasHeaderErrors_(false),
+isAspectRatioBoundToWindow_(true),
 screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
@@ -417,9 +422,10 @@ uniformLayerNamesToBeSet_(0)
     sscanf
     (
         headerSource.c_str(),
-        "%s %d %d %f %f %d %d %d %d %d %d %d %d", 
+        "%s %d %d %f %f %f %d %d %d %d %d %d %d %d", 
         layerName, 
-        &resolution_.x, &resolution_.y, &depth_, &resolutionScale_, 
+        &resolution_.x, &resolution_.y, &depth_, 
+        &resolutionScale_.x, &resolutionScale_.y, 
         &rendersTo, &internalFormat,
         &xWrap, &yWrap, &magFilter, &minFilter,
         &fragmentSourceSize, &nUniforms
@@ -429,6 +435,7 @@ uniformLayerNamesToBeSet_(0)
     delete[] layerName;
     rendersTo_ = (RendersTo)rendersTo;
     fragmentSource_.resize(fragmentSourceSize);
+    isAspectRatioBoundToWindow_ = (resolutionScale_.x == resolutionScale_.y);
 
     // Parse fragment source ---------------------------------------------------
     uint32_t index0(index);
@@ -685,9 +692,10 @@ void Layer::saveState(std::ofstream& file)
     sprintf
     (
         data, 
-        "%s %d %d %.9f %.9f %d %d %d %d %d %d %d %d", 
+        "%s %d %d %.9f %.9f %.9f %d %d %d %d %d %d %d %d", 
         name_.c_str(), 
-        resolution_.x, resolution_.y, depth_, resolutionScale_, 
+        resolution_.x, resolution_.y, depth_, 
+        resolutionScale_.x, resolutionScale_.y, 
         (int)rendersTo_, internalFormat,
         xWrap, yWrap, magFilter, minFilter,
         fragmentSource_.size(), (int)uniforms_.size()
@@ -1220,18 +1228,6 @@ case vir::Shader::Variable::Type::ST :          \
 
 void Layer::adjustTargetResolution()
 {
-    /*
-    The goal of this section of code is to:
-    -   have window-aspect-ratio-bound layer width and
-        height when editing if the layer is internally
-        rendered (i.e., to self)
-    -   have independently-modifiable window width and
-        height if the layer is rendered to screen,
-        and have the edit propagate throughout all 
-        layers, so that self-rendered layers have 
-        their aspect ratios (but not absolute dims)
-        affected too
-    */
     glm::ivec2 value0 = resolution_;
     glm::ivec2& value(targetResolution_);
     auto window = 
@@ -1245,11 +1241,14 @@ void Layer::adjustTargetResolution()
     if (rendersTo_ != RendersTo::Window)
     {
         minResolution = {1,1};
-        maxResolution = {4096,2160};
-        if (value0.x != value.x)
-            value.y = value.x/aspectRatio;
-        else if (value0.y != value.y)
-            value.x = value.y*aspectRatio;
+        maxResolution = {4096,4096};
+        if (isAspectRatioBoundToWindow_)
+        {
+            if (value0.x != value.x)
+                value.y = (float)value.x/aspectRatio+.5f;
+            else if (value0.y != value.y)
+                value.x = (float)value.y*aspectRatio+.5f;
+        }
     }
     else
     {
@@ -1265,12 +1264,28 @@ void Layer::adjustTargetResolution()
     value.y = std::min(maxResolution.y, value.y);
     if (rendersTo_ != RendersTo::Window)
     {
-        if (value.x > value.y)
-            resolutionScale_ = 
-                (float)value.x/window->width();
+        if (isAspectRatioBoundToWindow_)
+        {
+            if (value.x > value.y)
+            {
+                resolutionScale_.x = 
+                    (float)value.x/window->width();
+                resolutionScale_.y = resolutionScale_.x;
+            }
+            else
+            {
+                resolutionScale_.y = 
+                    (float)value.y/window->height();
+                resolutionScale_.x = resolutionScale_.y;
+            }
+        }
         else
-            resolutionScale_ = 
+        {
+            resolutionScale_.x = 
+                (float)value.x/window->width();
+            resolutionScale_.y = 
                 (float)value.y/window->height();
+        }
     }
     else if (value0 != value)
     {
@@ -1338,6 +1353,15 @@ void Layer::clearFramebuffers()
         framebufferA_->colorBufferInternalFormat(), 
         resolution_
     );
+}
+
+//----------------------------------------------------------------------------//
+
+float Layer::aspectRatio() const
+{
+    if (isAspectRatioBoundToWindow_)
+        return vir::GlobalPtr<vir::Window>::instance()->aspectRatio();
+    return float(resolution_.x)/float(resolution_.y);
 }
 
 }

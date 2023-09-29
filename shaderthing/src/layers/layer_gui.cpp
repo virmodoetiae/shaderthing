@@ -77,7 +77,8 @@ void Layer::renderGuiSettings()
                 {
                     app_.resourceManagerRef().removeLayerAsResource(this);
                     auto window = vir::GlobalPtr<vir::Window>::instance();
-                    resolutionScale_ = 1.0;
+                    resolutionScale_ = {1.f, 1.f};
+                    isAspectRatioBoundToWindow_ = true;
                     targetResolution_ = {window->width(), window->height()};
                 }
             }
@@ -88,9 +89,35 @@ void Layer::renderGuiSettings()
 
     ImGui::Text("Resolution           ");
     ImGui::SameLine();
-    ImGui::PushItemWidth(selectableWidth);
+    
     if (rendersTo_ == RendersTo::Window)
         ImGui::BeginDisabled();
+    ImGui::SameLine();
+    auto x0 = ImGui::GetCursorPos().x;
+    bool isAspectRatioBoundToWindow0(isAspectRatioBoundToWindow_);
+    ImGui::Checkbox("##layerAspectRatioLock", &isAspectRatioBoundToWindow_);
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        ImGui::Text(
+R"(If checked, the layer aspect ratio is 
+locked to that of the main window)"
+        );
+        ImGui::EndTooltip();
+    }
+    if 
+    (
+        isAspectRatioBoundToWindow_ &&
+        isAspectRatioBoundToWindow_ != isAspectRatioBoundToWindow0
+    )
+    {
+        auto window = vir::GlobalPtr<vir::Window>::instance();
+        resolutionScale_ = {1.f, 1.f};
+        isAspectRatioBoundToWindow_ = true;
+        targetResolution_ = {window->width(), window->height()};
+    }
+    ImGui::SameLine();
+    auto checkboxSize = ImGui::GetCursorPos().x-x0;
+    ImGui::PushItemWidth(selectableWidth-checkboxSize);
     if (ImGui::InputInt2("##resInput", glm::value_ptr(targetResolution_)))
         adjustTargetResolution();
     if (rendersTo_ == RendersTo::Window)

@@ -123,15 +123,16 @@ private :
     // framebufferA_ and framebufferB_, is the one currently used for
     // writing and which one for reading
     bool flipFramebuffers_; 
+    // True it the aspect ratio of this layer is locked to always be equal to
+    // that of the window
+    bool isAspectRatioBoundToWindow_;
 
     // Buffer resolution
     glm::ivec2 resolution_;
     // Target resize resolution for deferred update
     glm::ivec2 targetResolution_;
-    // Ratio of this layer's resolution to the main window resolution. Since
-    // the aspect ratio of the layer is tied to that of the window, this number
-    // is a single float
-    float resolutionScale_;
+    // 
+    glm::vec2 resolutionScale_;
     // Viewport dimensions
     glm::vec2 viewport_;
 
@@ -353,12 +354,18 @@ public:
     
     //
     bool toBeCompiled() const {return toBeCompiled_;}
+
+    //
+    bool isAspectRatioBoundToWindow() const {return isAspectRatioBoundToWindow_;}
     
     //
     glm::vec2 resolution() const {return resolution_;}
     
     //
-    float resolutionScale() const {return resolutionScale_;}
+    glm::vec2 resolutionScale() const {return resolutionScale_;}
+
+    //
+    float aspectRatio() const;
     
     //
     float depth() const {return depth_;}

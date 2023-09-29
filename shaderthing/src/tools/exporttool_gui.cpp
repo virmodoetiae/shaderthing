@@ -94,23 +94,6 @@ void ExportTool::renderGui()
     }
     ImGui::PopItemWidth();
 
-    /*
-    ImGui::Text("Pre-export frames ");
-    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-    {
-        ImGui::Text(
-R"(Number of frames to be rendered to the export 
-framebuffer before the export begins)");
-        ImGui::EndTooltip();
-    }
-    ImGui::SameLine();
-    ImGui::PushItemWidth(entryWidth);
-    int nPreExportFrames = nPreExportFrames_;
-    ImGui::InputInt("##nPreExportFramesInput", &nPreExportFrames);
-    nPreExportFrames_ = std::max(nPreExportFrames, 0);
-    ImGui::PopItemWidth();
-    */
-
     if (exportType_ != ExportType::Image)
     {
         ImGui::Text("Start time                  ");
@@ -259,7 +242,7 @@ framebuffer before the export begins)");
             auto layer = layers_[row-1];
             ExportLayerData& exportData = exportLayerData_[layer];
             glm::ivec2& resolution = exportData.resolution;
-            float& resolutionScale = exportData.resolutionScale;
+            auto& resolutionScale = exportData.resolutionScale;
             bool& resolutionLocked = exportData.resolutionLocked;
 
             // Column 0 --------------------------------------------------------
@@ -280,17 +263,23 @@ framebuffer before the export begins)");
                 ImGui::InputInt2("##i2Input", glm::value_ptr(resolution));
                 if (resolution0.x != resolution.x)
                 {
-                    resolution.y = std::max(resolution.x/aspectRatio, 1.f);
-                    resolutionScale = (aspectRatio > 1.0) ? 
-                        (float)resolution.x/exportResolution_.x :
+                    resolution.y = 
+                        std::max(resolution.x/layer->aspectRatio(), 1.f);
+                    resolutionScale.x = //(aspectRatio > 1.0) ? 
+                        //(float)resolution.x/exportResolution_.x :
                         (float)resolution.y/exportResolution_.y;
+                    if (layer->isAspectRatioBoundToWindow())
+                        resolutionScale.y = resolutionScale.x;
                 }
                 else if (resolution0.y != resolution.y)
                 {
-                    resolution.x = std::max(resolution.y*aspectRatio, 1.f);
-                    resolutionScale = (aspectRatio > 1.0) ? 
-                        (float)resolution.x/exportResolution_.x :
+                    resolution.x = 
+                        std::max(resolution.y*layer->aspectRatio(), 1.f);
+                    resolutionScale.y = //(aspectRatio > 1.0) ? 
+                        //(float)resolution.x/exportResolution_.x :
                         (float)resolution.y/exportResolution_.y;
+                    if (layer->isAspectRatioBoundToWindow())
+                        resolutionScale.x = resolutionScale.y;
                 }
             }
             else
@@ -299,14 +288,6 @@ framebuffer before the export begins)");
                 ImGui::BeginDisabled();
                 ImGui::InputInt2("##i2Input", glm::value_ptr(resolution));
                 ImGui::EndDisabled();
-                /*ImGui::Text
-                (
-                    std::string
-                    (
-                        std::to_string(resolution.x)+" x "+
-                        std::to_string(resolution.y)
-                    ).c_str()
-                );*/
             }
             ImGui::PopItemWidth();
 
@@ -322,8 +303,6 @@ framebuffer before the export begins)");
             bool resolutionLocked0(resolutionLocked);
             if (ImGui::Button(resolutionLocked?"Unlock":"Lock", ImVec2(-1,0)))
                 resolutionLocked = !resolutionLocked;
-            //ImGui::Selectable(resolutionLocked?"Locked":" ", &resolutionLocked);
-            //ImGui::Checkbox("##resLock", &resolutionLocked);
             if (!resolutionLocked && resolutionLocked0)
                 resolution = (glm::vec2)exportResolution_*resolutionScale + 
                     glm::vec2({.5,.5});
