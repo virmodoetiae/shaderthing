@@ -458,7 +458,7 @@ void Layer::renderGuiMain()
         ImGui::EndTabBar();
     }
 
-    app_.findReplaceTextToolRef().update(); // Ctrl+F/Ctrl+H to open
+    app_.findReplaceTextToolRef().update(); // Ctrl+F/Ctrl+H to open 
 }
 
 //----------------------------------------------------------------------------//
