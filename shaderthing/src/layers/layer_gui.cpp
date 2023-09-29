@@ -584,6 +584,7 @@ void Layer::renderGuiUniforms()
                 break;
             }
 
+            std::string tooltipText = "";
             bool isShared(false);
             bool isDefault(row < nDefaultUniforms);
             vir::Shader::Uniform* uniform = nullptr;
@@ -666,9 +667,16 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
         );                                                                  \
     ImGui::EndTooltip();                                                    \
 }
-            else if (uniform->name == "iCameraPosition")
+            else if (uniform->name == "iWASD")
             {
                 isShared = true;
+                tooltipText = 
+R"(Keyboard-controlled vec3 position in 3-D space. All movement is with respect to 
+the current direction of iLook. For an iLook aligned with the z axis in a right
+handed reference frame, z is forward, x is left, y is up.  With respect to said
+reference frame, pressing/holding the W, A, S, D, space or left-shift keys will
+move the position forwards, left, backwards, right, up, down respectively.
+Please also note that the up direction (positive y) never changes)";
                 if (ImGui::Button("Settings", ImVec2(-1, 0)))
                     ImGui::OpenPopup("##iCameraPositionSettings");
                 if (ImGui::BeginPopup("##iCameraPositionSettings"))
@@ -694,8 +702,11 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
                     ImGui::EndPopup();
                 }
             }
-            else if (uniform->name == "iCameraDirection")
+            else if (uniform->name == "iLook")
             {
+                tooltipText = 
+R"(Mouse-controlled look direction in 3-D space. Click and drag (on the window)
+to modify. Best suited for controlling a camera)";
                 isShared = true;
                 if (ImGui::Button("Settings", ImVec2(-1, 0)))
                     ImGui::OpenPopup("##iCameraDirectionSettings");
@@ -745,8 +756,13 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
                     {
                         ImGui::Text
                         (
-                            "This uniforms is shared across all layers"
+                            "This uniform is shared across all layers"
                         );
+                        if (tooltipText.size() > 0)
+                        {
+                            ImGui::Separator();
+                            ImGui::Text(tooltipText.c_str());
+                        }
                         ImGui::EndTooltip();
                     }
                 }
@@ -1251,7 +1267,7 @@ is currently being held down)");
                             }
                             bool isCameraDirection
                             (
-                                uniform->name == "iCameraDirection"
+                                uniform->name == "iWASD"
                             );
                             if (isCameraDirection)
                                 value = glm::normalize(value);

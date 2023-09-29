@@ -565,7 +565,7 @@ void main()
     const vec3 lightSource = vec3(2,4,2);
     const vec4 bckgColor = vec4(0,0,0,1);
 
-    // Feel free to replace these with the iCameraPosition, iCameraDirection
+    // Feel free to replace these with the iWASD, iLook
     // uniforms to have live control over the camera and move in shader-space!
     vec3 cameraPosition = vec3(1.5,3,3);
     vec3 cameraDirection = -normalize(vec3(1.5,1.5,3));

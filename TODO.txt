@@ -73,9 +73,9 @@ TODO ---------------------------------------------------------------------------
 
 ( ) Adjust GLSL syntax highlighting in text editor
 
-( ) Add keyboard-based inputs as custom uniforms in addition to the currently 
-    existing and unreboundable WASD-based iCameraPosition. Probably not too
-    trivial but not particularly complex either
+( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
+    currently existing and unreboundable WASD-based iCameraPosition/iWASD. 
+    Probably not too trivial but not particularly complex either
     
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
@@ -96,12 +96,13 @@ TODO ---------------------------------------------------------------------------
 ( ) Test performance of ShaderThing compiled with max level optimizations (-O3)
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains vir/ and shaderthing/).
-    I have a suspiction that optimizations are resulting in memory leaks on
+    I have a suspicion that optimizations are resulting in memory leaks on
     project loading, resource loading/unloading (it can happend indeed!)
-    For the time being, the releases are compiled without optimizations 
-    (-O0)
+    For the time being, the releases are compiled without optimizations (-O0)
 
 TO-CONSIDER --------------------------------------------------------------------
+
+*   Add pivot-mode motion to iCameraDirection/iLook w.r.t. iCameraPosition/iWASD
 
 *   Enable option to use the quantizer palette for GIF quantization on GIF 
     exporting

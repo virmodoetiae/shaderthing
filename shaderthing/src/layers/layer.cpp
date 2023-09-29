@@ -1099,7 +1099,7 @@ void Layer::initializeDefaultUniforms()
 
     // Shader camera position
     auto cameraPositionUniform = new vir::Shader::Uniform();
-    cameraPositionUniform->name = "iCameraPosition";
+    cameraPositionUniform->name = "iWASD";
     cameraPositionUniform->type = vir::Shader::Variable::Type::Float3;
     cameraPositionUniform->setValuePtr(&shaderCamera_.position());
     defaultUniforms_.emplace_back(cameraPositionUniform);
@@ -1107,7 +1107,7 @@ void Layer::initializeDefaultUniforms()
 
     // Shader camera direction
     auto cameraDirectionUniform = new vir::Shader::Uniform();
-    cameraDirectionUniform->name = "iCameraDirection";
+    cameraDirectionUniform->name = "iLook";
     cameraDirectionUniform->type = vir::Shader::Variable::Type::Float3;
     cameraDirectionUniform->setValuePtr(&shaderCamera_.z());
     defaultUniforms_.emplace_back(cameraDirectionUniform);
@@ -1152,12 +1152,12 @@ void Layer::setDefaultAndSamplerUniforms()
     }
     if (cameraPosition0_ != shaderCamera_.position()  || forceSet)
     {
-        shader_->setUniformFloat3("iCameraPosition", cameraPosition);
+        shader_->setUniformFloat3("iWASD", cameraPosition);
         cameraPosition0_ = cameraPosition;
     }
     if (cameraDirection0_ != cameraDirection || forceSet)
     {
-        shader_->setUniformFloat3("iCameraDirection", cameraDirection);
+        shader_->setUniformFloat3("iLook", cameraDirection);
         cameraDirection0_ = cameraDirection;
     }
     if (mouse0_ != mouse || forceSet)
