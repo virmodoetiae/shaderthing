@@ -830,9 +830,11 @@ std::string Layer::assembleFragmentSource
         // for sampler2D (which maps to texture2D) and samplerCube (which maps
         // to cubemap). I should re-organize the mappings a bit 
         std::string typeName; 
+        bool isSampler2D(false);
         switch (u->type)
         {
             case vir::Shader::Variable::Type::Sampler2D :
+                isSampler2D = true;
                 typeName = "sampler2D";
                 break;
             case vir::Shader::Variable::Type::SamplerCube :
@@ -844,6 +846,12 @@ std::string Layer::assembleFragmentSource
         }
         fragmentSourceHeader_ += "uniform "+typeName+" "+u->name+";\n";
         ++nLines;
+        // Automatically managed sampler2D resolution uniform
+        if (isSampler2D)
+        {
+            fragmentSourceHeader_ += "uniform vec2 "+u->name+"Resolution;\n";
+            ++nLines;
+        }
     }
     int nSharedLines = Layer::sharedSourceEditor_.GetTotalLines();
     if (nHeaderLines != nullptr)
@@ -1183,6 +1191,18 @@ void Layer::setDefaultAndSamplerUniforms()
             resource->bind(unit);
         shader_->setUniformInt(u->name, unit);
         unit++;
+        // Set the (automatically managed) sampler2D resolution uniform
+        if (u->type == vir::Shader::Variable::Type::Sampler2D)
+        {
+            shader_->setUniformFloat2
+            (
+                u->name+"Resolution", 
+                {
+                    resource->width(),
+                    resource->height()
+                }
+            );
+        }
     }
 
     // Set all other uniforms (reset if shader changed, otherwise they are 

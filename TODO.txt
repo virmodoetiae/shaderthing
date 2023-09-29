@@ -62,16 +62,16 @@ TODO ---------------------------------------------------------------------------
 (X) Implement rendering restart on window resize (to clear framebuffers) |
     For now, only iFrame is reset
 
+(X) Add samplerResolution auto uniform on sampler2D-type uniform addition
+
 (W) Expand code repository section
 
-( ) Add samplerResolution auto uniforms on sampler2D-type uniform addition
+( ) Find a way to differentiate between global/shared uniforms and uniforms
+    that are specific to the Layer under consideration in the Uniforms tab
 
 ( ) Add keyboard-based inputs as custom uniforms in addition to the currently 
     existing and unreboundable WASD-based iCameraPosition. Probably not too
     trivial but not particularly complex either
-
-( ) Find a way to differentiate between global/shared uniforms and uniforms
-    that are specific to the Layer under consideration in the Uniforms tab
     
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed

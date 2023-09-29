@@ -500,6 +500,8 @@ void Layer::renderGuiUniforms()
         ImGuiTableFlags_SizingFixedFit;
     static int nColumns = 5;
     int deleteRow = -1;
+    // Very dirty stuff, totally not proud of this
+    bool nextUniformIsSampler2DResolution(false);
     if (ImGui::BeginTable("##uniformTable", nColumns, tableFlags))
     {
         // Declare columns
@@ -524,6 +526,46 @@ void Layer::renderGuiUniforms()
             ImGui::PushID(row);
             ImGui::TableNextRow(0, 1.6*fontSize);
             int col = 0;
+
+            // This is exclusively to render the sampler2D resolution uniforms,
+            // which are automatically managed
+            if (nextUniformIsSampler2DResolution)
+            {
+                row--; // Extremely bad practice, I know!
+                nextUniformIsSampler2DResolution = false;
+                auto uniform = uniforms_[row-nDefaultUniforms];
+                // Column 0 ----------------------------------------------------
+                ImGui::TableSetColumnIndex(col++);
+                // Column 1 ----------------------------------------------------
+                ImGui::TableSetColumnIndex(col++);
+                std::string name = uniform->name+"Resolution";
+                ImGui::Text(name.c_str());
+                // Column 2 ----------------------------------------------------
+                ImGui::TableSetColumnIndex(col++);
+                ImGui::Text
+                (
+                    vir::Shader::uniformTypeToName
+                    [
+                        vir::Shader::Variable::Type::Float2
+                    ].c_str()
+                );
+                // Column 3 ----------------------------------------------------
+                ImGui::TableSetColumnIndex(col++);
+                // Column 4-----------------------------------------------------
+                ImGui::TableSetColumnIndex(col++);
+                auto resource = uniform->getValuePtr<Resource>();
+                if (resource != nullptr)
+                {
+                    std::string resolution
+                    (
+                        std::to_string(resource->width())+" x "+
+                        std::to_string(resource->height())
+                    );
+                    ImGui::Text(resolution.c_str());
+                }
+                ImGui::PopID();
+                continue;
+            }
 
             if (row == nTotalUniforms)
             {
@@ -1362,6 +1404,14 @@ is currently being held down)");
                 uniform->type != uniformType0
             )
                 uncompiledUniforms_.emplace_back(uniform);
+            
+            if 
+            (
+                uniform->type == vir::Shader::Variable::Type::Sampler2D &&
+                uniform->name.size() > 0 &&
+                uniform->getValuePtr<Resource>() != nullptr
+            )
+                nextUniformIsSampler2DResolution = true;
 
             ImGui::PopItemWidth();
             ImGui::PopID();
@@ -1383,6 +1433,7 @@ is currently being held down)");
         uniforms_.erase(uniforms_.begin()+deleteRow);
         uniform = nullptr;
         deleteRow = -1;
+        hasUncompiledChanges_ = true;
     }
 }
 
