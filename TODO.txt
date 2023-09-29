@@ -71,6 +71,8 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand code repository section (add noise functions!)
 
+( ) Adjust GLSL syntax highlighting in text editor
+
 ( ) Add keyboard-based inputs as custom uniforms in addition to the currently 
     existing and unreboundable WASD-based iCameraPosition. Probably not too
     trivial but not particularly complex either

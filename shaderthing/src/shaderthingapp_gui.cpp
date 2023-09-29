@@ -486,7 +486,7 @@ void ShaderThingApp::renderGuiLoadProject()
             lastOpenedPath
         );
     }
-    if (ImGuiFileDialog::Instance()->Display("LoadFileDialog")) 
+    if (ImGuiFileDialog::Instance()->Display("LoadFileDialog"))
     {
         if (ImGuiFileDialog::Instance()->IsOk())
         {
@@ -496,6 +496,7 @@ void ShaderThingApp::renderGuiLoadProject()
             layerManager_->preLoadAdjustment();
             stateFlags_[ST_LOAD_PROJECT] = true;
         }
+        ImGui::SetTooltip("Compiling project shaders...");
         ImGuiFileDialog::Instance()->Close();
         *isGuiOpenPtr = false;
     }

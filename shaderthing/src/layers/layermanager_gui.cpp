@@ -44,7 +44,10 @@ void LayerManager::renderGui()
             ImGui::ArrowButton("##right",ImGuiDir_Right) ||
             Misc::isCtrlKeyPressed(ImGuiKey_B)
         )
+        {
+            ImGui::SetTooltip("Compiling project shaders...");
             markAllShadersForCompilation();
+        }
         ImGui::PopStyleColor();
         ImGui::SameLine();
         ImGui::Text("Compile all shaders");
