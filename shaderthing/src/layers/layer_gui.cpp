@@ -584,6 +584,7 @@ void Layer::renderGuiUniforms()
                 break;
             }
 
+            bool isShared(false);
             bool isDefault(row < nDefaultUniforms);
             vir::Shader::Uniform* uniform = nullptr;
             bool* uniformUsesColorPicker = nullptr;
@@ -612,6 +613,7 @@ void Layer::renderGuiUniforms()
             }
             else if (uniform->name == "iFrame")
             {
+                isShared = true;
                 if (ImGui::Button(ICON_FA_UNDO, ImVec2(2.2*fontSize, 0)))
                     app_.restartRendering();
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -645,6 +647,7 @@ void Layer::renderGuiUniforms()
             }
             else if (uniform->name == "iTime")
             {
+                isShared = true;
                 std::string text = 
                     (app_.isTimePausedCRef()) ? ICON_FA_PLAY : ICON_FA_PAUSE;
                 if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
@@ -665,6 +668,7 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
 }
             else if (uniform->name == "iCameraPosition")
             {
+                isShared = true;
                 if (ImGui::Button("Settings", ImVec2(-1, 0)))
                     ImGui::OpenPopup("##iCameraPositionSettings");
                 if (ImGui::BeginPopup("##iCameraPositionSettings"))
@@ -692,6 +696,7 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
             }
             else if (uniform->name == "iCameraDirection")
             {
+                isShared = true;
                 if (ImGui::Button("Settings", ImVec2(-1, 0)))
                     ImGui::OpenPopup("##iCameraDirectionSettings");
                 if (ImGui::BeginPopup("##iCameraDirectionSettings"))
@@ -719,6 +724,7 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
             }
             else if (uniform->name == "iMouse")
             {
+                isShared = true;
                 bool enabled = app_.isMouseInputEnabled();
                 std::string text = enabled ? "Disable" : "Enable";
                 if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
@@ -731,7 +737,20 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
             if (isDefault)
+            {
                 ImGui::Text(uniform->name.c_str());
+                if (isShared)
+                {
+                    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                    {
+                        ImGui::Text
+                        (
+                            "This uniforms is shared across all layers"
+                        );
+                        ImGui::EndTooltip();
+                    }
+                }
+            }
             else 
                 ImGui::InputText("##name", &uniform->name);
             ImGui::PopItemWidth();

@@ -64,10 +64,12 @@ TODO ---------------------------------------------------------------------------
 
 (X) Add samplerResolution auto uniform on sampler2D-type uniform addition
 
-(W) Expand code repository section
+(X) Find a way to differentiate between global/shared uniforms and uniforms
+    that are specific to the Layer under consideration in the Uniforms tab |
+    This was done by adding a simple hover-on infobox over uniform names
+    detailing if the uniform is shared by/across all layers
 
-( ) Find a way to differentiate between global/shared uniforms and uniforms
-    that are specific to the Layer under consideration in the Uniforms tab
+(W) Expand code repository section (add noise functions!)
 
 ( ) Add keyboard-based inputs as custom uniforms in addition to the currently 
     existing and unreboundable WASD-based iCameraPosition. Probably not too
