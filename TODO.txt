@@ -51,15 +51,24 @@ TODO ---------------------------------------------------------------------------
     instead of having to type in the uniform declarations in the shader code.
     Remove vertex shader editing in the process
 
+(X) Add a "Commons" shader header which is automatically embedded in every
+    fragment shader to enable the user to avoid core repetition (e.g., like
+    in ShaderToy), inclusive of de/serialization mechanism (saves before this
+    feature will not longer be compatible)
+
 (W) Expand code repository section
+
+( ) Add samplerResolution auto uniforms on sampler2D-type uniform addition
+
+( ) Add keyboard-based inputs as custom uniforms in addition to the currently 
+    existing and unreboundable WASD-based iCameraPosition. Probably not too
+    trivial but not particularly complex either
+
+( ) Implement rendering restart on window resize (to clear framebuffers)
 
 ( ) Find a way to differentiate between global/shared uniforms and uniforms
     that are specific to the Layer under consideration in the Uniforms tab
     
-( ) Add a "Commons" shader header which is automatically embedded in every
-    fragment shader to enable the user to avoid core repetition (e.g., like
-    in ShaderToy)
-
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
 
@@ -67,7 +76,8 @@ TODO ---------------------------------------------------------------------------
     manager and uniform system
 
 ( ) Fix (or find workaround) for ImGui window icons disappearing on 
-    ImGui docking/undocking actions
+    ImGui docking/undocking actions (Windows-only, at least until I see how 
+    this performs on Linux)
 
 ( ) Add example projects that can be loaded in ShaderThings as demos/tutorials
 

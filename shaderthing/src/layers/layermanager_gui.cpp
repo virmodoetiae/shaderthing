@@ -121,7 +121,7 @@ void LayerManager::renderGui()
         // Check if a new tab (i.e., layer) should be added. However, disable
         // addition tab/button if there are any current compilation errors
         // in the shared/common fragment code section
-        if (Layer::sharedHasErrors())
+        if (Layer::sharedSourceHasErrors())
             ImGui::BeginDisabled();
         if 
         (
@@ -129,7 +129,7 @@ void LayerManager::renderGui()
             layers_.size() == 0
         )
             addLayer();
-        if (Layer::sharedHasErrors())
+        if (Layer::sharedSourceHasErrors())
             ImGui::EndDisabled();
 
         // Render gui of layer in selection

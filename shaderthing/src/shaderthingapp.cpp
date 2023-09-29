@@ -412,6 +412,8 @@ void ShaderThingApp::loadProject()
         index
     );
     file.close();
+
+    restartRendering();
 }
 
 //----------------------------------------------------------------------------//

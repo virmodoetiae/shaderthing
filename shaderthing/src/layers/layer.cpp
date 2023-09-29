@@ -18,35 +18,17 @@ namespace ShaderThing
 
 vir::Shader* Layer::voidShader_ = nullptr;
 vir::Shader* Layer::internalFramebufferShader_ = nullptr;
-ImGuiExtd::TextEditor Layer::sharedEditor_ = ImGuiExtd::TextEditor();
-bool Layer::sharedHasErrors_ = false;
+ImGuiExtd::TextEditor Layer::sharedSourceEditor_ = ImGuiExtd::TextEditor();
+bool Layer::sharedSourceHasErrors_ = false;
 
-Layer::RendersTo Layer::rendererTargets[3] = 
-{
-    Layer::RendersTo::Window,
-    Layer::RendersTo::InternalFramebuffer,
-    Layer::RendersTo::InternalFramebufferAndWindow,
-};
-std::string Layer::rendererTargetNames[3] =
-{
-    "Window",
-    "Framebuffer",
-    "Framebuffer & window"
-};
 std::unordered_map<Layer::RendersTo, std::string> 
-Layer::rendererTargetToName = 
+Layer::renderTargetToName = 
 {
-    {rendererTargets[0], rendererTargetNames[0]},
-    {rendererTargets[1], rendererTargetNames[1]},
-    {rendererTargets[2], rendererTargetNames[2]}
+    {Layer::RendersTo::Window, "Window"},
+    {Layer::RendersTo::InternalFramebuffer, "Framebuffer"},
+    {Layer::RendersTo::InternalFramebufferAndWindow, "Framebuffer & window"}
 };
-std::unordered_map<std::string, Layer::RendersTo> 
-Layer::nameToRendererTarget =
-{
-    {rendererTargetNames[0], rendererTargets[0]},
-    {rendererTargetNames[1], rendererTargets[1]},
-    {rendererTargetNames[2], rendererTargets[2]}
-};
+
 std::string Layer::supportedUniformTypeNames[11] = {
     vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Bool],
     vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int],
@@ -144,9 +126,6 @@ viewport_
 fragmentSourceHeader_(""),
 fragmentSource_(defaultFragmentSource_),
 screenQuad_(new vir::Quad(viewport_.x, viewport_.y, depth)),
-time_(app.timeRef()),
-timePaused_(app.isTimePausedRef()),
-frame_(app.frameRef()),
 screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
@@ -161,7 +140,7 @@ uniformLayerNamesToBeSet_(0)
         1000,
         1000000000
     );
-    id_ = distribution(rng)+(int(time_)%1000);
+    id_ = distribution(rng)+(int(app.timeRef())%1000);
     
     initializeEditors();
 
@@ -223,7 +202,7 @@ Layer::~Layer()
         if (Layer::internalFramebufferShader_ != nullptr)
             delete Layer::internalFramebufferShader_;
         Layer::internalFramebufferShader_ = nullptr;
-        Layer::sharedEditor_ = ImGuiExtd::TextEditor();
+        Layer::sharedSourceEditor_ = ImGuiExtd::TextEditor();
     }
 }
 
@@ -299,9 +278,9 @@ void Layer::update()
         toBeRenamed_ = false;
     }
 
-    if (fragmentEditor_.IsTextChanged())
+    if (fragmentSourceEditor_.IsTextChanged())
         hasUncompiledChanges_ = 
-            fragmentSource_!=fragmentEditor_.GetText();
+            fragmentSource_!=fragmentSourceEditor_.GetText();
 
     if (uncompiledUniforms_.size() > 0)
     {
@@ -413,9 +392,6 @@ toBeCompiled_(false),
 fragmentSourceHeader_(""),
 hasUncompiledChanges_(false),
 hasHeaderErrors_(false),
-time_(app.timeRef()),
-timePaused_(app.isTimePausedRef()),
-frame_(app.frameRef()),
 screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
@@ -615,7 +591,7 @@ uniformLayerNamesToBeSet_(0)
         1000,
         1000000000
     );
-    id_ = distribution(rng)+(int(time_)%1000);
+    id_ = distribution(rng)+(int(app.timeRef())%1000);
     targetResolution_ = resolution_;
     viewport_.x = (resolution_.x > resolution_.y) ? 1.0 : 
         float(resolution_.x)/float(resolution_.y);
@@ -797,7 +773,7 @@ void Layer::saveState(std::ofstream& file)
 
 //----------------------------------------------------------------------------//
 
-void Layer::reBindLayerUniforms()
+void Layer::rebindLayerUniforms()
 {
     for (auto& entry : uniformLayerNamesToBeSet_)
     {
@@ -861,10 +837,10 @@ std::string Layer::assembleFragmentSource
         fragmentSourceHeader_ += "uniform "+typeName+" "+u->name+";\n";
         ++nLines;
     }
-    int nSharedLines = Layer::sharedEditor_.GetTotalLines();
+    int nSharedLines = Layer::sharedSourceEditor_.GetTotalLines();
     if (nHeaderLines != nullptr)
         *nHeaderLines = nLines+nSharedLines;
-    return fragmentSourceHeader_+Layer::sharedEditor_.GetText()+source;
+    return fragmentSourceHeader_+Layer::sharedSourceEditor_.GetText()+source;
 }
 
 //----------------------------------------------------------------------------//
@@ -874,7 +850,7 @@ void Layer::compileShader()
     if (!hasUncompiledChanges_)
         return;
 
-    fragmentSource_ = fragmentEditor_.GetText();
+    fragmentSource_ = fragmentSourceEditor_.GetText();
 
     vir::Shader* tmp = nullptr;
     std::exception_ptr exceptionPtr;
@@ -887,15 +863,15 @@ void Layer::compileShader()
         &exceptionPtr
     );
     hasHeaderErrors_ = false;
-    sharedHasErrors_ = false;
+    sharedSourceHasErrors_ = false;
     if (tmp != nullptr)
     {
-        frame_ = 0;
+        app_.frameRef() = 0;
         delete shader_;
         shader_ = tmp;
         tmp = nullptr;
-        sharedEditor_.SetErrorMarkers({});
-        fragmentEditor_.SetErrorMarkers({});
+        sharedSourceEditor_.SetErrorMarkers({});
+        fragmentSourceEditor_.SetErrorMarkers({});
         uncompiledUniforms_.clear();
         hasUncompiledChanges_ = false;
         return;
@@ -936,11 +912,12 @@ void Layer::compileShader()
                 sharedError = false;
                 if (errorIndex < 1)
                 {
-                    int nSharedLines = Layer::sharedEditor_.GetTotalLines();
+                    int nSharedLines = 
+                        Layer::sharedSourceEditor_.GetTotalLines();
                     if (errorIndex > -nSharedLines)
                     {
                         sharedError = true;
-                        sharedHasErrors_ = true;
+                        sharedSourceHasErrors_ = true;
                         errorIndex += nSharedLines;
                     }
                     else
@@ -976,13 +953,13 @@ void Layer::compileShader()
         }
         if (errors.size() > 0)
         {
-            fragmentEditor_.SetErrorMarkers(errors);
+            fragmentSourceEditor_.SetErrorMarkers(errors);
             auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);
-            fragmentEditor_.SetCursorPosition(pos);
+            fragmentSourceEditor_.SetCursorPosition(pos);
         }
         if (sharedErrors.size() > 0)
         {
-            sharedEditor_.SetErrorMarkers(sharedErrors);
+            sharedSourceEditor_.SetErrorMarkers(sharedErrors);
         }
     }
 }
@@ -991,25 +968,25 @@ void Layer::compileShader()
 
 void Layer::initializeEditors()
 {
-    fragmentEditor_.SetText(fragmentSource_);
-    fragmentEditor_.SetLanguageDefinition
+    fragmentSourceEditor_.SetText(fragmentSource_);
+    fragmentSourceEditor_.SetLanguageDefinition
     (
         ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
     );
-    fragmentEditor_.ResetTextChanged();
-    if (Layer::sharedEditor_.GetText().size() > 0)
+    fragmentSourceEditor_.ResetTextChanged();
+    if (Layer::sharedSourceEditor_.GetText().size() > 0)
         return;
-    Layer::sharedEditor_.SetLanguageDefinition
+    Layer::sharedSourceEditor_.SetLanguageDefinition
     (
         ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
     );
-    Layer::sharedEditor_.SetText
+    Layer::sharedSourceEditor_.SetText
     (
 R"(// Code written here in the Common section is shared by all fragment shaders 
 // across all layers
 )"
     );
-    Layer::sharedEditor_.ResetTextChanged();
+    Layer::sharedSourceEditor_.ResetTextChanged();
 
 }
 
@@ -1065,7 +1042,7 @@ void Layer::initializeDefaultUniforms()
     auto frameUniform = new vir::Shader::Uniform();
     frameUniform->name = "iFrame";
     frameUniform->type = vir::Shader::Variable::Type::UInt;
-    frameUniform->setValuePtr(&frame_);
+    frameUniform->setValuePtr(&app_.frameRef());
     defaultUniforms_.emplace_back(frameUniform);
     uniformLimits_.insert({frameUniform, glm::vec2(0.0f, 1.0f)});
 
@@ -1092,7 +1069,7 @@ void Layer::initializeDefaultUniforms()
     auto timeUniform = new vir::Shader::Uniform();
     timeUniform->name = "iTime";
     timeUniform->type = vir::Shader::Variable::Type::Float;
-    timeUniform->setValuePtr(&time_);
+    timeUniform->setValuePtr(&app_.timeRef());
     defaultUniforms_.emplace_back(timeUniform);
     uniformLimits_.insert({timeUniform, glm::vec2(0.0f, 1.0f)});
 
@@ -1139,8 +1116,8 @@ void Layer::setDefaultAndSamplerUniforms()
 
     // Set default uniforms
     bool forceSet((int)shader_->id() != shaderId0_);
-    shader_->setUniformFloat("iTime", time_);
-    shader_->setUniformUInt("iFrame", frame_);
+    shader_->setUniformFloat("iTime", app_.timeRef());
+    shader_->setUniformUInt("iFrame", app_.frameRef());
     if (mvp0_ != mvp || forceSet)
     {
         shader_->setUniformMat4("mvp", mvp);

@@ -59,15 +59,15 @@ void Layer::renderGuiSettings()
         ImGui::BeginCombo
         (
             "##rendererTarget", 
-            rendererTargetToName[rendersTo_].c_str()
+            renderTargetToName[rendersTo_].c_str()
         )
     )
     {
-        for(auto rendererTargetName : rendererTargetNames)
+        for(auto entry : renderTargetToName)
         {
-            if (!ImGui::Selectable(rendererTargetName.c_str()))
+            if (!ImGui::Selectable(entry.second.c_str()))
                 continue;
-            RendersTo target = nameToRendererTarget[rendererTargetName];
+            RendersTo target = entry.first;
             if (target != rendersTo_)
             {
                 rendersTo_ = target;
@@ -328,7 +328,7 @@ void Layer::renderGuiMain()
                 hasUncompiledChanges_ ||
                 app_.findReplaceTextToolRef().findReplaceTextInEditor
                 (
-                    fragmentEditor_
+                    fragmentSourceEditor_
                 );
             if (app_.findReplaceTextToolRef().isGuiOpen()) 
                 ImGui::Separator();
@@ -383,29 +383,33 @@ void Layer::renderGuiMain()
                 ImGui::PopStyleColor();
             bool showCommon(false);
             float commonHeight(0.0f);
-            if (sharedHasErrors_)
+            if (sharedSourceHasErrors_)
                 ImGui::PushStyleColor(ImGuiCol_Text, redColor);
             if (ImGui::TreeNode("Common"))
             {
                 commonHeight = 
-                    Layer::sharedEditor_.GetTotalLines() *
-                    ImGui::GetTextLineHeight();
+                std::min
+                (
+                    Layer::sharedSourceEditor_.GetTotalLines() *
+                    ImGui::GetTextLineHeight(),
+                    ImGui::GetContentRegionAvail().y/2.1f
+                );
                 showCommon = true;
                 ImGui::TreePop();
             }
-            if (sharedHasErrors_)
+            if (sharedSourceHasErrors_)
                 ImGui::PopStyleColor();
             ImGui::Unindent();
             float lineNumberColumnWidth = 
                 std::max
                 (
-                    Layer::sharedEditor_.GetRequiredTextStart(),
-                    fragmentEditor_.GetRequiredTextStart()
+                    Layer::sharedSourceEditor_.GetRequiredTextStart(),
+                    fragmentSourceEditor_.GetRequiredTextStart()
                 );
             if (showCommon)
             {
-                Layer::sharedEditor_.SetTextStart(lineNumberColumnWidth);
-                Layer::sharedEditor_.Render
+                Layer::sharedSourceEditor_.SetTextStart(lineNumberColumnWidth);
+                Layer::sharedSourceEditor_.Render
                 (
                     "##sharedEditor", 
                     ImVec2(-1, commonHeight)
@@ -413,10 +417,10 @@ void Layer::renderGuiMain()
                 ImGui::Separator();
                 hasUncompiledChanges_ = 
                     hasUncompiledChanges_ || 
-                    sharedEditor_.IsTextChanged();
+                    sharedSourceEditor_.IsTextChanged();
             }
-            fragmentEditor_.SetTextStart(lineNumberColumnWidth);
-            fragmentEditor_.Render("##fragmentEditor");
+            fragmentSourceEditor_.SetTextStart(lineNumberColumnWidth);
+            fragmentSourceEditor_.Render("##fragmentEditor");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Uniforms"))
@@ -572,9 +576,10 @@ void Layer::renderGuiUniforms()
             }
             else if (uniform->name == "iTime")
             {
-                std::string text = (timePaused_) ? ICON_FA_PLAY : ICON_FA_PAUSE;
+                std::string text = 
+                    (app_.isTimePausedCRef()) ? ICON_FA_PLAY : ICON_FA_PAUSE;
                 if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
-                    timePaused_ = !timePaused_;
+                    app_.isTimePausedRef() = !app_.isTimePausedCRef();
             }
 #define ENABLE_DISABLE_APP_INPUT_TOOLTIP(eventName)                         \
 if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
@@ -754,7 +759,10 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
                     }
                     bool input(false);
                     if (uniform->name == "iFrame")
-                        ImGui::Text(std::to_string(std::max(frame_,0)).c_str());
+                        ImGui::Text
+                        (
+                            std::to_string(std::max(app_.frameRef(),0)).c_str()
+                        );
                     else
                     {
                         input = ImGui::SliderInt
