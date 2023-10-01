@@ -42,7 +42,7 @@ GLFWOpenGLWindow::GLFWOpenGLWindow
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, glVersion.second);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); 
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        //glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+        glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
         if (resizable)
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         else

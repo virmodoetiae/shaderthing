@@ -62,8 +62,8 @@ ShaderThingApp::ShaderThingApp()
         {
             layer->render(renderTarget, clearTarget);
             quantizationTool_->quantize(layer);
-            layer->renderInternalFramebuffer(renderTarget, clearTarget);
-            if (renderTarget != nullptr && clearTarget)
+            layer->renderInternalFramebuffer(renderTarget, false);
+            if (clearTarget)
                 clearTarget = false;
         }
     };

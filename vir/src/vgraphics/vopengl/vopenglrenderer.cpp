@@ -51,7 +51,14 @@ void OpenGLRendererAPI::setBlending(bool flag)
         // and I am writing a new color C1 to it, the final color will be
         // C1.a*C1.rgb+(1.0-C1.a)*C0.rgb. The incoming color is called source,
         // the already present one is called destination
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFuncSeparate
+        (
+            GL_SRC_ALPHA, 
+            GL_ONE_MINUS_SRC_ALPHA,
+            GL_ONE,
+            GL_ONE_MINUS_SRC_ALPHA
+        );
     }
     else
         glDisable(GL_BLEND);
@@ -67,7 +74,7 @@ OpenGLRenderer::OpenGLRenderer()
 
 void OpenGLRenderer::beginScene()
 {
-    api_->clear();
+    api_->clear(0,0,0,1);
 }
 
 void OpenGLRenderer::endScene()

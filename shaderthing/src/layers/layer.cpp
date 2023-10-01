@@ -232,14 +232,25 @@ void Layer::render(vir::Framebuffer* targetFramebuffer, bool clearTarget)
         writeOnlyFramebuffer_ : 
         targetFramebuffer
     );
+
+    if (rendersTo_ != RendersTo::Window)
+    {
+        vir::GlobalPtr<vir::Renderer>::instance()->setBlending(false);
+    }
+    else
+    {
+        vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
+    }
     
-    renderer_.submit(*screenQuad_, shader_, renderTarget, clearTarget);
+    renderer_.submit(*screenQuad_, shader_, renderTarget, clearTarget || rendersTo_ != RendersTo::Window);
+    
+    /*
     if 
     (
         renderTarget != nullptr && 
         rendersTo_ != RendersTo::InternalFramebufferAndWindow
     )
-        renderer_.submit(*screenQuad_, Layer::voidShader_);
+        renderer_.submit(*screenQuad_, Layer::voidShader_);*/
 }
 
 //----------------------------------------------------------------------------//
@@ -256,7 +267,7 @@ void Layer::renderInternalFramebuffer
     Layer::internalFramebufferShader_->bind();
     writeOnlyFramebuffer_->bindColorBuffer(0);
     Layer::internalFramebufferShader_->setUniformInt("self", 0);
-
+    vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
     renderer_.submit
     (
         *screenQuad_, 
@@ -264,8 +275,8 @@ void Layer::renderInternalFramebuffer
         targetFramebuffer,
         clearTarget
     );
-    if (targetFramebuffer != nullptr)
-        renderer_.submit(*screenQuad_, Layer::voidShader_);
+    //if (targetFramebuffer != nullptr)
+    //    renderer_.submit(*screenQuad_, Layer::voidShader_);
 }
 
 //----------------------------------------------------------------------------//

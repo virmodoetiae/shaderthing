@@ -51,7 +51,7 @@ void Renderer::submit
         window->setViewport(framebuffer->width(), framebuffer->height());
         framebuffer->bind();
         if (clearFramebuffer)
-            api_->clear();
+            api_->clear(0,0,0,1);
     }
     // Otherwise (i.e. no framebuffer provided), I want to render to the screen
     // so check if there is any active framebuffer and unbind it
@@ -60,6 +60,8 @@ void Renderer::submit
         window->setViewport(window->width(), window->height());
         if (Framebuffer::activeOne() != nullptr)
             Framebuffer::activeOne()->unbind();
+        if (clearFramebuffer)
+            api_->clear(0,0,0,0);
     }
     // Render
     submit
