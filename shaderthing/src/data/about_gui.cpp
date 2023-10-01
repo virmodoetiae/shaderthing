@@ -119,7 +119,13 @@ void About::renderGui()
         virmodoetiaeImage_ != nullptr
     )
     {
-        ImGui::Image((void*)(virmodoetiaeImage_->id()), {256,256}, {0,1}, {1,0});
+        ImGui::Image
+        (
+            (void*)(uintptr_t)(virmodoetiaeImage_->id()), 
+            {256,256}, 
+            {0,1}, 
+            {1,0}
+        );
         ImGui::EndTooltip();
     }
     ImGui::SetCursorPos(pos1);

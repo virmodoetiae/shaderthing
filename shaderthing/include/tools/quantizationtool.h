@@ -28,7 +28,7 @@ protected:
     bool isAlphaCutoff_;
     int paletteSize_;
     int ditheringLevel_;
-    float clusteringTolerance_;
+    float clusteringFidelity_;
     float ditheringThreshold_;
     int alphaCutoffThreshold_;
 

@@ -166,13 +166,13 @@ void QuantizationTool::renderGui()
     ImGui::Text("Palette fidelity    ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
-    static float clusteringTolerance0(clusteringTolerance_);
-    ImGui::SliderFloat("##clusterTolerance", &clusteringTolerance_, 0.0f, 1.0f);
-    if (clusteringTolerance0 != clusteringTolerance_)
+    static float clusteringFidelity0(clusteringFidelity_);
+    ImGui::SliderFloat("##clusterFidelity", &clusteringFidelity_, 0.0f, 1.0f);
+    if (clusteringFidelity0 != clusteringFidelity_)
     {
-        clusteringTolerance_ = std::max(clusteringTolerance_, 0.0f);
-        clusteringTolerance_ = std::min(clusteringTolerance_, 1.0f);
-        clusteringTolerance0 = clusteringTolerance_;
+        clusteringFidelity_ = std::max(clusteringFidelity_, 0.0f);
+        clusteringFidelity_ = std::min(clusteringFidelity_, 1.0f);
+        clusteringFidelity0 = clusteringFidelity_;
     }
     ImGui::PopItemWidth();
 

@@ -28,7 +28,7 @@ autoUpdatePalette_(true),
 isAlphaCutoff_(false),
 paletteSize_(4),
 ditheringLevel_(0),
-clusteringTolerance_(0.01f),
+clusteringFidelity_(0.9f),
 ditheringThreshold_(0.25f),
 alphaCutoffThreshold_(128),
 quantizer_(nullptr),
@@ -93,7 +93,7 @@ void QuantizationTool::reset()
     paletteModified_ = false;
     paletteSize_ = 4;
     ditheringLevel_ = 0;
-    clusteringTolerance_ = 0.01f;
+    clusteringFidelity_ = 0.9f;
 }
 
 //----------------------------------------------------------------------------//
@@ -132,7 +132,7 @@ void QuantizationTool::loadState(std::string& source, uint32_t& index)
         &(targetLayerName[0]), 
         &ditheringLevel_,
         &ditheringThreshold_,
-        &clusteringTolerance_,
+        &clusteringFidelity_,
         &isAlphaCutoff,
         &alphaCutoffThreshold_,
         &autoUpdatePalette,
@@ -190,7 +190,7 @@ void QuantizationTool::saveState(std::ofstream& file)
         targetBufferName.c_str(),
         ditheringLevel_,
         ditheringThreshold_,
-        clusteringTolerance_,
+        clusteringFidelity_,
         (int)isAlphaCutoff_,
         alphaCutoffThreshold_,
         (int)autoUpdatePalette_,
@@ -221,6 +221,10 @@ void QuantizationTool::quantize(Layer* layer)
     if (layer->rendersTo() != Layer::RendersTo::Window)
     {
         static int paletteSize0(-1);
+        float clusteringTolerance
+        (
+            1.0f-clusteringFidelity_*clusteringFidelity_
+        );
         quantizer_->quantize
         (
             targetLayer_->writeOnlyFramebuffer(),
@@ -229,7 +233,7 @@ void QuantizationTool::quantize(Layer* layer)
             ditheringLevel_,
             firstQuantization_,
             autoUpdatePalette_ || firstQuantization_,
-            clusteringTolerance_,
+            clusteringTolerance,
             ditheringThreshold_,
             isAlphaCutoff_ ? alphaCutoffThreshold_ : -1,
             true,

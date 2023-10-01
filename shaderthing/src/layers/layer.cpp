@@ -27,9 +27,9 @@ bool Layer::sharedSourceHasErrors_ = false;
 std::unordered_map<Layer::RendersTo, std::string> 
 Layer::renderTargetToName = 
 {
-    {Layer::RendersTo::Window, "Window"},
+    {Layer::RendersTo::InternalFramebufferAndWindow, "Framebuffer & window"},
     {Layer::RendersTo::InternalFramebuffer, "Framebuffer"},
-    {Layer::RendersTo::InternalFramebufferAndWindow, "Framebuffer & window"}
+    {Layer::RendersTo::Window, "Window"}
 };
 
 std::string Layer::supportedUniformTypeNames[11] = {
@@ -244,9 +244,19 @@ uniformLayerNamesToBeSet_(0)
 
     // Init framebuffers
     flipFramebuffers_ = false;
-    framebufferA_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
+    framebufferA_ = vir::Framebuffer::create
+    (
+        resolution_.x, 
+        resolution_.y,
+        vir::TextureBuffer2D::InternalFormat::RGBA_SF_32
+    );
     readOnlyFramebuffer_ = framebufferA_;
-    framebufferB_ = vir::Framebuffer::create(resolution_.x, resolution_.y);
+    framebufferB_ = vir::Framebuffer::create
+    (
+        resolution_.x, 
+        resolution_.y,
+        vir::TextureBuffer2D::InternalFormat::RGBA_SF_32
+    );
     writeOnlyFramebuffer_ = framebufferB_;
 
     ++LayerManager::nLayersSinceNewProject_;
@@ -1090,7 +1100,7 @@ void Layer::initializeEditors()
     (
 R"(// Code written here in the Common section is shared by all fragment shaders 
 // across all layers
-)"
+vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels))"
     );
     Layer::sharedSourceEditor_.ResetTextChanged();
 

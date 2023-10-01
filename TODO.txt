@@ -69,7 +69,25 @@ TODO ---------------------------------------------------------------------------
     This was done by adding a simple hover-on infobox over uniform names
     detailing if the uniform is shared by/across all layers
 
+(X) Fix weird behaviour of 32-bit-float-formatted internal framebuffer-rendered,
+    layers | This was found to be due to alpha-blending when the alpha value is
+    outside the [0-1] range, solved by disabling alpha-blending for internal 
+    framebuffer-rendered layers
+
+(X) Fix visual differences between internal framebuffer&window-rendered layers
+    and window-rendered layers | These differences were also found to be due
+    to alpha-blending being enabled for interla framebuffer-rendered layers,
+    solved by disabling (as in the previous TODO point)
+
+(X) Fix quantizerTool fidelity to actually represent fidelity, not clustering
+    tolerance (one is qualitatively the opposite of the other)
+
 (W) Expand code repository section (add noise functions!)
+
+( ) Enable find/find&replace tool function on the Common fragment shader code
+    editor (currently it only works on the main fragment code editor)
+
+( ) Add option to preserve trarnsparency when exporting GIFs
 
 ( ) Adjust GLSL syntax highlighting in text editor
 

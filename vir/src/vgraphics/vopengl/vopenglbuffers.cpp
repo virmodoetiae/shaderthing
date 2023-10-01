@@ -787,7 +787,7 @@ void OpenGLVertexBuffer::setLayout
 void OpenGLVertexBuffer::updateVertices(float* vertices, uint32_t size)
 {
     glBindBuffer(GL_ARRAY_BUFFER, id_);
-    glBufferSubData(GL_ARRAY_BUFFER, NULL, size, vertices);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, size, vertices);
 }
 
 // Index buffer --------------------------------------------------------------//
