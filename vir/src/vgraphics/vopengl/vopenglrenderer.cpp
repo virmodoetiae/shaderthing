@@ -46,12 +46,12 @@ void OpenGLRendererAPI::setBlending(bool flag)
     if (flag)
     {
         glEnable(GL_BLEND);
-        // I am hardcoding the most commonly used blending function for 
-        // simplicity. This one means that if a pixel already has a color C0
-        // and I am writing a new color C1 to it, the final color will be
-        // C1.a*C1.rgb+(1.0-C1.a)*C0.rgb. The incoming color is called source,
-        // the already present one is called destination
-        //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
+        // If a pixel of color C0 already exists on a target buffer on which
+        // rendering is to take place, and the rendering process determines
+        // that a new pixel C1 is incoming to the location of C0, the final
+        // pixel color will be (in GLSL-like notation):
+        // C = vec4(C0.a*C0.rgb+(1-C0.a)*C1.rgb, 1*C0.a + (1-C0.a)*C1.a)
         glBlendFuncSeparate
         (
             GL_SRC_ALPHA, 
@@ -74,7 +74,7 @@ OpenGLRenderer::OpenGLRenderer()
 
 void OpenGLRenderer::beginScene()
 {
-    api_->clear(0,0,0,1);
+    api_->clear();
 }
 
 void OpenGLRenderer::endScene()

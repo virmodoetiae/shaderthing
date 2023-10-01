@@ -16,7 +16,10 @@ namespace ShaderThing
 //----------------------------------------------------------------------------//
 //- Static members -----------------------------------------------------------//
 
-vir::Shader* Layer::voidShader_ = nullptr;
+// Private -------------------------------------------------------------------//
+
+vir::Quad* Layer::blankQuad_ = nullptr;
+vir::Shader* Layer::blankShader_ = nullptr;
 vir::Shader* Layer::internalFramebufferShader_ = nullptr;
 ImGuiExtd::TextEditor Layer::sharedSourceEditor_ = ImGuiExtd::TextEditor();
 bool Layer::sharedSourceHasErrors_ = false;
@@ -74,6 +77,8 @@ R"(void main()
     );
 })";
 
+//----------------------------------------------------------------------------//
+
 const std::string& Layer::assembleVertexSource()
 {
     if (defaultVertexSource_[0] != '#')
@@ -91,6 +96,83 @@ const std::string& Layer::assembleVertexSource()
 }
 
 //----------------------------------------------------------------------------//
+
+void Layer::createStaticShaders()
+{
+    static std::string version(
+    "#version "+
+    vir::GlobalPtr<vir::Window>::instance()->context()->
+    shadingLanguageVersion()+
+    " core\n");
+    if (Layer::blankShader_ == nullptr)
+    {
+        std::string fragmentSource = 
+version+
+R"(out vec4 fragColor;
+in vec2 qc;
+in vec2 tc;
+void main(){fragColor = vec4(0, 0, 0, .5);})";
+        Layer::blankShader_ = vir::Shader::create
+        (
+            Layer::assembleVertexSource(), 
+            fragmentSource,
+            vir::Shader::ConstructFrom::String
+        );
+    }
+    if (Layer::internalFramebufferShader_ == nullptr)
+    {
+        std::string fragmentSource = 
+version+
+R"(out vec4 fragColor;
+in vec2 qc;
+in vec2 tc;
+uniform sampler2D self;
+void main(){fragColor = texture(self, tc);})";
+        Layer::internalFramebufferShader_ = vir::Shader::create
+        (
+            Layer::assembleVertexSource(), 
+            fragmentSource,
+            vir::Shader::ConstructFrom::String
+        );
+    }
+}
+
+// Public --------------------------------------------------------------------//
+
+void Layer::renderBlankWindow()
+{
+    const float& aspectRatio = 
+        vir::GlobalPtr<vir::Window>::instance()->aspectRatio();
+    static float aspectRatio0(0);
+    if (Layer::blankQuad_ == nullptr)
+        Layer::blankQuad_ = new vir::Quad(1.f, 1.f, 0.f);
+    if (aspectRatio != aspectRatio0)
+    {
+        float width, height;
+        if (aspectRatio > 1.0f)
+        {
+            width = 1.0f;
+            height = 1.0f/aspectRatio;
+        }
+        else
+        {
+            width = aspectRatio;
+            height = 1.0f;
+        }
+        Layer::blankQuad_->update(width, height, 0.f);
+        aspectRatio0 = aspectRatio;
+    }
+    Layer::createStaticShaders();
+    vir::GlobalPtr<vir::Renderer>::instance()->submit
+    (
+        *Layer::blankQuad_, 
+        Layer::blankShader_
+    );
+}
+
+//----------------------------------------------------------------------------//
+//- Non-static members -------------------------------------------------------//
+
 // Public functions ----------------------------------------------------------//
 
 // Constructor/Destructor ----------------------------------------------------//
@@ -197,9 +279,12 @@ Layer::~Layer()
     framebufferB_ = nullptr;
     if (app_.layerManagerRef().layersRef().size() <= 1)
     {
-        if (Layer::voidShader_ != nullptr)
-            delete Layer::voidShader_;
-        Layer::voidShader_ = nullptr;
+        if (Layer::blankQuad_ != nullptr)
+            delete Layer::blankQuad_;
+        Layer::blankQuad_ = nullptr;
+        if (Layer::blankShader_ != nullptr)
+            delete Layer::blankShader_;
+        Layer::blankShader_ = nullptr;
         if (Layer::internalFramebufferShader_ != nullptr)
             delete Layer::internalFramebufferShader_;
         Layer::internalFramebufferShader_ = nullptr;
@@ -209,8 +294,9 @@ Layer::~Layer()
 
 //----------------------------------------------------------------------------//
 
-void Layer::render(vir::Framebuffer* targetFramebuffer, bool clearTarget)
+void Layer::render(vir::Framebuffer* target, bool clearTarget)
 {
+    // Check if shader needs to be compiled
     if (toBeCompiled_)
     {
         compileShader();
@@ -225,58 +311,48 @@ void Layer::render(vir::Framebuffer* targetFramebuffer, bool clearTarget)
     // Set global uniforms
     setDefaultAndSamplerUniforms();
 
-    // Render
-    vir::Framebuffer* renderTarget // Nullptr means render to the window
-    (
-        rendersTo_ != RendersTo::Window ? 
-        writeOnlyFramebuffer_ : 
-        targetFramebuffer
-    );
-
+    // Re-direct rendering & disable blending if not rendering to the window
+    bool blendingEnabled = true;
+    vir::Framebuffer* target0(target);
     if (rendersTo_ != RendersTo::Window)
     {
+        target = writeOnlyFramebuffer_;
         vir::GlobalPtr<vir::Renderer>::instance()->setBlending(false);
+        blendingEnabled = false;
     }
-    else
-    {
-        vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
-    }
-    
-    renderer_.submit(*screenQuad_, shader_, renderTarget, clearTarget || rendersTo_ != RendersTo::Window);
-    
-    /*
-    if 
+
+    // Actual render call
+    renderer_.submit
     (
-        renderTarget != nullptr && 
-        rendersTo_ != RendersTo::InternalFramebufferAndWindow
-    )
-        renderer_.submit(*screenQuad_, Layer::voidShader_);*/
-}
+        *screenQuad_, 
+        shader_, 
+        target, 
+        clearTarget || 
+        rendersTo_ != RendersTo::Window  // Force clear if not
+                                         // rendering to window
+    );
 
-//----------------------------------------------------------------------------//
+    // Re-enable blending before either leaving or redirecting the rendered 
+    // texture to the main window
+    if (!blendingEnabled)
+        vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
 
-void Layer::renderInternalFramebuffer
-(
-    vir::Framebuffer* targetFramebuffer, 
-    bool clearTarget
-)
-{
+    // Check if layer should be quantized
+    app_.quantizationToolRef().quantize(this);
+
     if (rendersTo_ != RendersTo::InternalFramebufferAndWindow)
         return;
-
+    // Render textured rendered by the previous call to the main window
     Layer::internalFramebufferShader_->bind();
     writeOnlyFramebuffer_->bindColorBuffer(0);
     Layer::internalFramebufferShader_->setUniformInt("self", 0);
-    vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
     renderer_.submit
     (
         *screenQuad_, 
         Layer::internalFramebufferShader_, 
-        targetFramebuffer,
+        target0,
         clearTarget
     );
-    //if (targetFramebuffer != nullptr)
-    //    renderer_.submit(*screenQuad_, Layer::voidShader_);
 }
 
 //----------------------------------------------------------------------------//
@@ -839,7 +915,7 @@ std::string Layer::assembleFragmentSource
     {
         // All names in uniformTypeToName map 1:1 to GLSL uniform names, except
         // for sampler2D (which maps to texture2D) and samplerCube (which maps
-        // to cubemap). I should re-organize the mappings a bit 
+        // to cubemap). I should re-organize the mappings a bit
         std::string typeName; 
         bool isSampler2D(false);
         switch (u->type)
@@ -867,7 +943,10 @@ std::string Layer::assembleFragmentSource
     int nSharedLines = Layer::sharedSourceEditor_.GetTotalLines();
     if (nHeaderLines != nullptr)
         *nHeaderLines = nLines+nSharedLines;
-    return fragmentSourceHeader_+Layer::sharedSourceEditor_.GetText()+source;
+    return 
+        fragmentSourceHeader_+
+        Layer::sharedSourceEditor_.GetText()+"\n"+
+        source;
 }
 
 //----------------------------------------------------------------------------//
@@ -1019,45 +1098,7 @@ R"(// Code written here in the Common section is shared by all fragment shaders
 
 //----------------------------------------------------------------------------//
 
-void Layer::createStaticShaders()
-{
-    static std::string version(
-    "#version "+
-    vir::GlobalPtr<vir::Window>::instance()->context()->
-    shadingLanguageVersion()+
-    " core\n");
-    if (Layer::voidShader_ == nullptr)
-    {
-        std::string fragmentSource = 
-version+
-R"(out vec4 fragColor;
-in vec2 qc;
-in vec2 tc;
-void main(){fragColor = vec4(0, 0, 0, 0);})";
-        Layer::voidShader_ = vir::Shader::create
-        (
-            Layer::assembleVertexSource(), 
-            fragmentSource,
-            vir::Shader::ConstructFrom::String
-        );
-    }
-    if (Layer::internalFramebufferShader_ == nullptr)
-    {
-        std::string fragmentSource = 
-version+
-R"(out vec4 fragColor;
-in vec2 qc;
-in vec2 tc;
-uniform sampler2D self;
-void main(){fragColor = texture(self, tc);})";
-        Layer::internalFramebufferShader_ = vir::Shader::create
-        (
-            Layer::assembleVertexSource(), 
-            fragmentSource,
-            vir::Shader::ConstructFrom::String
-        );
-    }
-}
+
 
 //----------------------------------------------------------------------------//
 
@@ -1148,8 +1189,8 @@ void Layer::setDefaultAndSamplerUniforms()
     if (mvp0_ != mvp || forceSet)
     {
         shader_->setUniformMat4("mvp", mvp);
-        Layer::voidShader_->bind();
-        Layer::voidShader_->setUniformMat4("mvp", mvp);
+        Layer::blankShader_->bind();
+        Layer::blankShader_->setUniformMat4("mvp", mvp);
         Layer::internalFramebufferShader_->bind();
         Layer::internalFramebufferShader_->setUniformMat4("mvp", mvp);
         shader_->bind();

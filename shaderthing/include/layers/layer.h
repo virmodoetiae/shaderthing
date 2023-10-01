@@ -46,10 +46,13 @@ private:
     // for newly created layers
     static std::string defaultVertexSource_;
     static std::string defaultFragmentSource_;
+
+    //
+    static vir::Quad* blankQuad_;
     
     // Transparent shader rendered to screen when the buffer is rendering to
     // framebuffers to avoid visual glitches
-    static vir::Shader* voidShader_;
+    static vir::Shader* blankShader_;
 
     // Shader for rendering the internal framebuffer
     static vir::Shader* internalFramebufferShader_;
@@ -66,6 +69,9 @@ private:
     static const std::string& assembleVertexSource();
 
 public:
+
+    //
+    static void renderBlankWindow();
 
     // Number of text lines in shared source code
     static int nSharedEditorLines() 
@@ -211,9 +217,9 @@ private :
         int* nHeaderLines=nullptr
     );
     
-    // Create instances of voidShader_, internalFramebufferShader_, if not done
+    // Create instances of blankShader_, internalFramebufferShader_, if not done
     // so already
-    void createStaticShaders();
+    static void createStaticShaders();
     
     // Set defaults for the fragmentSourceEditor_, sharedSourceEditor_
     void initializeEditors();
@@ -299,24 +305,30 @@ public:
     // loaded. This rebinding is what this function is for
     void rebindLayerUniforms();
 
-    // Render the shader to the provided framebuffer (or to the window if no
-    // framebuffer provided). Optionally, clear the existing contents of the
-    // render target before rendering (default clear color is transparent
-    // black, i.e., RGBA={0,0,0,0})
+    // The rendering behaviour depends on the value of the rendersTo_ layer 
+    // property:
+    // - if == RendersTo::Window, this function will render the layer shader to
+    //   the provided target. If target == nullptr, it will render to the main
+    //   window. Else, it will render to the provided target framebuffer. Note
+    //   that when rendering to the window, alpha-blending is enabled.
+    // - if == RendersTo::InternalFramebuffer, this function will render the 
+    //   layer shader to this its internal framebuffer, and no rendering will
+    //   take place to the main window. When rendering to the internal 
+    //   framebuffer, alpha-blending is disabled;
+    // - if == RendersTo::InternalFramebufferAndWindow, the layer shader will
+    //   be first rendered to the internal framebuffer (with alpha-blending
+    //   disabled), and then, the rendered texture will be re-rendered to the
+    //   provided target framebuffer (or main window if target == nullptr) with
+    //   alpha-blending enabled.
+    //
+    // The clearTarget flag controls wheter the actual rendering target (window
+    // or internal framebuffer) will be cleared of its existing color or not.
+    // The default clear color (currently not modifiable) is fully-transparent
+    // black (i.e., RGBA=(0,0,0,0))
     void render
     (
-        vir::Framebuffer* exportFramebuffer = nullptr, 
-        bool clearTarget=true
-    );
-    
-    // Render this buffer's internal framebuffer color attachment to the 
-    // provided target. Optionally, clear the existing contents of the
-    // render target before rendering (default clear color is transparent
-    // black, i.e., RGBA={0,0,0,0})
-    void renderInternalFramebuffer
-    (
-        vir::Framebuffer* exportFramebuffer = nullptr, 
-        bool clearTarget=true
+        vir::Framebuffer* target = nullptr, 
+        bool clearTarget = true
     );
 
     // Render the GUI view when hovering over Settings->[This layer's name]

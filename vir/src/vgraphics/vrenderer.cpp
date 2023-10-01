@@ -39,30 +39,29 @@ void Renderer::submit
 (
     GeometricPrimitive& geometricPrimitive, 
     Shader* shader, 
-    Framebuffer* framebuffer, 
-    bool clearFramebuffer
+    Framebuffer* target, 
+    bool clearTarget
 )
 {
-    // If I provide a framebuffer, set that as the rendering target by binding
-    // it
+    // If I provide a target framebuffer, set it as the rendering target 
+    // by binding it
     auto window = GlobalPtr<Window>::instance();
-    if (framebuffer != nullptr)
+    if (target != nullptr)
     {
-        window->setViewport(framebuffer->width(), framebuffer->height());
-        framebuffer->bind();
-        if (clearFramebuffer)
-            api_->clear(0,0,0,1);
+        window->setViewport(target->width(), target->height());
+        target->bind();
     }
-    // Otherwise (i.e. no framebuffer provided), I want to render to the screen
-    // so check if there is any active framebuffer and unbind it
+    // Otherwise (i.e. no target framebuffer provided), I want to render to the 
+    // screen so check if there is any active framebuffer and unbind it
     else 
     {
         window->setViewport(window->width(), window->height());
         if (Framebuffer::activeOne() != nullptr)
             Framebuffer::activeOne()->unbind();
-        if (clearFramebuffer)
-            api_->clear(0,0,0,0);
     }
+    if (clearTarget)
+        api_->clear();
+    
     // Render
     submit
     (

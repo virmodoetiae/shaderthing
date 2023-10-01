@@ -33,6 +33,43 @@ LayerManager::~LayerManager()
 
 //----------------------------------------------------------------------------//
 
+void LayerManager::renderLayers
+(
+    vir::Framebuffer* target, 
+    unsigned int nRenderPasses
+)
+{
+    auto oneRenderPass = [&](bool clearTarget)
+    {
+        for (auto layer : layers_)
+        {
+            layer->render(target, clearTarget);
+            // At the end of the pass, the status of clearTarget will represent
+            // whether the main window has been cleared of its contents at least
+            // once (true if never cleared at least once)
+            if 
+            (
+                clearTarget &&
+                layer->rendersTo() != Layer::RendersTo::InternalFramebuffer
+            )
+                clearTarget = false;
+        }
+        // If the window has not been cleared at least once, or if I am not
+        // rendering to the window at all (i.e., if target == nullptr, which is
+        // only true during exports), then render a dummy/void/blank window,
+        // simply to avoid visual artifacts when nothing is rendering to the
+        // main window
+        if (clearTarget || target != nullptr)
+            Layer::renderBlankWindow();
+    };
+    
+    // Actual rendering. The nRenderPasses is per-frame
+    for (int i=0; i<nRenderPasses; i++)
+        oneRenderPass(true);
+}
+
+//----------------------------------------------------------------------------//
+
 void LayerManager::removeResourceFromUniforms(Resource* resource)
 {
     for (auto layer : layers_)

@@ -405,6 +405,7 @@ void Layer::renderGuiMain()
                 }
                 ImGui::TreePop();
                 ImGui::Separator();
+                ImGui::Dummy(ImVec2(-1, ImGui::GetTextLineHeight()));
             }
             if (hasHeaderErrors_)
                 ImGui::PopStyleColor();
@@ -442,6 +443,7 @@ void Layer::renderGuiMain()
                     ImVec2(-1, commonHeight)
                 );
                 ImGui::Separator();
+                ImGui::Dummy(ImVec2(-1, ImGui::GetTextLineHeight()));
                 hasUncompiledChanges_ = 
                     hasUncompiledChanges_ || 
                     sharedSourceEditor_.IsTextChanged();

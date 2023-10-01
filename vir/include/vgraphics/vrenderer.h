@@ -69,8 +69,8 @@ public:
     (
         GeometricPrimitive& geometricPrimitive, 
         Shader* shader, 
-        Framebuffer* framebuffer = nullptr, 
-        bool clearFramebuffer = true
+        Framebuffer* target = nullptr, 
+        bool clearTarget = true
     );
     virtual void endScene() = 0;
 

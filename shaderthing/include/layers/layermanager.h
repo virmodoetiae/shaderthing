@@ -41,6 +41,12 @@ public:
 
     void renderGui();
 
+    void renderLayers
+    (
+        vir::Framebuffer* target, 
+        unsigned int nRenderPasses
+    );
+
     void saveState(std::ofstream& file);
     void loadState(std::string& source, uint32_t& index);
     void preLoadAdjustment();

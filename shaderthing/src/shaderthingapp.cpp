@@ -43,7 +43,7 @@ ShaderThingApp::ShaderThingApp()
     // Register the app with the event broadcaster
     tuneIn();
     
-    //
+    // Initialize components
     screenCamera_ = vir::Camera::create<vir::Camera>();
     shaderCamera_ = vir::Camera::create<vir::InputCamera>();
     layerManager_ = new LayerManager(*this);
@@ -54,36 +54,21 @@ ShaderThingApp::ShaderThingApp()
     codeRepository_ = new CodeRepository();
     about_ = new About();
     restart();
-
-    auto renderLayersTo = [&](vir::Framebuffer* renderTarget)
-    {
-        bool clearTarget = true;
-        for (auto layer : layerManager_->layersRef())
-        {
-            layer->render(renderTarget, clearTarget);
-            quantizationTool_->quantize(layer);
-            layer->renderInternalFramebuffer(renderTarget, false);
-            if (clearTarget)
-                clearTarget = false;
-        }
-    };
     
     // Main loop
-    auto renderer = vir::GlobalPtr<vir::Renderer>::instance();
     while(window->isOpen())
     {
+        // Rendering
         if (!isRenderingPausedCRef())
         {
-            renderer->beginScene();
-            vir::Framebuffer* renderTarget = 
-                exportTool_->isExporting() ? 
-                exportTool_->exportFramebuffer() : 
-                nullptr;
-            int nRendersPerFrame = exportTool_->isExporting() ?
-                exportTool_->nRendersPerFrame() : 1;
-            for (int i=0; i<nRendersPerFrame; i++)
-                renderLayersTo(renderTarget);
-            renderer->endScene();
+            vir::Framebuffer* target = nullptr; // nullptr == to window
+            uint32_t nRenderPasses = 1; // n render passes per frame
+            if (exportTool_->isExporting())
+            {
+                target = exportTool_->exportFramebuffer();
+                nRenderPasses = exportTool_->nRendersPerFrame();
+            }
+            layerManager_->renderLayers(target, nRenderPasses);
         }
         updateGui();
         update();
