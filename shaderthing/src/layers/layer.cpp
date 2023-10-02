@@ -66,6 +66,7 @@ void main()
 })";
 
 std::string Layer::defaultFragmentSource_ = 
+/*
 R"(void main()
 {
     fragColor = vec4
@@ -75,7 +76,17 @@ R"(void main()
         .125*cos(qc.x*cos(qc.y-sin(1.5*iTime))*1.-2.5*iTime)+.700,
         1.0
     );
-})";
+})";*/
+R"(void main()
+{
+    fragColor = vec4
+    (
+        .5+.25*sin(2*qc+.75*PI*iTime),
+        .75,
+        1
+    );
+}
+)";
 
 //----------------------------------------------------------------------------//
 
@@ -1098,12 +1109,12 @@ void Layer::initializeEditors()
     );
     Layer::sharedSourceEditor_.SetText
     (
-R"(// Code written here in the Common section is shared by all fragment shaders 
-// across all layers
-vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels))"
+R"(// Common source code is shared by all fragment shaders across all layers and 
+// has access to all shared in/out/uniform declarations
+vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels)
+#define PI 3.14159)"
     );
     Layer::sharedSourceEditor_.ResetTextChanged();
-
 }
 
 //----------------------------------------------------------------------------//

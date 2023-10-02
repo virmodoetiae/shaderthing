@@ -43,6 +43,7 @@ public:
     
     bool findReplaceTextInEditor(ImGuiExtd::TextEditor& editor);
     void reset();
+    void clearCachedTextToBeFound(){textToBeFound0_="";}
     void renderGui();
     void renderGuiMenu();
     void update();

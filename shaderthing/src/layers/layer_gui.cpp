@@ -343,8 +343,11 @@ void Layer::renderGuiMain()
     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
     if (ImGui::BeginTabBar("##layerTabBar", tab_bar_flags)) //------------------
     {
-        if (ImGui::BeginTabItem("Fragment shader"))
+        static int tabIndex(0);
+        static int tabIndex0(0);
+        if (ImGui::BeginTabItem("Fragment source"))
         {
+            tabIndex = 0;
             static ImVec4 redColor = {1,0,0,1};
             static ImVec4 grayColor = 
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
@@ -409,54 +412,40 @@ void Layer::renderGuiMain()
             }
             if (hasHeaderErrors_)
                 ImGui::PopStyleColor();
-            bool showCommon(false);
-            float commonHeight(0.0f);
-            if (sharedSourceHasErrors_)
-                ImGui::PushStyleColor(ImGuiCol_Text, redColor);
-            if (ImGui::TreeNode("Common"))
-            {
-                commonHeight = 
-                std::min
-                (
-                    Layer::sharedSourceEditor_.GetTotalLines() *
-                    ImGui::GetTextLineHeight(),
-                    ImGui::GetContentRegionAvail().y/2.1f
-                );
-                showCommon = true;
-                ImGui::TreePop();
-            }
-            if (sharedSourceHasErrors_)
-                ImGui::PopStyleColor();
             ImGui::Unindent();
-            float lineNumberColumnWidth = 
-                std::max
-                (
-                    Layer::sharedSourceEditor_.GetRequiredTextStart(),
-                    fragmentSourceEditor_.GetRequiredTextStart()
-                );
-            if (showCommon)
-            {
-                Layer::sharedSourceEditor_.SetTextStart(lineNumberColumnWidth);
-                Layer::sharedSourceEditor_.Render
-                (
-                    "##sharedEditor", 
-                    ImVec2(-1, commonHeight)
-                );
-                ImGui::Separator();
-                ImGui::Dummy(ImVec2(-1, ImGui::GetTextLineHeight()));
-                hasUncompiledChanges_ = 
-                    hasUncompiledChanges_ || 
-                    sharedSourceEditor_.IsTextChanged();
-            }
-            fragmentSourceEditor_.SetTextStart(lineNumberColumnWidth);
             fragmentSourceEditor_.Render("##fragmentEditor");
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Common source"))
+        {
+            tabIndex = 1;
+            app_.findReplaceTextToolRef().renderGui();
+            hasUncompiledChanges_=
+                hasUncompiledChanges_ ||
+                app_.findReplaceTextToolRef().findReplaceTextInEditor
+                (
+                    Layer::sharedSourceEditor_
+                );
+            if (app_.findReplaceTextToolRef().isGuiOpen()) 
+                ImGui::Separator();
+            Layer::sharedSourceEditor_.Render
+            (
+                "##sharedEditor"
+            );
+            hasUncompiledChanges_ = 
+                hasUncompiledChanges_ || 
+                sharedSourceEditor_.IsTextChanged();
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Uniforms"))
         {
+            tabIndex = 2;
             renderGuiUniforms();
             ImGui::EndTabItem();
         }
+        if (tabIndex != tabIndex0)
+            app_.findReplaceTextToolRef().clearCachedTextToBeFound();
+        tabIndex0 = tabIndex;
         ImGui::EndTabBar();
     }
 
