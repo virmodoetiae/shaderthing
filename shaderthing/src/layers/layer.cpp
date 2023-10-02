@@ -1119,10 +1119,6 @@ vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels)
 
 //----------------------------------------------------------------------------//
 
-
-
-//----------------------------------------------------------------------------//
-
 void Layer::initializeDefaultUniforms()
 {
     // Set default uniforms (mvp not here because not useful to visualize)

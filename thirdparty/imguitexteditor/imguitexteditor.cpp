@@ -2966,16 +2966,47 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
     if (!inited)
     {
         static const char* const keywords[] = {
-            "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
-            "signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary",
-            "_Noreturn", "_Static_assert", "_Thread_local"
+            "attribute", "bool", "break", "bvec2", "bvec3", "bvec4",
+            "case", "cast", "centroid", "const", "continue", "dmat2",
+            "dmat2x2", "dmat2x3", "dmat2x4", "dmat3", "dmat3x2", "dmat3x3",
+            "dmat3x4", "dmat4", "dmat4x2", "dmat4x3", "dmat4x4", "discard",
+            "default", "do", "double", "dvec2", "dvec3", "dvec4", "else",
+            "false", "flat", "float", "for", "highp", "if", "in", "inout", "int",
+            "invariant", "isampler1D", "isampler1DArray", "isampler2D",
+            "isampler2DArray", "isampler2DMS", "isampler2DMSArray", "isampler2DRect",
+            "isampler3D", "isamplerBuffer", "isamplerCube", "isamplerCubeArray", "ivec2",
+            "ivec3", "ivec4", "layout", "lowp", "mat2", "mat2x2", "mat2x3", "mat2x4",
+            "mat3", "mat3x2", "mat3x3", "mat3x4", "mat4", "mat4x2", "mat4x3",
+            "mat4x4", "mediump", "namespace", "noperspective", "out", "patch", "precision", "return",
+            "sampler1D", "sampler1DArray", "sampler1DArrayShadow", "sampler1DShadow", "sampler2D",
+            "sampler2DArray", "sampler2DArrayShadow", "sampler2DMS", "sampler2DMSArray", "sampler2DRect",
+            "sampler2DRectShadow", "sampler2DShadow", "sampler3D", "samplerBuffer", "samplerCube",
+            "samplerCubeArray", "samplerCubeArrayShadow", "samplerCubeShadow", "sizeof", "smooth",
+            "struct", "subroutine", "switch", "true", "uimage1D", "uimage1DArray", "uimage2D",
+            "uimage2DArray", "uimage2DMS", "uimage2DMSArray", "uimage2DRect", "uimage3D", "uimageBuffer",
+            "uimageCube", "uimageCubeArray", "uint", "uniform", "usampler1D", "usampler1DArray",
+            "usampler2D", "usampler2DArray", "usampler2DMS", "usampler2DMSArray", "usampler2DRect", "usampler3D",
+            "usamplerBuffer", "usamplerCube", "usamplerCubeArray", "using", "uvec2", "uvec3", "uvec4",
+            "varying", "vec2", "vec3", "vec4", "void", "while"
         };
         for (auto& k : keywords)
             langDef.mKeywords.insert(k);
 
         static const char* const identifiers[] = {
-            "abort", "abs", "acos", "asin", "atan", "atexit", "atof", "atoi", "atol", "ceil", "clock", "cosh", "ctime", "div", "exit", "fabs", "floor", "fmod", "getchar", "getenv", "isalnum", "isalpha", "isdigit", "isgraph",
-            "ispunct", "isspace", "isupper", "kbhit", "log10", "log2", "log", "memcmp", "modf", "pow", "putchar", "putenv", "puts", "rand", "remove", "rename", "sinh", "sqrt", "srand", "strcat", "strcmp", "strerror", "time", "tolower", "toupper"
+            "abs", "acos", "acosh", "all", "any", "asin", "asinh", "atan", "atanh",
+            "ceil", "clamp", "cos", "cosh", "cross", "determinant", "degrees", "distance",
+            "dot", "equal", "exp", "exp2", "faceforward", "floor", "fma", "fract", "frexp",
+            "greaterThan", "greaterThanEqual", "inversesqrt", "length", "lessThan", "lessThanEqual",
+            "log", "log2", "matrixCompMult", "max", "min", "mix", "mod", "modf", "normalize",
+            "not", "notEqual", "outerProduct", "packSnorm2x16", "packSnorm4x8", "packUnorm2x16",
+            "packUnorm4x8", "pow", "radians", "reflect", "refract", "round", "roundEven",
+            "sign", "sin", "sinh", "smoothstep", "sqrt", "step", "tan", "tanh", "texelFetch",
+            "texelFetchOffset", "texture", "textureGather", "textureGatherOffset",
+            "textureGatherOffsets", "textureGrad", "textureGradOffset", "textureLod",
+            "textureLodOffset", "textureProj", "textureProjGrad", "textureProjGradOffset",
+            "textureProjLod", "textureProjLodOffset", "textureSize", "transpose",
+            "trunc", "unpackSnorm2x16", "unpackSnorm4x8", "unpackUnorm2x16",
+            "unpackUnorm4x8", "uaddCarry", "umulExtended", "usubBorrow"
         };
         for (auto& k : identifiers)
         {
