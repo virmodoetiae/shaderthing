@@ -82,14 +82,14 @@ TODO ---------------------------------------------------------------------------
 (X) Fix quantizerTool fidelity to actually represent fidelity, not clustering
     tolerance (one is qualitatively the opposite of the other)
 
-(W) Expand code repository section (add noise functions!)
-
-( ) Enable find/find&replace tool function on the Common fragment shader code
+(X) Enable find/find&replace tool function on the Common fragment shader code
     editor (currently it only works on the main fragment code editor)
 
-( ) Add option to preserve trarnsparency when exporting GIFs
+(X) Adjust GLSL syntax highlighting in text editor
 
-( ) Adjust GLSL syntax highlighting in text editor
+(W) Expand code repository section (add noise functions!)
+
+( ) Add option to preserve transparency when exporting GIFs
 
 ( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
     currently existing and unreboundable WASD-based iCameraPosition/iWASD. 
