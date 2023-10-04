@@ -165,6 +165,7 @@ void ExportTool::update()
             layer->update(); // If this is not done here, the first frame will
                              // be rendered at the original layer resolution
         }
+        updateLayers_ = false;
     }
     // The +1 is to account for the fact that, since self-rendered layers are
     // double buffered, I need to populate the read-only framebuffer as well. 
@@ -190,6 +191,10 @@ void ExportTool::update()
                 layer->setTargetResolution(data.backupResolution, false);
                 layer->update();
             }
+            updateLayers_ = false;  // Prevent resetting layer export resolution
+                                    // to original layer resolution (caused by
+                                    // setTargetResolution(...), which calls
+                                    // this->updateLayerResolutions())
             return;
         }
     }
