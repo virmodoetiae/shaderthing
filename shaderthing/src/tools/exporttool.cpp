@@ -59,6 +59,7 @@ ExportTool::ExportTool
     exportLayerData_(0),
     gifPaletteBitDepth_(8),
     gifDitheringLevel_(0),
+    gifAlphaCutoff_(0),
     nRendersPerFrame_(1),
     multipleRendersOnlyOnFirstFrame_(true),
     updatePaletteEveryFrame_(true)
@@ -262,7 +263,9 @@ void ExportTool::exportFrame()
             {
                 gifEncoder = new vir::GifEncoder
                 (
-                    vir::KMeansQuantizer::Options::IndexMode::Alpha
+                    gifAlphaCutoff_ > 0 ?
+                    vir::KMeansQuantizer::Options::IndexMode::Alpha :
+                    vir::KMeansQuantizer::Options::IndexMode::Default
                 );
                 gifEncoder->openFile
                 ( 
@@ -279,6 +282,7 @@ void ExportTool::exportFrame()
                 (vir::KMeansQuantizer::Options::DitherMode)gifDitheringLevel_;
             options.flipVertically = true;
             options.updatePalette = updatePaletteEveryFrame_;
+            options.alphaCutoff = gifAlphaCutoff_;
             gifEncoder->encodeFrame
             (
                 exportFramebuffer_,

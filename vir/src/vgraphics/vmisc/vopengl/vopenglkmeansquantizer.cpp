@@ -701,6 +701,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     
     // Cache options
     options_ = options;
+    options_.indexMode = Options::IndexMode::Default;
 
     // Limit and adjust palette size (no reason why more than 256 colors can't
     // be processed, however, I feel an upper bound can't hurt, also because
@@ -1173,7 +1174,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         int(options_.indexMode), 
         false
     );
-    if (options.ditherMode != Options::DitherMode::None)
+    if (options_.ditherMode != Options::DitherMode::None)
     {
         if (options_.ditherThreshold == 0)
             options_.ditherThreshold = 1.0f/std::sqrt(float(paletteSize));

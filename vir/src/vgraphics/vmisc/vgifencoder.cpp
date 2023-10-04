@@ -16,14 +16,25 @@ void GifEncoder::encodeIndexedFrame
     fputc(0x21, file_);
     fputc(0xf9, file_);
     fputc(0x04, file_);
-    if (indexMode_ == KMeansQuantizer::Options::IndexMode::Delta)
-        fputc(0b00000101, file_); // Leave old frame in place
-    else
-        fputc(0b00001001, file_); // Reset old frame to background color, i.e.,
-                                  // no color as I have not set the bckg color
+    switch(indexMode_)
+    {
+        case KMeansQuantizer::Options::IndexMode::Default :
+            fputc(0b00000100, file_);   // Old frame left in place, no 
+                                        // transparency
+            break;
+        case KMeansQuantizer::Options::IndexMode::Alpha :
+            fputc(0b00001001, file_);   // Old frame reset to no color, 
+                                        // enable transparency
+            break;
+        case KMeansQuantizer::Options::IndexMode::Delta :
+            fputc(0b00000101, file_);   // Old frame left in place, 
+                                        // enable transparency
+            break;
+    }
     fputc(delay & 0xff, file_);
     fputc((delay >> 8) & 0xff, file_);
-    fputc(0, file_); // Transparent color index
+    if (indexMode_ != KMeansQuantizer::Options::IndexMode::Default)
+        fputc(0, file_); // Transparent color index
     fputc(0, file_); // Block terminator
 
     // Image descriptor block
@@ -67,7 +78,6 @@ void GifEncoder::encodeIndexedFrame
     int ps = paletteSize_;
     while (ps < ((1<<paletteBitDepth_)-1))
     {
-        //std::cout << "-> " << ps << " " << (1<<paletteBitDepth_)-1 << std::endl;
         fputc(0, file_);
         fputc(0, file_);
         fputc(0, file_);
@@ -138,10 +148,13 @@ void GifEncoder::encodeIndexedFrame
             [
                 flipVertically ? (height_-1-y)*width_+x : y*width_+x
             ];
-            if (nextValue == paletteSize_)
-                nextValue = 0;
-            else
-                ++nextValue;
+            if (indexMode_ != KMeansQuantizer::Options::IndexMode::Default)
+            {
+                if (nextValue == paletteSize_)
+                    nextValue = 0;
+                else
+                    ++nextValue;
+            }
             if( curCode < 0 )
                 curCode = nextValue;
             else if( codetree[curCode].next[nextValue] )
@@ -322,7 +335,6 @@ void GifEncoder::encodeFrame
         if (i % width_ == 0)
             std::cout << std::endl;
     }*/
-    std::cout << std::endl;
     quantizer_->getPalette(palette_, firstFrame_);
     if (firstFrame_)
         firstFrame_ = false;
@@ -388,8 +400,7 @@ void GifEncoder::encodeFrame
         std::cout << (int)(indexedTexture_[i]) << " ";
         if ((i+1) % width_ == 0)
             std::cout << std::endl;
-    }
-    std::cout << std::endl;*/
+    }*/
     quantizer_->getPalette(palette_, firstFrame_);
     if (firstFrame_)
         firstFrame_ = false;

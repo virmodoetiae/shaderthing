@@ -117,6 +117,13 @@ void ExportTool::renderGui()
             if (exportFps0 != exportFps_)
                 exportFps_ = 100.0f/int(100.0f/exportFps_+.5f);
             ImGui::Text("Palette bit depth           ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text(
+R"(Determines the GIF palette size. The number of colors in the palette is 
+2^(palette bit depth))");
+                ImGui::EndTooltip();
+            }
             ImGui::SameLine();
             ImGui::PushItemWidth(entryWidth);
             ImGui::SliderInt("##paletteBitSlider", &gifPaletteBitDepth_, 2, 8);
@@ -128,6 +135,25 @@ void ExportTool::renderGui()
                 "##updatePaletteEveryFrame", 
                 &updatePaletteEveryFrame_
             );
+            ImGui::Text("Transparency cutoff         ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text(
+R"(Alpha channel threshold below which (threshold excluded) a pixel is considered
+as fully transparent. If set to 0, the output GIF file is fully opaque with no
+transparency)");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            ImGui::PushItemWidth(entryWidth);
+            ImGui::SliderInt
+            (
+                "##exportToolAlphaCutoff", 
+                &gifAlphaCutoff_, 
+                0, 
+                255
+            );
+            ImGui::PopItemWidth();
             ImGui::Text("Color dithering             ");
             ImGui::SameLine();
             ImGui::PushItemWidth(entryWidth);
@@ -303,6 +329,16 @@ void ExportTool::renderGui()
             bool resolutionLocked0(resolutionLocked);
             if (ImGui::Button(resolutionLocked?"Unlock":"Lock", ImVec2(-1,0)))
                 resolutionLocked = !resolutionLocked;
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text(
+R"(When the lock is active, the export resolution of this layer will not be 
+modified upon changes to the output export resolution. Nonetheless, the
+export resolution of this layer may still be modified, although the aspect 
+ratio is always locked to the aspect ratio of the source layer)"
+                );
+                ImGui::EndTooltip();
+            }
             if (!resolutionLocked && resolutionLocked0)
                 resolution = (glm::vec2)exportResolution_*resolutionScale + 
                     glm::vec2({.5,.5});

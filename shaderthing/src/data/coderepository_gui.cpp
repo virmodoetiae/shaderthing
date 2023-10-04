@@ -511,7 +511,7 @@ float sceneSDF(vec3 p)
 {
     float sphere = length(p-vec3(0,1.5,0))-.75;
     sphere += .25*sin(5*p.x*p.y+iTime*2*PI);
-    return min(sphere, p.y)/SAFETY_FACTOR;
+    return min(sphere, p.y);
 }
 
 // Given a point 'p' close to the 3D geometry scene surface, this function
@@ -548,7 +548,7 @@ float rayMarch(Ray r)
     float s, ds = 0;
     for (int step=0; step<MAX_STEPS; step++)
     {
-        ds = sceneSDF(r.origin+r.direction*s);
+        ds = sceneSDF(r.origin+r.direction*s)/SAFETY_FACTOR;
         s += ds;
         if (ds < MIN_DIST && ds > 0)
             return s;
@@ -583,7 +583,7 @@ void main()
 
         // Ray march from the hit point to the light source
         Ray rl = Ray(p, normalize(pl));
-        float dl = rayMarch(rl)*SAFETY_FACTOR;
+        float dl = rayMarch(rl);
 
         // If ray marching does not reach light source it means that the point
         // is in complete shade (hard shadow)

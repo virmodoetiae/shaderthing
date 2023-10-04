@@ -70,6 +70,9 @@ private:
     // GIF format, 0 is no dithering.
     int gifDitheringLevel_;
 
+    //
+    int gifAlphaCutoff_;
+
     int nRendersPerFrame_;
     bool multipleRendersOnlyOnFirstFrame_;
     bool updatePaletteEveryFrame_;
