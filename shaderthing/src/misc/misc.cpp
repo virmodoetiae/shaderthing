@@ -1,6 +1,7 @@
 #include "misc/misc.h"
 #include <ctime>
 
+#include "vir.h"
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/imgui_internal.h"
 
@@ -117,6 +118,18 @@ bool Misc::isCtrlShiftKeyPressed(ImGuiKey key)
         ImGui::IsKeyDown(ImGuiKey_LeftShift) &&
         ImGui::IsKeyPressed(key, false)
     );
+}
+
+void Misc::limitWindowResolution(glm::ivec2& resolution)
+{
+    static auto* window(vir::GlobalPtr<vir::Window>::instance());
+    auto monitorScale = window->contentScale();
+    glm::ivec2 minResolution = {120*monitorScale.x, 1};
+    glm::ivec2 maxResolution = window->primaryMonitorResolution();
+    resolution.x = 
+        std::max(std::min(resolution.x, maxResolution.x), minResolution.x);
+    resolution.y = 
+        std::max(std::min(resolution.y, maxResolution.y), minResolution.y);
 }
 
 }

@@ -85,6 +85,8 @@ bool isCtrlKeyPressed(ImGuiKey key);
 
 bool isCtrlShiftKeyPressed(ImGuiKey key);
 
+void limitWindowResolution(glm::ivec2& resolution);
+
 }
 
 }

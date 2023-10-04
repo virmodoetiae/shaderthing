@@ -1325,12 +1325,12 @@ void Layer::adjustTargetResolution()
     (
         window->aspectRatio()
     );
-    static glm::ivec2 minResolution;
+    ;
     static glm::ivec2 maxResolution;
     if (rendersTo_ != RendersTo::Window)
     {
-        minResolution = {1,1};
-        maxResolution = {4096,4096};
+        static glm::ivec2 minResolution({1,1});
+        static glm::ivec2 maxResolution({4096,4096});
         if (isAspectRatioBoundToWindow_)
         {
             if (value0.x != value.x)
@@ -1338,19 +1338,14 @@ void Layer::adjustTargetResolution()
             else if (value0.y != value.y)
                 value.x = (float)value.y*aspectRatio+.5f;
         }
+        value.x = std::max(minResolution.x, value.x);
+        value.x = std::min(maxResolution.x, value.x);
+        value.y = std::max(minResolution.y, value.y);
+        value.y = std::min(maxResolution.y, value.y);
     }
     else
-    {
-        auto monitorResolution = 
-            window->primaryMonitorResolution();
-        auto monitorScale = window->contentScale();
-        minResolution = {120*monitorScale.x,1};
-        maxResolution = monitorResolution;
-    }
-    value.x = std::max(minResolution.x, value.x);
-    value.x = std::min(maxResolution.x, value.x);
-    value.y = std::max(minResolution.y, value.y);
-    value.y = std::min(maxResolution.y, value.y);
+        Misc::limitWindowResolution(value);
+    
     if (rendersTo_ != RendersTo::Window)
     {
         if (isAspectRatioBoundToWindow_)

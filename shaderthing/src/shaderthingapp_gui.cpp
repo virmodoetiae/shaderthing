@@ -250,6 +250,7 @@ name##SetBuilt0 = name##SetBuilt;
                     )
                 )
                 {
+                    Misc::limitWindowResolution(resolution);
                     if (resolution0 != resolution)
                     {
                         auto window = vir::GlobalPtr<vir::Window>::instance();
