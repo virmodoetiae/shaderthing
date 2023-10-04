@@ -73,11 +73,11 @@ protected:
     // Atomic counter for storing the clustering error
     GLuint clusteringError_;
 
-    //
+    // 
     GLuint oldQuantizedInput_;
-    bool deltaComputed_;
 
     // Actual quantization function that operates on pure OpenGL handles
+    /*
     void quantizeOpenGLTexture
     (
         GLuint id,
@@ -96,6 +96,16 @@ protected:
         bool computeDelta=false,
         uint32_t inputUnit=0,
         bool isSF32=false
+    );*/
+
+    void quantizeOpenGLTexture
+    (
+        GLuint id,
+        uint32_t width,
+        uint32_t height,
+        unsigned int paletteSize,
+        const Options& options,
+        bool float32=false
     );
 
     //
@@ -111,34 +121,14 @@ public:
     virtual void quantize
     (
         TextureBuffer2D* input, 
-        uint32_t paletteSize, 
-        unsigned char* palette=nullptr,
-        uint32_t ditherLevel=0,
-        bool reseedPalette=false,
-        bool recalculatePalette=true, 
-        float relTol=1e-2,
-        float ditherThreshold=0,
-        int alphaCutoff=-1,
-        bool regenerateMipmap=true,
-        bool fastKMeans=true,
-        bool computeDelta=false,
-        uint32_t inputUnit=0
+        unsigned int paletteSize,
+        const Options& options
     ) override;
     virtual void quantize
     (
         Framebuffer* input, 
-        uint32_t paletteSize, 
-        unsigned char* palette=nullptr,
-        uint32_t ditherLevel=0,
-        bool reseedPalette=false,
-        bool recalculatePalette=true, 
-        float relTol=1e-2,
-        float ditherThreshold=0,
-        int alphaCutoff=-1,
-        bool regenerateMipmap=true,
-        bool fastKMeans=true,
-        bool computeDelta=false,
-        uint32_t inputUnit=0
+        unsigned int paletteSize,
+        const Options& options
     ) override;
 
     // Retrieve the palette colors and store them in the provided data array. If

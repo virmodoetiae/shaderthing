@@ -252,11 +252,13 @@ void ExportTool::exportFrame()
         case (ExportType::GIF) :
         {
             static bool setup(true);
-	        int delay = std::max(100.0f/exportFps_, 1.0f);
             static vir::GifEncoder* gifEncoder(nullptr);
             if (setup)
             {
-                gifEncoder = new vir::GifEncoder();
+                gifEncoder = new vir::GifEncoder
+                (
+                    vir::KMeansQuantizer::Options::IndexMode::Alpha
+                );
                 gifEncoder->openFile
                 ( 
                     exportFilename.c_str(), 
@@ -266,14 +268,16 @@ void ExportTool::exportFrame()
                 );
                 setup = false;
             }
+            vir::GifEncoder::EncodingOptions options = {};
+            options.delay = std::max(100.0f/exportFps_, 1.0f);
+            options.ditherMode = 
+                (vir::KMeansQuantizer::Options::DitherMode)gifDitheringLevel_;
+            options.flipVertically = true;
+            options.updatePalette = updatePaletteEveryFrame_;
             gifEncoder->encodeFrame
             (
                 exportFramebuffer_,
-                delay,
-                gifDitheringLevel_,
-                0.0f,
-                true,
-                updatePaletteEveryFrame_
+                options
             );
             if (frame_ >= nExportFrames_+1)
             {

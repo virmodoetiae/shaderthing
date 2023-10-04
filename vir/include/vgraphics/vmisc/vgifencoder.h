@@ -2,6 +2,7 @@
 #define V_GIF_ENCODER_H
 
 #include <string>
+#include "vgraphics/vmisc/vkmeansquantizer.h"
 
 class GifFileType;
 
@@ -10,10 +11,33 @@ namespace vir
 
 class TextureBuffer2D;
 class Framebuffer;
-class KMeansQuantizer;
 
 class GifEncoder
 {
+public:
+
+    struct EncodingOptions
+    {
+        // Delay between frames in hundredths of a second
+        int delay = 4;
+
+        // 
+        bool flipVertically = false;
+
+        //
+        KMeansQuantizer::Options::DitherMode ditherMode = 
+            KMeansQuantizer::Options::DitherMode::None;
+        
+        // 
+        float ditherThreshold = 0;
+
+        //
+        int alphaCutoff = -1;
+        
+        //
+        bool updatePalette = true;
+    };
+
 protected:
 
     //
@@ -37,6 +61,7 @@ protected:
     uint32_t width_, height_, paletteBitDepth_, paletteSize_;
     unsigned char* indexedTexture_;
     unsigned char* palette_;
+    KMeansQuantizer::Options::IndexMode indexMode_;
 
     KMeansQuantizer* quantizer_;
     
@@ -44,7 +69,11 @@ protected:
 
 public:
 
-    GifEncoder();
+    GifEncoder
+    (
+        KMeansQuantizer::Options::IndexMode indexMode =
+        KMeansQuantizer::Options::IndexMode::Default
+    );
     ~GifEncoder();
 
     bool canRunOnDeviceInUse() const {return quantizer_->canRunOnDeviceInUse();}
@@ -61,21 +90,13 @@ public:
     void encodeFrame
     (
         TextureBuffer2D* frame,
-        int delay,
-        uint32_t ditherLevel=0,
-        float ditherThreshold=0,
-        bool flipVertically=false,
-        bool updatePalette=true
+        const EncodingOptions& options
     );
     
     void encodeFrame
     (
         Framebuffer* frame,
-        int delay,
-        uint32_t ditherLevel=0,
-        float ditherThreshold=0,
-        bool flipVertically=false,
-        bool updatePalette=true
+        const EncodingOptions& options
     );
     
     bool closeFile();

@@ -225,20 +225,22 @@ void QuantizationTool::quantize(Layer* layer)
         (
             1.0f-clusteringFidelity_*clusteringFidelity_
         );
+        vir::KMeansQuantizer::Options options = {};
+        options.paletteData = paletteModified_ ? uIntPalette_ : nullptr;
+        options.reseedPalette = firstQuantization_;
+        options.recalculatePalette = autoUpdatePalette_ || firstQuantization_;
+        options.ditherMode = 
+            (vir::KMeansQuantizer::Options::DitherMode)ditheringLevel_;
+        options.ditherThreshold = ditheringThreshold_;
+        options.relTol = clusteringTolerance;
+        options.alphaCutoff = isAlphaCutoff_ ? alphaCutoffThreshold_ : -1;
+        options.regenerateMipmap = true;
+        options.fastKMeans = true;
         quantizer_->quantize
         (
             targetLayer_->writeOnlyFramebuffer(),
             paletteSize_,
-            paletteModified_ ? uIntPalette_ : nullptr,
-            ditheringLevel_,
-            firstQuantization_,
-            autoUpdatePalette_ || firstQuantization_,
-            clusteringTolerance,
-            ditheringThreshold_,
-            isAlphaCutoff_ ? alphaCutoffThreshold_ : -1,
-            true,
-            true,
-            false
+            options
         );
         bool paletteSizeModified(paletteSize0!=paletteSize_);
         if (paletteSizeModified)
