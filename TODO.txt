@@ -87,9 +87,14 @@ TODO ---------------------------------------------------------------------------
 
 (X) Adjust GLSL syntax highlighting in text editor
 
-(W) Expand code repository section (add noise functions!)
+(X) Add option to preserve transparency when exporting GIFs
 
-( ) Add option to preserve transparency when exporting GIFs
+(X) Fix static linking of std, gcc, pthread libs to make executable stand-
+    alone (tested only on Windows with MinGW64)
+
+(X) Fix find/replace tool not working on uncompiled editor text
+
+(W) Expand code repository section (add noise functions!)
 
 ( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
     currently existing and unreboundable WASD-based iCameraPosition/iWASD. 

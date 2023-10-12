@@ -33,7 +33,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stb)
 #add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD)
 #add_compile_definitions(IMGUI_DEFINE_MATH_OPERATORS)
 #add_compile_definitions(IMGUI_ENABLE_FREETYPE)
-set(CXX_FLAGS "-std=c++17 -O3")
+set(CXX_FLAGS "-static-libgcc -static-libstdc++ -static -std=c++17 -O3")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 add_library(thirdparty 
 			glad/src/glad.cpp 

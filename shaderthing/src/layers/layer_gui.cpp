@@ -355,15 +355,13 @@ void Layer::renderGuiMain()
                 ImGui::GetStyle().Colors[ImGuiCol_Text];
             app_.findReplaceTextToolRef().renderGui();
             hasUncompiledChanges_=
-                hasUncompiledChanges_ ||
                 app_.findReplaceTextToolRef().findReplaceTextInEditor
                 (
                     fragmentSourceEditor_
-                );
+                ) || hasUncompiledChanges_;
             if (app_.findReplaceTextToolRef().isGuiOpen()) 
                 ImGui::Separator();
             ImGui::Indent();
-            
             if (hasHeaderErrors_)
                 ImGui::PushStyleColor(ImGuiCol_Text, redColor);
             if (ImGui::TreeNode("Header"))
@@ -389,10 +387,10 @@ void Layer::renderGuiMain()
                     ImGui::Bullet();ImGui::Text(
 "the highest possible GLSL version (based on your hardware) is used;");
                     ImGui::Bullet();ImGui::Text(
-"the quad coordinate 'qc' varies in the [-.5,.5] range across the (current) "
-"shortest side of the window, and from [-x,x] across its longest side, wherein "
-"'x' is the ratio between the lengths of the longest and the shortest window "
-"sides. In practice, any line between e.g., two points described via  "
+"the quad coordinate 'qc' varies in the [-.5, .5] range across the (current) "
+"shortest side of the window, and from [-x/2, x/2] across its longest side, "
+"wherein 'x' is the ratio between the lengths of the longest and the shortest "
+"window sides. In practice, any line between e.g., two points described via  "
 "this coordinate will maintain its angle if the window aspect ratio is "
 "changed by resizing. The origin is at the window center;");
                     ImGui::Bullet();ImGui::Text(
@@ -421,11 +419,10 @@ void Layer::renderGuiMain()
             tabIndex = 1;
             app_.findReplaceTextToolRef().renderGui();
             hasUncompiledChanges_=
-                hasUncompiledChanges_ ||
                 app_.findReplaceTextToolRef().findReplaceTextInEditor
                 (
                     Layer::sharedSourceEditor_
-                );
+                ) || hasUncompiledChanges_;
             if (app_.findReplaceTextToolRef().isGuiOpen()) 
                 ImGui::Separator();
             Layer::sharedSourceEditor_.Render

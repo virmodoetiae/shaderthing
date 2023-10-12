@@ -75,22 +75,6 @@ if (ImGui::TreeNode(name))                                                  \
     if (ImGui::TreeNode("Miscellaneous")) //----------------------------------//
     {
         //--------------------------------------------------------------------//
-        if (ImGui::TreeNode("Color"))
-        {
-            CODE_ENTRY(
-"Color mixing",
-"Mix two colors 'c0', 'c1', using the transparency of 'c1' as a blending "
-"factor",
-R"(vec4 mixColors(vec4 c0, vec4 c1)
-{
-    c0.a = min(max(c0.a,0),1);
-    c1.a = min(max(c1.a,0),1);
-    return (1-c1.a)*c0+vec4(c1.a*c1.rgb,1);
-})")
-            ImGui::TreePop();
-        }
-
-        //--------------------------------------------------------------------//
         if (ImGui::TreeNode("Rotation"))
         {
             CODE_ENTRY(
@@ -123,8 +107,8 @@ R"(vec3 rotate(vec3 v, float t, vec3 a)
     {
         CODE_ENTRY(
 "Sobel filter",
-"This complete shader applies a Sobel filter to an input texture 'iTexture0', ",
-"which needs to be added to the uniforms list via the 'Uniforms' tab"
+"This complete shader applies a Sobel filter to an input texture 'iTexture0', "
+"which needs to be added to the uniforms list via the 'Uniforms' tab",
 R"(void make_kernel(inout vec4 n[9], sampler2D tex, vec2 coord)
 {
     float w = 1.0/iResolution.x;
