@@ -81,9 +81,9 @@ R"(void main()
 {
     fragColor = vec4
     (
-        .5+.25*sin(2*qc+.75*PI*iTime),
+        .5+.25*sin(2*(qc+iTime)),
         .75,
-        1
+        1.
     );
 }
 )";
@@ -1111,8 +1111,7 @@ void Layer::initializeEditors()
     (
 R"(// Common source code is shared by all fragment shaders across all layers and 
 // has access to all shared in/out/uniform declarations
-vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels)
-#define PI 3.14159)"
+vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels))"
     );
     Layer::sharedSourceEditor_.ResetTextChanged();
 }
