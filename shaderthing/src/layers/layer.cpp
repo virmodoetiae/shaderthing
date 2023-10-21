@@ -19,6 +19,7 @@ namespace ShaderThing
 // Private -------------------------------------------------------------------//
 
 vir::Quad* Layer::blankQuad_ = nullptr;
+std::string Layer::blankFragmentSource_ = "";
 vir::Shader* Layer::blankShader_ = nullptr;
 vir::Shader* Layer::internalFramebufferShader_ = nullptr;
 ImGuiExtd::TextEditor Layer::sharedSourceEditor_ = ImGuiExtd::TextEditor();
@@ -117,7 +118,7 @@ void Layer::createStaticShaders()
     " core\n");
     if (Layer::blankShader_ == nullptr)
     {
-        std::string fragmentSource = 
+        Layer::blankFragmentSource_ = 
 version+
 R"(out vec4 fragColor;
 in vec2 qc;
@@ -126,7 +127,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})";
         Layer::blankShader_ = vir::Shader::create
         (
             Layer::assembleVertexSource(), 
-            fragmentSource,
+            Layer::blankFragmentSource_,
             vir::Shader::ConstructFrom::String
         );
     }
@@ -195,6 +196,7 @@ Layer::Layer
     float depth
 ) :
 app_(app),
+shader_(nullptr),
 rendersTo_(RendersTo::Window),
 toBeDeleted_(false),
 toBeRenamed_(false),
@@ -495,6 +497,7 @@ Layer::Layer
     bool isGuiRendered
 ) :
 app_(app),
+shader_(nullptr),
 rendersTo_(RendersTo::Window),
 toBeDeleted_(false),
 toBeRenamed_(false),
@@ -718,17 +721,23 @@ uniformLayerNamesToBeSet_(0)
     // Init default uniforms (must be done before assembleFragmentSource)
     initializeDefaultUniforms();
 
-    // Init shader
-    shader_ =
-        vir::Shader::create
-        (
-            Layer::assembleVertexSource(),
-            assembleFragmentSource(fragmentSource_),
-            vir::Shader::ConstructFrom::String
-        );
-
     //
     createStaticShaders();
+
+    // Init shader
+    // If the project was saved in a state such that the shader has compilation
+    // errors, then initialize the shader with the blank shader source (back-end
+    // -only, the user will still see the source of the saved shader with the 
+    // usuale list of compilation errors and markers)
+    hasUncompiledChanges_ = true; // Set to true to force compilation
+    if (!compileShader())
+        shader_ = 
+            vir::Shader::create
+            (
+                Layer::assembleVertexSource(),
+                Layer::blankFragmentSource_,
+                vir::Shader::ConstructFrom::String
+            );
 
     // Init framebuffers
     flipFramebuffers_ = false;
@@ -972,10 +981,10 @@ std::string Layer::assembleFragmentSource
 
 //----------------------------------------------------------------------------//
 
-void Layer::compileShader()
+bool Layer::compileShader()
 {
     if (!hasUncompiledChanges_)
-        return;
+        return true;
 
     fragmentSource_ = fragmentSourceEditor_.GetText();
 
@@ -1001,7 +1010,7 @@ void Layer::compileShader()
         fragmentSourceEditor_.SetErrorMarkers({});
         uncompiledUniforms_.clear();
         hasUncompiledChanges_ = false;
-        return;
+        return true;
     }
     try {std::rethrow_exception(exceptionPtr);}
     catch(std::exception& e)
@@ -1016,7 +1025,7 @@ void Layer::compileShader()
             exception[2] == ']')
             isFragmentException = true;
         if (!isFragmentException)
-            return;
+            return false;
         bool readErrorIndex = true;
         bool sharedError = false;
         int firstErrorIndex = -1;
@@ -1088,6 +1097,7 @@ void Layer::compileShader()
         {
             sharedSourceEditor_.SetErrorMarkers(sharedErrors);
         }
+        return false;
     }
 }
 

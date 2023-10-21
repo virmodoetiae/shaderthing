@@ -50,6 +50,9 @@ private:
     //
     static vir::Quad* blankQuad_;
     
+    //
+    static std::string blankFragmentSource_;
+
     // Transparent shader rendered to screen when the buffer is rendering to
     // framebuffers to avoid visual glitches
     static vir::Shader* blankShader_;
@@ -254,7 +257,7 @@ private :
     // sharedSourceEditor_ contents and fragmentSource_ and compiled the
     // resulting shader. If errors arise, set relevant stateFlags, and set
     // error markers in fragmentSourceEditor_ and/or sharedSourceEditor_
-    void compileShader();
+    bool compileShader();
 
     // Functions to be called only from within an ImGui-environment
 
