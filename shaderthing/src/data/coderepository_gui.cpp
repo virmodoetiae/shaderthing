@@ -664,10 +664,13 @@ R"(vec3 sceneNormal(vec3 p, float h)
         }
 
         //----------------------------------------------------------------------
-        CODE_ENTRY(
-"Example ray marcher",
-"Full fragment shader code of a very bare-bones ray marcher with a test scene,"
-" inclusive of a single light source and hard shadows cast by scene entities ",
+        if (ImGui::TreeNode("Examples"))
+        {
+            CODE_ENTRY(
+"Simple ray marcher",
+"Full fragment shader code of a very bare-bones ray marcher with a test scene, "
+"inclusive of a single light source and hard shadows cast by colorless scene "
+"entities ",
 R"(#define PI 3.14159
 
 // Increase this to avoid visual artifacts. However, at the same time, you
@@ -777,6 +780,273 @@ void main()
         }
     }
 })")
+
+            CODE_ENTRY(
+"Advanced ray marcher (with reflections)",
+"Full fragment shader code of a more advanced ray marcher, featuring colorful "
+"and reflective SDFs, as well as soft shadows cast by said entities from a "
+"single light source",
+R"(#define MAX_STEPS 250
+#define MAX_DIST 1e2
+#define MIN_DIST 1e-3
+#define OFFSET (10*MIN_DIST)
+#define SAFETY_FACTOR 1
+#define N_REFLS 3
+#define SHADW_SHARPN 10
+#define MIN_LIGHT .025
+#define TPIT 2.*PI*iTime
+#define LIGHT_POS vec3(0.,20.,-20.)
+#define BACKG_COL vec3(0.1, .25, .37)
+
+vec3 rotate(vec3 v, float t, vec3 a)
+{
+    vec4 q = vec4(sin(t/2.0)*a.xyz, cos(t/2.0));
+    return v + 2.0*cross(q.xyz, cross(q.xyz, v) + q.w*v);
+}
+
+float sphereSDF(vec3 p, float r)
+{
+    return length(p)-r;
+}
+
+float boxSDF(vec3 p, vec3 b)
+{
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.)) + min(max(q.x, max(q.y,q.z)),0.);
+}
+
+struct Material
+{
+    vec3 c; // Color
+    float r; // Reflectance
+};
+
+struct SDM // Signed distance & material
+{
+    float d;
+    Material m;
+};
+
+// All SDM operations for reference, even if not used, to showcase 
+// examples for handling mixing of material properties
+
+SDM intersect(SDM o0, SDM o1)
+{
+    return SDM
+    (
+        max(o0.d, o1.d), 
+        Material((o0.m.c+o1.m.c)/2., (o0.m.r+o1.m.r)/2.)
+    );
+}
+
+SDM subtract(SDM o0, SDM o1)
+{
+    return SDM(max(o0.d, -o1.d), o0.m);
+}
+
+SDM unite(SDM o0, SDM o1)
+{
+    if (o0.d < o1.d)
+        return o0;
+    return o1;
+}
+
+SDM smoothUnite(SDM o0, SDM o1, float s)
+{
+    float h = clamp(0.5+0.5*(o0.d-o1.d)/s, 0.0, 1.0);
+    return SDM
+    (
+        mix(o0.d, o1.d, h)-s*h*(1.0-h), 
+        Material
+        (
+            mix(o0.m.c, o1.m.c, h),
+            mix(o0.m.r, o1.m.r, h)
+        )
+    );
+}
+
+// Subtract o0 from o1
+SDM smoothSubtract(SDM o0, SDM o1, float s)
+{
+    float h = clamp(0.5-0.5*(o0.d+o1.d)/s, 0.0, 1.0);
+    return SDM
+    (
+        mix(o1.d, -o0.d, h) + s*h*(1.0-h),
+        o1.m
+    );
+}
+
+SDM smoothIntersect(SDM o0, SDM o1, float s)
+{
+    float h = clamp(0.5-0.5*(o1.d-o0.d)/s, 0.0, 1.0);
+    return SDM
+    (
+        mix(o1.d, o0.d, h)+s*h*(1.0-h),
+        Material((o0.m.c+o1.m.c)/2., (o0.m.r+o1.m.r)/2.)
+    );
+}
+
+SDM sceneSDF(vec3 p)
+{
+    // Rotating, orbiting box
+    vec3 pb = 
+        rotate
+        (
+            rotate
+            (
+                p-vec3(9*sin(iTime), 0, 9*cos(iTime)), 
+                iTime, 
+                vec3(0,1,0)
+            ),
+            iTime,
+            vec3(1,0,0)
+        );
+    SDM bx = SDM
+    (
+        boxSDF(pb, vec3(2)), 
+        Material(vec3(1.,0.,0.), 0.1)
+    );
+    // Sphere going up and down
+    SDM sp = SDM
+    (
+        sphereSDF(p+vec3(0,3*sin(iTime),0), 3.), 
+        Material(vec3(0.75,0.75,0.75), 0.5)
+    );
+    // Lower less-than-half-sphere thing
+    SDM pl = SDM
+    (
+        max(p.y+2., sphereSDF(p, 10)),
+        Material(vec3(0.5,0.25,0), 0.1)
+    );
+    sp = smoothUnite(sp, pl, 3);
+    // Cut part of lower less-than-half-sphere thing based on 
+    // extended cube outline
+    sp.d = max(sp.d, -(bx.d-2.));
+    return unite(sp,bx);
+}
+
+struct Ray 
+{
+    vec3 orig; // Ray origin
+    vec3 dir; // Ray direction
+    float af; // Attenuation factor
+};
+
+Ray newRay(vec3 orig, vec3 dir)
+{
+    return Ray(orig, dir, 1.);
+}
+
+Ray cameraRay(vec2 qc, vec3 cp, vec3 f, float fov)
+{
+    vec3 l = normalize(cross(vec3(0,1,0),f));
+    vec3 u = normalize(cross(f,l));
+    return newRay(cp, normalize(cp+f*fov-qc.x*l+qc.y*u-cp));
+}
+
+// Just like the regular rayMarch, but also computes a penumbra
+// factor for smooth shadows
+SDM rayMarch(Ray ray, out float pn)
+{
+    SDM sdm;
+    float d, dd, dd0 = MIN_DIST;
+    pn = 1.;
+    for (int iter = 0; iter < MAX_STEPS; iter++)
+    {
+        dd0 = dd;
+        sdm = sceneSDF(ray.orig + ray.dir*d);
+        dd = sdm.d/SAFETY_FACTOR;
+        pn = min(pn, SHADW_SHARPN*sdm.d/d);
+        if (dd > 0 && dd <= MIN_DIST || d >= MAX_DIST)
+            break;
+        d += dd;
+    }
+    sdm.d = d;
+    return sdm;
+}
+
+// Ray march without the penumbra factor
+SDM rayMarch(Ray ray)
+{
+    float pn;
+    return rayMarch(ray, pn);
+}
+
+vec3 getNormal(vec3 p)
+{
+    float d = sceneSDF(p).d;
+    vec2 e = vec2(OFFSET, 0.);
+    vec3 n = d - vec3(
+        sceneSDF(p-e.xyy).d,
+        sceneSDF(p-e.yxy).d,
+        sceneSDF(p-e.yyx).d
+    );
+    return normalize(n);
+}
+
+float getLighting(vec3 p, inout vec3 n)
+{
+    // Light source position
+    n = getNormal(p);
+    p += n*OFFSET;
+    vec3 dir = normalize(LIGHT_POS-p);
+    float pn;
+    if (rayMarch(newRay(p,dir),pn).d<length(LIGHT_POS-p)-OFFSET)
+        return MIN_LIGHT;
+    return max(dot(n, dir)*pn, MIN_LIGHT);
+}
+
+// Color from a single ray propagation
+void raySubColor(inout Ray ray, inout vec3 col, int iter)
+{
+    // If the ray is fully attenuated, stop propagating
+    if (ray.af == 0.)
+        return;
+    SDM sdm = rayMarch(ray);
+    vec3 p = ray.orig + ray.dir*sdm.d;
+    vec3 lCol, n;
+    lCol = BACKG_COL;
+    if (sdm.d < MAX_DIST)
+        lCol = max(getLighting(p, n), 0.)*sdm.m.c;
+    // If last reflection, set reflectance of hit 
+    // surface to 0 so it is rendered as fully opaque
+    sdm.m.r *= float(iter<N_REFLS && sdm.d < MAX_DIST);
+    col = (1-ray.af)*col+lCol*ray.af*(1.0-(sdm.m.r));
+    ray.af *= sdm.m.r;
+    if (ray.af != 0.)
+    {
+        ray.orig = p+n*OFFSET;
+        ray.dir = reflect(ray.dir, n);
+    }
+}
+
+vec3 rayColor(Ray ray)
+{
+    vec3 col = vec3(0.);
+    // Base pass
+    raySubColor(ray, col, 0);
+    // Reflection passes
+    for (int i = 0; i < N_REFLS; i++)
+    {
+        raySubColor(ray, col, i+1);
+    }
+    // Gamma correction and return
+    return pow(col, vec3(1./2.2));
+}
+
+void main(void)
+{
+    // Camera position, look-direction, ray and its final color
+    vec3 cp = vec3(-15., 12., -15.); // iWASD
+    vec3 ld = normalize(vec3(0.,-1.,0.)-cp); // iLook
+    Ray ray = cameraRay(qc, cp, ld, 1.);
+    fragColor = vec4(rayColor(ray), 1.);
+})"
+            )
+
+            ImGui::TreePop();
+        }
+
         ImGui::TreePop();
     }
 
