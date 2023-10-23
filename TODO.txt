@@ -94,7 +94,12 @@ TODO ---------------------------------------------------------------------------
 
 (X) Fix find/replace tool not working on uncompiled editor text
 
-(W) Expand code repository section (add noise functions!)
+(X) Fix crash on loading of saved projects that were saved with shader 
+    compilation errors
+
+(X) Add noise-related and advanced ray marching code snippets to Code repository
+
+(W) Expand code repository section
 
 ( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
     currently existing and unreboundable WASD-based iCameraPosition/iWASD. 

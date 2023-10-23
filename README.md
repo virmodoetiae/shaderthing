@@ -30,7 +30,7 @@ This repository consists of:
 
 The vir and third-party libraries are statically linked to the final ShaderThing executable, making it stand-alone. 
 
-The vir library (whose development both predates and partially led to the development of ShaderThing) currently only wraps OpenGL (for graphics management) and GLFW (for window & input management), but it is structured to possibly accomodate for other rendering and window/input-management platforms (though no such plans exists for the time being).
+The vir library (whose development both predates and partially led to the development of ShaderThing) currently only wraps OpenGL (for graphics management) and GLFW (for window & input management), but it is structured to possibly accomodate for other rendering and window/input-management platforms (though no such plans exist for the time being).
 
 # How to compile
 
