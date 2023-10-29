@@ -135,6 +135,10 @@ void LayerManager::renderGui()
         if (Layer::sharedSourceHasErrors())
             ImGui::EndDisabled();
 
+        // This is updated in each layer's renderGui function, so it needs
+        // to be reset here
+        app_.userActionRef() = false;
+
         // Render gui of layer in selection
         for (auto layer : layers_)
         {

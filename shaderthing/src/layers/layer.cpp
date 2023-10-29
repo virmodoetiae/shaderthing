@@ -1140,6 +1140,14 @@ void Layer::initializeDefaultUniforms()
     defaultUniforms_.emplace_back(frameUniform);
     uniformLimits_.insert({frameUniform, glm::vec2(0.0f, 1.0f)});
 
+    // Flag to signal that the user has changed inputs/uniforms
+    auto userActionUniform = new vir::Shader::Uniform();
+    userActionUniform->name = "iUserAction";
+    userActionUniform->type = vir::Shader::Variable::Type::Bool;
+    userActionUniform->setValuePtr(&app_.userActionRef());
+    defaultUniforms_.emplace_back(userActionUniform);
+    uniformLimits_.insert({userActionUniform, glm::vec2(0, 1)});
+
     // iAspectRatio
     auto aspectRatio = new vir::Shader::Uniform();
     aspectRatio->name = "iAspectRatio";
@@ -1198,11 +1206,11 @@ void Layer::setDefaultAndSamplerUniforms()
 {
     // Check for shader recompilation (then, uniforms need to be
     // reset)
-    static const glm::mat4& mvp(screenCamera_.projectionViewMatrix());
-    static const glm::vec3& cameraPosition(shaderCamera_.position());
-    static const glm::vec3& cameraDirection(shaderCamera_.z());
-    static const glm::ivec4& mouse(app_.mouseRef());
-    static const float& aspectRatio
+    const glm::mat4& mvp(screenCamera_.projectionViewMatrix());
+    const glm::vec3& cameraPosition(shaderCamera_.position());
+    const glm::vec3& cameraDirection(shaderCamera_.z());
+    const glm::ivec4& mouse(app_.mouseRef());
+    const float& aspectRatio
     (
         vir::GlobalPtr<vir::Window>::instance()->aspectRatio()
     );
@@ -1227,21 +1235,30 @@ void Layer::setDefaultAndSamplerUniforms()
         shader_->setUniformFloat("iAspectRatio", aspectRatio);
         shader_->setUniformFloat2("iResolution", resolution_);
         resolution0_ = resolution_;
+        app_.userActionRef() = true;
     }
     if (cameraPosition0_ != shaderCamera_.position()  || forceSet)
     {
         shader_->setUniformFloat3("iWASD", cameraPosition);
         cameraPosition0_ = cameraPosition;
+        app_.userActionRef() = true;
     }
     if (cameraDirection0_ != cameraDirection || forceSet)
     {
         shader_->setUniformFloat3("iLook", cameraDirection);
         cameraDirection0_ = cameraDirection;
+        app_.userActionRef() = true;
     }
     if (mouse0_ != mouse || forceSet)
     {
         shader_->setUniformInt4("iMouse", mouse);
         mouse0_ = mouse;
+        app_.userActionRef() = true;
+    }
+    if (userAction0_ != app_.userActionRef())
+    {
+        shader_->setUniformBool("iUserAction", app_.userActionRef());
+        userAction0_ = app_.userActionRef();
     }
 
     // Set sampler uniforms
@@ -1296,14 +1313,14 @@ void Layer::setDefaultAndSamplerUniforms()
 void Layer::setNonDefaultUniforms()
 {
 
-#define CASE(ST, T, F)                          \
-case vir::Shader::Variable::Type::ST :          \
-{                                               \
-    auto value = u->getValue<T>();              \
-    u->setValue(value);                         \
-    if (u->name != "")                          \
-        shader_->F(u->name, value);             \
-    break;                                      \
+#define CASE(ST, T, F)                                      \
+case vir::Shader::Variable::Type::ST :                      \
+{                                                           \
+    T value = u->getValue<T>();                             \
+    u->setValue(value);                                     \
+    if (u->name != "")                                      \
+        shader_->F(u->name, value);                         \
+    break;                                                  \
 }
     for (auto u : uniforms_)
     {

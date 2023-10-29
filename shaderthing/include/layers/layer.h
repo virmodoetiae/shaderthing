@@ -203,12 +203,16 @@ private :
     // Ref to global renderer object
     vir::Renderer& renderer_;
 
-    // Cached old default uniform values to avoid always setting them
+    // Cached old default uniform values to avoid always setting them. Most of
+    // these are actually shared by all layers, so it is somewhat wasteful to
+    // have them defined for every layer... maybe make them static, or move to
+    // top-level app?
     glm::mat4 mvp0_;
     glm::ivec2 resolution0_;
     glm::vec3 cameraPosition0_;
     glm::vec3 cameraDirection0_;
     glm::ivec4 mouse0_;
+    bool userAction0_;
 
     // This function is responsible for generating the full GLSL source fragment
     // code by adding required #version/in/out/uniform lines as well as the 

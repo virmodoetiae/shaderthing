@@ -490,6 +490,7 @@ void Layer::renderGuiUniforms()
     int deleteRow = -1;
     // Very dirty stuff, totally not proud of this
     bool nextUniformIsSampler2DResolution(false);
+    static bool deferredUserAction(false);
     if (ImGui::BeginTable("##uniformTable", nColumns, tableFlags))
     {
         // Declare columns
@@ -730,6 +731,10 @@ to modify. Best suited for controlling a camera)";
                     app_.setMouseInputsEnabled(!enabled);
                 ENABLE_DISABLE_APP_INPUT_TOOLTIP(mouse inputs)                                                     
             }
+            else if (uniform->name == "iUserAction")
+            {
+                isShared = true;
+            }
             ImGui::PopItemWidth();
 
             // Column 1 --------------------------------------------------------
@@ -832,11 +837,22 @@ to modify. Best suited for controlling a camera)";
                 case vir::Shader::Variable::Type::Bool :
                 {
                     auto value = uniform->getValue<bool>();
-                    if (ImGui::Checkbox((value) ? "true" : "false", &value))
+                    if (uniform->name == "iUserAction")
+                    {
+                        ImGui::Text
+                        (
+                            (userAction0_ || deferredUserAction) ? 
+                            "true" : "false"
+                        );
+                    }
+                    else if (ImGui::Checkbox((value) ? "true" : "false", &value))
                     {
                         uniform->setValue(value);
                         if (uniform->name != "")
+                        {
                             shader_->setUniformBool(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -875,7 +891,10 @@ to modify. Best suited for controlling a camera)";
                         }
                         uniform->setValue(value);
                         if (uniform->name != "")
+                        {
                             shader_->setUniformInt(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -906,7 +925,10 @@ to modify. Best suited for controlling a camera)";
                         }
                         uniform->setValue(value);
                         if (uniform->name != "")
+                        {
                             shader_->setUniformInt(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -981,9 +1003,11 @@ to modify. Best suited for controlling a camera)";
                             value.y = std::min(value.y, (int)uLimits.y);
                         }
                         uniform->setValue(value);
-                        std::cout << value.x << " " << value.y << std::endl;
                         if (uniform->name != "")
+                        {
                             shader_->setUniformInt2(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -1021,7 +1045,10 @@ to modify. Best suited for controlling a camera)";
                         }
                         uniform->setValue(value);
                         if (uniform->name != "")
+                        {
                             shader_->setUniformInt3(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -1083,7 +1110,10 @@ is currently being held down)");
                         }
                         uniform->setValue(value);
                         if (uniform->name != "")
+                        {
                             shader_->setUniformInt4(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -1115,7 +1145,10 @@ is currently being held down)");
                         }
                         uniform->setValue(value);
                         if (uniform->name != "")
+                        {
                             shader_->setUniformFloat(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -1201,7 +1234,10 @@ is currently being held down)");
                         }
                         uniform->setValue(value);
                         if (uniform->name != "")
+                        {
                             shader_->setUniformFloat2(uniform->name, value);
+                            app_.userActionRef() = true;
+                        }
                     }
                     break;
                 }
@@ -1261,7 +1297,10 @@ is currently being held down)");
                                 value = glm::normalize(value);
                             uniform->setValue(value);
                             if (uniform->name != "")
+                            {
                                 shader_->setUniformFloat3(uniform->name, value);
+                                app_.userActionRef() = true;
+                            }
                             // I am manipulating the reference to Z, but not 
                             // re-setting other axes automatically within the 
                             // camera class. Mouse-based rotations work fine in 
@@ -1290,7 +1329,10 @@ is currently being held down)");
                             uLimits.y = 1.0;
                             uniform->setValue(value);
                             if (uniform->name != "")
+                            {
                                 shader_->setUniformFloat3(uniform->name, value);
+                                app_.userActionRef() = true;
+                            }
                         }
                     }
                     break;
@@ -1367,7 +1409,10 @@ is currently being held down)");
                             uLimits.y = 1.0;
                             uniform->setValue(value);
                             if (uniform->name != "")
+                            {
                                 shader_->setUniformFloat4(uniform->name, value);
+                                app_.userActionRef() = true;
+                            }
                         }
                     }
                     break;
@@ -1392,7 +1437,10 @@ is currently being held down)");
                             )
                                 continue;
                             if (ImGui::Selectable(r->name().c_str()))
+                            {
                                uniform->setValuePtr<Resource>(r);
+                               app_.userActionRef() = true;
+                            }
                         }
                         ImGui::EndCombo();
                     }
@@ -1413,7 +1461,10 @@ is currently being held down)");
                             if (r->type() != Resource::Type::Cubemap)
                                 continue;
                             if (ImGui::Selectable(r->name().c_str()))
+                            {
                                uniform->setValuePtr<Resource>(r);
+                               app_.userActionRef() = true;
+                            }
                         }
                         ImGui::EndCombo();
                     }
@@ -1457,7 +1508,9 @@ is currently being held down)");
         uniform = nullptr;
         deleteRow = -1;
         hasUncompiledChanges_ = true;
+        app_.userActionRef() = true; // Why not?
     }
+    deferredUserAction = app_.userActionRef();
 }
 
 }

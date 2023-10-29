@@ -50,6 +50,8 @@ private:
     // Inputs/default uniforms
     vir::Camera* shaderCamera_ = nullptr;
     glm::ivec4 mouse_ = {0,0,0,0};
+    // True whenever the user manually changes the status of a uniform
+    bool userAction_ = false;
 
     // Filepath of the currently loaded project/shaderthing instance
     std::string projectFilepath_ = "";
@@ -110,6 +112,7 @@ public:
     vir::Camera& screnCameraRef(){return *screenCamera_;}
     vir::Camera& shaderCameraRef(){return *shaderCamera_;}
     glm::ivec4& mouseRef(){return mouse_;}
+    bool& userActionRef(){return userAction_;}
     bool isCameraPositionInputEnabled()
     {
         return stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED];
