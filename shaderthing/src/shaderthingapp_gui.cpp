@@ -354,6 +354,26 @@ name##SetBuilt0 = name##SetBuilt;
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Misc"))
+            {
+                ImGui::Text("Time reset on rendering restart");
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text(
+R"(If true, the iTime uniform shared by all layers will be reset to 0 every time
+the rendering is restarted, i.e., via: 1) shader recompilation (Ctrl+B) or 2) 
+resetting the iFrame uniform (Ctrl+R))"
+                    );
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGui::Checkbox
+                (
+                    "##timeResetOnRenderingRestart",
+                    &stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]
+                );
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Resources"))

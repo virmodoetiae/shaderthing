@@ -617,8 +617,8 @@ void Layer::renderGuiUniforms()
                     ImGui::EndTooltip();
                 }
                 ImGui::SameLine();
-                static bool& isRenderingPaused(app_.isRenderingPausedRef());
-                static bool& isTimePaused(app_.isTimePausedRef());
+                bool& isRenderingPaused(app_.isRenderingPausedRef());
+                bool& isTimePaused(app_.isTimePausedRef());
                 // Pause/resume rendering, which also affects iTime (but the
                 // opposite is not true)
                 if 

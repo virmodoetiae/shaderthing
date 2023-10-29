@@ -163,11 +163,10 @@ R"(float fractionalNoise2D(vec2 x, float h, uint o)
         //--------------------------------------------------------------------//
         if (ImGui::TreeNode("3D"))
         {
-
             CODE_ENTRY(
 "Pseudo-random number generator",
 "Returns a pseudo-random float given an input vec3 seed 'x'",
-R"(float random2D(vec3 x)
+R"(float random3D(vec3 x)
 {
     return fract(138912*sin(dot(x, vec3(138.9, 191.2, 695.7))));
 })")
@@ -246,7 +245,7 @@ R"(float noise3D(vec3 x)
 "fractional noise is smoother for increasing values of the 'h' parameter. In "
 "particular: h=0 for Pink noise; h=0.5 for Brown noise; h=1.0 for the most "
 "common implementation referred to as 'fractional brownian motion'",
-R"(float fractionalNoise2D(vec2 x, float h, uint o)
+R"(float fractionalNoise3D(vec2 x, float h, uint o)
 {
     float n = 0.;
     float s = exp2(-h);
@@ -254,7 +253,7 @@ R"(float fractionalNoise2D(vec2 x, float h, uint o)
     vec2 af = vec2(1., 1.);
     for (int i=0; i<o; i++)
     {
-        n += af.x*noise2D(af.y*x);
+        n += af.x*noise3D(af.y*x);
         A += af.x;
         af *= vec2(s, 2.);
     }

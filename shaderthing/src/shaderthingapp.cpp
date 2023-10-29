@@ -133,7 +133,8 @@ void ShaderThingApp::setMouseInputsEnabled(bool status)
 void ShaderThingApp::restartRendering()
 {
     frame_ = -1;
-    time_ = 0.f;
+    if (stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART])
+        time_ = 0.f;
     layerManager_->clearFramebuffers();
 }
 
@@ -239,8 +240,6 @@ void ShaderThingApp::onReceive(vir::Event::MouseButtonReleaseEvent& event)
 
 void ShaderThingApp::restart()
 {
-#define DELETE_IF_NOT_NULLPTR(x) if(x!=nullptr) delete x;
-
     // Reset app
     time_ = 0.0;
     frame_ = 0;
@@ -258,9 +257,9 @@ void ShaderThingApp::restart()
     cameraPosition = glm::vec3(0,0,-1);
     shaderCamera_->setPosition(cameraPosition);
     shaderCamera_->setZPlusIsLookDirection(true);
-    for (int i=0; i<12; i++)
+    for (int i=0; i<13; i++)
         stateFlags_[i] = (i>6 && i<10);
-
+    stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = true;
     // Restart app components
     layerManager_->reset();
     resourceManager_->reset();
