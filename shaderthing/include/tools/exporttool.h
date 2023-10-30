@@ -83,22 +83,23 @@ private:
         const char* dialogKey, 
         const ImVec2& size
     );
+    void exportFrame();
 
 public:
 
     ExportTool(ShaderThingApp& app);
     ~ExportTool();
 
+    //
     void reset();
-
     void loadState(std::string& source, uint32_t& index);
     void saveState(std::ofstream& file);
     void update();
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
     void renderGui();
-    void exportFrame();
 
     // Accessors
+    int frame() {return frame_;}
     bool* isGuiOpenPtr(){return &isGuiOpen_;}
     bool isGuiInMenu(){return isGuiInMenu_;}
     bool isExporting() const {return isExporting_;}

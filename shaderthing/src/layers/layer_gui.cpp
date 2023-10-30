@@ -172,6 +172,7 @@ locked to that of the main window)"
             std::string selectedWrapModeY = "";
             std::string selectedMagFilterMode = "";
             std::string selectedMinFilterMode = "";
+            std::string selectedExportClearPolicy = "";
             if (readOnlyFramebuffer_ != nullptr)
             {
                 selectedWrapModeX = vir::TextureBuffer::wrapModeToName.at
@@ -191,6 +192,11 @@ locked to that of the main window)"
                     vir::TextureBuffer::filterModeToName.at
                     (
                         readOnlyFramebuffer_->colorBufferMinFilterMode()
+                    );
+                selectedExportClearPolicy = 
+                    internalFramebufferClearPolicyOnExportToName.at
+                    (
+                        internalFramebufferClearPolicyOnExport_
                     );
             }
             ImGui::Text("Horizontal wrap mode ");
@@ -323,6 +329,27 @@ locked to that of the main window)"
                             entry.first
                         );
                     }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopItemWidth();
+
+            ImGui::Text("Export clear policy  ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(selectableWidth);
+            if 
+            (
+                ImGui::BeginCombo
+                (
+                    "##layerExportClearPolicy",
+                    selectedExportClearPolicy.c_str()
+                ) && readOnlyFramebuffer_ != nullptr
+            )
+            {
+                for (auto entry : internalFramebufferClearPolicyOnExportToName)
+                {
+                    if (ImGui::Selectable(entry.second.c_str()))
+                        internalFramebufferClearPolicyOnExport_ = entry.first;
                 }
                 ImGui::EndCombo();
             }

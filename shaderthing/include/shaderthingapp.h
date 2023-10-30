@@ -127,13 +127,18 @@ public:
     {
         return stateFlags_[ST_IS_MOUSE_INPUT_ENABLED];
     }
+    
     LayerManager& layerManagerRef(){return *layerManager_;}
     ResourceManager& resourceManagerRef(){return *resourceManager_;}
-    std::vector<Layer*>& layersRef();
-    std::vector<Resource*>& resourcesRef();
     QuantizationTool& quantizationToolRef() {return *quantizationTool_;}
     ExportTool& exportToolRef() {return *exportTool_;}
     FindReplaceTextTool& findReplaceTextToolRef(){return *findReplaceTextTool_;}
+
+    bool isExporting();
+    bool isExportingAndFirstFrame();
+    bool isExportingAndFirstRenderPassInFrame();
+    std::vector<Layer*>& layersRef();
+    std::vector<Resource*>& resourcesRef();
 
     // Event-related ---------------------------------------------------------//
     DECLARE_RECEIVABLE_EVENTS

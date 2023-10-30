@@ -39,14 +39,10 @@ void LayerManager::renderLayers
     unsigned int nRenderPasses
 )
 {
-    auto oneRenderPass = [&](bool clearTarget, bool clearFramebuffers)
+    auto oneRenderPass = [&](bool clearTarget)
     {
         for (auto layer : layers_)
         {
-            // Dude you are using iFrame as a seed, which does NOT change
-            // in the render pass loop... 
-            if (clearFramebuffers)
-                layer->clearFramebuffers();
             layer->render(target, clearTarget);
             //if (lastPass)
             //    layer->render2(target, clearTarget);
@@ -68,14 +64,21 @@ void LayerManager::renderLayers
         if (clearTarget || target != nullptr)
             Layer::renderBlankWindow();
     };
-    
-    // Actual rendering. The nRenderPasses is per-frame
+
+    // Apply internal framebuffer clear policy if exporting, before rendering
+    if (app_.isExporting())
+    {
+        app_.renderPassRef()=0; // Needs to be set before clearing framebuffers
+        for (auto layer : layers_)
+            layer->clearFramebuffersWithPolicy();
+    }
+
+    // Render all layers
     for (int i=0; i<nRenderPasses; i++)
     {
         app_.renderPassRef() = i;
-        oneRenderPass(true, target != nullptr && i == 0);
+        oneRenderPass(true);
     }
-    //std::cout << std::endl;
 }
 
 //----------------------------------------------------------------------------//

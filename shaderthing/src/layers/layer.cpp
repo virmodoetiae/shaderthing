@@ -34,6 +34,23 @@ Layer::renderTargetToName =
     {Layer::RendersTo::Window, "Window"}
 };
 
+std::unordered_map
+<
+    Layer::InternalFramebufferClearPolicyOnExport, 
+    std::string
+> Layer::internalFramebufferClearPolicyOnExportToName = 
+{
+    {Layer::InternalFramebufferClearPolicyOnExport::None, "None"},
+    {
+        Layer::InternalFramebufferClearPolicyOnExport::ClearOnFirstFrame, 
+        "On first frame"
+    },
+    {
+        Layer::InternalFramebufferClearPolicyOnExport::ClearOnEveryFrame, 
+        "On every frame"
+    }
+};
+
 std::string Layer::supportedUniformTypeNames[11] = {
     vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Bool],
     vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int],
@@ -228,7 +245,11 @@ shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
 shaderId0_(-1),
 uncompiledUniforms_(0),
-uniformLayerNamesToBeSet_(0)
+uniformLayerNamesToBeSet_(0),
+internalFramebufferClearPolicyOnExport_
+(
+    InternalFramebufferClearPolicyOnExport::None
+)
 {
     std::random_device dev;
     std::mt19937 rng(dev());
@@ -516,7 +537,11 @@ shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
 shaderId0_(-1),
 uncompiledUniforms_(0),
-uniformLayerNamesToBeSet_(0)
+uniformLayerNamesToBeSet_(0),
+internalFramebufferClearPolicyOnExport_
+(
+    InternalFramebufferClearPolicyOnExport::None
+)
 {
     std::string headerSource;
     while(true)
@@ -1470,15 +1495,27 @@ void Layer::rebuildFramebuffers
 
 void Layer::clearFramebuffers()
 {
-    /*
-    rebuildFramebuffers
-    ( 
-        framebufferA_->colorBufferInternalFormat(), 
-        resolution_
-    );
-    */
    framebufferA_->clearColorBuffer();
    framebufferB_->clearColorBuffer();
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::clearFramebuffersWithPolicy()
+{
+    switch (internalFramebufferClearPolicyOnExport_)
+    {
+    case InternalFramebufferClearPolicyOnExport::None :
+        return;
+    case InternalFramebufferClearPolicyOnExport::ClearOnFirstFrame :
+        if (app_.isExportingAndFirstFrame())
+            clearFramebuffers();
+        return;
+    case InternalFramebufferClearPolicyOnExport::ClearOnEveryFrame :
+        if (app_.isExportingAndFirstRenderPassInFrame())
+            clearFramebuffers();
+        return;
+    }
 }
 
 //----------------------------------------------------------------------------//

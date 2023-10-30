@@ -22,11 +22,27 @@ class Layer
 // Enums ---------------------------------------------------------------------//
 
 public :
+    
     enum class RendersTo
     {
         Window,
         InternalFramebuffer,
         InternalFramebufferAndWindow
+    };
+
+    // Policy to determine when to clear internal framebuffers during exports
+    enum class InternalFramebufferClearPolicyOnExport
+    {
+        // The framebuffers are never cleared
+        None, 
+
+        // The framebuffers are cleared only once, when the export starts
+        ClearOnFirstFrame,
+
+        // The framebuffers are cleared at the beginning of every frame, but
+        // not on sub-frame render passes (i.e., the framebuffers are cleared
+        // at the beginning of the first sub-frame render pass of each frame)
+        ClearOnEveryFrame
     };
 
 // Static members ------------------------------------------------------------//
@@ -37,6 +53,11 @@ private:
     static std::unordered_map<RendersTo, std::string> renderTargetToName;
     static std::unordered_map<vir::TextureBuffer::WrapMode, std::string> 
         wrapModeToName;
+    static std::unordered_map
+    <
+        InternalFramebufferClearPolicyOnExport, 
+        std::string
+    > internalFramebufferClearPolicyOnExportToName;
     
     //
     static std::string supportedUniformTypeNames[11];
@@ -203,6 +224,10 @@ private :
     // Ref to global renderer object
     vir::Renderer& renderer_;
 
+    // Policy to determine when to clear internal framebuffers during exports
+    InternalFramebufferClearPolicyOnExport 
+        internalFramebufferClearPolicyOnExport_;
+
     // Cached old default uniform values to avoid always setting them. Most of
     // these are actually shared by all layers, so it is somewhat wasteful to
     // have them defined for every layer... maybe make them static, or move to
@@ -302,6 +327,9 @@ public:
     // their contents
     void clearFramebuffers();
 
+    // Clear the internal framebuffers if the export policy conditions apply
+    void clearFramebuffersWithPolicy();
+
     // Removes the given resorce from this layers's uniforms list, if found
     void removeResourceFromUniforms(Resource* resource);
 
@@ -337,13 +365,6 @@ public:
         vir::Framebuffer* target = nullptr, 
         bool clearTarget = true
     );
-
-    /*
-    void render2
-    (
-        vir::Framebuffer* target = nullptr, 
-        bool clearTarget = true
-    );*/
 
     // Render the GUI view when hovering over Settings->[This layer's name]
     void renderGuiSettings();

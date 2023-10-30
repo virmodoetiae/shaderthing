@@ -62,7 +62,7 @@ ShaderThingApp::ShaderThingApp()
         if (!isRenderingPausedCRef())
         {
             vir::Framebuffer* target = nullptr; // nullptr == to window
-            uint32_t nRenderPasses = exportTool_->nRendersPerFrame();
+            uint32_t nRenderPasses = 1;
             if (exportTool_->isExporting())
             {
                 target = exportTool_->exportFramebuffer();
@@ -150,6 +150,27 @@ std::vector<Layer*>& ShaderThingApp::layersRef()
 std::vector<Resource*>& ShaderThingApp::resourcesRef()
 {
     return resourceManager_->resourcesRef();
+}
+
+//----------------------------------------------------------------------------//
+
+bool ShaderThingApp::isExporting()
+{
+    return exportTool_->isExporting();
+}
+
+//----------------------------------------------------------------------------//
+
+bool ShaderThingApp::isExportingAndFirstFrame()
+{
+    return exportTool_->isExporting() && exportTool_->frame() <= 1;
+}
+
+//----------------------------------------------------------------------------//
+
+bool ShaderThingApp::isExportingAndFirstRenderPassInFrame()
+{
+    return exportTool_->isExporting() && renderPass_ == 0;
 }
 
 //----------------------------------------------------------------------------//
@@ -429,7 +450,10 @@ void ShaderThingApp::update()
     if (exportTool_->isExporting())
     {
         time_ += exportTool_->exportTimeStep();
-        frame_++;
+        if (exportTool_->frame() <= 1)
+            frame_ = 0; // Reset frame on export start
+        else 
+            frame_++;
     }
     else
     {
