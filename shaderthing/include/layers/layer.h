@@ -335,8 +335,16 @@ public:
     void render
     (
         vir::Framebuffer* target = nullptr, 
-        bool clearTarget = true
+        bool clearTarget = true,
+        bool flag = true
     );
+
+    /*
+    void render2
+    (
+        vir::Framebuffer* target = nullptr, 
+        bool clearTarget = true
+    );*/
 
     // Render the GUI view when hovering over Settings->[This layer's name]
     void renderGuiSettings();

@@ -43,6 +43,7 @@ private:
     // Window state
     float time_ = 0.0;
     int frame_ = 0;
+    int renderPass_ = 0;
     glm::ivec2 resolution_ = {512, 512};
     glm::vec2 viewport_; // i.e., normalized resolution in a 0-1 range
     vir::Camera* screenCamera_ = nullptr;
@@ -107,6 +108,7 @@ public:
         return stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART];
     }
     int& frameRef(){return frame_;}
+    int& renderPassRef(){return renderPass_;}
     glm::ivec2& resolutionRef(){return resolution_;}
     glm::vec2& viewportRef(){return viewport_;}
     vir::Camera& screnCameraRef(){return *screenCamera_;}

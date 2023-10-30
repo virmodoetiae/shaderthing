@@ -635,6 +635,10 @@ void Layer::renderGuiUniforms()
                     isTimePaused = isRenderingPaused;
                 }
             }
+            else if (uniform->name == "iRenderPass")
+            {
+                isShared = true;
+            }
             else if (uniform->name == "iTime")
             {
                 isShared = true;
@@ -808,6 +812,7 @@ to modify. Best suited for controlling a camera)";
                 uniform->type != vir::Shader::Variable::Type::SamplerCube &&
                 uniform->name != "iResolution" &&
                 uniform->name != "iFrame" &&
+                uniform->name != "iRenderPass" &&
                 uniform->name != "iAspectRatio" &&
                 uniform->name != "iMouse"
             )
@@ -870,6 +875,14 @@ to modify. Best suited for controlling a camera)";
                         ImGui::Text
                         (
                             std::to_string(std::max(app_.frameRef(),0)).c_str()
+                        );
+                    else if (uniform->name == "iRenderPass")
+                        ImGui::Text
+                        (
+                            std::to_string
+                            (
+                                std::max(app_.renderPassRef(), 0)
+                            ).c_str()
                         );
                     else
                     {

@@ -7,6 +7,7 @@
 #include "tools/exporttool.h"
 #include "misc/misc.h"
 #include "vir/include/vir.h"
+#include "thirdparty/glad/include/glad/glad.h"
 
 #include <random>
 
@@ -317,7 +318,7 @@ Layer::~Layer()
 
 //----------------------------------------------------------------------------//
 
-void Layer::render(vir::Framebuffer* target, bool clearTarget)
+void Layer::render(vir::Framebuffer* target, bool clearTarget, bool flag)
 {
     // Check if shader needs to be compiled
     if (toBeCompiled_)
@@ -365,17 +366,34 @@ void Layer::render(vir::Framebuffer* target, bool clearTarget)
 
     if (rendersTo_ != RendersTo::InternalFramebufferAndWindow)
         return;
-    // Render textured rendered by the previous call to the main window
-    Layer::internalFramebufferShader_->bind();
-    writeOnlyFramebuffer_->bindColorBuffer(0);
-    Layer::internalFramebufferShader_->setUniformInt("self", 0);
-    renderer_.submit
-    (
-        *screenQuad_, 
-        Layer::internalFramebufferShader_, 
-        target0,
-        clearTarget
-    );
+
+    /*
+    auto dataSync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    while (dataSync)
+    {
+        GLenum wait = glClientWaitSync(dataSync, 
+            GL_SYNC_FLUSH_COMMANDS_BIT, 1);
+        if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED)
+            break;
+    }
+    if (dataSync)
+		glDeleteSync(dataSync);
+    */
+
+    if (target0 == nullptr || flag)
+    {
+        // Render texture rendered by the previous call to the main window
+        Layer::internalFramebufferShader_->bind();
+        writeOnlyFramebuffer_->bindColorBuffer(0);
+        Layer::internalFramebufferShader_->setUniformInt("self", 0);
+        renderer_.submit
+        (
+            *screenQuad_, 
+            Layer::internalFramebufferShader_, 
+            target0,
+            clearTarget
+        );
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -1140,6 +1158,14 @@ void Layer::initializeDefaultUniforms()
     defaultUniforms_.emplace_back(frameUniform);
     uniformLimits_.insert({frameUniform, glm::vec2(0.0f, 1.0f)});
 
+    // iRenderPass
+    auto renderPassUniform = new vir::Shader::Uniform();
+    renderPassUniform->name = "iRenderPass";
+    renderPassUniform->type = vir::Shader::Variable::Type::UInt;
+    renderPassUniform->setValuePtr(&app_.renderPassRef());
+    defaultUniforms_.emplace_back(renderPassUniform);
+    uniformLimits_.insert({renderPassUniform, glm::vec2(0.0f, 1.0f)});
+
     // Flag to signal that the user has changed inputs/uniforms
     auto userActionUniform = new vir::Shader::Uniform();
     userActionUniform->name = "iUserAction";
@@ -1220,6 +1246,7 @@ void Layer::setDefaultAndSamplerUniforms()
     bool forceSet((int)shader_->id() != shaderId0_);
     shader_->setUniformFloat("iTime", app_.timeRef());
     shader_->setUniformUInt("iFrame", app_.frameRef());
+    shader_->setUniformUInt("iRenderPass", app_.renderPassRef());
     if (mvp0_ != mvp || forceSet)
     {
         shader_->setUniformMat4("mvp", mvp);
@@ -1458,11 +1485,15 @@ void Layer::rebuildFramebuffers
 
 void Layer::clearFramebuffers()
 {
+    /*
     rebuildFramebuffers
     ( 
         framebufferA_->colorBufferInternalFormat(), 
         resolution_
     );
+    */
+   framebufferA_->clearColorBuffer();
+   framebufferB_->clearColorBuffer();
 }
 
 //----------------------------------------------------------------------------//

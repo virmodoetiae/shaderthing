@@ -62,7 +62,7 @@ ShaderThingApp::ShaderThingApp()
         if (!isRenderingPausedCRef())
         {
             vir::Framebuffer* target = nullptr; // nullptr == to window
-            uint32_t nRenderPasses = 1;
+            uint32_t nRenderPasses = exportTool_->nRendersPerFrame();
             if (exportTool_->isExporting())
             {
                 target = exportTool_->exportFramebuffer();

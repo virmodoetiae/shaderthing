@@ -186,7 +186,7 @@ transparency)");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     ImGui::InputInt("##nRendersPerFrame", &nRendersPerFrame_);
-    nRendersPerFrame_ = std::min(std::max(1, nRendersPerFrame_), 16);
+    nRendersPerFrame_ = std::min(std::max(1, nRendersPerFrame_), 1000);
     ImGui::PopItemWidth();
     if (nRendersPerFrame_ > 1 && exportType_ != ExportType::Image)
     {

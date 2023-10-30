@@ -712,6 +712,16 @@ void OpenGLFramebuffer::colorBufferData(unsigned char* data, bool yFlip)
         }
 }
 
+void OpenGLFramebuffer::clearColorBuffer(float r, float g, float b, float a)
+{
+    auto* previouslyActiveFramebuffer = activeOne_;
+    bind();
+    glClearColor(r, g, b, a);
+    glClear(GL_COLOR_BUFFER_BIT);
+    if (previouslyActiveFramebuffer != nullptr)
+        previouslyActiveFramebuffer->bind();
+}
+
 // Vertex buffer -------------------------------------------------------------//
 
 OpenGLVertexBuffer::OpenGLVertexBuffer(float* vertices, uint32_t size)
