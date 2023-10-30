@@ -247,7 +247,7 @@ uniform int imageHeight;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 float rand(vec2 seed)
 {
-	return fract(sin(dot(seed.xy, vec2(12.9898, 78.233)))*43758.5453);
+    return fract(sin(dot(seed.xy, vec2(12.9898, 78.233)))*43758.5453);
 }
 uvec4 to8ui(vec4 v)
 {
@@ -519,7 +519,7 @@ uniform int imageHeight;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 float rand(vec2 seed)
 {
-	return fract(sin(dot(seed.xy, vec2(12.9898, 78.233)))*43758.5453);
+    return fract(sin(dot(seed.xy, vec2(12.9898, 78.233)))*43758.5453);
 }
 void main() 
 { 
@@ -1276,8 +1276,8 @@ void OpenGLKMeansQuantizer::waitSync()
 void OpenGLKMeansQuantizer::resetSync()
 {
     if (dataSync_)
-		glDeleteSync(dataSync_);
-	dataSync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        glDeleteSync(dataSync_);
+    dataSync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 
 //----------------------------------------------------------------------------//

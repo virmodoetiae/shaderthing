@@ -39,15 +39,15 @@ void LayerManager::renderLayers
     unsigned int nRenderPasses
 )
 {
-    auto oneRenderPass = [&](bool clearTarget, bool lastPass)
+    auto oneRenderPass = [&](bool clearTarget, bool clearFramebuffers)
     {
         for (auto layer : layers_)
         {
             // Dude you are using iFrame as a seed, which does NOT change
             // in the render pass loop... 
-            //if (clearFramebuffers)
-            //    layer->clearFramebuffers();
-            layer->render(target, clearTarget, lastPass);
+            if (clearFramebuffers)
+                layer->clearFramebuffers();
+            layer->render(target, clearTarget);
             //if (lastPass)
             //    layer->render2(target, clearTarget);
             // At the end of the pass, the status of clearTarget will represent
@@ -73,9 +73,7 @@ void LayerManager::renderLayers
     for (int i=0; i<nRenderPasses; i++)
     {
         app_.renderPassRef() = i;
-        if ((target != nullptr && i == nRenderPasses-1))
-            std::cout << "Exporting, and on last pass!" << std::endl;
-        oneRenderPass(true, (target != nullptr && i == nRenderPasses-1));
+        oneRenderPass(true, target != nullptr && i == 0);
     }
     //std::cout << std::endl;
 }

@@ -61,7 +61,7 @@ ExportTool::ExportTool
     gifDitheringLevel_(0),
     gifAlphaCutoff_(0),
     nRendersPerFrame_(1),
-    multipleRendersOnlyOnFirstFrame_(true),
+    multipleRendersOnlyOnFirstFrame_(false),
     updatePaletteEveryFrame_(true)
 {}
 
@@ -369,7 +369,12 @@ int ExportTool::nRendersPerFrame()
 {
     // Technically the 'first frame' is the first two, because of 
     // double-buffering
-    if (multipleRendersOnlyOnFirstFrame_ && frame_ > 1)
+    if 
+    (
+        exportType_!= ExportType::Image && 
+        multipleRendersOnlyOnFirstFrame_ && 
+        frame_ > 1
+    )
         return 1;
     return nRendersPerFrame_;
 }

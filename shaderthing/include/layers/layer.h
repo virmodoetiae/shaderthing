@@ -335,8 +335,7 @@ public:
     void render
     (
         vir::Framebuffer* target = nullptr, 
-        bool clearTarget = true,
-        bool flag = true
+        bool clearTarget = true
     );
 
     /*

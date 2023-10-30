@@ -318,7 +318,7 @@ Layer::~Layer()
 
 //----------------------------------------------------------------------------//
 
-void Layer::render(vir::Framebuffer* target, bool clearTarget, bool flag)
+void Layer::render(vir::Framebuffer* target, bool clearTarget)
 {
     // Check if shader needs to be compiled
     if (toBeCompiled_)
@@ -367,33 +367,18 @@ void Layer::render(vir::Framebuffer* target, bool clearTarget, bool flag)
     if (rendersTo_ != RendersTo::InternalFramebufferAndWindow)
         return;
 
-    /*
-    auto dataSync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-    while (dataSync)
-    {
-        GLenum wait = glClientWaitSync(dataSync, 
-            GL_SYNC_FLUSH_COMMANDS_BIT, 1);
-        if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED)
-            break;
-    }
-    if (dataSync)
-		glDeleteSync(dataSync);
-    */
-
-    if (target0 == nullptr || flag)
-    {
-        // Render texture rendered by the previous call to the main window
-        Layer::internalFramebufferShader_->bind();
-        writeOnlyFramebuffer_->bindColorBuffer(0);
-        Layer::internalFramebufferShader_->setUniformInt("self", 0);
-        renderer_.submit
-        (
-            *screenQuad_, 
-            Layer::internalFramebufferShader_, 
-            target0,
-            clearTarget
-        );
-    }
+    // Render texture rendered by the previous call to the provided initial 
+    // target (or to main window if target0 == nullptr)
+    Layer::internalFramebufferShader_->bind();
+    writeOnlyFramebuffer_->bindColorBuffer(0);
+    Layer::internalFramebufferShader_->setUniformInt("self", 0);
+    renderer_.submit
+    (
+        *screenQuad_, 
+        Layer::internalFramebufferShader_, 
+        target0,
+        clearTarget
+    );
 }
 
 //----------------------------------------------------------------------------//
