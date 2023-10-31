@@ -1,3 +1,18 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a, virmodoetiae).
+|  |\  \|\__    __\   |  For more information, visit:
+|  \ \  \|__|\  \_|   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \|__|\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2023 Stefan Radman
+|  Ↄ|C    \|__|\|__|  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #ifndef ST_MISC_H
 #define ST_MISC_H
 
@@ -5,7 +20,7 @@
 #include <ctime>
 #include <vector>
 
-class ImVec4;
+#include "thirdparty/imgui/imgui.h"
 
 namespace ShaderThing
 {
