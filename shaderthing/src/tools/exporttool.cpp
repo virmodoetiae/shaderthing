@@ -126,7 +126,7 @@ void ExportTool::update()
     {
         // Disable VSync to avoid loosing time when rendering to the export 
         // framebuffer
-        //vir::GlobalPtr<vir::Window>::instance()->setVSync(false);
+        vir::GlobalPtr<vir::Window>::instance()->setVSync(false);
         if (exportFramebuffer_ != nullptr)
             delete exportFramebuffer_;
         if (exportFramebufferData_ != nullptr)

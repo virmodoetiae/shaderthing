@@ -40,15 +40,15 @@ std::unordered_map
     std::string
 > Layer::internalFramebufferClearPolicyOnExportToName = 
 {
-    {Layer::InternalFramebufferClearPolicyOnExport::None, "None"},
+    {
+        Layer::InternalFramebufferClearPolicyOnExport::ClearOnEveryFrame, 
+        "On every frame"
+    },
     {
         Layer::InternalFramebufferClearPolicyOnExport::ClearOnFirstFrame, 
         "On first frame"
     },
-    {
-        Layer::InternalFramebufferClearPolicyOnExport::ClearOnEveryFrame, 
-        "On every frame"
-    }
+    {Layer::InternalFramebufferClearPolicyOnExport::None, "None"}
 };
 
 std::string Layer::supportedUniformTypeNames[11] = {
