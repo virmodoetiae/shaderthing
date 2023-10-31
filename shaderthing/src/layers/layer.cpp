@@ -617,9 +617,8 @@ internalFramebufferClearPolicyOnExport_
                 sscanf
                 (
                     uniformSource.c_str(),
-                    "%d %f %f %s",
-                    &value, &min, &max, 
-                    &uniformName
+                    "%d %s",
+                    &value, &uniformName
                 );
                 uniform->setValue<bool>((bool)value);
                 break;
