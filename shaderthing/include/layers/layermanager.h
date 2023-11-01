@@ -72,6 +72,17 @@ public:
     void setActiveGuiLayer(Layer* layer){activeGuiLayer_ = layer;}
     void setTargetResolution(const glm::ivec2& resolution);
 
+    // Serialization
+    template<typename RapidJSONWriterType>
+    void saveState(RapidJSONWriterType& writer)
+    {
+        writer.String("layers");
+        writer.StartObject();
+        for (auto layer : layers_)
+            layer->saveState(writer);
+        writer.EndObject();
+    }
+
 };
 
 }

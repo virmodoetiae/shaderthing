@@ -431,10 +431,14 @@ void ShaderThingApp::saveProject(){
 
     writer.String("resetTimeOnRenderRestart");
     writer.Bool(stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]);
+
+    writer.String("UIScale");
+    writer.Double(*fontScale_);
     
     writer.EndObject(); // End of 'shared'
 
     resourceManager_->saveState(writer);
+    layerManager_->saveState(writer);
 
     writer.EndObject(); // End of overall JSON
 

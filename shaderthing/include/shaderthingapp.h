@@ -63,6 +63,9 @@ private:
     glm::vec2 viewport_; // i.e., normalized resolution in a 0-1 range
     vir::Camera* screenCamera_ = nullptr;
 
+    // UI state
+    float* fontScale_ = nullptr;
+
     // Inputs/default uniforms
     vir::Camera* shaderCamera_ = nullptr;
     glm::ivec4 mouse_ = {0,0,0,0};

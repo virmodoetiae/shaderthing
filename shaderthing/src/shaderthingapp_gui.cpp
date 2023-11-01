@@ -159,6 +159,7 @@ void ShaderThingApp::updateGui()
         io.Fonts->Build();
         fontLoaded = true;
         font->Scale = 0.6;
+        fontScale_ = &font->Scale;
     }
 
 #define CHECK_BUILD_CHARACTER_SET(name, data, dataSize, size)               \
@@ -292,11 +293,11 @@ name##SetBuilt0 = name##SetBuilt;
                 ImGui::PushItemWidth(-1);
                 ImGui::DragFloat
                 (
-                    "##fontScale", 
-                    &font->Scale, 
+                    "##fontScale",
+                    fontScale_,
                     0.005f,
                     0.5f,
-                    1.0f, 
+                    1.0f,
                     "%.1f"
                 );
                 ImGui::PopItemWidth();

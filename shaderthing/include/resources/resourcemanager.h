@@ -87,73 +87,8 @@ public:
     {
         writer.String("resources");
         writer.StartObject();
-
         for (auto r : resources_)
-        {
-            writer.String(r->name().c_str());
-            writer.StartObject();
-            switch (r->type())
-            {
-                case Resource::Type::Uninitialized :
-                case Resource::Type::FramebufferColorAttachment :
-                    continue;
-                case Resource::Type::Texture2D :
-                {
-                    writer.String("type");
-                    writer.String(Resource::typeToName[r->type()].c_str());
-
-                    writer.String("originalFileExtension");
-                    writer.String(r->originalFileExtension().c_str());
-
-                    writer.String("wrapModes");
-                    writer.StartArray();
-                    for (int i=0; i<2; i++)
-                        writer.Int((int)r->wrapMode(i));
-                    writer.EndArray();
-
-                    writer.String("maginificationFilterMode");
-                    writer.Int((int)r->magFilterMode());
-
-                    writer.String("minimizationFilterMode");
-                    writer.Int((int)r->minFilterMode());
-
-                    writer.String("dataSize");
-                    writer.Int(r->rawDataSize());
-
-                    writer.String("data");
-                    writer.String
-                    (
-                        (const char*)r->rawData(), r->rawDataSize(), false
-                    );
-
-                    break;
-                }
-                case Resource::Type::Cubemap :
-                {
-                    writer.String("type");
-                    writer.String(Resource::typeToName[r->type()].c_str());
-
-                    writer.String("maginificationFilterMode");
-                    writer.Int((int)r->magFilterMode());
-
-                    writer.String("minimizationFilterMode");
-                    writer.Int((int)r->minFilterMode());
-
-                    writer.String("faces");
-                    writer.StartArray();
-                    for (int i=0; i<6; i++)
-                        writer.String
-                        (
-                            r->referencedResourcesCRef()[i]->name().c_str()
-                        );
-                    writer.EndArray();
-
-                    break;
-                }
-            }
-            writer.EndObject();
-        }
-
+            r->saveState(writer);
         writer.EndObject();
     }
 };
