@@ -101,6 +101,9 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand code repository section
 
+(W) Re-work the project save/load system to leverage a more structured and 
+    update-resilient storage format, e.g., JSON-like files
+
 ( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
     currently existing and unreboundable WASD-based iCameraPosition/iWASD. 
     Probably not too trivial but not particularly complex either
@@ -138,5 +141,4 @@ TO-CONSIDER --------------------------------------------------------------------
 *   Record video tutorial(s) of application usage, host them on YouTube, 
     possibly find a way to add tutorial links within the application.
 
-*   Re-work the save system to leverage a more structured and update-resilient
-    storage format, e.g., JSON-like files
+*   

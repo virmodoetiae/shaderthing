@@ -77,6 +77,12 @@ public:
     bool* isGuiOpenPtr() {return &isGuiOpen_;}
     bool isGuiInMenu() {return isGuiInMenu_;}
     Layer*& targetLayer() {return targetLayer_;}
+
+    void getPalette(unsigned char*& data, unsigned int& dataSize)
+    {
+        quantizer_->getPalette(data, true);
+        dataSize = 3*quantizer_->paletteSize();
+    }
 };
 
 }

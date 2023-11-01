@@ -25,6 +25,10 @@
 #include "data/data.h"
 #include "data/about.h"
 #include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
+#include "thirdparty/rapidjson/include/rapidjson/document.h"
+#include "thirdparty/rapidjson/include/rapidjson/writer.h"
+#include "thirdparty/rapidjson/include/rapidjson/prettywriter.h"
+#include "thirdparty/rapidjson/include/rapidjson/stringbuffer.h"
 
 namespace ShaderThing
 {
@@ -365,6 +369,103 @@ void ShaderThingApp::saveProject(){
     quantizationTool_->saveState(file);
 
     file.close();
+
+    //------------------------------------------------------------------------//
+
+    // Eventually the save project will be replaced by this new JSON-based 
+    // approach entirely
+    std::ofstream jsonFile;
+    jsonFile.open
+    (
+        projectFilepath_+"json", std::ios_base::out | std::ios_base::binary
+    );
+    if(!jsonFile.is_open()) 
+        return;
+
+    rapidjson::StringBuffer stringBuffer;
+    rapidjson::PrettyWriter writer(stringBuffer);
+    
+    writer.StartObject();
+
+    writer.String("shared");
+    writer.StartObject();
+
+    writer.String("windowResolution");
+    writer.StartArray();
+    for (int i=0; i<2; i++)
+        writer.Double(resolution_[i]);
+    writer.EndArray();
+
+    writer.String("time");
+    writer.Double(time_);
+
+    writer.String("timePaused");
+    writer.Bool(stateFlags_[ST_IS_TIME_PAUSED]);
+
+    writer.String("iWASD");
+    writer.StartArray();
+    for (int i=0; i<3; i++)
+        writer.Double(shaderCamera_->position()[i]);
+    writer.EndArray();
+
+    writer.String("iWASDSensitivity");
+    writer.Double(shaderCamera_->keySensitivityRef());
+
+    writer.String("iWASDInputEnabled");
+    writer.Bool(stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED]);
+
+    writer.String("iLook");
+    writer.StartArray();
+    for (int i=0; i<3; i++)
+        writer.Double(shaderCamera_->z()[i]);
+    writer.EndArray();
+
+    writer.String("iLookSensitivity");
+    writer.Double(shaderCamera_->mouseSensitivityRef());
+
+    writer.String("iLookInputEnabled");
+    writer.Bool(stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED]);
+
+    writer.String("mouseInputEnabled");
+    writer.Bool(stateFlags_[ST_IS_MOUSE_INPUT_ENABLED]);
+
+    writer.String("resetTimeOnRenderRestart");
+    writer.Bool(stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]);
+    
+    writer.EndObject(); // End of 'shared'
+
+    writer.EndObject(); // End of overall JSON
+
+    jsonFile << stringBuffer.GetString();
+    jsonFile.close();
+
+    /*
+    typedef rapidjson::GenericStringBuffer<rapidjson::UTF8<>> StringBuffer;
+    StringBuffer stringBuffer;
+    rapidjson::PrettyWriter<StringBuffer> writer(stringBuffer);
+    writer.StartObject();
+    writer.String("resolution");
+    writer.StartArray();
+    writer.Double((double)resolution_.x);
+    writer.Double((double)resolution_.y);
+    writer.EndArray();
+    writer.String("layerManager");
+    writer.StartObject();
+    writer.String("A parameter");
+    unsigned char* ddata = nullptr;
+    unsigned int ddataSize;
+    quantizationTool_->getPalette(ddata, ddataSize);
+    //const char* ddata = R"( ²Ù,‚ €ïûh·Û8uêÎœ9ÃŸŽt]G³Ùäµ[,© ¢b-Äì	Ž)";
+    //unsigned int ddataSize = 31;
+    writer.String((const char*)ddata, ddataSize, false);
+    writer.EndObject();
+    writer.EndObject();
+
+    std::ofstream file2;
+    file2.open("out.json", std::ios_base::out | std::ios_base::binary);
+    file2 << stringBuffer.GetString() << std::endl;
+    file2.close();
+    */
 }
 
 //----------------------------------------------------------------------------//
