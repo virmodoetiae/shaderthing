@@ -393,7 +393,7 @@ void ShaderThingApp::saveProject(){
     writer.String("windowResolution");
     writer.StartArray();
     for (int i=0; i<2; i++)
-        writer.Double(resolution_[i]);
+        writer.Int(resolution_[i]);
     writer.EndArray();
 
     writer.String("time");
@@ -433,6 +433,8 @@ void ShaderThingApp::saveProject(){
     writer.Bool(stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]);
     
     writer.EndObject(); // End of 'shared'
+
+    resourceManager_->saveState(writer);
 
     writer.EndObject(); // End of overall JSON
 
