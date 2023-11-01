@@ -439,6 +439,7 @@ void ShaderThingApp::saveProject(){
 
     resourceManager_->saveState(writer);
     layerManager_->saveState(writer);
+    quantizationTool_->saveState(writer);
 
     writer.EndObject(); // End of overall JSON
 
