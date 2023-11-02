@@ -374,10 +374,26 @@ void ShaderThingApp::saveProject(){
 
     // Eventually the save project will be replaced by this new JSON-based 
     // approach entirely
+    auto replace =[]\
+    (
+        std::string& str, 
+        const std::string& from, 
+        const std::string& to
+    ) -> bool 
+    {
+        size_t start_pos = str.find(from);
+        if(start_pos == std::string::npos)
+            return false;
+        str.replace(start_pos, from.length(), to);
+        return true;
+    };
+
     std::ofstream jsonFile;
+    std::string jsonFilepath = projectFilepath_;
+    replace(jsonFilepath, ".stf", "_json.stf");
     jsonFile.open
     (
-        projectFilepath_+"json", std::ios_base::out | std::ios_base::binary
+        jsonFilepath, std::ios_base::out | std::ios_base::binary
     );
     if(!jsonFile.is_open()) 
         return;
@@ -440,39 +456,12 @@ void ShaderThingApp::saveProject(){
     resourceManager_->saveState(writer);
     layerManager_->saveState(writer);
     quantizationTool_->saveState(writer);
+    exportTool_->saveState(writer);
 
     writer.EndObject(); // End of overall JSON
 
     jsonFile << stringBuffer.GetString();
     jsonFile.close();
-
-    /*
-    typedef rapidjson::GenericStringBuffer<rapidjson::UTF8<>> StringBuffer;
-    StringBuffer stringBuffer;
-    rapidjson::PrettyWriter<StringBuffer> writer(stringBuffer);
-    writer.StartObject();
-    writer.String("resolution");
-    writer.StartArray();
-    writer.Double((double)resolution_.x);
-    writer.Double((double)resolution_.y);
-    writer.EndArray();
-    writer.String("layerManager");
-    writer.StartObject();
-    writer.String("A parameter");
-    unsigned char* ddata = nullptr;
-    unsigned int ddataSize;
-    quantizationTool_->getPalette(ddata, ddataSize);
-    //const char* ddata = R"( ²Ù,‚ €ïûh·Û8uêÎœ9ÃŸŽt]G³Ùäµ[,© ¢b-Äì	Ž)";
-    //unsigned int ddataSize = 31;
-    writer.String((const char*)ddata, ddataSize, false);
-    writer.EndObject();
-    writer.EndObject();
-
-    std::ofstream file2;
-    file2.open("out.json", std::ios_base::out | std::ios_base::binary);
-    file2 << stringBuffer.GetString() << std::endl;
-    file2.close();
-    */
 }
 
 //----------------------------------------------------------------------------//

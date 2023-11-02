@@ -129,6 +129,95 @@ public:
     // Setters
     void setExportResolution(glm::ivec2);
     void updateLayerResolutions();
+
+    // Serialization
+    template<typename RapidJSONWriterType>
+    void saveState(RapidJSONWriterType& writer)
+    {
+        writer.String("exporter");
+        writer.StartObject();
+
+        writer.String("exportType");
+        writer.Int((int)exportType_);
+
+        if (exportType_ != ExportType::Image)
+        {
+            writer.String("startTime");
+            writer.Double(exportStartTime_);
+
+            writer.String("endTime");
+            writer.Double(exportEndTime_);
+
+            writer.String("framesPerSecond");
+            writer.Double(exportFps_);
+
+            if (exportType_ == ExportType::GIF)
+            {
+                writer.String("gif");
+                writer.StartObject();
+
+                writer.String("paletteBitDepth");
+                writer.Int(gifPaletteBitDepth_);
+
+                writer.String("dynamicPalette");
+                writer.Bool(updatePaletteEveryFrame_);
+                
+                writer.String("ditheringLevel");
+                writer.Int(gifDitheringLevel_);
+                
+                writer.String("transparencyCutoffThreshold");
+                writer.Int(gifAlphaCutoff_);
+                
+                writer.EndObject(); // gif
+            }
+
+            writer.String("multipleRenderPassesOnlyOnFirstFrame");
+            writer.Bool(multipleRendersOnlyOnFirstFrame_);
+        }
+
+        writer.String("nRenderPassesPerFrame");
+        writer.Int(nRendersPerFrame_);
+
+        if (exportFilepathNoExtension_.size() > 0)
+        {
+            writer.String("fileNameNoExtension");
+            writer.String(exportFilepathNoExtension_.c_str());
+        }
+
+        writer.String("layerData");
+        writer.StartObject();
+        for (auto data : exportLayerData_)
+        {
+            writer.String(data.first->name().c_str());
+            writer.StartObject();
+
+            writer.String("resolution");
+            writer.StartArray();
+            for (int i=0; i<2; i++)
+                writer.Int(data.second.resolution[i]);
+            writer.EndArray();
+
+            writer.String("backupResolution");
+            writer.StartArray();
+            for (int i=0; i<2; i++)
+                writer.Int(data.second.backupResolution[i]);
+            writer.EndArray();
+
+            writer.String("resolutionScale");
+            writer.StartArray();
+            for (int i=0; i<2; i++)
+                writer.Double(data.second.resolutionScale[i]);
+            writer.EndArray();
+
+            writer.String("resolutionLocked");
+            writer.Bool(data.second.resolutionLocked);
+
+            writer.EndObject(); // data.first->name().c_str()
+        }
+        writer.EndObject(); // layerData
+
+        writer.EndObject(); // exporter
+    }
 };
 
 }
