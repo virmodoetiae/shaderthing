@@ -107,7 +107,7 @@ public:
     void setMouseInputsEnabled(bool status);
     
     // Clears all layer framebuffers, rersets frame_ and time_ to 0
-    void restartRendering();
+    void restartRendering(bool restartTime=true);
 
     // Accessors -------------------------------------------------------------//
     float& timeRef(){return time_;}

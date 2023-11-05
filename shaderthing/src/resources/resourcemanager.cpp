@@ -24,7 +24,7 @@
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 #include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
 #include "thirdparty/stb/stb_image.h"
-#include "thirdparty/rapidjson/include/rapidjson/writer.h"
+#include "thirdparty/rapidjson/include/rapidjson/document.h"
 
 namespace ShaderThing
 {

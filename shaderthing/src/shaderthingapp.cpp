@@ -30,6 +30,8 @@
 #include "thirdparty/rapidjson/include/rapidjson/prettywriter.h"
 #include "thirdparty/rapidjson/include/rapidjson/stringbuffer.h"
 
+#include "objectio/objectio.h"
+
 namespace ShaderThing
 {
 
@@ -149,10 +151,10 @@ void ShaderThingApp::setMouseInputsEnabled(bool status)
 
 //----------------------------------------------------------------------------//
 
-void ShaderThingApp::restartRendering()
+void ShaderThingApp::restartRendering(bool restartTime)
 {
     frame_ = -1;
-    if (stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART])
+    if (stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] || restartTime)
         time_ = 0.f;
     layerManager_->clearFramebuffers();
 }
@@ -469,8 +471,156 @@ void ShaderThingApp::saveProject(){
 void ShaderThingApp::loadProject()
 {
     if (!stateFlags_[ST_LOAD_PROJECT]) return;
-    stateFlags_[ST_LOAD_PROJECT] = false;
+        stateFlags_[ST_LOAD_PROJECT] = false;
 
+    /*
+    unsigned int size;
+    const unsigned char* data;
+    {
+        auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Read);
+        {
+            auto shared = project.getObject("shared");
+            auto fontScale = shared.getValue<float>("UIScale");
+            stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = 
+                shared.getValue<bool>("resetTimeOnRenderRestart");
+            stateFlags_[ST_IS_MOUSE_INPUT_ENABLED] = 
+                shared.getValue<bool>("mouseInputEnabled");
+            stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED] = 
+                shared.getValue<bool>("iLookInputEnabled");
+            shaderCamera_->setMouseSensitivity
+            (
+                shared.getValue<float>("iLookSensitivity")
+            );
+            auto dir = shared.getValue<glm::vec3>("iLook");
+            shaderCamera_->setDirection(dir);
+            stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED] = 
+                shared.getValue<bool>("iWASDInputEnabled");
+            shaderCamera_->setKeySensitivity
+            (
+                shared.getValue<float>("iWASDSensitivity")
+            );
+            auto pos = shared.getValue<glm::vec3>("iWASD");
+            shaderCamera_->setPosition(pos);
+            stateFlags_[ST_IS_TIME_PAUSED] = shared.getValue<bool>("timePaused");
+            time_ = shared.getValue<float>("time");
+            resolution_ = shared.getValue<glm::ivec2>("windowResolution");
+            vir::GlobalPtr<vir::Window>::instance()->setSize
+            (
+                resolution_.x, 
+                resolution_.y
+            );
+        }
+        {
+            auto resources = project.getObject("resources");
+            auto ns = resources.getObject("nightSky.jpg");
+            data = (unsigned char*)ns.getValue("data", true, &size);
+            for (int i=0; i<10; i++)
+                std::cout << (int)data[i] << " ";
+            std::cout << std::endl;
+        }
+        for (int i=0; i<10; i++)
+            std::cout << (int)data[i] << " ";
+        std::cout << std::endl;
+    }
+    for (int i=0; i<10; i++)
+        std::cout << (int)data[i] << " ";
+    std::cout << std::endl;
+    */
+    /*
+    const unsigned char* out;
+    const char* sout;
+    {
+        std::ifstream file(projectFilepath_, std::ios_base::in | std::ios::binary);
+        if(!file)
+            return;
+        std::string data;
+        file.seekg(0, std::ios::end);
+        data.resize(file.tellg());
+        file.seekg(0, std::ios::beg);
+        uint32_t dataSize(data.size());
+        file.read(&data[0], dataSize);
+
+        // Parse raw file into RapidJSON document
+        rapidjson::Document document;
+        if (document.ParseInsitu(&data[0]).HasParseError())
+        {
+            throw std::runtime_error("Selected save file invalid or corrupted");
+            return;
+        }
+
+        sout = &data[0];
+
+        auto master = document.GetObject();
+
+        // Read data from document
+        auto shared = master["shared"].GetObject();
+
+        *fontScale_ = shared["UIScale"].GetDouble();
+
+        stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = 
+            shared["resetTimeOnRenderRestart"].GetBool();
+
+        stateFlags_[ST_IS_MOUSE_INPUT_ENABLED] = 
+            shared["mouseInputEnabled"].GetBool();
+
+        stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED] = 
+            shared["iLookInputEnabled"].GetBool();
+
+        shaderCamera_->setMouseSensitivity(shared["iLookSensitivity"].GetDouble());
+
+        auto iLook = shared["iLook"].GetArray();
+        glm::vec3 v;
+        for (int i=0; i<iLook.Size(); i++)
+            v[i] = iLook[i].GetDouble();
+        shaderCamera_->setDirection(v);
+
+        stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED] = 
+            shared["iWASDInputEnabled"].GetBool();
+
+        shaderCamera_->setKeySensitivity(shared["iWASDSensitivity"].GetDouble());
+
+        auto iWASD = shared["iWASD"].GetArray();
+        for (int i=0; i<iWASD.Size(); i++)
+            v[i] = iWASD[i].GetDouble();
+        shaderCamera_->setPosition(v);
+
+        stateFlags_[ST_IS_TIME_PAUSED] = shared["timePaused"].GetBool();
+
+        time_ = shared["time"].GetDouble();
+
+        auto resolution = shared["windowResolution"].GetArray();
+        for (int i=0; i<resolution.Size(); i++)
+            resolution_[i] = resolution[i].GetInt();
+        vir::GlobalPtr<vir::Window>::instance()->setSize
+        (
+            resolution_.x, 
+            resolution_.y
+        );
+
+        out = (const unsigned char*)master["resources"]["nightSky.jpg"]["data"].GetString();
+        for (int i=0; i<10; i++)
+            std::cout << (int)(sout[i]) << " ";
+        std::cout << std::endl;
+
+        for (int i=0; i<10; i++)
+            std::cout << (int)(sout[i]) << " ";
+        std::cout << std::endl;
+        file.close();
+    }
+
+    for (int i=0; i<10; i++)
+        std::cout << (int)(sout[i]) << " ";
+    std::cout << std::endl;
+    */
+
+
+    /*
+    for (rapidjson::Value::ConstMemberIterator itr = document.MemberBegin();
+    itr != document.MemberEnd(); ++itr)
+    {
+        std::cout << itr->name.GetString() << std::endl;
+    }*/
+    
     std::ifstream file(projectFilepath_, std::ios_base::in | std::ios::binary);
     if(!file)
         return;
@@ -532,8 +682,7 @@ void ShaderThingApp::loadProject()
         index
     );
     file.close();
-
-    restartRendering();
+    restartRendering(false);
 }
 
 //----------------------------------------------------------------------------//
