@@ -25,6 +25,8 @@
 namespace ShaderThing
 {
 
+class ObjectIO;
+
 class Resource
 {
 public:
@@ -103,6 +105,7 @@ public:
     bool operator==(const Resource& rhs) {return id() == rhs.id();}
 
     // Serialization
+    /*
     template<typename RapidJSONWriterType>
     void saveState(RapidJSONWriterType& writer)
     {
@@ -173,6 +176,9 @@ public:
         }
         writer.EndObject();
     }
+    */
+
+   void saveState(ObjectIO& writer);
 };
 
 }

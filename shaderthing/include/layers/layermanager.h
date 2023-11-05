@@ -27,6 +27,7 @@ namespace ShaderThing
 class ShaderThingApp;
 class Layer;
 class Resource;
+class ObjectIO;
 
 class LayerManager
 {
@@ -63,6 +64,7 @@ public:
     );
 
     void saveState(std::ofstream& file);
+    void saveState(ObjectIO& writer);
     void loadState(std::string& source, uint32_t& index);
     void preLoadAdjustment();
 
@@ -73,6 +75,7 @@ public:
     void setTargetResolution(const glm::ivec2& resolution);
 
     // Serialization
+    /*
     template<typename RapidJSONWriterType>
     void saveState(RapidJSONWriterType& writer)
     {
@@ -81,7 +84,7 @@ public:
         for (auto layer : layers_)
             layer->saveState(writer);
         writer.EndObject();
-    }
+    }*/
 
 };
 

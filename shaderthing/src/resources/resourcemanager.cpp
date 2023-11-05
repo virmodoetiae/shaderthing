@@ -19,6 +19,7 @@
 #include "resources/resource.h"
 #include "resources/resourcemanager.h"
 #include "data/data.h"
+#include "objectio/objectio.h"
 
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
@@ -147,6 +148,16 @@ void ResourceManager::saveState(std::ofstream& file)
         }
         file << std::endl;
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void ResourceManager::saveState(ObjectIO& writer)
+{
+    writer.writeObjectStart("resources");
+    for (auto r : resources_)
+        r->saveState(writer);
+    writer.writeObjectEnd();
 }
 
 //----------------------------------------------------------------------------//

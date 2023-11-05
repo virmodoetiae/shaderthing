@@ -25,6 +25,7 @@ namespace ShaderThing
 
 class ShaderThingApp;
 class Layer;
+class ObjectIO;
 
 class ExportTool
 {
@@ -109,6 +110,8 @@ public:
     void reset();
     void loadState(std::string& source, uint32_t& index);
     void saveState(std::ofstream& file);
+    void saveState(ObjectIO& writer);
+
     void update();
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
     void renderGui();
@@ -131,6 +134,7 @@ public:
     void updateLayerResolutions();
 
     // Serialization
+    /*
     template<typename RapidJSONWriterType>
     void saveState(RapidJSONWriterType& writer)
     {
@@ -218,6 +222,7 @@ public:
 
         writer.EndObject(); // exporter
     }
+    */
 };
 
 }

@@ -17,6 +17,7 @@
 #include "layers/layer.h"
 #include "tools/exporttool.h"
 #include "data/data.h"
+#include "objectio/objectio.h"
 
 #include "thirdparty/stb/stb_image_write.h"
 //#include "thirdparty/opencv/include/opencv2/opencv.hpp"
@@ -376,6 +377,50 @@ void ExportTool::loadState(std::string& source, uint32_t& index)
 
 void ExportTool::saveState(std::ofstream& file)
 {
+}
+
+void ExportTool::saveState(ObjectIO& writer)
+{
+    writer.writeObjectStart("exporter");
+    writer.write("exportType", (int)exportType_);
+
+    if (exportType_ != ExportType::Image)
+    {
+        writer.write("startTime", exportStartTime_);
+        writer.write("endTime", exportEndTime_);
+        writer.write("framesPerSecond", exportFps_);
+
+        if (exportType_ == ExportType::GIF)
+        {
+            writer.writeObjectStart("gif");
+            writer.write("paletteBitDepth", gifPaletteBitDepth_);
+            writer.write("dynamicPalette", updatePaletteEveryFrame_);
+            writer.write("ditheringLevel", gifDitheringLevel_);
+            writer.write("transparencyCutoffThreshold", gifAlphaCutoff_);
+            writer.writeObjectEnd(); // gif
+        }
+
+        writer.write("multipleRenderPassesOnlyOnFirstFrame", 
+            multipleRendersOnlyOnFirstFrame_);
+    }
+
+    writer.write("nRenderPassesPerFrame", nRendersPerFrame_);
+
+    if (exportFilepathNoExtension_.size() > 0)
+        writer.write("fileNameNoExtension", exportFilepathNoExtension_.c_str());
+
+    writer.writeObjectStart("layerData");
+    for (auto data : exportLayerData_)
+    {
+        writer.writeObjectStart(data.first->name().c_str());
+        writer.write("resolution", data.second.resolution);
+        writer.write("backupResolution", data.second.backupResolution);
+        writer.write("resolutionScale", data.second.resolutionScale);
+        writer.write("resolutionLocked", data.second.resolutionLocked);
+        writer.writeObjectEnd(); // data.first->name().c_str()
+    }
+    writer.writeObjectEnd(); // layerData
+    writer.writeObjectEnd(); // exporter
 }
 
 //----------------------------------------------------------------------------//

@@ -14,6 +14,7 @@
 */
 
 #include <string>
+#include <vector>
 
 #include "objectio/objectio.h"
 
@@ -182,9 +183,9 @@ ObjectIO::~ObjectIO()
 #define GET_FROM_IOOBJECT(key, type)                            \
      ((nativeReader*)nativeObject_)->operator[](key).Get##type()
 
-ObjectIO ObjectIO::getObject(const char* key)
+ObjectIO ObjectIO::readObject(const char* key)
 {
-    ASSERT_READ_MODE_OR_THROW(getObject(const char* key))
+    ASSERT_READ_MODE_OR_THROW(readObject(const char* key))
     return ObjectIO
     (
         key, 
@@ -194,35 +195,35 @@ ObjectIO ObjectIO::getObject(const char* key)
 }
 
 template<>
-bool ObjectIO::getValue(const char* key)
+bool ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(false)
     return GET_FROM_IOOBJECT(key, Bool);
 }
 
 template<>
-int ObjectIO::getValue(const char* key)
+int ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(0)
     return GET_FROM_IOOBJECT(key, Int);
 }
 
 template<>
-unsigned int ObjectIO::getValue(const char* key)
+unsigned int ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(0)
     return GET_FROM_IOOBJECT(key, Int);
 }
 
 template<>
-float ObjectIO::getValue(const char* key)
+float ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(0.0f)
     return GET_FROM_IOOBJECT(key, Double);
 }
 
 template<>
-double ObjectIO::getValue(const char* key)
+double ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(0)
     return GET_FROM_IOOBJECT(key, Double);
@@ -236,48 +237,48 @@ double ObjectIO::getValue(const char* key)
     return v;
 
 template<>
-glm::ivec2 ObjectIO::getValue(const char* key)
+glm::ivec2 ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(glm::ivec2(0))
     GET_ARRAY(2, Int, glm::ivec)
 }
 
 template<>
-glm::ivec3 ObjectIO::getValue(const char* key)
+glm::ivec3 ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(glm::ivec3(0))
     GET_ARRAY(3, Int, glm::ivec)
 }
 
 template<>
-glm::ivec4 ObjectIO::getValue(const char* key)
+glm::ivec4 ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(glm::ivec4(0))
     GET_ARRAY(4, Int, glm::ivec)
 }
 
 template<>
-glm::vec2 ObjectIO::getValue(const char* key)
+glm::vec2 ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec2(0))
     GET_ARRAY(2, Double, glm::vec)
 }
 
 template<>
-glm::vec3 ObjectIO::getValue(const char* key)
+glm::vec3 ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec3(0))
     GET_ARRAY(3, Double, glm::vec)
 }
 
 template<>
-glm::vec4 ObjectIO::getValue(const char* key)
+glm::vec4 ObjectIO::read(const char* key)
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec4(0))
     GET_ARRAY(4, Double, glm::vec)
 }
 
-const char* ObjectIO::getValue(const char* key, bool copy, unsigned int* size)
+const char* ObjectIO::read(const char* key, bool copy, unsigned int* size)
 {
     const char* data = GET_FROM_IOOBJECT(key, String);
     if (copy)
@@ -313,104 +314,137 @@ const char* ObjectIO::getValue(const char* key, bool copy, unsigned int* size)
 
 #define WRITE_ARRAY(dim, type)                                  \
     auto* writer = (nativeWriter*) nativeObject_;               \
-    writeObjectStart(key);                                      \
+    writer->String(key);                                        \
+    writer->StartArray();                                       \
     for (int i=0; i<dim; i++)                                   \
         writer->type(value[i]);                                 \
-    writeObjectEnd();
+    writer->EndArray();
 
 template<>
-void ObjectIO::writeValue(const char* key, const bool& value)
+void ObjectIO::write(const char* key, const bool& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_VALUE(Bool)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const int& value)
+void ObjectIO::write(const char* key, const int& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_VALUE(Int)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const unsigned int& value)
+void ObjectIO::write(const char* key, const unsigned int& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_VALUE(Int)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const float& value)
+void ObjectIO::write(const char* key, const float& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_VALUE(Double)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const double& value)
+void ObjectIO::write(const char* key, const double& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_VALUE(Double)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const glm::ivec2& value)
+void ObjectIO::write(const char* key, const glm::ivec2& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_ARRAY(2, Int)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const glm::ivec3& value)
+void ObjectIO::write(const char* key, const glm::ivec3& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_ARRAY(3, Int)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const glm::ivec4& value)
+void ObjectIO::write(const char* key, const glm::ivec4& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_ARRAY(4, Int)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const glm::vec2& value)
+void ObjectIO::write(const char* key, const glm::vec2& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_ARRAY(2, Double)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const glm::vec3& value)
+void ObjectIO::write(const char* key, const glm::vec3& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_ARRAY(3, Double)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const glm::vec4& value)
+void ObjectIO::write(const char* key, const glm::vec4& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
     WRITE_ARRAY(4, Double)
 }
 
 template<>
-void ObjectIO::writeValue(const char* key, const std::string& value)
+void ObjectIO::write(const char* key,const std::vector<std::string>& value)
 {
     ASSERT_WRITE_MODE_OR_RETURN
-    writeValue(key, value.c_str(), value.size());
+    auto* writer = (nativeWriter*)nativeObject_;
+    writer->String(key);
+    writer->StartArray();
+    for (auto vi : value)
+        writer->String(vi.c_str(), vi.size());
+    writer->EndArray();
 }
 
-void ObjectIO::writeValue
+template<>
+void ObjectIO::write(const char* key,const std::vector<const char*>& value)
+{
+    ASSERT_WRITE_MODE_OR_RETURN
+    auto* writer = (nativeWriter*)nativeObject_;
+    writer->String(key);
+    writer->StartArray();
+    for (auto vi : value)
+        writer->String(vi);
+    writer->EndArray();
+}
+
+template<>
+void ObjectIO::write(const char* key, const std::string& value)
+{
+    ASSERT_WRITE_MODE_OR_RETURN
+    write(key, value.c_str(), value.size());
+}
+
+void ObjectIO::write
 (
     const char* key, 
     const char* value, 
-    unsigned int size
+    unsigned int size,
+    bool writeSize
 )
 {
     ASSERT_WRITE_MODE_OR_RETURN
     auto* writer = (nativeWriter*)nativeObject_;
+    if (writeSize && size > 0)
+    {
+        std::string sizeKey(key);
+        sizeKey += "Size";
+        writer->String(sizeKey.c_str());
+        writer->Int(size);
+    }
     writer->String(key);
     size > 0 ? writer->String(value, size, false) : writer->String(value);
 }

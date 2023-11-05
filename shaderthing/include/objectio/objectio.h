@@ -75,21 +75,27 @@ public:
     ~ObjectIO();
 
     //
-    ObjectIO getObject(const char* key);
+    ObjectIO readObject(const char* key);
 
     //
     template<typename T>
-    T getValue(const char* key);
+    T read(const char* key);
 
     //
-    const char* getValue(const char* key, bool copy, unsigned int* size=nullptr);
+    const char* read(const char* key, bool copy, unsigned int* size=nullptr);
 
     //
     template<typename T>
-    void writeValue(const char* key, const T& value);
+    void write(const char* key, const T& value);
 
     //
-    void writeValue(const char* key, const char* value, unsigned int size=0);
+    void write
+    (
+        const char* key, 
+        const char* value, 
+        unsigned int size=0, 
+        bool writeSize=false
+    );
     
     //
     void writeObjectStart(const char* key);

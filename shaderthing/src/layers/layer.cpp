@@ -21,7 +21,10 @@
 #include "tools/quantizationtool.h"
 #include "tools/exporttool.h"
 #include "misc/misc.h"
+#include "objectio/objectio.h"
+
 #include "vir/include/vir.h"
+
 #include "thirdparty/glad/include/glad/glad.h"
 
 #include <random>
@@ -936,6 +939,116 @@ void Layer::saveState(std::ofstream& file)
         }
         file << data << " " << u->name << std::endl;
     }
+}
+
+void Layer::saveState(ObjectIO& writer)
+{
+    writer.writeObjectStart(name_.c_str());
+    writer.write("renderTarget", (int)rendersTo_ );
+    writer.write("resolution", resolution_);
+    writer.write("resolutionScale", resolutionScale_);
+    writer.write("depth", depth_);
+
+    writer.writeObjectStart("internalFramebuffer");
+    writer.write("format", (int)readOnlyFramebuffer_->
+        colorBufferInternalFormat());
+    writer.write("wrapModes", glm::ivec2(
+        (int)readOnlyFramebuffer_->colorBufferWrapMode(0),
+        (int)readOnlyFramebuffer_->colorBufferWrapMode(1)));
+    writer.write("magnificationFilterMode", 
+        (int)readOnlyFramebuffer_->colorBufferMagFilterMode());
+    writer.write("minimizationFilterMode",
+        (int)readOnlyFramebuffer_->colorBufferMinFilterMode());
+    writer.write("exportClearPolicy", 
+        (int)internalFramebufferClearPolicyOnExport_);
+    writer.writeObjectEnd(); // End of internalFramebuffer
+
+    writer.writeObjectStart("shader");
+    writer.write("fragmentSource", fragmentSource_.c_str(), 
+        fragmentSource_.size(), true);
+    
+    writer.writeObjectStart("uniforms");
+    for (auto u : uniforms_)
+    {
+        glm::vec2& uLimits(uniformLimits_[u]);
+        float& min(uLimits.x);
+        float& max(uLimits.y);
+        if (u->name.size() == 0)
+            continue;
+        writer.writeObjectStart(u->name.c_str());
+        writer.write("type", vir::Shader::uniformTypeToName[u->type].c_str());
+
+#define WRITE_MIN_MAX               \
+        writer.write("min", min);   \
+        writer.write("max", max);   \
+
+        switch(u->type)
+        {
+            case vir::Shader::Variable::Type::Bool :
+            {
+                writer.write("value", u->getValue<bool>());
+                break;
+            }
+            case vir::Shader::Variable::Type::Int :
+            {
+                writer.write("value", u->getValue<int>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float :
+            {
+                writer.write("value", u->getValue<float>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float2 :
+            {
+                writer.write("value", u->getValue<glm::vec2>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float3 :
+            {
+                writer.write("value", u->getValue<glm::vec3>());
+                WRITE_MIN_MAX
+                bool usesColorPicker = false;
+                if
+                (
+                    uniformUsesColorPicker_.find(u) !=
+                    uniformUsesColorPicker_.end()
+                )
+                    usesColorPicker = uniformUsesColorPicker_[u];
+                writer.write("usesColorPicker", usesColorPicker);
+                break;
+            }
+            case vir::Shader::Variable::Type::Float4 :
+            {
+                writer.write("value", u->getValue<glm::vec4>());
+                WRITE_MIN_MAX
+                bool usesColorPicker = false;
+                if
+                (
+                    uniformUsesColorPicker_.find(u) !=
+                    uniformUsesColorPicker_.end()
+                )
+                    usesColorPicker = uniformUsesColorPicker_[u];
+                writer.write("usesColorPicker", usesColorPicker);
+            }
+            case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::SamplerCube :
+            {
+                auto r = u->getValuePtr<Resource>();
+                writer.write("value", r->name().c_str());
+                break;
+            }
+            default:
+                break;
+        }
+        writer.writeObjectEnd(); // End of 'u->name'
+    }
+    writer.writeObjectEnd(); // End of uniforms
+    writer.writeObjectEnd(); // End of shaders
+    writer.writeObjectEnd(); // End of 'name_'
 }
 
 //----------------------------------------------------------------------------//

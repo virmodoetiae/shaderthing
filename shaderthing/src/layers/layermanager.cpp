@@ -18,6 +18,7 @@
 #include "layers/layermanager.h"
 #include "resources/resource.h"
 #include "misc/misc.h"
+#include "objectio/objectio.h"
 
 namespace ShaderThing
 {
@@ -179,6 +180,16 @@ void LayerManager::saveState(std::ofstream& file)
     file << layers_.size() << std::endl;
     for (auto layer : layers_)
         layer->saveState(file);
+}
+
+//----------------------------------------------------------------------------//
+
+void LayerManager::saveState(ObjectIO& writer)
+{
+    writer.writeObjectStart("layers");
+    for (auto layer : layers_)
+        layer->saveState(writer);
+    writer.writeObjectEnd();
 }
 
 //----------------------------------------------------------------------------//

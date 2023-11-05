@@ -16,6 +16,7 @@
 #include "tools/quantizationtool.h"
 #include "shaderthingapp.h"
 #include "layers/layer.h"
+#include "objectio/objectio.h"
 
 namespace ShaderThing
 {
@@ -221,6 +222,30 @@ void QuantizationTool::saveState(std::ofstream& file)
     }
     file << std::endl;
     delete[] data;
+}
+
+void QuantizationTool::saveState(ObjectIO& writer)
+{
+    if (targetLayer_ == nullptr)
+        return;
+    writer.writeObjectStart("quantizer");
+    writer.write("active", isActive_);
+    writer.write("targetLayer", targetLayer_->name().c_str());
+    writer.write("ditheringLevel", (int)ditheringLevel_);
+    writer.write("ditheringThreshold", ditheringThreshold_);
+    writer.write("clusteringFidelity", clusteringFidelity_);
+    writer.write("transparencyCutoff", isAlphaCutoff_);
+    writer.write("transparencyCutoffThreshold", alphaCutoffThreshold_);
+    writer.write("dynamicPalette", autoUpdatePalette_);
+    if (uIntPalette_ != nullptr)
+        writer.write
+        (
+            "paletteData", 
+            (const char*)uIntPalette_, 
+            3*paletteSize_, 
+            true
+        );
+    writer.writeObjectEnd(); // End of quantizer
 }
 
 //----------------------------------------------------------------------------//

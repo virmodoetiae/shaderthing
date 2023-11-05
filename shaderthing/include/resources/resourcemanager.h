@@ -27,6 +27,7 @@ namespace ShaderThing
 class ShaderThingApp;
 class Layer;
 class Resource;
+class ObjectIO;
 
 class ResourceManager
 {
@@ -75,6 +76,7 @@ public:
     void renderGui();
     void loadState(std::string& source, uint32_t& index);
     void saveState(std::ofstream& file);
+    void saveState(ObjectIO& writer);
 
     // Accessors
     bool* isGuiOpenPtr(){return &isGuiOpen_;}
@@ -82,6 +84,7 @@ public:
     std::vector<Resource*>& resourcesRef(){return resources_;}
 
     // Serialization
+    /*
     template<typename RapidJSONWriterType>
     void saveState(RapidJSONWriterType& writer)
     {
@@ -90,7 +93,7 @@ public:
         for (auto r : resources_)
             r->saveState(writer);
         writer.EndObject();
-    }
+    }*/
 };
 
 }

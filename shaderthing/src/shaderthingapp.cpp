@@ -390,6 +390,47 @@ void ShaderThingApp::saveProject(){
         return true;
     };
 
+    std::string jsonFilepath = projectFilepath_;
+    replace(jsonFilepath, ".stf", "_json.stf");
+    auto project = ObjectIO(jsonFilepath.c_str(), ObjectIO::Mode::Write);
+    
+    project.writeObjectStart("shared");
+    project.write("windowResolution", resolution_);
+    project.write("time", time_);
+    project.write("timePaused", stateFlags_[ST_IS_TIME_PAUSED]);
+    project.write("iWASD", shaderCamera_->position());
+    project.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
+    project.write
+    (
+        "iWASDInputEnabled", 
+        stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED]
+    );
+    project.write("iLook", shaderCamera_->z());
+    project.write("iLookSensitivity",shaderCamera_->mouseSensitivityRef());
+    project.write
+    (
+        "iLookInputEnabled",
+        stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED]
+    );
+    project.write
+    (
+        "iMouseInputEnabled", 
+        stateFlags_[ST_IS_MOUSE_INPUT_ENABLED]
+    );
+    project.write
+    (
+        "resetTimeOnRenderRestart",
+        stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]
+    );
+    project.write("UIScale", *fontScale_);
+    project.writeObjectEnd();
+
+    resourceManager_->saveState(project);
+    layerManager_->saveState(project);
+    quantizationTool_->saveState(project);
+    exportTool_->saveState(project);
+
+    /*
     std::ofstream jsonFile;
     std::string jsonFilepath = projectFilepath_;
     replace(jsonFilepath, ".stf", "_json.stf");
@@ -464,6 +505,7 @@ void ShaderThingApp::saveProject(){
 
     jsonFile << stringBuffer.GetString();
     jsonFile.close();
+    */
 }
 
 //----------------------------------------------------------------------------//

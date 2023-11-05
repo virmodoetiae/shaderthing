@@ -25,6 +25,7 @@ namespace ShaderThing
 
 class ShaderThingApp;
 class Layer;
+class ObjectIO;
 
 class QuantizationTool
 {
@@ -64,6 +65,7 @@ public:
 
     void loadState(std::string& source, uint32_t& index);
     void saveState(std::ofstream&);
+    void saveState(ObjectIO& writer);
     
     void quantize(Layer* layer);
     void update();
@@ -85,6 +87,7 @@ public:
     }
 
     // Serialization
+    /*
     template<typename RapidJSONWriterType>
     void saveState(RapidJSONWriterType& writer)
     {
@@ -131,6 +134,7 @@ public:
 
         writer.EndObject(); // End of quantizer
     }
+    */
 };
 
 }

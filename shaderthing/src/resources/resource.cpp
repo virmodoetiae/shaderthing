@@ -14,6 +14,7 @@
 */
 
 #include "resources/resource.h"
+#include "objectio/objectio.h"
 
 #include "thirdparty/stb/stb_image.h"
 
@@ -406,6 +407,46 @@ void Resource::setMinFilterMode(vir::TextureBuffer::FilterMode mode)
         setColorBufferMinFilterMode(mode), 
         setMinFilterMode(mode)
     )
+}
+
+//----------------------------------------------------------------------------//
+
+void Resource::saveState(ObjectIO& writer)
+{
+    if
+        (
+            type_ == Resource::Type::Uninitialized ||
+            type_ == Resource::Type::FramebufferColorAttachment
+        )
+            return;
+
+        writer.writeObjectStart(namePtr_->c_str());
+        writer.write("type", Resource::typeToName[type_].c_str());
+        switch (type_)
+        {
+        case Resource::Type::Texture2D :
+        {
+            writer.write("originalFileExtension", 
+                originalFileExtension_.c_str());
+            writer.write("wrapModes", 
+                glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
+            writer.write("maginificationFilterMode", (int)magFilterMode());
+            writer.write("minimizationFilterMode", (int)minFilterMode());
+            writer.write("data",(const char*)rawData_,rawDataSize_,true);
+            break;
+        }
+        case Resource::Type::Cubemap :
+        {
+            writer.write("magnificationFilterMode", (int)magFilterMode());
+            writer.write("minimizationFilterMode", (int)minFilterMode());
+            static std::vector<std::string> faceNames(6);
+            for (int i=0; i<6; i++)
+                faceNames[i] = referencedResources_[i]->name();
+            writer.write("faces", faceNames);
+            break;
+        }
+        }
+        writer.writeObjectEnd();
 }
 
 }

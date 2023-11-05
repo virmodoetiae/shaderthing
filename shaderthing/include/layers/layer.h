@@ -31,6 +31,7 @@ namespace ShaderThing
 {
 
 class ShaderThingApp;
+class ObjectIO;
 
 class Layer
 {
@@ -397,6 +398,9 @@ public:
 
     // Serialize buffer data
     void saveState(std::ofstream& stream);
+
+    // Serialize buffer data
+    void saveState(ObjectIO& writer);
 
     // Mark this layer's fragment shader for compilation
     void markForCompilation(){toBeCompiled_ = true;}
