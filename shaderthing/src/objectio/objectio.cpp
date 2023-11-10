@@ -13,6 +13,7 @@
 
 */
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -54,8 +55,19 @@ ObjectIO::ObjectIO(const char* name, Mode mode, void* nativeObject) :
 name_(name),
 mode_(mode),
 isRoot_(false),
+members_(0),
 nativeObject_(nativeObject)
 {
+    findMembers();
+}
+
+void ObjectIO::findMembers()
+{
+    if (mode_ == Mode::Write || members_.size() > 0)
+        return;
+    auto reader = (nativeReader*)nativeObject_;
+    for (auto m = reader->MemberBegin(); m != reader->MemberEnd(); ++m)
+        members_.push_back(m->name.GetString());
 }
 
 void ObjectIO::freeNativeMemory()
@@ -90,6 +102,7 @@ ObjectIO::ObjectIO(const char* filepath, Mode mode) :
 name_(filepath),
 mode_(mode),
 isRoot_(true),
+members_(0),
 nativeObject_(nullptr)
 {
     switch (mode)
@@ -143,6 +156,7 @@ nativeObject_(nullptr)
         break;
     }
     }
+    findMembers();
 }
 
 ObjectIO::~ObjectIO()
@@ -168,6 +182,19 @@ ObjectIO::~ObjectIO()
     freeNativeMemory();
 }
 
+bool ObjectIO::hasMember(const char* key) const
+{
+    return std::find_if
+    (
+        members_.begin(), 
+        members_.end(), 
+        [key](const char* mKey)
+        {
+            return std::strcmp(key, mKey) == 0;
+        } 
+    ) != members_.end(); 
+}
+
 #define ASSERT_READ_MODE_OR_THROW(func_name)                    \
     if (mode_ == Mode::Write)                                   \
         throw std::runtime_error                                \
@@ -183,7 +210,7 @@ ObjectIO::~ObjectIO()
 #define GET_FROM_IOOBJECT(key, type)                            \
      ((nativeReader*)nativeObject_)->operator[](key).Get##type()
 
-ObjectIO ObjectIO::readObject(const char* key)
+ObjectIO ObjectIO::readObject(const char* key) const
 {
     ASSERT_READ_MODE_OR_THROW(readObject(const char* key))
     return ObjectIO
@@ -195,35 +222,35 @@ ObjectIO ObjectIO::readObject(const char* key)
 }
 
 template<>
-bool ObjectIO::read(const char* key)
+bool ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(false)
     return GET_FROM_IOOBJECT(key, Bool);
 }
 
 template<>
-int ObjectIO::read(const char* key)
+int ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(0)
     return GET_FROM_IOOBJECT(key, Int);
 }
 
 template<>
-unsigned int ObjectIO::read(const char* key)
+unsigned int ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(0)
     return GET_FROM_IOOBJECT(key, Int);
 }
 
 template<>
-float ObjectIO::read(const char* key)
+float ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(0.0f)
     return GET_FROM_IOOBJECT(key, Double);
 }
 
 template<>
-double ObjectIO::read(const char* key)
+double ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(0)
     return GET_FROM_IOOBJECT(key, Double);
@@ -237,57 +264,96 @@ double ObjectIO::read(const char* key)
     return v;
 
 template<>
-glm::ivec2 ObjectIO::read(const char* key)
+glm::ivec2 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::ivec2(0))
     GET_ARRAY(2, Int, glm::ivec)
 }
 
 template<>
-glm::ivec3 ObjectIO::read(const char* key)
+glm::ivec3 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::ivec3(0))
     GET_ARRAY(3, Int, glm::ivec)
 }
 
 template<>
-glm::ivec4 ObjectIO::read(const char* key)
+glm::ivec4 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::ivec4(0))
     GET_ARRAY(4, Int, glm::ivec)
 }
 
 template<>
-glm::vec2 ObjectIO::read(const char* key)
+glm::vec2 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec2(0))
     GET_ARRAY(2, Double, glm::vec)
 }
 
 template<>
-glm::vec3 ObjectIO::read(const char* key)
+glm::vec3 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec3(0))
     GET_ARRAY(3, Double, glm::vec)
 }
 
 template<>
-glm::vec4 ObjectIO::read(const char* key)
+glm::vec4 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec4(0))
     GET_ARRAY(4, Double, glm::vec)
 }
 
-const char* ObjectIO::read(const char* key, bool copy, unsigned int* size)
+template<>
+std::string ObjectIO::read(const char* key) const
 {
-    const char* data = GET_FROM_IOOBJECT(key, String);
+    ASSERT_READ_MODE_OR_RETURN(std::string())
+    return std::string(GET_FROM_IOOBJECT(key, String));
+}
+
+template<>
+std::vector<std::string> ObjectIO::read(const char* key) const
+{
+    ASSERT_READ_MODE_OR_RETURN(std::vector<std::string>(0))
+    auto a = ((nativeReader*)nativeObject_)->operator[](key).GetArray();
+    std::vector<std::string> v(a.Size());
+    for (int i=0; i<a.Size(); i++)
+    {
+        v[i] = a[i].GetString();
+    }
+    return v;
+}
+
+template<>
+std::vector<const char*> ObjectIO::read(const char* key) const
+{
+    ASSERT_READ_MODE_OR_RETURN(std::vector<const char*>(0))
+    auto a = ((nativeReader*)nativeObject_)->operator[](key).GetArray();
+    std::vector<const char*> v(a.Size());
+    for (int i=0; i<a.Size(); i++)
+    {
+        // Force copy
+        unsigned int srcSize = a[i].GetStringLength();
+        const char* src = a[i].GetString();
+        auto dst = new char [srcSize];
+        memcpy((void*)dst, src, srcSize);
+        v[i] = dst;
+    }
+    return v;
+}
+
+const char* ObjectIO::read(const char* key, bool copy, unsigned int* size) const
+{
+    ASSERT_READ_MODE_OR_RETURN(nullptr)
+    auto data = GET_FROM_IOOBJECT(key, String);
     if (copy)
     {   
         unsigned int dsize = GET_FROM_IOOBJECT(key, StringLength);
         if (size != nullptr)
             *size = dsize;
         char* cdata = new char[dsize];
-        memcpy((void*)cdata, data, dsize);
+        memcpy(cdata, data, dsize);
         return cdata;
     }
     else if (size != nullptr)

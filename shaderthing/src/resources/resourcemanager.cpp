@@ -104,6 +104,18 @@ void ResourceManager::loadState(std::string& source, uint32_t& index)
     }
 }
 
+void ResourceManager::loadState(ObjectIO& reader)
+{
+    // Remove currently managed resources
+    reset();
+    auto resources= reader.readObject("resources");
+    for (auto resourceName : resources.members())
+    {   
+        auto resource = resources.readObject(resourceName);
+        resources_.emplace_back(new Resource(resource, resources_));
+    };
+}
+
 //----------------------------------------------------------------------------//
 
 void ResourceManager::saveState(std::ofstream& file)

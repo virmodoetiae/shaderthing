@@ -125,6 +125,11 @@ R"(void main()
 }
 )";
 
+std::string Layer::defaultSharedSource_ = 
+R"(// Common source code is shared by all fragment shaders across all layers and 
+// has access to all shared in/out/uniform declarations
+vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels))";
+
 //----------------------------------------------------------------------------//
 
 const std::string& Layer::assembleVertexSource()
@@ -561,6 +566,7 @@ internalFramebufferClearPolicyOnExport_
     InternalFramebufferClearPolicyOnExport::None
 )
 {
+
     std::string headerSource;
     while(true)
     {
@@ -1272,12 +1278,7 @@ void Layer::initializeEditors()
     (
         ImGuiExtd::TextEditor::LanguageDefinition::GLSL()
     );
-    Layer::sharedSourceEditor_.SetText
-    (
-R"(// Common source code is shared by all fragment shaders across all layers and 
-// has access to all shared in/out/uniform declarations
-vec2 fragCoord = gl_FragCoord.xy; // Fragment/pixel coordinate (in pixels))"
-    );
+    Layer::sharedSourceEditor_.SetText(Layer::defaultSharedSource_);
     Layer::sharedSourceEditor_.ResetTextChanged();
 }
 
@@ -1652,6 +1653,226 @@ float Layer::aspectRatio() const
     if (isAspectRatioBoundToWindow_)
         return vir::GlobalPtr<vir::Window>::instance()->aspectRatio();
     return float(resolution_.x)/float(resolution_.y);
+}
+
+Layer::Layer
+(
+    ShaderThingApp& app,
+    const ObjectIO& reader,
+    bool isGuiRendered
+) :
+app_(app),
+shader_(nullptr),
+rendersTo_(RendersTo::Window),
+toBeDeleted_(false),
+toBeRenamed_(false),
+isGuiRendered_(isGuiRendered),
+isGuiDeletionConfirmationPending_(false),
+toBeCompiled_(false),
+fragmentSourceHeader_(""),
+hasUncompiledChanges_(false),
+hasHeaderErrors_(false),
+isAspectRatioBoundToWindow_(true),
+screenCamera_(app.screnCameraRef()),
+shaderCamera_(app.shaderCameraRef()),
+renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
+shaderId0_(-1),
+uncompiledUniforms_(0),
+uniformLayerNamesToBeSet_(0),
+internalFramebufferClearPolicyOnExport_
+(
+    InternalFramebufferClearPolicyOnExport::None
+)
+{
+    // Name & id
+    name_ = reader.name();
+    targetName_ = name_;
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    id_ = std::uniform_int_distribution<std::mt19937::result_type>(1e3,
+        1e9)(rng);
+    
+    // Geometric and rendering parameters
+    rendersTo_ = (RendersTo)reader.read<int>("renderTarget");
+    depth_ = reader.read<float>("depth");
+    resolution_ = reader.read<glm::ivec2>("resolution");
+    targetResolution_ = resolution_;
+    resolutionScale_ = reader.read<glm::vec2>("resolutionScale");
+    isAspectRatioBoundToWindow_ = (resolutionScale_.x == resolutionScale_.y);
+    viewport_.x = (resolution_.x > resolution_.y) ? 1.0 : 
+        float(resolution_.x)/float(resolution_.y);
+    viewport_.y = (resolution_.y > resolution_.x) ? 1.0 : 
+        float(resolution_.y)/float(resolution_.x);
+    
+    //
+    screenQuad_ = new vir::Quad(viewport_.x, viewport_.y, depth_);
+
+    auto shaderData = reader.readObject("shader");
+    fragmentSource_ = shaderData.read("fragmentSource", false);
+
+    auto uniformsData = shaderData.readObject("uniforms");
+    for(auto uniformName : uniformsData.members())
+    {
+        auto uniformData = uniformsData.readObject(uniformName);
+        auto uniform = new vir::Shader::Uniform();
+        uniform->type = vir::Shader::uniformNameToType[
+            uniformData.read<std::string>("type")];
+        uniforms_.emplace_back(uniform);
+        uniformUsesColorPicker_.insert({uniform, false});
+        bool* uniformUsesColorPicker = &uniformUsesColorPicker_[uniform];
+        float min, max, x, y, z, w;
+
+#define SET_UNIFORM(type)                   \
+    uniform->setValue<type>(uniformData.read<type>("value"));
+#define READ_MIN_MAX                        \
+    min = uniformData.read<float>("min");   \
+    max = uniformData.read<float>("max");
+
+        switch (uniform->type)
+        {
+            case vir::Shader::Variable::Type::Bool :
+            {
+                SET_UNIFORM(bool)
+                break;
+            }
+            case vir::Shader::Variable::Type::Int :
+            {
+                SET_UNIFORM(int)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float :
+            {
+                SET_UNIFORM(float)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float2 :
+            {
+                SET_UNIFORM(glm::vec2)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float3 :
+            {
+                SET_UNIFORM(glm::vec3)
+                READ_MIN_MAX
+                *uniformUsesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                break;
+            }
+            case vir::Shader::Variable::Type::Float4 :
+            {
+                SET_UNIFORM(glm::vec4)
+                READ_MIN_MAX
+                *uniformUsesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                break;
+            }
+            case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::SamplerCube :
+            {
+                std::string resourceName = uniformData.read("value", false);
+                bool found = false;
+                for (auto r : app.resourceManagerRef().resourcesRef())
+                {
+                    if (r->name() == resourceName)
+                    {
+                        uniform->setValuePtr<Resource>(r);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    uniformLayerNamesToBeSet_.insert
+                    (
+                        {uniform, resourceName}
+                    );
+                break;
+            }
+        }
+        uniformLimits_.insert({uniform, {min, max}});
+        uniform->name = uniformName;
+    }
+    
+    initializeEditors();
+
+    // Init default uniforms (must be done before assembleFragmentSource)
+    initializeDefaultUniforms();
+
+    //
+    createStaticShaders();
+
+    // Init shader
+    // If the project was saved in a state such that the shader has compilation
+    // errors, then initialize the shader with the blank shader source (back-end
+    // -only, the user will still see the source of the saved shader with the 
+    // usuale list of compilation errors and markers)
+    hasUncompiledChanges_ = true; // Set to true to force compilation
+    if (!compileShader())
+        shader_ = 
+            vir::Shader::create
+            (
+                Layer::assembleVertexSource(),
+                Layer::blankFragmentSource_,
+                vir::Shader::ConstructFrom::String
+            );
+
+    auto framebufferData = reader.readObject("internalFramebuffer");
+    auto internalFormat = 
+        (vir::TextureBuffer::InternalFormat)framebufferData.read<int>("format");
+    
+
+    // Init framebuffers
+    flipFramebuffers_ = false;
+    framebufferA_ = vir::Framebuffer::create
+    (
+        resolution_.x, 
+        resolution_.y, 
+        internalFormat
+    );
+    readOnlyFramebuffer_ = framebufferA_;
+    framebufferB_ = vir::Framebuffer::create
+    (
+        resolution_.x, 
+        resolution_.y, 
+        internalFormat
+    );
+    writeOnlyFramebuffer_ = framebufferB_;
+
+    // Set framebuffer color attachment wrapping and filtering options
+    auto magFilter = framebufferData.read<int>("magnificationFilterMode");
+    auto minFilter = framebufferData.read<int>("minimizationFilterMode");
+    auto wrapModes = framebufferData.read<glm::ivec2>("wrapModes");
+    auto setWrapFilterOptions = [&](vir::Framebuffer* framebuffer)->void
+    {
+        framebuffer->setColorBufferMagFilterMode
+        (
+            (vir::TextureBuffer::FilterMode)magFilter
+        );
+        framebuffer->setColorBufferMinFilterMode
+        (
+            (vir::TextureBuffer::FilterMode)minFilter
+        );
+        framebuffer->setColorBufferWrapMode
+        (
+            0,
+            (vir::TextureBuffer::WrapMode)wrapModes.x
+        );
+        framebuffer->setColorBufferWrapMode
+        (
+            1,
+            (vir::TextureBuffer::WrapMode)wrapModes.y
+        );
+    };
+    setWrapFilterOptions(framebufferA_);
+    setWrapFilterOptions(framebufferB_);
+
+    //
+    if (rendersTo_ != RendersTo::Window)
+        app.resourceManagerRef().addLayerAsResource(this);
+
+    ++LayerManager::nLayersSinceNewProject_;
 }
 
 }

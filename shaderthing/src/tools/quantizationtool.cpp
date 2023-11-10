@@ -186,6 +186,42 @@ void QuantizationTool::loadState(std::string& source, uint32_t& index)
     firstQuantization_ = !isPaletteValid;
 }
 
+void QuantizationTool::loadState(const ObjectIO& reader)
+{
+    reset();
+    if (!reader.hasMember("quantizer"))
+        return;
+    auto quantizerData = reader.readObject("quantizer");
+    isActive_ = quantizerData.read<bool>("active");
+    std::string targetName = quantizerData.read("targetLayer", false);
+    for (auto l : app_.layersRef())
+    {
+        if (l->name() != targetName)
+            continue;
+        targetLayer_ = l;
+        break;
+    }
+    ditheringLevel_ = quantizerData.read<int>("ditheringLevel");
+    ditheringThreshold_ = quantizerData.read<float>("ditheringThreshold");
+    clusteringFidelity_ = quantizerData.read<float>("clusteringFidelity");
+    isAlphaCutoff_ = quantizerData.read<bool>("transparencyCutoff");
+    alphaCutoffThreshold_ = quantizerData.read<int>(
+        "transparencyCutoffThreshold");
+    autoUpdatePalette_ = quantizerData.read<bool>("dynamicPalette");
+    firstQuantization_ = true;
+    if (!quantizerData.hasMember("paletteData"))
+        return;
+    unsigned int paletteSizeX3;
+    uIntPalette_ = (unsigned char*)quantizerData.read("paletteData", true, 
+        &paletteSizeX3);
+    paletteSize_ = paletteSizeX3/3;
+    floatPalette_ = new float[paletteSizeX3];
+    for (int i=0; i<paletteSizeX3; i++)
+        floatPalette_[i] = (float)uIntPalette_[i]/255.0;
+    paletteModified_ = !autoUpdatePalette_;
+    firstQuantization_ = false;
+}
+
 //----------------------------------------------------------------------------//
 
 void QuantizationTool::saveState(std::ofstream& file)

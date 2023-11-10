@@ -259,6 +259,32 @@ void LayerManager::loadState(std::string& source, uint32_t& index)
     }
 }
 
+void LayerManager::loadState(const ObjectIO& reader)
+{
+    // Clear layers
+    reset();
+
+    // Read shared fragment shader code if defined
+    auto shared = reader.readObject("shared");
+    if (shared.hasMember("sharedFragmentSource"))
+        Layer::setSharedSource(shared.read("sharedFragmentSource", false));
+
+    // Read layers
+    auto layers = reader.readObject("layers");
+    for (auto layerName : layers.members())
+    {   
+        auto layer = layers.readObject(layerName);
+        layers_.emplace_back(new Layer(app_, layer, layers_.size()==0));
+    };
+
+    // Re-establish dependencies between Layers (i.e., when a layer is
+    // being used as a sampler2D uniform by another layer)
+    for (auto* layer : layers_)
+    {
+        layer->rebindLayerUniforms();
+    }
+}
+
 //----------------------------------------------------------------------------//
 
 void LayerManager::preLoadAdjustment()

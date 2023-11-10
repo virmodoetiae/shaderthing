@@ -14,6 +14,7 @@
 */
 
 #include "shaderthingapp.h"
+#include "objectio/objectio.h"
 #include "layers/layer.h"
 #include "layers/layermanager.h"
 #include "resources/resource.h"
@@ -29,8 +30,6 @@
 #include "thirdparty/rapidjson/include/rapidjson/writer.h"
 #include "thirdparty/rapidjson/include/rapidjson/prettywriter.h"
 #include "thirdparty/rapidjson/include/rapidjson/stringbuffer.h"
-
-#include "objectio/objectio.h"
 
 namespace ShaderThing
 {
@@ -341,8 +340,27 @@ void ShaderThingApp::saveProject(){
     if (!stateFlags_[ST_SAVE_PROJECT]) return;
     stateFlags_[ST_SAVE_PROJECT] = false;
 
+    /*
+    // Eventually the save project will be replaced by this new JSON-based 
+    // approach entirely
+    auto replace =[]\
+    (
+        std::string& str, 
+        const std::string& from, 
+        const std::string& to
+    ) -> bool 
+    {
+        size_t start_pos = str.find(from);
+        if(start_pos == std::string::npos)
+            return false;
+        str.replace(start_pos, from.length(), to);
+        return true;
+    };
+
+    std::string oldFilepath = projectFilepath_;
+    replace(oldFilepath, ".stf", "_v0d11.stf");
     std::ofstream file;
-    file.open(projectFilepath_, std::ios_base::out | std::ios_base::binary);
+    file.open(oldFilepath, std::ios_base::out | std::ios_base::binary);
     if(!file.is_open())
         return;
 
@@ -371,28 +389,11 @@ void ShaderThingApp::saveProject(){
     quantizationTool_->saveState(file);
 
     file.close();
+    */
 
     //------------------------------------------------------------------------//
 
-    // Eventually the save project will be replaced by this new JSON-based 
-    // approach entirely
-    auto replace =[]\
-    (
-        std::string& str, 
-        const std::string& from, 
-        const std::string& to
-    ) -> bool 
-    {
-        size_t start_pos = str.find(from);
-        if(start_pos == std::string::npos)
-            return false;
-        str.replace(start_pos, from.length(), to);
-        return true;
-    };
-
-    std::string jsonFilepath = projectFilepath_;
-    replace(jsonFilepath, ".stf", "_json.stf");
-    auto project = ObjectIO(jsonFilepath.c_str(), ObjectIO::Mode::Write);
+    auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Write);
     
     project.writeObjectStart("shared");
     project.write("windowResolution", resolution_);
@@ -423,246 +424,70 @@ void ShaderThingApp::saveProject(){
         stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]
     );
     project.write("UIScale", *fontScale_);
+    if (Layer::sharedSourceIsNotDefault())
+    {
+        auto sharedSource = Layer::sharedSource();
+        project.write("sharedFragmentSource", sharedSource.c_str(), 
+            sharedSource.size(), true);
+    };
     project.writeObjectEnd();
 
     resourceManager_->saveState(project);
     layerManager_->saveState(project);
     quantizationTool_->saveState(project);
     exportTool_->saveState(project);
-
-    /*
-    std::ofstream jsonFile;
-    std::string jsonFilepath = projectFilepath_;
-    replace(jsonFilepath, ".stf", "_json.stf");
-    jsonFile.open
-    (
-        jsonFilepath, std::ios_base::out | std::ios_base::binary
-    );
-    if(!jsonFile.is_open()) 
-        return;
-
-    rapidjson::StringBuffer stringBuffer;
-    rapidjson::PrettyWriter writer(stringBuffer);
-    
-    writer.StartObject();
-
-    writer.String("shared");
-    writer.StartObject();
-
-    writer.String("windowResolution");
-    writer.StartArray();
-    for (int i=0; i<2; i++)
-        writer.Int(resolution_[i]);
-    writer.EndArray();
-
-    writer.String("time");
-    writer.Double(time_);
-
-    writer.String("timePaused");
-    writer.Bool(stateFlags_[ST_IS_TIME_PAUSED]);
-
-    writer.String("iWASD");
-    writer.StartArray();
-    for (int i=0; i<3; i++)
-        writer.Double(shaderCamera_->position()[i]);
-    writer.EndArray();
-
-    writer.String("iWASDSensitivity");
-    writer.Double(shaderCamera_->keySensitivityRef());
-
-    writer.String("iWASDInputEnabled");
-    writer.Bool(stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED]);
-
-    writer.String("iLook");
-    writer.StartArray();
-    for (int i=0; i<3; i++)
-        writer.Double(shaderCamera_->z()[i]);
-    writer.EndArray();
-
-    writer.String("iLookSensitivity");
-    writer.Double(shaderCamera_->mouseSensitivityRef());
-
-    writer.String("iLookInputEnabled");
-    writer.Bool(stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED]);
-
-    writer.String("mouseInputEnabled");
-    writer.Bool(stateFlags_[ST_IS_MOUSE_INPUT_ENABLED]);
-
-    writer.String("resetTimeOnRenderRestart");
-    writer.Bool(stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]);
-
-    writer.String("UIScale");
-    writer.Double(*fontScale_);
-    
-    writer.EndObject(); // End of 'shared'
-
-    resourceManager_->saveState(writer);
-    layerManager_->saveState(writer);
-    quantizationTool_->saveState(writer);
-    exportTool_->saveState(writer);
-
-    writer.EndObject(); // End of overall JSON
-
-    jsonFile << stringBuffer.GetString();
-    jsonFile.close();
-    */
 }
 
 //----------------------------------------------------------------------------//
 
 void ShaderThingApp::loadProject()
 {
+    
     if (!stateFlags_[ST_LOAD_PROJECT]) return;
         stateFlags_[ST_LOAD_PROJECT] = false;
-
-    /*
-    unsigned int size;
-    const unsigned char* data;
-    {
-        auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Read);
-        {
-            auto shared = project.getObject("shared");
-            auto fontScale = shared.getValue<float>("UIScale");
-            stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = 
-                shared.getValue<bool>("resetTimeOnRenderRestart");
-            stateFlags_[ST_IS_MOUSE_INPUT_ENABLED] = 
-                shared.getValue<bool>("mouseInputEnabled");
-            stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED] = 
-                shared.getValue<bool>("iLookInputEnabled");
-            shaderCamera_->setMouseSensitivity
-            (
-                shared.getValue<float>("iLookSensitivity")
-            );
-            auto dir = shared.getValue<glm::vec3>("iLook");
-            shaderCamera_->setDirection(dir);
-            stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED] = 
-                shared.getValue<bool>("iWASDInputEnabled");
-            shaderCamera_->setKeySensitivity
-            (
-                shared.getValue<float>("iWASDSensitivity")
-            );
-            auto pos = shared.getValue<glm::vec3>("iWASD");
-            shaderCamera_->setPosition(pos);
-            stateFlags_[ST_IS_TIME_PAUSED] = shared.getValue<bool>("timePaused");
-            time_ = shared.getValue<float>("time");
-            resolution_ = shared.getValue<glm::ivec2>("windowResolution");
-            vir::GlobalPtr<vir::Window>::instance()->setSize
-            (
-                resolution_.x, 
-                resolution_.y
-            );
-        }
-        {
-            auto resources = project.getObject("resources");
-            auto ns = resources.getObject("nightSky.jpg");
-            data = (unsigned char*)ns.getValue("data", true, &size);
-            for (int i=0; i<10; i++)
-                std::cout << (int)data[i] << " ";
-            std::cout << std::endl;
-        }
-        for (int i=0; i<10; i++)
-            std::cout << (int)data[i] << " ";
-        std::cout << std::endl;
-    }
-    for (int i=0; i<10; i++)
-        std::cout << (int)data[i] << " ";
-    std::cout << std::endl;
-    */
-    /*
-    const unsigned char* out;
-    const char* sout;
-    {
-        std::ifstream file(projectFilepath_, std::ios_base::in | std::ios::binary);
-        if(!file)
-            return;
-        std::string data;
-        file.seekg(0, std::ios::end);
-        data.resize(file.tellg());
-        file.seekg(0, std::ios::beg);
-        uint32_t dataSize(data.size());
-        file.read(&data[0], dataSize);
-
-        // Parse raw file into RapidJSON document
-        rapidjson::Document document;
-        if (document.ParseInsitu(&data[0]).HasParseError())
-        {
-            throw std::runtime_error("Selected save file invalid or corrupted");
-            return;
-        }
-
-        sout = &data[0];
-
-        auto master = document.GetObject();
-
-        // Read data from document
-        auto shared = master["shared"].GetObject();
-
-        *fontScale_ = shared["UIScale"].GetDouble();
-
-        stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = 
-            shared["resetTimeOnRenderRestart"].GetBool();
-
-        stateFlags_[ST_IS_MOUSE_INPUT_ENABLED] = 
-            shared["mouseInputEnabled"].GetBool();
-
-        stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED] = 
-            shared["iLookInputEnabled"].GetBool();
-
-        shaderCamera_->setMouseSensitivity(shared["iLookSensitivity"].GetDouble());
-
-        auto iLook = shared["iLook"].GetArray();
-        glm::vec3 v;
-        for (int i=0; i<iLook.Size(); i++)
-            v[i] = iLook[i].GetDouble();
-        shaderCamera_->setDirection(v);
-
-        stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED] = 
-            shared["iWASDInputEnabled"].GetBool();
-
-        shaderCamera_->setKeySensitivity(shared["iWASDSensitivity"].GetDouble());
-
-        auto iWASD = shared["iWASD"].GetArray();
-        for (int i=0; i<iWASD.Size(); i++)
-            v[i] = iWASD[i].GetDouble();
-        shaderCamera_->setPosition(v);
-
-        stateFlags_[ST_IS_TIME_PAUSED] = shared["timePaused"].GetBool();
-
-        time_ = shared["time"].GetDouble();
-
-        auto resolution = shared["windowResolution"].GetArray();
-        for (int i=0; i<resolution.Size(); i++)
-            resolution_[i] = resolution[i].GetInt();
-        vir::GlobalPtr<vir::Window>::instance()->setSize
-        (
-            resolution_.x, 
-            resolution_.y
-        );
-
-        out = (const unsigned char*)master["resources"]["nightSky.jpg"]["data"].GetString();
-        for (int i=0; i<10; i++)
-            std::cout << (int)(sout[i]) << " ";
-        std::cout << std::endl;
-
-        for (int i=0; i<10; i++)
-            std::cout << (int)(sout[i]) << " ";
-        std::cout << std::endl;
-        file.close();
-    }
-
-    for (int i=0; i<10; i++)
-        std::cout << (int)(sout[i]) << " ";
-    std::cout << std::endl;
-    */
-
-
-    /*
-    for (rapidjson::Value::ConstMemberIterator itr = document.MemberBegin();
-    itr != document.MemberEnd(); ++itr)
-    {
-        std::cout << itr->name.GetString() << std::endl;
-    }*/
+    auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Read);
+    auto shared = project.readObject("shared");
+    auto fontScale = shared.read<float>("UIScale");
+    stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = 
+        shared.read<bool>("resetTimeOnRenderRestart");
+    setMouseInputsEnabled(shared.read<bool>("iMouseInputEnabled"));
+    setShaderCameraDirectionInputsEnabled
+    (
+        shared.read<bool>("iLookInputEnabled")
+    );
+    shaderCamera_->setMouseSensitivity
+    (
+        shared.read<float>("iLookSensitivity")
+    );
+    auto dir = shared.read<glm::vec3>("iLook");
+    shaderCamera_->setDirection(dir);
+    setShaderCameraPositionInputsEnabled
+    (
+        shared.read<bool>("iWASDInputEnabled")
+    );
+    shaderCamera_->setKeySensitivity
+    (
+        shared.read<float>("iWASDSensitivity")
+    );
+    auto pos = shared.read<glm::vec3>("iWASD");
+    shaderCamera_->setPosition(pos);
+    stateFlags_[ST_IS_TIME_PAUSED] = shared.read<bool>("timePaused");
+    time_ = shared.read<float>("time");
     
+    resourceManager_->loadState(project);
+    layerManager_->loadState(project);
+    quantizationTool_->loadState(project);
+    exportTool_->loadState(project);
+    restartRendering(false);
+
+    auto resolution = shared.read<glm::ivec2>("windowResolution");
+    vir::GlobalPtr<vir::Window>::instance()->setSize
+    (
+        resolution.x, 
+        resolution.y
+    );
+    
+    /*
     std::ifstream file(projectFilepath_, std::ios_base::in | std::ios::binary);
     if(!file)
         return;
@@ -725,6 +550,7 @@ void ShaderThingApp::loadProject()
     );
     file.close();
     restartRendering(false);
+    */
 }
 
 //----------------------------------------------------------------------------//

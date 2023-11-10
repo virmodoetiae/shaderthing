@@ -75,6 +75,7 @@ public:
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
     void renderGui();
     void loadState(std::string& source, uint32_t& index);
+    void loadState(ObjectIO& reader);
     void saveState(std::ofstream& file);
     void saveState(ObjectIO& writer);
 

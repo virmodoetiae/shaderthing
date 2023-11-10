@@ -344,6 +344,16 @@ bool Resource::set(Resource* faces[6])
 bool Resource::set(const unsigned char* data, unsigned int size)
 {
     int w,h,nc;
+    /*
+    if (size < 10000)
+    {
+        for (int i=0; i<size; i++)
+        {
+            auto di = data[i];
+            std::cout << i << "-" << (int)di << std::endl;
+        }
+        std::cout << std::endl;
+    }*/
     stbi_set_flip_vertically_on_load(true);
     unsigned char* loadedData = stbi_load_from_memory
     (
@@ -375,6 +385,16 @@ void Resource::setNamePtr(std::string* namePtr)
 void Resource::setRawData(unsigned char* rawData, int rawDataSize)
 {
     if (rawData_ != nullptr) delete[] rawData_;
+    /*
+    if (rawDataSize < 10000)
+    {
+        for (int i=0; i<rawDataSize; i++)
+        {
+            auto di = rawData[i];
+            std::cout << i << "-" << (int)di << std::endl;
+        }
+        std::cout << std::endl;
+    }*/
     rawData_ = rawData;
     rawDataSize_ = rawDataSize;
 }
@@ -411,6 +431,74 @@ void Resource::setMinFilterMode(vir::TextureBuffer::FilterMode mode)
 
 //----------------------------------------------------------------------------//
 
+Resource::Resource
+(
+    const ObjectIO& reader, 
+    const std::vector<Resource*>& resources
+) :
+type_(Resource::Type::Uninitialized),
+nativeResource_(nullptr),
+referencedResources_(0),
+namePtr_(new std::string()),
+originalFileExtension_(""),
+rawDataSize_(0),
+rawData_(nullptr),
+lastBoundUnit_(-1)
+{
+    type_ = nameToType.at(reader.read<std::string>("type"));
+    auto readerName = std::string(reader.name());
+    setNamePtr(new std::string(readerName));
+    setMagFilterMode
+    (
+        (vir::TextureBuffer::FilterMode)reader.read<int>
+        (
+            "magnificationFilterMode"
+        )
+    );
+    setMinFilterMode
+    (
+        (vir::TextureBuffer::FilterMode)reader.read<int>
+        (
+            "minimizationFilterMode"
+        )
+    );
+    switch(type_)
+    {
+    case Type::Texture2D :
+    {
+        unsigned int rawDataSize;
+        auto rawData = (unsigned char*)reader.read("data", true, &rawDataSize);
+        set(rawData, rawDataSize);
+        setRawData(rawData, rawDataSize);
+        setOriginalFileExtension(reader.read<std::string>("originalFileExtension"));
+        auto wrapModes = reader.read<glm::ivec2>("wrapModes");
+        setWrapMode(0, (vir::TextureBuffer::WrapMode)wrapModes.x);
+        setWrapMode(1, (vir::TextureBuffer::WrapMode)wrapModes.y);
+        break;
+    }
+    case Type::Cubemap :
+    {
+        auto faceNames = reader.read<std::vector<std::string>>("faces");
+        Resource* textureResources[6];
+        int facei = 0;
+        for (auto& faceName : faceNames)
+        {
+            for (auto r : resources)
+                if 
+                (
+                    r->name() == faceName && 
+                    r->type() == Resource::Type::Texture2D
+                )
+                    textureResources[facei] = r;
+            ++facei;
+        }
+        set(textureResources);
+        break;
+    }
+    }
+    
+}
+
 void Resource::saveState(ObjectIO& writer)
 {
     if
@@ -422,23 +510,21 @@ void Resource::saveState(ObjectIO& writer)
 
         writer.writeObjectStart(namePtr_->c_str());
         writer.write("type", Resource::typeToName[type_].c_str());
+        writer.write("magnificationFilterMode", (int)magFilterMode());
+        writer.write("minimizationFilterMode", (int)minFilterMode());
         switch (type_)
         {
         case Resource::Type::Texture2D :
         {
-            writer.write("originalFileExtension", 
-                originalFileExtension_.c_str());
             writer.write("wrapModes", 
                 glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
-            writer.write("maginificationFilterMode", (int)magFilterMode());
-            writer.write("minimizationFilterMode", (int)minFilterMode());
+            writer.write("originalFileExtension", 
+                originalFileExtension_.c_str());
             writer.write("data",(const char*)rawData_,rawDataSize_,true);
             break;
         }
         case Resource::Type::Cubemap :
         {
-            writer.write("magnificationFilterMode", (int)magFilterMode());
-            writer.write("minimizationFilterMode", (int)minFilterMode());
             static std::vector<std::string> faceNames(6);
             for (int i=0; i<6; i++)
                 faceNames[i] = referencedResources_[i]->name();

@@ -66,6 +66,7 @@ public:
     void saveState(std::ofstream& file);
     void saveState(ObjectIO& writer);
     void loadState(std::string& source, uint32_t& index);
+    void loadState(const ObjectIO& reader);
     void preLoadAdjustment();
 
     std::vector<Layer*>& layersRef(){return layers_;}

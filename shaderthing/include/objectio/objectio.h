@@ -17,7 +17,7 @@
 #define ST_OBJECT_IO_H
 
 #include <fstream>
-#include <unordered_map>
+#include <vector>
 
 namespace ShaderThing
 {
@@ -57,11 +57,18 @@ protected:
     // True for root objects (i.e., user-created ones)
     bool isRoot_;
 
+    // List of member names within this object
+    std::vector<const char*> members_;
+
     // Native rapidjson object for reading/writing data
     void* nativeObject_;
 
     //
     ObjectIO(const char* name, Mode mode, void* nativeObject);
+
+    // Determines the list of members for read-only objects. Run at 
+    // initialization
+    void findMembers();
 
     //
     void freeNativeMemory();
@@ -75,14 +82,22 @@ public:
     ~ObjectIO();
 
     //
-    ObjectIO readObject(const char* key);
+    const char* name() const {return name_;}
+
+    //
+    const std::vector<const char*>& members() const {return members_;}
+
+    //
+    bool hasMember(const char* key) const;
+
+    //
+    ObjectIO readObject(const char* key) const;
 
     //
     template<typename T>
-    T read(const char* key);
+    T read(const char* key) const;
 
-    //
-    const char* read(const char* key, bool copy, unsigned int* size=nullptr);
+    const char* read(const char* key, bool copy, unsigned int* size=nullptr) const;
 
     //
     template<typename T>

@@ -64,6 +64,7 @@ public:
     void removeLayerAsTarget(Layer* layer);
 
     void loadState(std::string& source, uint32_t& index);
+    void loadState(const ObjectIO& reader);
     void saveState(std::ofstream&);
     void saveState(ObjectIO& writer);
     

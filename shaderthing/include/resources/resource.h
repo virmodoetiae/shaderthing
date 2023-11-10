@@ -60,6 +60,7 @@ public:
 
     // Constructor/destructor
     Resource();
+    Resource(const ObjectIO& reader, const std::vector<Resource*>& resources);
     ~Resource();
     Resource& operator=(const Resource&) = delete;
 

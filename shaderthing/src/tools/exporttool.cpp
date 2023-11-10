@@ -373,6 +373,60 @@ void ExportTool::loadState(std::string& source, uint32_t& index)
     reset();
 }
 
+void ExportTool::loadState(const ObjectIO& reader)
+{
+    reset();
+    
+    auto exporterData = reader.readObject("exporter");
+    exportType_ = (ExportType)exporterData.read<int>("exportType");
+    if (exportType_ != ExportType::Image)
+    {
+        exportStartTime_ = exporterData.read<float>("startTime");
+        exportEndTime_ = exporterData.read<float>("endTime");
+        exportFps_ = exporterData.read<float>("framesPerSecond");
+        if (exportType_ == ExportType::GIF)
+        {
+            gifPaletteBitDepth_ = exporterData.read<float>("paletteBitDepth");
+            updatePaletteEveryFrame_ = exporterData.read<float>(
+                "dynamicPalette");
+            gifDitheringLevel_ = exporterData.read<float>("ditheringLevel");
+            gifAlphaCutoff_ = exporterData.read<float>(
+                "transparencyCutoffThreshold");
+        }
+        multipleRendersOnlyOnFirstFrame_ = exporterData.read<float>(
+            "multipleRenderPassesOnlyOnFirstFrame");
+    }
+    nRendersPerFrame_ = exporterData.read<float>("nRenderPassesPerFrame");
+    if (exporterData.hasMember("fileNameNoExtension"))
+        exportFilepathNoExtension_ = exporterData.read("fileNameNoExtension", 
+            false);
+
+    auto layersData = exporterData.readObject("layerData");
+    for (auto layerName : layersData.members())
+    {
+        Layer* layer = nullptr;
+        for (auto l : app_.layersRef())
+        {
+            if (l->name() == layerName)
+            {
+                layer = l;
+                break;
+            }
+        }
+        if (layer != nullptr)
+            continue;
+
+        auto layerData = layersData.readObject(layerName);
+        auto eld = ExportLayerData();
+        eld.resolution = exporterData.read<glm::ivec2>("resolution");
+        eld.backupResolution = exporterData.read<glm::ivec2>(
+            "backupResolution");
+        eld.resolutionScale = exporterData.read<glm::vec2>("resolutionScale");
+        eld.resolutionLocked = exporterData.read<bool>("resolutionLocked");
+        exportLayerData_.insert({layer, eld});
+    }
+}
+
 //----------------------------------------------------------------------------//
 
 void ExportTool::saveState(std::ofstream& file)

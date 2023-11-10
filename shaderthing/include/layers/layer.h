@@ -84,6 +84,7 @@ private:
     // for newly created layers
     static std::string defaultVertexSource_;
     static std::string defaultFragmentSource_;
+    static std::string defaultSharedSource_;
 
     //
     static vir::Quad* blankQuad_;
@@ -137,6 +138,14 @@ public:
     static const std::map<int, std::string>& sharedCompilationErrors()
     {
         return sharedSourceEditor_.GetErrorMarkers();
+    }
+    // Returns true if the shared source has been modified with respect to its
+    // initial state (i.e., the state it has on a new project)
+    static bool sharedSourceIsNotDefault()
+    {
+
+        return 
+            Layer::defaultSharedSource_ != Layer::sharedSourceEditor_.GetText();
     }
 
 // Non-static members --------------------------------------------------------//
@@ -337,6 +346,14 @@ public:
         bool isGuiRendered = false
     );
 
+    //
+    Layer
+    (
+        ShaderThingApp& app,
+        const ObjectIO& reader,
+        bool isGuiRendered = false
+    );
+
     // Destructor
     ~Layer();
 
@@ -481,167 +498,6 @@ public:
     // Operators -------------------------------------------------------------//
     
     bool operator==(const Layer& rhs) {return id_ == rhs.id();}
-
-    // Serialization
-    template<typename RapidJSONWriterType>
-    void saveState(RapidJSONWriterType& writer)
-    {
-        writer.String(name_.c_str());
-        writer.StartObject();
-
-        writer.String("renderTarget");
-        writer.Int((int)rendersTo_);
-
-        writer.String("resolution");
-        writer.StartArray();
-        for(int i=0; i<2; i++)
-            writer.Int(resolution_[i]);
-        writer.EndArray();
-
-        writer.String("resolutionScale");
-        writer.StartArray();
-        for(int i=0; i<2; i++)
-            writer.Int(resolutionScale_[i]);
-        writer.EndArray();
-
-        writer.String("depth");
-        writer.Double(depth_);
-
-        writer.String("internalFramebuffer");
-        writer.StartObject();
-
-        writer.String("format");
-        writer.Int((int)readOnlyFramebuffer_->colorBufferInternalFormat());
-
-        writer.String("wrapModes");
-        writer.StartArray();
-        for(int i=0; i<2; i++)
-            writer.Int((int)readOnlyFramebuffer_->colorBufferWrapMode(i));
-        writer.EndArray();
-
-        writer.String("magnificationFilterMode");
-        writer.Int((int)readOnlyFramebuffer_->colorBufferMagFilterMode());
-
-        writer.String("minimizationFilterMode");
-        writer.Int((int)readOnlyFramebuffer_->colorBufferMinFilterMode());
-
-        writer.String("exportClearPolicy");
-        writer.Int((int)internalFramebufferClearPolicyOnExport_);
-
-        writer.EndObject(); // End of internalFramebuffer
-
-        writer.String("shader");
-        writer.StartObject();
-
-        writer.String("fragmentSourceSize");
-        int sourceSize(fragmentSource_.size());
-        writer.Int(sourceSize);
-
-        writer.String("fragmentSource");
-        writer.String(fragmentSource_.c_str(), sourceSize, false);
-
-        writer.String("uniforms");
-        writer.StartObject();
-
-        for (auto u : uniforms_)
-        {
-            glm::vec2& uLimits(uniformLimits_[u]);
-            float& min(uLimits.x);
-            float& max(uLimits.y);
-            if (u->name.size() == 0)
-                continue;
-            writer.String(u->name.c_str());
-            writer.StartObject();
-            writer.String("type");
-            writer.String(vir::Shader::uniformTypeToName[u->type].c_str());
-            writer.String("value");
-
-#define WRITE_MIN_MAX               \
-            writer.String("min");   \
-            writer.Double(min);     \
-            writer.String("max");   \
-            writer.Double(max);
-
-            switch(u->type)
-            {
-                case vir::Shader::Variable::Type::Bool :
-                {
-                    writer.Bool(u->getValue<bool>());
-                    break;
-                }
-                case vir::Shader::Variable::Type::Int :
-                {
-                    writer.Int(u->getValue<int>());
-                    WRITE_MIN_MAX
-                    break;
-                }
-                case vir::Shader::Variable::Type::Float :
-                {
-                    writer.Double(u->getValue<float>());
-                    WRITE_MIN_MAX
-                    break;
-                }
-                case vir::Shader::Variable::Type::Float2 :
-                {
-                    auto v = u->getValue<glm::vec2>();
-                    for (int i=0; i<2; i++)
-                        writer.Double(v[i]);
-                    WRITE_MIN_MAX
-                    break;
-                }
-                case vir::Shader::Variable::Type::Float3 :
-                {
-                    auto v = u->getValue<glm::vec3>();
-                    for (int i=0; i<3; i++)
-                        writer.Double(v[i]);
-                    WRITE_MIN_MAX
-                    bool usesColorPicker = false;
-                    if
-                    (
-                        uniformUsesColorPicker_.find(u) !=
-                        uniformUsesColorPicker_.end()
-                    )
-                        usesColorPicker = uniformUsesColorPicker_[u];
-                    writer.String("usesColorPicker");
-                    writer.Bool(usesColorPicker);
-                    break;
-                }
-                case vir::Shader::Variable::Type::Float4 :
-                {
-                    auto v = u->getValue<glm::vec4>();
-                    for (int i=0; i<4; i++)
-                        writer.Double(v[i]);
-                    WRITE_MIN_MAX
-                    bool usesColorPicker = false;
-                    if
-                    (
-                        uniformUsesColorPicker_.find(u) !=
-                        uniformUsesColorPicker_.end()
-                    )
-                        usesColorPicker = uniformUsesColorPicker_[u];
-                    writer.String("usesColorPicker");
-                    writer.Bool(usesColorPicker);
-                    break;
-                }
-                case vir::Shader::Variable::Type::Sampler2D :
-                case vir::Shader::Variable::Type::SamplerCube :
-                {
-                    auto r = u->getValuePtr<Resource>();
-                    writer.String( r->name().c_str());
-                    break;
-                }
-                default:
-                    break;
-            }
-            writer.EndObject(); // End of 'u->name'
-        }
-
-        writer.EndObject(); // End of uniforms
-
-        writer.EndObject(); // End of shaders
-
-        writer.EndObject(); // End of 'name_'
-    }
 
 };
 

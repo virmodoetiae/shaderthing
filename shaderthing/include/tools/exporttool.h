@@ -109,6 +109,7 @@ public:
     //
     void reset();
     void loadState(std::string& source, uint32_t& index);
+    void loadState(const ObjectIO& reader);
     void saveState(std::ofstream& file);
     void saveState(ObjectIO& writer);
 
