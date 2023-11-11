@@ -62,11 +62,6 @@ public:
     ~QuantizationTool();
 
     void removeLayerAsTarget(Layer* layer);
-
-    void loadState(std::string& source, uint32_t& index);
-    void loadState(const ObjectIO& reader);
-    void saveState(std::ofstream&);
-    void saveState(ObjectIO& writer);
     
     void quantize(Layer* layer);
     void update();
@@ -75,67 +70,14 @@ public:
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
     void renderGui();
 
+    void loadState(const ObjectIO& reader);
+    void saveState(ObjectIO& writer);
+
     bool canRunOnDeviceInUse();
     const std::string& errorMessage();
     bool* isGuiOpenPtr() {return &isGuiOpen_;}
     bool isGuiInMenu() {return isGuiInMenu_;}
     Layer*& targetLayer() {return targetLayer_;}
-
-    void getPalette(unsigned char*& data, unsigned int& dataSize)
-    {
-        quantizer_->getPalette(data, true);
-        dataSize = 3*quantizer_->paletteSize();
-    }
-
-    // Serialization
-    /*
-    template<typename RapidJSONWriterType>
-    void saveState(RapidJSONWriterType& writer)
-    {
-        if (targetLayer_ == nullptr)
-            return;
-
-        writer.String("quantizer");
-        writer.StartObject();
-
-        writer.String("active");
-        writer.Bool(isActive_);
-
-        writer.String("targetLayer");
-        writer.String(targetLayer_->name().c_str());
-
-        writer.String("ditheringLevel");
-        writer.Int((int)ditheringLevel_);
-
-        writer.String("ditheringThreshold");
-        writer.Double(ditheringThreshold_);
-
-        writer.String("clusteringFidelity");
-        writer.Double(clusteringFidelity_);
-
-        writer.String("transparencyCutoff");
-        writer.Bool(isAlphaCutoff_);
-
-        writer.String("transparencyCutoffThreshold");
-        writer.Int(alphaCutoffThreshold_);
-
-        writer.String("dynamicPalette");
-        writer.Bool(autoUpdatePalette_);
-
-        if (uIntPalette_ != nullptr)
-        {
-            writer.String("palette");
-            writer.StartObject();
-            writer.String("dataSize");
-            writer.Int(3*paletteSize_);
-            writer.String("data");
-            writer.String((const char*)uIntPalette_, 3*paletteSize_, false);
-            writer.EndObject(); // End of palette
-        }
-
-        writer.EndObject(); // End of quantizer
-    }
-    */
 };
 
 }

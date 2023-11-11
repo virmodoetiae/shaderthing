@@ -122,70 +122,6 @@ void QuantizationTool::removeLayerAsTarget(Layer* layer)
 
 //----------------------------------------------------------------------------//
 
-void QuantizationTool::loadState(std::string& source, uint32_t& index)
-{
-    reset();
-    
-    std::string lineSource;
-    while(true)
-    {
-        char& c = source[index];
-        if (c == '\n')
-            break;
-        lineSource += c;
-        index++;
-    }
-    index++;
-    auto targetLayerName = new char[lineSource.size()];
-    int isActive, isTargetLayerValid, autoUpdatePalette, isPaletteValid, 
-        isAlphaCutoff;
-    sscanf
-    (
-        lineSource.c_str(),
-        "%d %d %s %d %f %f %d %d %d %d %d %s",
-        &isActive,
-        &isTargetLayerValid,
-        &(targetLayerName[0]), 
-        &ditheringLevel_,
-        &ditheringThreshold_,
-        &clusteringFidelity_,
-        &isAlphaCutoff,
-        &alphaCutoffThreshold_,
-        &autoUpdatePalette,
-        &paletteSize_,
-        &isPaletteValid,
-        nullptr
-    );
-    isActive_ = bool(isActive);
-    autoUpdatePalette_ = bool(autoUpdatePalette);
-    isAlphaCutoff_ = bool(isAlphaCutoff);
-    if (isTargetLayerValid)
-    {
-        for (auto layer : layers_)
-        {
-            if (std::strcmp(layer->nameRef().c_str(), targetLayerName)==0)
-            {
-                targetLayer_ = layer;
-                break;
-            }
-        }
-    }
-    delete[] targetLayerName;
-    if (isPaletteValid)
-    {
-        uIntPalette_ = new unsigned char[3*paletteSize_];
-        floatPalette_ = new float[3*paletteSize_];
-        for (int i=0; i<3*paletteSize_; i++)
-        {
-            int j=3*paletteSize_-i-1;
-            uIntPalette_[j] = (unsigned char)lineSource[lineSource.size()-i-1];
-            floatPalette_[j] = uIntPalette_[j]/255.0;
-        }
-        paletteModified_ = !autoUpdatePalette_;
-    }
-    firstQuantization_ = !isPaletteValid;
-}
-
 void QuantizationTool::loadState(const ObjectIO& reader)
 {
     reset();
@@ -223,42 +159,6 @@ void QuantizationTool::loadState(const ObjectIO& reader)
 }
 
 //----------------------------------------------------------------------------//
-
-void QuantizationTool::saveState(std::ofstream& file)
-{
-    std::string sPalette("NULL");
-    bool validPalette(uIntPalette_ != nullptr);
-    std::string targetBufferName("NULL");
-    bool validTargetLayer(targetLayer_ != nullptr);
-    if (validTargetLayer)
-        targetBufferName = targetLayer_->name();
-    auto data = new char[100+(int)3*paletteSize_+(int)targetBufferName.size()];
-    sprintf
-    (
-        data, 
-        "%d %d %s %d %.9f %.9f %d %d %d %d %d", 
-        (int)isActive_,
-        (int)validTargetLayer,
-        targetBufferName.c_str(),
-        ditheringLevel_,
-        ditheringThreshold_,
-        clusteringFidelity_,
-        (int)isAlphaCutoff_,
-        alphaCutoffThreshold_,
-        (int)autoUpdatePalette_,
-        paletteSize_,
-        (int)validPalette
-    );
-    file << data; //std::endl;
-    if (validPalette)
-    {
-        file << " ";
-        for (int i=0; i<3*paletteSize_; i++)
-            file << uIntPalette_[i];
-    }
-    file << std::endl;
-    delete[] data;
-}
 
 void QuantizationTool::saveState(ObjectIO& writer)
 {

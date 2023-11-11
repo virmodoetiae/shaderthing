@@ -25,7 +25,8 @@ namespace ShaderThing
 // Wrapper class for rapidjson-based IO. I won't lie, most of this comes from my
 // inability to figure out a way to forward-declare the very-template-heavy
 // rapidjson classes in other header files, and my unwillingness to just include
-// the rapidson headers directly in my headers
+// the rapidson headers directly in my headers. Nonetheless, I feel this is
+// ultimately a cleaner solution from a higher-level-code perspective
 class ObjectIO
 {
 public:
@@ -78,32 +79,52 @@ public:
     // Construct from input/output filepath and mode (either Read or Write)
     ObjectIO(const char* filepath, Mode mode);
     
-    // 
+    // Destroy, which writes data to the output file if in write mode and closes
+    // the i/o file depending on the mode
     ~ObjectIO();
 
-    //
+    // Get name. In write mode, or if in read mode and this object is root, this
+    // consists of the i/o file path. If in read mode and this object is not
+    // root, it consists of the JSON sub-dict key name
     const char* name() const {return name_;}
 
-    //
+    // Get all JSON member names (i.e., keys) in this object
     const std::vector<const char*>& members() const {return members_;}
 
-    //
+    // True if this object contains the provided member/key name
     bool hasMember(const char* key) const;
 
-    //
+    // If in read mode, returns a new object representing the JSON sub-dict of
+    // the provided key/member name. If in write mode, or if the provided key
+    // is not found as this object's member, it throws a runtime exception.
+    // Use with together with 'hasMember(const char* key)' to avoid such 
+    // situations
     ObjectIO readObject(const char* key) const;
 
-    //
+    // Read a value of type T under the provided key/member entry. If the 
+    // provided key/member name does not exist, it returns a default-initialized
+    // variable of type T
     template<typename T>
     T read(const char* key) const;
 
+    // Read a const char* under the provided key/member entry. If 'copy' is
+    // true, the returned const char* will be a copy of the locally cached const
+    // char* in native JSON-reader memory. If not, the content of the
+    // const char* will go out of scope after top-level (root) object
+    // destruction. The size of the read const char* data may also be retrieved
+    // via passing a 'size' pointer. This is important as the retruned
+    // const char* is not necessarily null-terminated
     const char* read(const char* key, bool copy, unsigned int* size=nullptr) const;
 
-    //
+    // Write a value of type under the provided key/member name
     template<typename T>
     void write(const char* key, const T& value);
 
-    //
+    // Write a const char* under the provided key/member name. To make the 
+    // function more efficient, the size of the const char* value to be written
+    // can be provided. If so, an optional additional key with the size of the
+    // written value may be written if writeSize is set to true. Its key name
+    // will be key+'Size'
     void write
     (
         const char* key, 
@@ -112,10 +133,13 @@ public:
         bool writeSize=false
     );
     
-    //
+    // If in write mode, signals that all further write calls will write inside
+    // an object (JSON sub-dictionary) of name 'key'
     void writeObjectStart(const char* key);
     
-    //
+    // If in write mode, signals the end of the object (JSON sub-dictionary)
+    // whose start was previous signalled with 
+    // 'writeObjectStart(const char* key)'
     void writeObjectEnd();
 };
 

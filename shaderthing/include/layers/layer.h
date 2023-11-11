@@ -390,7 +390,7 @@ public:
     //   provided target framebuffer (or main window if target == nullptr) with
     //   alpha-blending enabled.
     //
-    // The clearTarget flag controls wheter the actual rendering target (window
+    // The clearTarget flag controls whether the actual rendering target (window
     // or internal framebuffer) will be cleared of its existing color or not.
     // The default clear color (currently not modifiable) is fully-transparent
     // black (i.e., RGBA=(0,0,0,0))
@@ -413,14 +413,11 @@ public:
     // deferred updates happen here
     void update();
 
-    // Serialize buffer data
-    void saveState(std::ofstream& stream);
+    // Mark this layer's fragment shader for compilation
+    void markForCompilation(){toBeCompiled_ = true;}
 
     // Serialize buffer data
     void saveState(ObjectIO& writer);
-
-    // Mark this layer's fragment shader for compilation
-    void markForCompilation(){toBeCompiled_ = true;}
     
     // Accessors -------------------------------------------------------------//
 

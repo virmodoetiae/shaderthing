@@ -176,7 +176,6 @@ public:
     void onReceive(vir::Event::MouseButtonPressEvent& e) override;
     void onReceive(vir::Event::MouseMotionEvent& e) override;
     void onReceive(vir::Event::MouseButtonReleaseEvent& e) override;
-
 };
 
 }

@@ -41,14 +41,15 @@ protected:
 
     Layer* addLayer();
 
+    void markAllShadersForCompilation();
+
 public:
 
     LayerManager(ShaderThingApp& app);
     ~LayerManager();
     
     void removeResourceFromUniforms(Resource* resource);
-
-    void markAllShadersForCompilation();
+    
     void clearFramebuffers();
     
     void reset();
@@ -63,29 +64,32 @@ public:
         unsigned int nRenderPasses
     );
 
-    void saveState(std::ofstream& file);
-    void saveState(ObjectIO& writer);
-    void loadState(std::string& source, uint32_t& index);
-    void loadState(const ObjectIO& reader);
+    // Because of ImGui stuff I do not grasp, if the project one is loading
+    // has a certain number of layers with a certain set of names that
+    // are equal to the currently opened project layer names, the order of the 
+    // newly loaded project's layer tabs (and thus the order of their rendering)
+    // will be randomly reshuffled.
+    // To avoid such a situation, the existing layers of the to-be-abandoned
+    // project are renamed to random alphanumeric strings. This is a fairly
+    // dirty fix but it works just fine in the absence of my will to spend
+    // time trying to fix this behaviour at the ImGui level.
+    // This function should be called before the last render call to the ImGui
+    // tabbed tabled before project loading. Hence, it is a separate function 
+    // and not embedded in loadState
     void preLoadAdjustment();
 
-    std::vector<Layer*>& layersRef(){return layers_;}
+    // Save object state to a JSON writer object
+    void saveState(ObjectIO& writer);
 
+    // Load object state from a JSON reader object
+    void loadState(const ObjectIO& reader);
+
+    // Accessors
+
+    std::vector<Layer*>& layersRef(){return layers_;}
     Layer*& activeGuiLayer(){return activeGuiLayer_;}
     void setActiveGuiLayer(Layer* layer){activeGuiLayer_ = layer;}
     void setTargetResolution(const glm::ivec2& resolution);
-
-    // Serialization
-    /*
-    template<typename RapidJSONWriterType>
-    void saveState(RapidJSONWriterType& writer)
-    {
-        writer.String("layers");
-        writer.StartObject();
-        for (auto layer : layers_)
-            layer->saveState(writer);
-        writer.EndObject();
-    }*/
 
 };
 

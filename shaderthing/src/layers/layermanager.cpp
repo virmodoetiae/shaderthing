@@ -172,18 +172,6 @@ bool LayerManager::update()
 
 //----------------------------------------------------------------------------//
 
-void LayerManager::saveState(std::ofstream& file)
-{
-    auto sharedSource = Layer::sharedSource();
-    file << sharedSource.size() << std::endl;
-    file << sharedSource << std::endl;
-    file << layers_.size() << std::endl;
-    for (auto layer : layers_)
-        layer->saveState(file);
-}
-
-//----------------------------------------------------------------------------//
-
 void LayerManager::saveState(ObjectIO& writer)
 {
     writer.writeObjectStart("layers");
@@ -193,71 +181,6 @@ void LayerManager::saveState(ObjectIO& writer)
 }
 
 //----------------------------------------------------------------------------//
-
-void LayerManager::loadState(std::string& source, uint32_t& index)
-{
-    // Clear layers
-    reset();
-
-    // Read number of shared editor characters to be loaded
-    int sharedSourceSize;
-    std::string sharedSourceSizeStr = "";
-    while(true)
-    {
-        char& c = source[index];
-        if (c=='\n')
-            break;
-        sharedSourceSizeStr+=c;
-        ++index;
-    }
-    ++index;
-    sscanf(sharedSourceSizeStr.c_str(), "%d", &sharedSourceSize);
-    
-    // Read shared editor source and set it
-    int index0(index);
-    auto sharedSource = std::string(sharedSourceSize, ' ');
-    while (index < index0 + sharedSourceSize)
-    {
-        sharedSource[index-index0] = source[index];
-        ++index;
-    }
-    ++index;
-    Layer::setSharedSource(sharedSource);
-
-    // Read number of layers to be loaded
-    int nLayers;
-    std::string nLayersStr = "";
-    while(true)
-    {
-        char& c = source[index];
-        if (c=='\n')
-            break;
-        nLayersStr+=c;
-        ++index;
-    }
-    ++index;
-    sscanf(nLayersStr.c_str(), "%d", &nLayers);
-    
-    // Load layers
-    while(layers_.size() < nLayers)
-    {
-        auto layer = new Layer
-        (
-            app_,
-            source,
-            index,
-            layers_.size() == 0
-        );
-        layers_.push_back(layer);
-    }
-
-    // Re-establish dependencies between Layers (i.e., when a layer is
-    // being used as a sampler2D uniform by another layer)
-    for (auto* layer : layers_)
-    {
-        layer->rebindLayerUniforms();
-    }
-}
 
 void LayerManager::loadState(const ObjectIO& reader)
 {
@@ -291,10 +214,10 @@ void LayerManager::preLoadAdjustment()
 {
     // Because of ImGui stuff I do not grasp, if the project one is loading
     // has a certain number of layers with a certain set of names that
-    // are equal to the currently opened project, the order of the newly loaded 
-    // project's layer tabs
-    // (and thus the order of their rendering) will be randomly reshuffled.
-    // To avoid such a situation, the exiting layers of the to-be-abandoned
+    // are equal to the currently opened project layer names, the order of the 
+    // newly loaded project's layer tabs (and thus the order of their rendering)
+    // will be randomly reshuffled.
+    // To avoid such a situation, the existing layers of the to-be-abandoned
     // project are renamed to random alphanumeric strings. This is a fairly
     // dirty fix but it works just fine in the absence of my will to spend
     // time trying to fix this behaviour at the ImGui level

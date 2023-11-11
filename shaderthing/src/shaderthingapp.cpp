@@ -340,59 +340,6 @@ void ShaderThingApp::saveProject(){
     if (!stateFlags_[ST_SAVE_PROJECT]) return;
     stateFlags_[ST_SAVE_PROJECT] = false;
 
-    /*
-    // Eventually the save project will be replaced by this new JSON-based 
-    // approach entirely
-    auto replace =[]\
-    (
-        std::string& str, 
-        const std::string& from, 
-        const std::string& to
-    ) -> bool 
-    {
-        size_t start_pos = str.find(from);
-        if(start_pos == std::string::npos)
-            return false;
-        str.replace(start_pos, from.length(), to);
-        return true;
-    };
-
-    std::string oldFilepath = projectFilepath_;
-    replace(oldFilepath, ".stf", "_v0d11.stf");
-    std::ofstream file;
-    file.open(oldFilepath, std::ios_base::out | std::ios_base::binary);
-    if(!file.is_open())
-        return;
-
-    // App data
-    char data[150];
-    const glm::vec3& cp(shaderCamera_->position());
-    const glm::vec3& cz(shaderCamera_->z());
-    std::sprintf
-    (
-        data,
-        "%d %d %.9e %d %d %d %d %.9e %.9e %.9e %.9e %.9e %.9e", 
-        resolution_.x, resolution_.y,
-        time_, (int)stateFlags_[ST_IS_TIME_PAUSED], 
-        (int)stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED],
-        (int)stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED],
-        (int)stateFlags_[ST_IS_MOUSE_INPUT_ENABLED],
-        cp.x, cp.y, cp.z,
-        cz.x, cz.y, cz.z
-    );
-    file << data << std::endl;
-
-    // Component data
-    resourceManager_->saveState(file);
-    layerManager_->saveState(file);
-    exportTool_->saveState(file);
-    quantizationTool_->saveState(file);
-
-    file.close();
-    */
-
-    //------------------------------------------------------------------------//
-
     auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Write);
     
     project.writeObjectStart("shared");
@@ -442,7 +389,6 @@ void ShaderThingApp::saveProject(){
 
 void ShaderThingApp::loadProject()
 {
-    
     if (!stateFlags_[ST_LOAD_PROJECT]) return;
         stateFlags_[ST_LOAD_PROJECT] = false;
     auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Read);
@@ -486,71 +432,6 @@ void ShaderThingApp::loadProject()
         resolution.x, 
         resolution.y
     );
-    
-    /*
-    std::ifstream file(projectFilepath_, std::ios_base::in | std::ios::binary);
-    if(!file)
-        return;
-    std::string fileData;
-    file.seekg(0, std::ios::end);
-    fileData.resize(file.tellg());
-    file.seekg(0, std::ios::beg);
-    uint32_t fileDataSize(fileData.size());
-    file.read(&fileData[0], fileDataSize);
-    
-    // Load app main state
-    uint32_t index(0);
-    std::string appSource;
-    uint32_t width, height, timePaused, isCameraPositionInputEnabled, 
-        isCameraDirectionInputEnabled, isMouseInputEnabled;
-    glm::vec3 cp, cd;
-    while(true)
-    {
-        char& c = fileData[index];
-        if (c == '\n')
-            break;
-        appSource += c;
-        index++;
-    }
-    index++;
-    sscanf
-    (
-        appSource.c_str(),
-        "%d %d %f %d %d %d %d %f %f %f %f %f %f",
-        &width, &height,
-        &time_, &timePaused, 
-        &isCameraPositionInputEnabled,
-        &isCameraDirectionInputEnabled,
-        &isMouseInputEnabled,
-        &cp.x, &cp.y, &cp.z,
-        &cd.x, &cd.y, &cd.z
-    );
-    stateFlags_[ST_IS_TIME_PAUSED] = (bool)timePaused;
-    setShaderCameraPositionInputsEnabled(isCameraPositionInputEnabled);
-    setShaderCameraDirectionInputsEnabled(isCameraDirectionInputEnabled);
-    setMouseInputsEnabled(isMouseInputEnabled);
-    frame_ = 0; // Frame never saved as it might be used by shaders for init.
-    stateFlags_[ST_IS_RENDERING_PAUSED] = false;
-    shaderCamera_->setPosition(cp);
-    shaderCamera_->setDirection(cd);
-    auto window = vir::GlobalPtr<vir::Window>::instance();
-    window->setSize(width, height);
-
-    resourceManager_->loadState(fileData, index);
-    layerManager_->loadState(fileData, index);
-    quantizationTool_->loadState
-    (
-        fileData,
-        index
-    );
-    exportTool_->loadState
-    (
-        fileData,
-        index
-    );
-    file.close();
-    restartRendering(false);
-    */
 }
 
 //----------------------------------------------------------------------------//

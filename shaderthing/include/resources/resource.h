@@ -72,6 +72,7 @@ public:
     }
     void bind(int unit);
     void unbind(int unit=-1);
+    void saveState(ObjectIO& writer);
 
     // Accessors
     Type type() const {return type_;}
@@ -105,81 +106,6 @@ public:
     // Operators
     bool operator==(const Resource& rhs) {return id() == rhs.id();}
 
-    // Serialization
-    /*
-    template<typename RapidJSONWriterType>
-    void saveState(RapidJSONWriterType& writer)
-    {
-        if
-        (
-            type_ == Resource::Type::Uninitialized ||
-            type_ == Resource::Type::FramebufferColorAttachment
-        )
-            return;
-
-        writer.String(namePtr_->c_str());
-        writer.StartObject();
-        switch (type_)
-        {
-            case Resource::Type::Texture2D :
-            {
-                writer.String("type");
-                writer.String(Resource::typeToName[type_].c_str());
-
-                writer.String("originalFileExtension");
-                writer.String(originalFileExtension_.c_str());
-
-                writer.String("wrapModes");
-                writer.StartArray();
-                for (int i=0; i<2; i++)
-                    writer.Int((int)wrapMode(i));
-                writer.EndArray();
-
-                writer.String("maginificationFilterMode");
-                writer.Int((int)magFilterMode());
-
-                writer.String("minimizationFilterMode");
-                writer.Int((int)minFilterMode());
-
-                writer.String("dataSize");
-                writer.Int(rawDataSize_);
-
-                writer.String("data");
-                writer.String
-                (
-                    (const char*)rawData_, rawDataSize_, false
-                );
-
-                break;
-            }
-            case Resource::Type::Cubemap :
-            {
-                writer.String("type");
-                writer.String(Resource::typeToName[type_].c_str());
-
-                writer.String("maginificationFilterMode");
-                writer.Int((int)magFilterMode());
-
-                writer.String("minimizationFilterMode");
-                writer.Int((int)minFilterMode());
-
-                writer.String("faces");
-                writer.StartArray();
-                for (int i=0; i<6; i++)
-                    writer.String
-                    (
-                        referencedResources_[i]->name().c_str()
-                    );
-                writer.EndArray();
-
-                break;
-            }
-        }
-        writer.EndObject();
-    }
-    */
-
-   void saveState(ObjectIO& writer);
 };
 
 }

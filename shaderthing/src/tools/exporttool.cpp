@@ -368,11 +368,6 @@ void ExportTool::reset()
 
 //----------------------------------------------------------------------------//
 
-void ExportTool::loadState(std::string& source, uint32_t& index)
-{
-    reset();
-}
-
 void ExportTool::loadState(const ObjectIO& reader)
 {
     reset();
@@ -428,10 +423,6 @@ void ExportTool::loadState(const ObjectIO& reader)
 }
 
 //----------------------------------------------------------------------------//
-
-void ExportTool::saveState(std::ofstream& file)
-{
-}
 
 void ExportTool::saveState(ObjectIO& writer)
 {

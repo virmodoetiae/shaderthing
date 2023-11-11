@@ -43,8 +43,6 @@ private:
     bool isGuiOpen_;
     bool isGuiInMenu_;
     
-    void loadTexture2DResource(std::string& source, uint32_t& index);
-    void loadCubemapResource(std::string& source, uint32_t& index);
     bool addOrReplaceTextureGuiButton
     (
         int rowIndex=-1,
@@ -74,27 +72,13 @@ public:
     
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
     void renderGui();
-    void loadState(std::string& source, uint32_t& index);
     void loadState(ObjectIO& reader);
-    void saveState(std::ofstream& file);
     void saveState(ObjectIO& writer);
 
     // Accessors
     bool* isGuiOpenPtr(){return &isGuiOpen_;}
     bool isGuiInMenu(){return isGuiInMenu_;}
     std::vector<Resource*>& resourcesRef(){return resources_;}
-
-    // Serialization
-    /*
-    template<typename RapidJSONWriterType>
-    void saveState(RapidJSONWriterType& writer)
-    {
-        writer.String("resources");
-        writer.StartObject();
-        for (auto r : resources_)
-            r->saveState(writer);
-        writer.EndObject();
-    }*/
 };
 
 }
