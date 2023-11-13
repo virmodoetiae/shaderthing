@@ -261,37 +261,6 @@ the internal format is undefined)"
         OpenGLType(internalFormat),
         data
     );
-
-    /*
-    GLint format = 
-        (nChannels_ == 1) ? GL_RED : 
-        (
-            (nChannels_ == 2) ? GL_RG : 
-            (
-                (nChannels_ == 3) ? GL_RGB : GL_RGBA
-            )
-        );
-    if (format != GL_RGBA)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    else
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
-
-    GLint internalFormat = format;
-    if (data == NULL && nChannels_ == 4)
-        internalFormat = GL_RGBA32F;
-
-    glTexImage2D
-    (
-        GL_TEXTURE_2D, 
-        0, 
-        internalFormat, 
-        width_, 
-        height_, 
-        0, 
-        format, 
-        internalFormat == GL_RGBA32F ? GL_FLOAT : GL_UNSIGNED_BYTE, 
-        data
-    );*/
     
     // Swizzling setting
     if (nChannels_ == 1) 
@@ -425,6 +394,7 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
         )
         {
             std::cout << "Failed to load cube map" << std::endl;
+            stbi_image_free(data);
             throw std::exception();
         }
         glTexImage2D

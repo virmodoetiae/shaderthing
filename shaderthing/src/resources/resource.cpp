@@ -326,10 +326,14 @@ bool Resource::set(Resource* faces[6])
                 vir::TextureBuffer::InternalFormat::RGBA_UNI_8
             )
         );
+        for (int i=0; i<6; i++) // Free buffer memory used for loading
+            stbi_image_free((void*)faceData[i]);
     }
     catch(const std::exception& e)
     {
         std::cerr << e.what() << '\n';
+        for (int i=0; i<6; i++)
+            stbi_image_free((void*)faceData[i]);
         return false;
     }
 
