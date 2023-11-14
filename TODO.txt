@@ -53,7 +53,7 @@ TODO ---------------------------------------------------------------------------
 
 (X) Add a "Commons" shader header which is automatically embedded in every
     fragment shader to enable the user to avoid core repetition (e.g., like
-    in ShaderToy), inclusive of de/serialization mechanism (saves before this
+    in Shader Toy), inclusive of de/serialization mechanism (saves before this
     feature will not longer be compatible)
 
 (X) Enalbe unlocking layer resolution aspect ratio from window aspect
@@ -99,10 +99,15 @@ TODO ---------------------------------------------------------------------------
 
 (X) Add noise-related and advanced ray marching code snippets to Code repository
 
+(X) Re-work the project save/load system to leverage a more structured and 
+    update-resilient storage format, e.g., JSON-like files (the file format
+    is still .stf for clarity, but the internal .stf file format is now pure
+    JSON)
+
 (W) Expand code repository section
 
-(W) Re-work the project save/load system to leverage a more structured and 
-    update-resilient storage format, e.g., JSON-like files
+( ) Add possibility to loop iTime variable with related controls in the Uniforms
+    tab
 
 ( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
     currently existing and unreboundable WASD-based iCameraPosition/iWASD. 
@@ -138,7 +143,14 @@ TO-CONSIDER --------------------------------------------------------------------
 *   Enable option to use the quantizer palette for GIF quantization on GIF 
     exporting
 
+*   Add possibility to have GIFs as resources with custom frame loop timing 
+    controls (all within the resource manager)
+
+*   Add possibility of rendering to cubemaps (e.g., adding a type selector for
+    any layer's internal framebuffer 'type': either a Texture2D framebuffer or
+    a Cubemap framebuffer). This is probably a lot of work for a feature I don't
+    see very often in the shader ppl community, but it would be cool (and close
+    some of the gaps I have when compared to Shader Toy)
+
 *   Record video tutorial(s) of application usage, host them on YouTube, 
     possibly find a way to add tutorial links within the application.
-
-*   

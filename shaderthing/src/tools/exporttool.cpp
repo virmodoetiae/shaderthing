@@ -381,17 +381,18 @@ void ExportTool::loadState(const ObjectIO& reader)
         exportFps_ = exporterData.read<float>("framesPerSecond");
         if (exportType_ == ExportType::GIF)
         {
-            gifPaletteBitDepth_ = exporterData.read<float>("paletteBitDepth");
-            updatePaletteEveryFrame_ = exporterData.read<float>(
+            auto gifData = exporterData.readObject("gif");
+            gifPaletteBitDepth_ = gifData.read<int>("paletteBitDepth");
+            updatePaletteEveryFrame_ = gifData.read<bool>(
                 "dynamicPalette");
-            gifDitheringLevel_ = exporterData.read<float>("ditheringLevel");
-            gifAlphaCutoff_ = exporterData.read<float>(
+            gifDitheringLevel_ = gifData.read<int>("ditheringLevel");
+            gifAlphaCutoff_ = gifData.read<int>(
                 "transparencyCutoffThreshold");
         }
-        multipleRendersOnlyOnFirstFrame_ = exporterData.read<float>(
+        multipleRendersOnlyOnFirstFrame_ = exporterData.read<bool>(
             "multipleRenderPassesOnlyOnFirstFrame");
     }
-    nRendersPerFrame_ = exporterData.read<float>("nRenderPassesPerFrame");
+    nRendersPerFrame_ = exporterData.read<int>("nRenderPassesPerFrame");
     if (exporterData.hasMember("fileNameNoExtension"))
         exportFilepathNoExtension_ = exporterData.read("fileNameNoExtension", 
             false);
