@@ -13,6 +13,8 @@
 
 */
 
+#include <iomanip> // For std::setprecision
+
 #include "shaderthingapp.h"
 #include "objectio/objectio.h"
 #include "layers/layer.h"
@@ -443,9 +445,7 @@ void ShaderThingApp::update()
     loadProject();
 
     auto someLayersToBeCompiled = layerManager_->update();
-
     exportTool_->update();
-    quantizationTool_->update();
 
     // Update the rest
     auto window = vir::GlobalPtr<vir::Window>::instance();

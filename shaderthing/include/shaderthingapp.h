@@ -16,8 +16,6 @@
 #ifndef ST_SHADERTHING_APP_H
 #define ST_SHADERTHING_APP_H
 
-#include <iomanip>
-
 #include "vir/include/vir.h"
 
 namespace ShaderThing
@@ -41,15 +39,14 @@ class Layer;
 class LayerManager;
 class Resource;
 class ResourceManager;
-class ExportTool;
 class QuantizationTool;
+class ExportTool;
 class FindReplaceTextTool;
 class CodeRepository;
 class About;
 
 class ShaderThingApp : public vir::Event::Receiver
 {
-
 private:
 
     // Generic state flags (see ST_ defines)
@@ -60,7 +57,7 @@ private:
     int frame_ = 0;
     int renderPass_ = 0;
     glm::ivec2 resolution_ = {512, 512};
-    glm::vec2 viewport_; // i.e., normalized resolution in a 0-1 range
+    glm::vec2 viewport_; // normalized resolution in a 0-1 range
     vir::Camera* screenCamera_ = nullptr;
 
     // UI state
@@ -69,8 +66,8 @@ private:
     // Inputs/default uniforms
     vir::Camera* shaderCamera_ = nullptr;
     glm::ivec4 mouse_ = {0,0,0,0};
-    // True whenever the user manually changes the status of a uniform
-    bool userAction_ = false;
+    bool userAction_ = false;   // True whenever the user manually changes the
+                                // status of a uniform
 
     // Filepath of the currently loaded project/shaderthing instance
     std::string projectFilepath_ = "";

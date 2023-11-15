@@ -67,7 +67,7 @@ void QuantizationTool::renderGui()
         )
     )
     {
-        for(auto layer : layers_)
+        for(auto layer : app_.layersRef())
         {
             if (layer->rendersTo() == Layer::RendersTo::Window)
                 continue;

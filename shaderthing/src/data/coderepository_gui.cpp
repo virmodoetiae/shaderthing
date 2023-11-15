@@ -217,11 +217,11 @@ R"(float noise3D(vec3 x)
 })")
 
             CODE_ENTRY(
-"Three-point noise",
+"Six-point noise",
 "A more efficient implementation of Perlin-like noise (though it is not "
-"properly Perlin) which only requires sampling 3 random numbers instead of "
-"4, as seen in the Perlin noise function. Can result in performance gains in "
-"the range of 5-10%% at the expense of some noise bias. A 'random3D' function "
+"properly Perlin) which only requires sampling 6 random numbers instead of "
+"8, as seen in the Perlin noise function. Can result in performance gains in "
+"the range of 10-20%% at the expense of some noise bias. A 'random3D' function "
 "should be defined as well, e.g., the one provided in Code repository -> "
 "Noise -> 3D -> Pseudo-random number generator",
 R"(float noise3D(vec3 x)

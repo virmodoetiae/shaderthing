@@ -51,7 +51,6 @@ quantizer_(nullptr),
 uIntPalette_(nullptr),
 floatPalette_(nullptr),
 paletteModified_(false),
-layers_(app.layersRef()),
 targetLayer_(nullptr)
 {}
 
@@ -240,12 +239,6 @@ void QuantizationTool::quantize(Layer* layer)
         firstQuantization_ = false;
     if (paletteModified_)
         paletteModified_ = false;
-}
-
-//----------------------------------------------------------------------------//
-
-void QuantizationTool::update()
-{
 }
 
 }
