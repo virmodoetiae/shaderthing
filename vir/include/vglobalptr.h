@@ -13,12 +13,7 @@ class GlobalPtr
 protected:
     
     // Protected default constructor
-    GlobalPtr()
-    {
-        #if DEBUG
-        std::cout<< "GlobalPtr constructor" << std::endl; 
-        #endif
-    }
+    GlobalPtr(){}
     
     // Destructor needs to detroy the managed instance as well
     ~GlobalPtr()
@@ -31,9 +26,6 @@ protected:
             GlobalPtr<T>::instance(nullptr, true);  // Free pointer to managed
                                                     //resource
         }
-        #if DEBUG 
-        std::cout<< "GlobalPtr destroyed" << std::endl; 
-        #endif
     }
 
     GlobalPtr(const GlobalPtr&) = delete;

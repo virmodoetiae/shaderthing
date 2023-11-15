@@ -13,9 +13,6 @@ Broadcaster::Broadcaster() :
 
 Broadcaster::~Broadcaster()
 {
-    #if DEBUG
-    std::cout << "Broadcaster destroyed" << std::endl;
-    #endif
 }
 
 bool Broadcaster::addReceiver(Receiver& receiver)
@@ -68,10 +65,6 @@ bool Broadcaster::delReceiver(Receiver& receiver)
     }
     if (removed)
     {
-        #if DEBUG
-        std::cout << "Receiver " << receiver.receiverId() << " tuned out" 
-        << std::endl;
-        #endif
         auto it = findReceiverIn(receiver, uniqueReceivers_);
         if (it != uniqueReceivers_.end())
             uniqueReceivers_.erase(it);

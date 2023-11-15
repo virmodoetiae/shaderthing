@@ -39,7 +39,6 @@
 #include "veventsystem/vreceiver.h"
 
 #include "vglobalptr.h"
-#include "vlocalptr.h"
 #include "vtime/vtime.h"
 #include "veventsystem/vbroadcaster.h"
 #include "vwindow/vwindow.h"

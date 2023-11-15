@@ -9,9 +9,6 @@ namespace Event
 Receiver::~Receiver()
 {
     tuneOut();
-    #if DEBUG
-    std::cout << "Receiver " << receiverId_ << " destroyed" << std::endl;
-    #endif
 }
 
 bool Receiver::tuneIn()

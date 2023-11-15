@@ -40,19 +40,9 @@ public :
         return GlobalPtr<Time>::instance(new DerivedTime());
     }
 
-    Time()
-    {
-        #if DEBUG
-        std::cout << "Time constructed" << std::endl;
-        #endif
-    }
+    Time(){}
 
-    virtual ~Time()
-    {
-        #if DEBUG
-        std::cout << "Time destroyed" << std::endl;
-        #endif
-    }
+    virtual ~Time(){}
 
     void setConstantInnerTimeStep(float);
     void setAdaptiveInnerTimeStep(float);

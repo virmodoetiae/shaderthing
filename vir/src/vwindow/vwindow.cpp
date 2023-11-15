@@ -14,18 +14,12 @@ resizable_(r)
 {
     // Set a very high priority for the window
     this->receiverPriority() = 1389;
-    #if DEBUG
-    std::cout << "Window constructor" << std::endl;
-    #endif
 }
 
 Window::~Window()
 {
     delete context_;
     context_ = nullptr;
-    #if DEBUG
-    std::cout << "Window destroyed" << std::endl;
-    #endif
 }
 
 }

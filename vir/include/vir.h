@@ -30,7 +30,6 @@
 #include "vconstants.h"
 #include "vglfwwrapper.h"
 #include "vglobalptr.h"
-#include "vlocalptr.h"
 #include "vhelpers.h"
 #include "vinitialization.h"
 #include "vimgui/vimguirenderer.h"
