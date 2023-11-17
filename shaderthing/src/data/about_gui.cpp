@@ -184,21 +184,23 @@ if (ImGui::IsItemHovered() && ImGui::BeginTooltip()){                       \
     ImGui::EndTooltip();}
 
     ACKNOWLEDGE(
-"OpenGL (core profile with support up to v4.60)  ", "[D]", "Dynamically linked")
+"OpenGL (v3.3.0 through v4.6.0 supported)         ", "[D]", "Dynamically linked")
     ACKNOWLEDGE(
-"GLAD - OpenGL loader, v0.1.34                   ", "[S]", "Statically linked")
+"GLAD - OpenGL loader, v0.1.34                    ", "[S]", "Statically linked")
     ACKNOWLEDGE(
-"GLFW - Window & input management, v3.3.8        ", "[S]", "Statically linked")
+"GLFW - Window & input management, v3.3.8         ", "[S]", "Statically linked")
     ACKNOWLEDGE(
-"GLM - OpenGL mathematics, v0.9.9.9              ", "[H]", "Header-only")
+"GLM - OpenGL mathematics, v0.9.9.9               ", "[H]", "Header-only")
     ACKNOWLEDGE(
-"STB - Image read/write operations, v2.28        ", "[H]", "Header-only")
+"STB - Image read/write operations, v2.28         ", "[H]", "Header-only")
     ACKNOWLEDGE(
-"ImGui - Immediate mode GUI, v1.89.8-docking     ", "[S]", "Statically linked")
+"ImGui - Immediate mode GUI, v1.89.8-docking      ", "[S]", "Statically linked")
     ACKNOWLEDGE(
-"ImGuiFileDialog - ImGui-based file dialog       ", "[S]", "Statically linked")
+"ImGuiFileDialog - ImGui-based file dialog        ", "[S]", "Statically linked")
     ACKNOWLEDGE(
-"ColorTextEditor - ImGui-based text editor (mod.)", "[S]", "Statically linked")
+"ColorTextEditor - ImGui-based text editor (mod.) ", "[S]", "Statically linked")
+    ACKNOWLEDGE(
+"RapidJSON - JSON file read/write ops., v1.1.0    ", "[H]", "Header-only")
     ImGui::Text("");
 
     ImGui::PopTextWrapPos();

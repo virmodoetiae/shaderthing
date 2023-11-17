@@ -34,6 +34,8 @@ namespace ShaderThing
 #define ST_NEW_PROJECT_CONFIRMATION_PENDING 10
 #define ST_IS_RENDERING_PAUSED 11
 #define ST_IS_TIME_RESET_ON_RENDER_RESTART 12
+#define ST_IS_TIME_LOOPED 13
+#define ST_N_STATE_FLAGS 14
 
 class Layer;
 class LayerManager;
@@ -50,7 +52,7 @@ class ShaderThingApp : public vir::Event::Receiver
 private:
 
     // Generic state flags (see ST_ defines)
-    bool stateFlags_[13];
+    bool stateFlags_[ST_N_STATE_FLAGS];
 
     // Window state
     float time_ = 0.0;
@@ -122,6 +124,7 @@ public:
     {
         return stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART];
     }
+    bool& isTimeLoopedRef() {return stateFlags_[ST_IS_TIME_LOOPED];}
     int& frameRef(){return frame_;}
     int& renderPassRef(){return renderPass_;}
     glm::ivec2& resolutionRef(){return resolution_;}

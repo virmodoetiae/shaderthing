@@ -104,6 +104,9 @@ TODO ---------------------------------------------------------------------------
     is still .stf for clarity, but the internal .stf file format is now pure
     JSON)
 
+(X) Add possibility to loop iTime variable with related controls in the Uniforms
+    tab
+
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains to vir/ and shaderthing/). 
@@ -112,9 +115,6 @@ TODO ---------------------------------------------------------------------------
     being test
 
 (W) Expand code repository section
-
-( ) Add possibility to loop iTime variable with related controls in the Uniforms
-    tab
 
 ( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
     currently existing and unreboundable WASD-based iCameraPosition/iWASD. 

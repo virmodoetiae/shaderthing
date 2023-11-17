@@ -300,7 +300,7 @@ void ShaderThingApp::restart()
     cameraPosition = glm::vec3(0,0,-1);
     shaderCamera_->setPosition(cameraPosition);
     shaderCamera_->setZPlusIsLookDirection(true);
-    for (int i=0; i<13; i++)
+    for (int i=0; i<ST_N_STATE_FLAGS; i++)
         stateFlags_[i] = (i>6 && i<10);
     stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = true;
     // Restart app components
@@ -348,6 +348,7 @@ void ShaderThingApp::saveProject(){
     project.write("windowResolution", resolution_);
     project.write("time", time_);
     project.write("timePaused", stateFlags_[ST_IS_TIME_PAUSED]);
+    project.write("timeLooped", stateFlags_[ST_IS_TIME_LOOPED]);
     project.write("iWASD", shaderCamera_->position());
     project.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
     project.write
@@ -420,6 +421,8 @@ void ShaderThingApp::loadProject()
     auto pos = shared.read<glm::vec3>("iWASD");
     shaderCamera_->setPosition(pos);
     stateFlags_[ST_IS_TIME_PAUSED] = shared.read<bool>("timePaused");
+    if (shared.hasMember("timeLooped"))
+        stateFlags_[ST_IS_TIME_LOOPED] = shared.read<bool>("timeLooped");
     time_ = shared.read<float>("time");
     
     resourceManager_->loadState(project);
@@ -473,11 +476,20 @@ void ShaderThingApp::update()
         // time uniform as well for good measure
         static bool& isRenderingPaused(stateFlags_[ST_IS_RENDERING_PAUSED]);
         static bool& isTimePaused(stateFlags_[ST_IS_TIME_PAUSED]);
+        static bool& isTimeLooped(stateFlags_[ST_IS_TIME_LOOPED]);
+        const glm::vec2& timeBounds(*(layersRef().front()->timeUniformLimits()));
         if (!isRenderingPaused)
         {
             frame_++;
             if (!isTimePaused)
                 time_ += window->time()->outerTimestep();
+            if (isTimeLooped && time_ >= timeBounds.y)
+            {
+                auto w = timeBounds.y-timeBounds.x;
+                auto f = (time_-timeBounds.y)/std::max(w, 1e-6f);
+                f = f-(int)f;
+                time_ = timeBounds.x + w*f;
+            }
         }
         else if (!isTimePaused)
             isTimePaused = true;

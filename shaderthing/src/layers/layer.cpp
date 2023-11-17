@@ -1232,6 +1232,7 @@ void Layer::initializeDefaultUniforms()
     timeUniform->setValuePtr(&app_.timeRef());
     defaultUniforms_.emplace_back(timeUniform);
     uniformLimits_.insert({timeUniform, glm::vec2(0.0f, 1.0f)});
+    timeUniformLimits_ = &(uniformLimits_.at(timeUniform));
 
     // iMouse
     auto mouseUniform = new vir::Shader::Uniform();

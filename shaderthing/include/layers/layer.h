@@ -222,7 +222,9 @@ private :
     // List of user-editable uniforms associated with the shader (exlcusive of
     // defaultUniforms_!)
     std::vector<vir::Shader::Uniform*> uniforms_;
-    // List of uniforms provided by default (e.g., camera, time, etc.)
+    // List of uniforms provided by default (e.g., camera, time, etc.). Some of
+    // these should logically belong to the top-level application as some are
+    // shared by all layers, I'll probably fix it, eventually
     std::vector<vir::Shader::Uniform*> defaultUniforms_;
     // For each uniform, this map contains the minimum and maximum allowable
     // values stored in a vec2-style variable
@@ -240,6 +242,11 @@ private :
     // loaded (done in rebindLayerUniforms())
     std::unordered_map<vir::Shader::Uniform*, std::string>
         uniformLayerNamesToBeSet_;
+    // A ptr to the limits of the iTime uniform within defaultUniforms_. A quick
+    // fix for accessing time bounds for time looping from the top-level app.
+    // I would have no need for this if it was the top-level app the one to own
+    // shared uniforms, but whatever
+    glm::vec2* timeUniformLimits_;
 
     // Ref to global camera for looking at the quad
     vir::Camera& screenCamera_;
@@ -480,6 +487,9 @@ public:
     
     //
     vir::Framebuffer*& writeOnlyFramebuffer() {return writeOnlyFramebuffer_;}
+
+    //
+    const glm::vec2* const timeUniformLimits() const {return timeUniformLimits_;}
 
     // Setters ---------------------------------------------------------------//
 

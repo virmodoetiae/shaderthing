@@ -684,6 +684,22 @@ void Layer::renderGuiUniforms()
             else if (uniform->name == "iTime")
             {
                 isShared = true;
+                bool& isTimeLooped(app_.isTimeLoopedRef());
+                if 
+                (
+                    ImGui::Button
+                    (
+                        isTimeLooped ? ICON_FA_MINUS : ICON_FA_CIRCLE_NOTCH, 
+                        ImVec2(2.2*fontSize, 0)
+                    )
+                )
+                    isTimeLooped = !isTimeLooped;
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text(isTimeLooped ? "Disable loop" : "Enable loop");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
                 std::string text = 
                     (app_.isTimePausedCRef()) ? ICON_FA_PLAY : ICON_FA_PAUSE;
                 if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
