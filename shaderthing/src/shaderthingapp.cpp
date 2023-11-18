@@ -260,10 +260,8 @@ void ShaderThingApp::onReceive(vir::Event::MouseMotionEvent& event)
 {
     if 
     (
-        vir::GlobalPtr<vir::InputState>::instance()->pressedMouseButtons()
-        [
-            VIR_MOUSE_BUTTON_1
-        ]
+        vir::GlobalPtr<vir::InputState>::instance()->
+        isMouseButtonPressedOrHeld(VIR_MOUSE_BUTTON_1)
     )
     {
         mouse_.x = event.x();
@@ -524,8 +522,6 @@ void ShaderThingApp::update()
             elapsedTime = 0;
         }
     }
-
-    //
     window->update(!stateFlags_[ST_IS_RENDERING_PAUSED]);
 }
 

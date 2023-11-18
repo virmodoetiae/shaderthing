@@ -16,11 +16,20 @@ struct MousePosition
 
 class InputState : public Event::Receiver
 {
+public :
+
+    enum class State : unsigned char
+    {
+        None = 0,
+        Pressed = 1,
+        Held = 2
+    };
+
 protected:
     
-    bool keyPressed_[VIR_N_KEYS];
-    bool modKeyPressed_[VIR_N_MOD_KEYS];
-    bool mouseButtonPressed_[VIR_N_MOUSE_BUTTONS];
+    State keyState_[VIR_N_KEYS];
+    State modKeyState_[VIR_N_MOD_KEYS];
+    State mouseButtonState_[VIR_N_MOUSE_BUTTONS];
     MousePosition mousePosition_;
     InputState() = default;
 
@@ -49,20 +58,60 @@ public:
 
     bool isKeyPressed(int keyCode) const
     {
-        return keyPressed_[keyCode];
+        return keyState_[keyCode] == State::Pressed;
     };
     bool isModKeyPressed(int modKeyCode) const
     {
-        return modKeyPressed_[modKeyCode];
+        return modKeyState_[modKeyCode] == State::Pressed;
     };
     bool isMouseButtonPressed(int mouseButton)
     {
-        return mouseButtonPressed_[mouseButton];
+        return mouseButtonState_[mouseButton] == State::Pressed;
     }
     
-    const bool* pressedKeys() const {return keyPressed_;}
-    const bool* pressedModKeys() const {return modKeyPressed_;}
-    const bool* pressedMouseButtons() const {return mouseButtonPressed_;}
+    bool isKeyHeld(int keyCode) const
+    {
+        return keyState_[keyCode] == State::Held;
+    };
+    bool isModKeyHeld(int modKeyCode) const
+    {
+        return modKeyState_[modKeyCode] == State::Held;
+    };
+    bool isMouseButtonHeld(int mouseButton)
+    {
+        return mouseButtonState_[mouseButton] == State::Held;
+    }
+    
+    bool isKeyPressedOrHeld(int keyCode) const
+    {
+        return keyState_[keyCode] != State::None;
+    };
+    bool isModKeyPressedOrHeld(int modKeyCode) const
+    {
+        return modKeyState_[modKeyCode] != State::None;
+    };
+    bool isMouseButtonPressedOrHeld(int mouseButton)
+    {
+        return mouseButtonState_[mouseButton] != State::None;
+    }
+
+    const State& keyState(int keyCode) const
+    {
+        return keyState_[keyCode];
+    }
+    const State& modKeyState(int modKeyCode) const
+    {
+        return modKeyState_[modKeyCode];
+    }
+    const State& mouseButtonState(int mouseButton) const
+    {
+        return mouseButtonState_[mouseButton];
+    }
+    
+    //const State* const keyState() const {return keyState_;}
+    //const State* const modKeyState() const {return modKeyState_;}
+    //const State* const mouseButtonState() const {return mouseButtonState_;}
+   
     MousePosition& mousePosition(){return mousePosition_;}
 };
 
