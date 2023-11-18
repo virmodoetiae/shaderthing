@@ -28,7 +28,7 @@ public :
 protected:
     
     State keyState_[VIR_N_KEYS];
-    State modKeyState_[VIR_N_MOD_KEYS];
+    bool keyToggle_[VIR_N_KEYS];
     State mouseButtonState_[VIR_N_MOUSE_BUTTONS];
     MousePosition mousePosition_;
     InputState() = default;
@@ -56,13 +56,11 @@ public:
     void onReceive(Event::MouseButtonReleaseEvent&) override;
     void onReceive(Event::MouseMotionEvent&) override;
 
+    void reset();
+
     bool isKeyPressed(int keyCode) const
     {
         return keyState_[keyCode] == State::Pressed;
-    };
-    bool isModKeyPressed(int modKeyCode) const
-    {
-        return modKeyState_[modKeyCode] == State::Pressed;
     };
     bool isMouseButtonPressed(int mouseButton)
     {
@@ -73,10 +71,6 @@ public:
     {
         return keyState_[keyCode] == State::Held;
     };
-    bool isModKeyHeld(int modKeyCode) const
-    {
-        return modKeyState_[modKeyCode] == State::Held;
-    };
     bool isMouseButtonHeld(int mouseButton)
     {
         return mouseButtonState_[mouseButton] == State::Held;
@@ -86,27 +80,22 @@ public:
     {
         return keyState_[keyCode] != State::None;
     };
-    bool isModKeyPressedOrHeld(int modKeyCode) const
-    {
-        return modKeyState_[modKeyCode] != State::None;
-    };
     bool isMouseButtonPressedOrHeld(int mouseButton)
     {
         return mouseButtonState_[mouseButton] != State::None;
     }
 
-    const State& keyState(int keyCode) const
+    const State& keyState(int keyCode)
     {
         return keyState_[keyCode];
     }
-    const State& modKeyState(int modKeyCode) const
-    {
-        return modKeyState_[modKeyCode];
-    }
-    const State& mouseButtonState(int mouseButton) const
+    const State& mouseButtonState(int mouseButton)
     {
         return mouseButtonState_[mouseButton];
     }
+
+    bool isKeyToggled(int keyCode) const {return keyToggle_[keyCode];}
+    const bool& keyToggle(int keyCode) {return keyToggle_[keyCode];}
     
     //const State* const keyState() const {return keyState_;}
     //const State* const modKeyState() const {return modKeyState_;}
