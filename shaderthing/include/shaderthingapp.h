@@ -37,6 +37,7 @@ namespace ShaderThing
 #define ST_IS_TIME_LOOPED 13
 #define ST_N_STATE_FLAGS 14
 
+class Uniform;
 class Layer;
 class LayerManager;
 class Resource;
@@ -56,6 +57,7 @@ private:
 
     // Window state
     float time_ = 0.0;
+    glm::vec2* timeLoopBounds_ = nullptr;
     int frame_ = 0;
     int renderPass_ = 0;
     glm::ivec2 resolution_ = {512, 512};
@@ -75,6 +77,9 @@ private:
     std::string projectFilepath_ = "";
     std::string projectFilename_ = "";
 
+    // Shared uniforms
+    std::vector<Uniform*> sharedUniforms_;
+
     // Components
     LayerManager* layerManager_ = nullptr;
     ResourceManager* resourceManager_ = nullptr;
@@ -88,7 +93,8 @@ private:
     void saveProject();
     void loadProject();
 
-    void restart();
+    void reset();
+    void resetSharedUniforms();
     void update();
     void updateGui();
     void renderGuiNewProject();
@@ -145,7 +151,7 @@ public:
     {
         return stateFlags_[ST_IS_MOUSE_INPUT_ENABLED];
     }
-    
+    std::vector<Uniform*> sharedUniformsRef(){return sharedUniforms_;}
     LayerManager& layerManagerRef(){return *layerManager_;}
     ResourceManager& resourceManagerRef(){return *resourceManager_;}
     QuantizationTool& quantizationToolRef() {return *quantizationTool_;}

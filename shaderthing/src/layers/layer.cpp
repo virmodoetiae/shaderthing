@@ -250,14 +250,13 @@ isAspectRatioBoundToWindow_(true),
 depth_(depth),
 resolution_(resolution),
 targetResolution_(resolution),
+aspectRatio_(float(resolution.x)/float(resolution.y)),
 resolutionScale_({1,1}),
 viewport_
 (
     {
-        (resolution.x > resolution.y) ? 1.0 : 
-            float(resolution.x)/float(resolution.y),
-        (resolution.y > resolution.x) ? 1.0 : 
-            float(resolution.y)/float(resolution.x)
+        (resolution.x > resolution.y) ? 1.0 : aspectRatio_,
+        (resolution.y > resolution.x) ? 1.0 : 1.0/aspectRatio_
     }
 ),
 fragmentSourceHeader_(""),
@@ -376,8 +375,8 @@ void Layer::render(vir::Framebuffer* target, bool clearTarget)
     writeOnlyFramebuffer_ = flipFramebuffers_?framebufferA_:framebufferB_;
     readOnlyFramebuffer_ = flipFramebuffers_?framebufferB_:framebufferA_;
 
-    // Set global uniforms
-    setDefaultAndSamplerUniforms();
+    // Set all uniforms that are not set in the GUI step
+    setSharedDefaultSamplerUniforms();
 
     // Re-direct rendering & disable blending if not rendering to the window
     bool blendingEnabled = true;
@@ -457,12 +456,16 @@ void Layer::update()
     if (resolution_ == targetResolution_)
         return;
     resolution_ = targetResolution_;
+    aspectRatio_ = float(resolution_.x)/float(resolution_.y);
     app_.exportToolRef().updateLayerResolutions();
 
-    float aspectRatio = 
+    // Regardless of this layer's resolution, graphically, the layer quad needs
+    // to fit the main window size, hence why the window aspect ratio is used
+    // for setting the quad size
+    float windowAspectRatio = 
         vir::GlobalPtr<vir::Window>::instance()->aspectRatio();
-    viewport_.x = std::min(1.0f, aspectRatio);
-    viewport_.y = std::min(1.0f, 1.0f/aspectRatio);
+    viewport_.x = std::min(1.0f, windowAspectRatio);
+    viewport_.y = std::min(1.0f, 1.0f/windowAspectRatio);
     screenQuad_->update(viewport_.x, viewport_.y, depth_);
 
     // Resize framebuffers by rebuilding them with the new resolution and with
@@ -489,8 +492,8 @@ void Layer::removeResourceFromUniforms(Resource* resource)
         index++;
         if 
         (
-            u->type != vir::Shader::Variable::Type::Sampler2D && 
-            u->type != vir::Shader::Variable::Type::SamplerCube
+            u->type != Uniform::Type::Sampler2D && 
+            u->type != Uniform::Type::SamplerCube
         )
             continue;
         auto r = u->getValuePtr<Resource>();
@@ -499,7 +502,6 @@ void Layer::removeResourceFromUniforms(Resource* resource)
         if (r->name() != resource->name())
             continue;
         uniforms_.erase(uniforms_.begin()+index);
-        uniformLimits_.erase(u);
         index--;
     }
 }
@@ -533,312 +535,6 @@ void Layer::setTargetResolution(glm::ivec2 resolution, bool rescale)
     targetResolution_.y = std::max(targetResolution_.y, 1);
 }
 
-//----------------------------------------------------------------------------//
-
-// Constructor from source file / deserialization
-Layer::Layer
-(
-    ShaderThingApp& app,
-    std::string& source,
-    uint32_t& index,
-    bool isGuiRendered
-) :
-app_(app),
-shader_(nullptr),
-rendersTo_(RendersTo::Window),
-toBeDeleted_(false),
-toBeRenamed_(false),
-isGuiRendered_(isGuiRendered),
-isGuiDeletionConfirmationPending_(false),
-toBeCompiled_(false),
-fragmentSourceHeader_(""),
-hasUncompiledChanges_(false),
-hasHeaderErrors_(false),
-isAspectRatioBoundToWindow_(true),
-screenCamera_(app.screnCameraRef()),
-shaderCamera_(app.shaderCameraRef()),
-renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),
-shaderId0_(-1),
-uncompiledUniforms_(0),
-uniformLayerNamesToBeSet_(0),
-internalFramebufferClearPolicyOnExport_
-(
-    InternalFramebufferClearPolicyOnExport::None
-)
-{
-
-    std::string headerSource;
-    while(true)
-    {
-        char& c = source[index];
-        if (c == '\n')
-            break;
-        headerSource += c;
-        index++;
-    }
-    index++;
-
-    auto layerName = new char[headerSource.size()];
-    int rendersTo, fragmentSourceSize, nUniforms, internalFormat, xWrap, 
-        yWrap, magFilter, minFilter;
-
-    sscanf
-    (
-        headerSource.c_str(),
-        "%s %d %d %f %f %f %d %d %d %d %d %d %d %d", 
-        layerName, 
-        &resolution_.x, &resolution_.y, &depth_, 
-        &resolutionScale_.x, &resolutionScale_.y, 
-        &rendersTo, &internalFormat,
-        &xWrap, &yWrap, &magFilter, &minFilter,
-        &fragmentSourceSize, &nUniforms
-    );
-    name_ = layerName;
-    targetName_ = layerName;
-    delete[] layerName;
-    rendersTo_ = (RendersTo)rendersTo;
-    fragmentSource_.resize(fragmentSourceSize);
-    isAspectRatioBoundToWindow_ = (resolutionScale_.x == resolutionScale_.y);
-
-    // Parse fragment source ---------------------------------------------------
-    uint32_t index0(index);
-    while(index-index0 < fragmentSourceSize)
-    {
-        fragmentSource_[index-index0] = source[index];
-        index++;
-    }
-    index0 = ++index;
-
-    // Parse uniforms ----------------------------------------------------------
-    bool readingType(true);
-    std::string uniformTypeName;
-    std::string uniformSource;
-    char uniformName[200];
-    index0 = index;
-    while(uniforms_.size() < nUniforms)
-    {
-        char& c = source[index];
-        if(c != '\n')
-        {
-            if (readingType && c == ' ')
-                readingType = false;
-            else
-                (readingType ? uniformTypeName : uniformSource) += c;
-            index++;
-            continue;
-        }
-        auto uniform = new vir::Shader::Uniform();
-        uniform->type = vir::Shader::uniformNameToType[uniformTypeName];
-        uniforms_.emplace_back(uniform);
-        uniformUsesColorPicker_.insert({uniform, false});
-        bool* uniformUsesColorPicker = &uniformUsesColorPicker_[uniform];
-        float min, max, x, y, z, w;
-        switch (uniform->type)
-        {
-            case vir::Shader::Variable::Type::Bool :
-            {
-                int value;
-                sscanf
-                (
-                    uniformSource.c_str(),
-                    "%d %s",
-                    &value, &uniformName
-                );
-                uniform->setValue<bool>((bool)value);
-                break;
-            }
-            case vir::Shader::Variable::Type::Int :
-            {
-                int value;
-                sscanf
-                (
-                    uniformSource.c_str(),
-                    "%d %f %f %s",
-                    &value, &min, &max, 
-                    &uniformName
-                );
-                uniform->setValue<int>(value);
-                break;
-            }
-            case vir::Shader::Variable::Type::Float :
-            {
-                sscanf
-                (
-                    uniformSource.c_str(),
-                    "%f %f %f %s",
-                    &x, &min, &max,
-                    &uniformName
-                );
-                uniform->setValue<float>(x);
-                break;
-            }
-            case vir::Shader::Variable::Type::Float2 :
-            {
-                sscanf
-                (
-                    uniformSource.c_str(),
-                    "%f %f %f %f %s",
-                    &x, &y, &min, &max, 
-                    &uniformName
-                );
-                uniform->setValue<glm::vec2>({x,y});
-                break;
-            }
-            case vir::Shader::Variable::Type::Float3 :
-            {
-                int useColorPicker(false);
-                sscanf
-                (
-                    uniformSource.c_str(),
-                    "%f %f %f %f %f %d %s",
-                    &x, &y, &z, &min, &max, &useColorPicker,
-                    &uniformName
-                );
-                if (useColorPicker)
-                    *uniformUsesColorPicker = true;
-                uniform->setValue<glm::vec3>({x,y,z});
-                break;
-            }
-            case vir::Shader::Variable::Type::Float4 :
-            {
-                int useColorPicker(false);
-                sscanf
-                (
-                    uniformSource.c_str(),
-                    "%f %f %f %f %f %f %d %s",
-                    &x, &y, &z, &w, &min, &max, &useColorPicker,
-                    &uniformName
-                );
-                if (useColorPicker)
-                    *uniformUsesColorPicker = true;
-                uniform->setValue<glm::vec4>({x,y,z,w});
-                break;
-            }
-            case vir::Shader::Variable::Type::Sampler2D :
-            case vir::Shader::Variable::Type::SamplerCube :
-            {
-                char resourceName[200];
-                sscanf
-                (
-                    uniformSource.c_str(),
-                    "%s %s",
-                    &resourceName, &uniformName
-                );
-                min = 0;
-                max = 0;
-                bool found = false;
-                for (auto r : app.resourceManagerRef().resourcesRef())
-                {
-                    if (r->name() == resourceName)
-                    {
-                        uniform->setValuePtr<Resource>(r);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                    uniformLayerNamesToBeSet_.insert
-                    (
-                        {uniform, resourceName}
-                    );
-                break;
-            }
-        }
-        uniformLimits_.insert({uniform, {min, max}});
-        uniform->name = uniformName;
-        uniformTypeName = "";
-        uniformSource = "";
-        readingType = true;
-        index++;
-    }
-
-    // Initialize all other variables ------------------------------------------
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> distribution
-    (
-        1000,
-        1000000000
-    );
-    id_ = distribution(rng)+(int(app.timeRef())%1000);
-    targetResolution_ = resolution_;
-    viewport_.x = (resolution_.x > resolution_.y) ? 1.0 : 
-        float(resolution_.x)/float(resolution_.y);
-    viewport_.y = (resolution_.y > resolution_.x) ? 1.0 : 
-        float(resolution_.y)/float(resolution_.x);
-    screenQuad_ = new vir::Quad(viewport_.x, viewport_.y, depth_);
-    initializeEditors();
-
-    // Init default uniforms (must be done before assembleFragmentSource)
-    initializeDefaultUniforms();
-
-    //
-    createStaticShaders();
-
-    // Init shader
-    // If the project was saved in a state such that the shader has compilation
-    // errors, then initialize the shader with the blank shader source (back-end
-    // -only, the user will still see the source of the saved shader with the 
-    // usuale list of compilation errors and markers)
-    hasUncompiledChanges_ = true; // Set to true to force compilation
-    if (!compileShader())
-        shader_ = 
-            vir::Shader::create
-            (
-                Layer::assembleVertexSource(),
-                Layer::blankFragmentSource_,
-                vir::Shader::ConstructFrom::String
-            );
-
-    // Init framebuffers
-    flipFramebuffers_ = false;
-    framebufferA_ = vir::Framebuffer::create
-    (
-        resolution_.x, 
-        resolution_.y, 
-        (vir::TextureBuffer::InternalFormat)internalFormat
-    );
-    readOnlyFramebuffer_ = framebufferA_;
-    framebufferB_ = vir::Framebuffer::create
-    (
-        resolution_.x, 
-        resolution_.y, 
-        (vir::TextureBuffer::InternalFormat)internalFormat
-    );
-    writeOnlyFramebuffer_ = framebufferB_;
-
-    // Set framebuffer color attachment wrapping and filtering options
-    auto setWrapFilterOptions = [&](vir::Framebuffer* framebuffer)->void
-    {
-        framebuffer->setColorBufferMagFilterMode
-        (
-            (vir::TextureBuffer::FilterMode)magFilter
-        );
-        framebuffer->setColorBufferMinFilterMode
-        (
-            (vir::TextureBuffer::FilterMode)minFilter
-        );
-        framebuffer->setColorBufferWrapMode
-        (
-            0,
-            (vir::TextureBuffer::WrapMode)xWrap
-        );
-        framebuffer->setColorBufferWrapMode
-        (
-            1,
-            (vir::TextureBuffer::WrapMode)yWrap
-        );
-    };
-    setWrapFilterOptions(framebufferA_);
-    setWrapFilterOptions(framebufferB_);
-
-    //
-    if (rendersTo_ != RendersTo::Window)
-        app.resourceManagerRef().addLayerAsResource(this);
-
-    ++LayerManager::nLayersSinceNewProject_;
-}
-
 // De-/serialization functions -----------------------------------------------//
 
 void Layer::saveState(ObjectIO& writer)
@@ -870,9 +566,8 @@ void Layer::saveState(ObjectIO& writer)
     writer.writeObjectStart("uniforms");
     for (auto u : uniforms_)
     {
-        glm::vec2& uLimits(uniformLimits_[u]);
-        float& min(uLimits.x);
-        float& max(uLimits.y);
+        float& min(u->limits.x);
+        float& max(u->limits.y);
         if (u->name.size() == 0)
             continue;
         writer.writeObjectStart(u->name.c_str());
@@ -911,28 +606,14 @@ void Layer::saveState(ObjectIO& writer)
             {
                 writer.write("value", u->getValue<glm::vec3>());
                 WRITE_MIN_MAX
-                bool usesColorPicker = false;
-                if
-                (
-                    uniformUsesColorPicker_.find(u) !=
-                    uniformUsesColorPicker_.end()
-                )
-                    usesColorPicker = uniformUsesColorPicker_[u];
-                writer.write("usesColorPicker", usesColorPicker);
+                writer.write("usesColorPicker", u->usesColorPicker);
                 break;
             }
             case vir::Shader::Variable::Type::Float4 :
             {
                 writer.write("value", u->getValue<glm::vec4>());
                 WRITE_MIN_MAX
-                bool usesColorPicker = false;
-                if
-                (
-                    uniformUsesColorPicker_.find(u) !=
-                    uniformUsesColorPicker_.end()
-                )
-                    usesColorPicker = uniformUsesColorPicker_[u];
-                writer.write("usesColorPicker", usesColorPicker);
+                writer.write("usesColorPicker", u->usesColorPicker);
             }
             case vir::Shader::Variable::Type::Sampler2D :
             case vir::Shader::Variable::Type::SamplerCube :
@@ -989,6 +670,13 @@ std::string Layer::assembleFragmentSource
         " core\nin vec2 qc;\nin vec2 tc;\nout vec4 fragColor;\n"
     );
     fragmentSourceHeader_ = versionInOutHeader;
+    for (auto* u : app_.sharedUniformsRef())
+    {
+        fragmentSourceHeader_ += 
+            "uniform "+vir::Shader::uniformTypeToName[u->type]+" "+u->name+
+            ";\n";
+        ++nLines;
+    }
     for (auto* u : defaultUniforms_)
     {
         fragmentSourceHeader_ += 
@@ -1180,88 +868,45 @@ void Layer::initializeEditors()
 
 void Layer::initializeDefaultUniforms()
 {
-    // Set default uniforms (mvp not here because not useful to visualize)
-
-    // iFrame
-    auto frameUniform = new vir::Shader::Uniform();
-    frameUniform->name = "iFrame";
-    frameUniform->type = vir::Shader::Variable::Type::UInt;
-    frameUniform->setValuePtr(&app_.frameRef());
-    defaultUniforms_.emplace_back(frameUniform);
-    uniformLimits_.insert({frameUniform, glm::vec2(0.0f, 1.0f)});
-
-    // iRenderPass
-    auto renderPassUniform = new vir::Shader::Uniform();
-    renderPassUniform->name = "iRenderPass";
-    renderPassUniform->type = vir::Shader::Variable::Type::UInt;
-    renderPassUniform->setValuePtr(&app_.renderPassRef());
-    defaultUniforms_.emplace_back(renderPassUniform);
-    uniformLimits_.insert({renderPassUniform, glm::vec2(0.0f, 1.0f)});
-
-    // Flag to signal that the user has changed inputs/uniforms
-    auto userActionUniform = new vir::Shader::Uniform();
+    // iUserAction
+    // Flag-uniform to signal that the user has changed inputs/uniforms. It is
+    // not shared per-se but does react to changes in shared uniforms as well
+    auto userActionUniform = new Uniform();
     userActionUniform->name = "iUserAction";
-    userActionUniform->type = vir::Shader::Variable::Type::Bool;
+    userActionUniform->type = Uniform::Type::Bool;
     userActionUniform->setValuePtr(&app_.userActionRef());
+    userActionUniform->showLimits = false;
     defaultUniforms_.emplace_back(userActionUniform);
-    uniformLimits_.insert({userActionUniform, glm::vec2(0, 1)});
 
-    // iAspectRatio
-    auto aspectRatio = new vir::Shader::Uniform();
+    // iAspectRatio (of this layer, i.e., ratio of resolution x/y. This does not
+    // necessarily have to correspond to the window aspect ratio, even though
+    // graphically all layer quads are ultimately squeezed/stretched so to 
+    // fit the window aspect ratio exactly)
+    auto aspectRatio = new Uniform();
     aspectRatio->name = "iAspectRatio";
-    aspectRatio->type = vir::Shader::Variable::Type::Float;
-    aspectRatio->setValuePtr
-    (
-        &vir::GlobalPtr<vir::Window>::instance()->aspectRatio()
-    );
+    aspectRatio->type = Uniform::Type::Float;
+    aspectRatio->setValuePtr(&aspectRatio_);
+    aspectRatio->showLimits = false;
     defaultUniforms_.emplace_back(aspectRatio);
-    uniformLimits_.insert({aspectRatio, glm::vec2(0.0f, 1.0f)});
 
-    // iResolution
-    auto resolutionUniform = new vir::Shader::Uniform();
+    // iResolution (of this layer, the main window resolution is handled by
+    // the iWindowResolution, a shared uniform managed by the top-level app)
+    auto resolutionUniform = new Uniform();
     resolutionUniform->name = "iResolution";
-    resolutionUniform->type = vir::Shader::Variable::Type::Float2;
+    resolutionUniform->type = Uniform::Type::Float2;
     resolutionUniform->setValuePtr(&targetResolution_);
+    resolutionUniform->limits = glm::vec2(1.0f, 4096.0f);
+    resolutionUniform->showLimits = false;
     defaultUniforms_.emplace_back(resolutionUniform);
-    uniformLimits_.insert({resolutionUniform, glm::vec2(1.0f, 4096.0f)});
-    
-    // iTime
-    auto timeUniform = new vir::Shader::Uniform();
-    timeUniform->name = "iTime";
-    timeUniform->type = vir::Shader::Variable::Type::Float;
-    timeUniform->setValuePtr(&app_.timeRef());
-    defaultUniforms_.emplace_back(timeUniform);
-    uniformLimits_.insert({timeUniform, glm::vec2(0.0f, 1.0f)});
-    timeUniformLimits_ = &(uniformLimits_.at(timeUniform));
-
-    // iMouse
-    auto mouseUniform = new vir::Shader::Uniform();
-    mouseUniform->name = "iMouse";
-    mouseUniform->type = vir::Shader::Variable::Type::Int4;
-    mouseUniform->setValuePtr(&(app_.mouseRef()));
-    defaultUniforms_.emplace_back(mouseUniform);
-    uniformLimits_.insert({mouseUniform, glm::vec2(-1.f, 4096.f)});
-
-    // Shader camera position
-    auto cameraPositionUniform = new vir::Shader::Uniform();
-    cameraPositionUniform->name = "iWASD";
-    cameraPositionUniform->type = vir::Shader::Variable::Type::Float3;
-    cameraPositionUniform->setValuePtr(&shaderCamera_.position());
-    defaultUniforms_.emplace_back(cameraPositionUniform);
-    uniformLimits_.insert({cameraPositionUniform, glm::vec2(-1.0f, 1.0f)});
-
-    // Shader camera direction
-    auto cameraDirectionUniform = new vir::Shader::Uniform();
-    cameraDirectionUniform->name = "iLook";
-    cameraDirectionUniform->type = vir::Shader::Variable::Type::Float3;
-    cameraDirectionUniform->setValuePtr(&shaderCamera_.z());
-    defaultUniforms_.emplace_back(cameraDirectionUniform);
-    uniformLimits_.insert({cameraDirectionUniform, glm::vec2(-1.0f, 1.0f)});
 }
 
 //----------------------------------------------------------------------------//
 
-void Layer::setDefaultAndSamplerUniforms()
+// This whole function could be re-written in a more elegant way, so to leverage
+// the fact that I already have all the shared and default uniforms (i.e., their
+// names and values) in app_.sharedUniformsRef() and defaultUniforms_
+// respectively
+void Layer::setSharedDefaultSamplerUniforms()
 {
     // Check for shader recompilation (then, uniforms need to be
     // reset)
@@ -1269,17 +914,19 @@ void Layer::setDefaultAndSamplerUniforms()
     const glm::vec3& cameraPosition(shaderCamera_.position());
     const glm::vec3& cameraDirection(shaderCamera_.z());
     const glm::ivec4& mouse(app_.mouseRef());
-    const float& aspectRatio
-    (
-        vir::GlobalPtr<vir::Window>::instance()->aspectRatio()
-    );
     shader_->bind();
 
-    // Set default uniforms
+    // Set shared and default uniforms
     bool forceSet((int)shader_->id() != shaderId0_);
     shader_->setUniformFloat("iTime", app_.timeRef());
     shader_->setUniformUInt("iFrame", app_.frameRef());
     shader_->setUniformUInt("iRenderPass", app_.renderPassRef());
+    shader_->setUniformFloat
+    (
+        "iWindowAspectRatio", 
+        vir::GlobalPtr<vir::Window>::instance()->aspectRatio()
+    );
+    shader_->setUniformFloat2("iWindowResolution", app_.resolutionRef());
     if (mvp0_ != mvp || forceSet)
     {
         shader_->setUniformMat4("mvp", mvp);
@@ -1292,7 +939,7 @@ void Layer::setDefaultAndSamplerUniforms()
     }
     if (resolution0_ != resolution_ || forceSet)
     {
-        shader_->setUniformFloat("iAspectRatio", aspectRatio);
+        shader_->setUniformFloat("iAspectRatio", aspectRatio_);
         shader_->setUniformFloat2("iResolution", resolution_);
         resolution0_ = resolution_;
         app_.userActionRef() = true;
@@ -1547,8 +1194,10 @@ float Layer::aspectRatio() const
 {
     if (isAspectRatioBoundToWindow_)
         return vir::GlobalPtr<vir::Window>::instance()->aspectRatio();
-    return float(resolution_.x)/float(resolution_.y);
+    return aspectRatio_;
 }
+
+//----------------------------------------------------------------------------//
 
 Layer::Layer
 (
@@ -1592,12 +1241,11 @@ internalFramebufferClearPolicyOnExport_
     depth_ = reader.read<float>("depth");
     resolution_ = reader.read<glm::ivec2>("resolution");
     targetResolution_ = resolution_;
+    aspectRatio_ = float(resolution_.x)/float(resolution_.y);
     resolutionScale_ = reader.read<glm::vec2>("resolutionScale");
     isAspectRatioBoundToWindow_ = (resolutionScale_.x == resolutionScale_.y);
-    viewport_.x = (resolution_.x > resolution_.y) ? 1.0 : 
-        float(resolution_.x)/float(resolution_.y);
-    viewport_.y = (resolution_.y > resolution_.x) ? 1.0 : 
-        float(resolution_.y)/float(resolution_.x);
+    viewport_.x = (resolution_.x > resolution_.y) ? 1.0 : aspectRatio_;
+    viewport_.y = (resolution_.y > resolution_.x) ? 1.0 : 1.0/aspectRatio_;
     
     //
     screenQuad_ = new vir::Quad(viewport_.x, viewport_.y, depth_);
@@ -1609,12 +1257,10 @@ internalFramebufferClearPolicyOnExport_
     for(auto uniformName : uniformsData.members())
     {
         auto uniformData = uniformsData.readObject(uniformName);
-        auto uniform = new vir::Shader::Uniform();
+        auto uniform = new Uniform();
         uniform->type = vir::Shader::uniformNameToType[
             uniformData.read<std::string>("type")];
         uniforms_.emplace_back(uniform);
-        uniformUsesColorPicker_.insert({uniform, false});
-        bool* uniformUsesColorPicker = &uniformUsesColorPicker_[uniform];
         float min, max, x, y, z, w;
 
 #define SET_UNIFORM(type)                   \
@@ -1652,7 +1298,7 @@ internalFramebufferClearPolicyOnExport_
             {
                 SET_UNIFORM(glm::vec3)
                 READ_MIN_MAX
-                *uniformUsesColorPicker = uniformData.read<bool>(
+                uniform->usesColorPicker = uniformData.read<bool>(
                     "usesColorPicker");
                 break;
             }
@@ -1660,7 +1306,7 @@ internalFramebufferClearPolicyOnExport_
             {
                 SET_UNIFORM(glm::vec4)
                 READ_MIN_MAX
-                *uniformUsesColorPicker = uniformData.read<bool>(
+                uniform->usesColorPicker = uniformData.read<bool>(
                     "usesColorPicker");
                 break;
             }
@@ -1686,7 +1332,7 @@ internalFramebufferClearPolicyOnExport_
                 break;
             }
         }
-        uniformLimits_.insert({uniform, {min, max}});
+        uniform->limits = {min, max};
         uniform->name = uniformName;
     }
     

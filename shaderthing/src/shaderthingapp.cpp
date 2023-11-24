@@ -17,6 +17,7 @@
 
 #include "shaderthingapp.h"
 #include "objectio/objectio.h"
+#include "uniforms/uniform.h"
 #include "layers/layer.h"
 #include "layers/layermanager.h"
 #include "resources/resource.h"
@@ -41,7 +42,8 @@ namespace ShaderThing
 
 // Constructor/destructor ----------------------------------------------------//
 
-ShaderThingApp::ShaderThingApp()
+ShaderThingApp::ShaderThingApp() :
+sharedUniforms_(0)
 {
     // Initialize vir lib
     vir::initialize
@@ -75,7 +77,7 @@ ShaderThingApp::ShaderThingApp()
     findReplaceTextTool_ = new FindReplaceTextTool();
     codeRepository_ = new CodeRepository();
     about_ = new About();
-    restart();
+    reset();
     
     // Main loop
     while(window->isOpen())
@@ -279,7 +281,7 @@ void ShaderThingApp::onReceive(vir::Event::MouseButtonReleaseEvent& event)
 //----------------------------------------------------------------------------//
 // Private functions ---------------------------------------------------------//
 
-void ShaderThingApp::restart()
+void ShaderThingApp::reset()
 {
     // Reset app
     time_ = 0.0;
@@ -301,6 +303,8 @@ void ShaderThingApp::restart()
     for (int i=0; i<ST_N_STATE_FLAGS; i++)
         stateFlags_[i] = (i>6 && i<10);
     stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART] = true;
+    // Restart shared uniforms
+    resetSharedUniforms();
     // Restart app components
     layerManager_->reset();
     resourceManager_->reset();
@@ -331,7 +335,90 @@ void ShaderThingApp::newProject()
 {
     if (!stateFlags_[ST_NEW_PROJECT]) return;
     stateFlags_[ST_NEW_PROJECT] = false;
-    restart();
+    reset();
+}
+
+//----------------------------------------------------------------------------//
+
+void ShaderThingApp::resetSharedUniforms()
+{
+    for (auto* u : sharedUniforms_)
+        delete u;
+    sharedUniforms_.resize(0);
+
+    // iFrame
+    auto frameUniform = new Uniform();
+    frameUniform->name = "iFrame";
+    frameUniform->type = Uniform::Type::UInt;
+    frameUniform->setValuePtr(&frame_);
+    frameUniform->isShared = true;
+    frameUniform->showLimits = false;
+    sharedUniforms_.emplace_back(frameUniform);
+
+    // iRenderPass
+    auto renderPassUniform = new Uniform();
+    renderPassUniform->name = "iRenderPass";
+    renderPassUniform->type = Uniform::Type::UInt;
+    renderPassUniform->setValuePtr(&renderPass_);
+    renderPassUniform->isShared = true;
+    renderPassUniform->showLimits = false;
+    sharedUniforms_.emplace_back(renderPassUniform);
+
+    // iTime
+    auto timeUniform = new Uniform();
+    timeUniform->name = "iTime";
+    timeUniform->type = Uniform::Type::Float;
+    timeUniform->setValuePtr(&time_);
+    sharedUniforms_.emplace_back(timeUniform);
+    timeLoopBounds_ = &(timeUniform->limits);
+
+    // iAspectRatio
+    auto aspectRatio = new Uniform();
+    aspectRatio->name = "iWindowAspectRatio";
+    aspectRatio->type =  Uniform::Type::Float;
+    aspectRatio->isShared = true;
+    aspectRatio->setValuePtr
+    (
+        &vir::GlobalPtr<vir::Window>::instance()->aspectRatio()
+    );
+    aspectRatio->showLimits = false;
+    sharedUniforms_.emplace_back(aspectRatio);
+
+    // iResolution
+    auto resolutionUniform = new Uniform();
+    resolutionUniform->name = "iWindowResolution";
+    resolutionUniform->type = Uniform::Type::Float2;
+    resolutionUniform->setValuePtr(&resolution_);
+    resolutionUniform->isShared = true;
+    resolutionUniform->limits = glm::vec2(1.0f, 4096.0f);
+    resolutionUniform->showLimits = false;
+    sharedUniforms_.emplace_back(resolutionUniform);
+
+    // iMouse
+    auto mouseUniform = new Uniform();
+    mouseUniform->name = "iMouse";
+    mouseUniform->type = Uniform::Type::Int4;
+    mouseUniform->setValuePtr(&mouse_);
+    mouseUniform->limits = glm::vec2(-1.f, 4096.f);
+    mouseUniform->showLimits = false;
+    sharedUniforms_.emplace_back(mouseUniform);
+
+    // Shader camera position
+    auto cameraPositionUniform = new Uniform();
+    cameraPositionUniform->name = "iWASD";
+    cameraPositionUniform->type = Uniform::Type::Float3;
+    cameraPositionUniform->setValuePtr(&(shaderCamera_->position()));
+    cameraPositionUniform->limits = glm::vec2(-1.0f, 1.0f);
+    sharedUniforms_.emplace_back(cameraPositionUniform);
+
+    // Shader camera direction
+    auto cameraDirectionUniform = new Uniform();
+    cameraDirectionUniform->name = "iLook";
+    cameraDirectionUniform->type = vir::Shader::Variable::Type::Float3;
+    cameraDirectionUniform->setValuePtr(&(shaderCamera_->z()));
+    cameraDirectionUniform->limits = glm::vec2(-1.0f, 1.0f);
+    cameraDirectionUniform->showLimits = false;
+    sharedUniforms_.emplace_back(cameraDirectionUniform);
 }
 
 //----------------------------------------------------------------------------//
@@ -423,6 +510,8 @@ void ShaderThingApp::loadProject()
         stateFlags_[ST_IS_TIME_LOOPED] = shared.read<bool>("timeLooped");
     time_ = shared.read<float>("time");
     
+    resetSharedUniforms();
+
     resourceManager_->loadState(project);
     layerManager_->loadState(project);
     quantizationTool_->loadState(project);
@@ -475,18 +564,17 @@ void ShaderThingApp::update()
         static bool& isRenderingPaused(stateFlags_[ST_IS_RENDERING_PAUSED]);
         static bool& isTimePaused(stateFlags_[ST_IS_TIME_PAUSED]);
         static bool& isTimeLooped(stateFlags_[ST_IS_TIME_LOOPED]);
-        const glm::vec2& timeBounds(*(layersRef().front()->timeUniformLimits()));
         if (!isRenderingPaused)
         {
             frame_++;
             if (!isTimePaused)
                 time_ += window->time()->outerTimestep();
-            if (isTimeLooped && time_ >= timeBounds.y)
+            if (isTimeLooped && time_ >= timeLoopBounds_->y)
             {
-                auto w = timeBounds.y-timeBounds.x;
-                auto f = (time_-timeBounds.y)/std::max(w, 1e-6f);
+                auto w = timeLoopBounds_->y-timeLoopBounds_->x;
+                auto f = (time_-timeLoopBounds_->y)/std::max(w, 1e-6f);
                 f = f-(int)f;
-                time_ = timeBounds.x + w*f;
+                time_ = timeLoopBounds_->x + w*f;
             }
         }
         else if (!isTimePaused)

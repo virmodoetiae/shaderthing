@@ -548,8 +548,11 @@ void Layer::renderGuiUniforms()
         );
 
         ImGui::TableHeadersRow();
+        int nSharedUniforms(app_.sharedUniformsRef().size());
+        int defaultUniformsStartRow = nSharedUniforms;
         int nDefaultUniforms(defaultUniforms_.size());
-        int nTotalUniforms(uniforms_.size()+defaultUniforms_.size());
+        int uniformsStartRow = nSharedUniforms+nDefaultUniforms;
+        int nTotalUniforms(nSharedUniforms+nDefaultUniforms+uniforms_.size());
         
         // Actual rendering ----------------------------------------------------
         for (int row = 0; row < nTotalUniforms+1; row++)
@@ -564,7 +567,7 @@ void Layer::renderGuiUniforms()
             {
                 row--; // Extremely bad practice, I know!
                 nextUniformIsSampler2DResolution = false;
-                auto uniform = uniforms_[row-nDefaultUniforms];
+                auto uniform = uniforms_[row-nDefaultUniforms-nSharedUniforms];
                 // Column 0 ----------------------------------------------------
                 ImGui::TableSetColumnIndex(col++);
                 // Column 1 ----------------------------------------------------
@@ -604,11 +607,9 @@ void Layer::renderGuiUniforms()
                 ImGui::PushItemWidth(-1);
                 if (ImGui::Button("Add", ImVec2(-1, 0)))
                 {
-                    auto uniform = new vir::Shader::Uniform();
+                    auto uniform = new Uniform();
                     uniforms_.emplace_back(uniform);
                     uncompiledUniforms_.emplace_back(uniform);
-                    uniformLimits_.insert({uniform, glm::vec2({0.0f, 1.0f})});
-                    uniformUsesColorPicker_.insert({uniform, false});
                 }
                 ImGui::PopItemWidth();
                 ImGui::PopID();
@@ -616,17 +617,16 @@ void Layer::renderGuiUniforms()
             }
 
             std::string tooltipText = "";
-            bool isShared(false);
-            bool isDefault(row < nDefaultUniforms);
-            vir::Shader::Uniform* uniform = nullptr;
-            bool* uniformUsesColorPicker = nullptr;
-            if (row >= nDefaultUniforms)
-            {
-                uniform = uniforms_[row-nDefaultUniforms];
-                uniformUsesColorPicker = &uniformUsesColorPicker_[uniform];
-            }
+            bool isShared(row < defaultUniformsStartRow);
+            bool isDefault(!isShared && row < uniformsStartRow);
+            bool isCustom(!isShared && !isDefault);
+            Uniform* uniform = nullptr;
+            if (isCustom)
+                uniform = uniforms_[row-uniformsStartRow];
+            else if (isDefault)
+                uniform = defaultUniforms_[row-defaultUniformsStartRow];
             else 
-                uniform = defaultUniforms_[row];
+                uniform = app_.sharedUniformsRef()[row];
 
             // These are used to check wheter the uniform name or type has
             // changed. If so, it is added to the list of uncompiled uniforms
@@ -638,14 +638,14 @@ void Layer::renderGuiUniforms()
             // Column 0 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
-            if (row >= nDefaultUniforms)
+            if (row >= uniformsStartRow)
             {
                 if (ImGui::Button("Delete", ImVec2(-1, 0)))
-                    deleteRow = row-nDefaultUniforms;
+                    deleteRow = row-uniformsStartRow;
             }
             else if (uniform->name == "iFrame")
             {
-                isShared = true;
+                //isShared = true;
                 if (ImGui::Button(ICON_FA_UNDO, ImVec2(2.2*fontSize, 0)))
                     app_.restartRendering();
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -677,13 +677,9 @@ void Layer::renderGuiUniforms()
                     isTimePaused = isRenderingPaused;
                 }
             }
-            else if (uniform->name == "iRenderPass")
-            {
-                isShared = true;
-            }
             else if (uniform->name == "iTime")
             {
-                isShared = true;
+                //isShared = true;
                 bool& isTimeLooped(app_.isTimeLoopedRef());
                 if 
                 (
@@ -791,18 +787,14 @@ to modify. Best suited for controlling a camera)";
                 std::string text = enabled ? "Disable" : "Enable";
                 if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
                     app_.setMouseInputsEnabled(!enabled);
-                ENABLE_DISABLE_APP_INPUT_TOOLTIP(mouse inputs)                                                     
-            }
-            else if (uniform->name == "iUserAction")
-            {
-                isShared = true;
+                ENABLE_DISABLE_APP_INPUT_TOOLTIP(mouse inputs)
             }
             ImGui::PopItemWidth();
 
             // Column 1 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
-            if (isDefault)
+            if (isShared || isDefault)
             {
                 ImGui::Text(uniform->name.c_str());
                 if (isShared)
@@ -829,7 +821,7 @@ to modify. Best suited for controlling a camera)";
             // Column 2 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
-            if (isDefault)
+            if (isShared || isDefault)
                 ImGui::Text
                 (
                     vir::Shader::uniformTypeToName[uniform->type].c_str()
@@ -852,6 +844,15 @@ to modify. Best suited for controlling a camera)";
                             {
                                 uniform->resetValue();
                                 uniform->type = selectedType;
+                                uniform->showLimits = 
+                                (
+                                    selectedType != 
+                                        vir::Shader::Variable::Type::Bool &&
+                                    selectedType != 
+                                        vir::Shader::Variable::Type::Sampler2D &&
+                                    selectedType != 
+                                        vir::Shader::Variable::Type::SamplerCube
+                                );
                             }
                     }
                 ImGui::EndCombo();
@@ -859,21 +860,11 @@ to modify. Best suited for controlling a camera)";
             ImGui::PopItemWidth();
 
             // Column 3 --------------------------------------------------------
-            glm::vec2& uLimits = uniformLimits_[uniform];
+            glm::vec2& uLimits = uniform->limits;
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
             bool limitsChanged(false);
-            if 
-            (
-                uniform->type != vir::Shader::Variable::Type::Bool &&
-                uniform->type != vir::Shader::Variable::Type::Sampler2D &&
-                uniform->type != vir::Shader::Variable::Type::SamplerCube &&
-                uniform->name != "iResolution" &&
-                uniform->name != "iFrame" &&
-                uniform->name != "iRenderPass" &&
-                uniform->name != "iAspectRatio" &&
-                uniform->name != "iMouse"
-            )
+            if (uniform->showLimits)
             {
                 std::string format = 
                     (uniform->type == vir::Shader::Variable::Type::Int) ?
@@ -1243,6 +1234,15 @@ is currently being held down)");
                         );
                         ImGui::Text(resolution.c_str());
                     }
+                    else if (uniform->name == "iWindowResolution")
+                    {
+                        std::string resolution
+                        (
+                            std::to_string(app_.resolutionRef().x)+" x "+
+                            std::to_string(app_.resolutionRef().y)
+                        );
+                        ImGui::Text(resolution.c_str());
+                    }
                     else 
                     {
                         ImGui::SmallButton("Δ"); ImGui::SameLine();
@@ -1325,19 +1325,19 @@ is currently being held down)");
                         uLimits.y = std::max(value.z, uLimits.y);
                     }
                     bool colorPicker(false);
-                    if (uniformUsesColorPicker != nullptr)
+                    if (!isShared)
                     {
                         if 
                         (
                             ImGui::SmallButton
                             (
-                                *uniformUsesColorPicker ? "F" : "C"
+                                uniform->usesColorPicker ? "F" : "C"
                             )
                         )
-                            *uniformUsesColorPicker = !*uniformUsesColorPicker;
+                            uniform->usesColorPicker = !uniform->usesColorPicker;
                         ImGui::SameLine();
-                        colorPicker = *uniformUsesColorPicker;
-                    }
+                        colorPicker = uniform->usesColorPicker;
+                        }
                     if (!colorPicker)
                     {
                         if 
@@ -1423,18 +1423,18 @@ is currently being held down)");
                         uLimits.y = std::max(value.w, uLimits.y);
                     }
                     bool colorPicker(false);
-                    if (uniformUsesColorPicker != nullptr)
+                    if (!isShared)
                     {
                         if 
                         (
                             ImGui::SmallButton
                             (
-                                *uniformUsesColorPicker ? "F" : "C"
+                                uniform->usesColorPicker ? "F" : "C"
                             )
                         )
-                            *uniformUsesColorPicker = !*uniformUsesColorPicker;
+                            uniform->usesColorPicker = !uniform->usesColorPicker;
                         ImGui::SameLine();
-                        colorPicker = *uniformUsesColorPicker;
+                        colorPicker = uniform->usesColorPicker;
                     }
                     if (!colorPicker)
                     {
@@ -1568,13 +1568,11 @@ is currently being held down)");
         auto uniform = uniforms_[deleteRow];
         if 
         (
-            uniform->type == vir::Shader::Variable::Type::Sampler2D ||
-            uniform->type == vir::Shader::Variable::Type::SamplerCube
+            uniform->type == Uniform::Type::Sampler2D ||
+            uniform->type == Uniform::Type::SamplerCube
         )
             uniform->getValuePtr<Resource>()->unbind();
         delete uniform;
-        uniformUsesColorPicker_.erase(uniform);
-        uniformLimits_.erase(uniform);
         uniforms_.erase(uniforms_.begin()+deleteRow);
         uniform = nullptr;
         deleteRow = -1;

@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "uniforms/uniform.h"
 #include "resources/resource.h"
 
 #include "vir/include/vir.h"
@@ -187,7 +188,11 @@ private :
     glm::ivec2 resolution_;
     // Target resize resolution for deferred update
     glm::ivec2 targetResolution_;
-    // 
+    // Ratio of the layer resolutions. Please note, however, that the actual 
+    // on-screen aspect ratio is always bound to that of the main window
+    float aspectRatio_;
+    // Component-wise ratio of the layer resolution and the main window
+    // resolution
     glm::vec2 resolutionScale_;
     // Viewport dimensions
     glm::vec2 viewport_;
@@ -220,33 +225,21 @@ private :
     int shaderId0_;
 
     // List of user-editable uniforms associated with the shader (exlcusive of
-    // defaultUniforms_!)
-    std::vector<vir::Shader::Uniform*> uniforms_;
-    // List of uniforms provided by default (e.g., camera, time, etc.). Some of
-    // these should logically belong to the top-level application as some are
-    // shared by all layers, I'll probably fix it, eventually
-    std::vector<vir::Shader::Uniform*> defaultUniforms_;
-    // For each uniform, this map contains the minimum and maximum allowable
-    // values stored in a vec2-style variable
-    std::unordered_map<vir::Shader::Uniform*, glm::vec2> uniformLimits_;
-    // List of all uniforms that have been added via the Uniforms tab GUI, but
-    // not yet compiled. They are embedded in fragmentSourceHeader_ on
-    // compilation
-    std::vector<vir::Shader::Uniform*> uncompiledUniforms_;
-    // List of uniforms which are to be modified via an ImGui color picker tool
-    std::unordered_map<vir::Shader::Uniform*, bool> uniformUsesColorPicker_;
+    // uniforms in defaultUniforms_)
+    std::vector<Uniform*> uniforms_;
+    // List of uniforms provided by default, cannot be deleted or have their
+    // type modified
+    std::vector<Uniform*> defaultUniforms_;
+    // List of uniforms that have not been included in the shader source code 
+    // yet
+    std::vector<Uniform*> uncompiledUniforms_;
     // If another layer was among the list of sampler2D-type uniforms of
     // this layer, there is not guarantee that the latter layer will be
     // loaded before this layer on project loading. Thus, their names are
     // cached and used for uniform re-setting after all layers have been
     // loaded (done in rebindLayerUniforms())
-    std::unordered_map<vir::Shader::Uniform*, std::string>
+    std::unordered_map<Uniform*, std::string>
         uniformLayerNamesToBeSet_;
-    // A ptr to the limits of the iTime uniform within defaultUniforms_. A quick
-    // fix for accessing time bounds for time looping from the top-level app.
-    // I would have no need for this if it was the top-level app the one to own
-    // shared uniforms, but whatever
-    glm::vec2* timeUniformLimits_;
 
     // Ref to global camera for looking at the quad
     vir::Camera& screenCamera_;
@@ -295,7 +288,7 @@ private :
     // Bind uniform values to actual shader uniform before rendering. This
     // only binds uniforms in defaultUniforms_ and all uniforms in uniforms_
     // that are of Sampler2D or SamplerCube type
-    void setDefaultAndSamplerUniforms();
+    void setSharedDefaultSamplerUniforms();
 
     // Bind all uniforms (other than uniforms in defaultUniforms_ nor uniforms 
     // in uniforms_ of types Sampler2D or SamplerCube) to the actual shader 
@@ -342,18 +335,9 @@ public:
         glm::ivec2 resolution,
         float depth
     );
-    
-    // Construct from serialized data on disk, i.e., equivalent to a loadState
-    // function
-    Layer
-    (
-        ShaderThingApp& app,
-        std::string& source,
-        uint32_t& index,
-        bool isGuiRendered = false
-    );
 
-    //
+    // Load from serialized data in ObjectIO (i.e., an in-memory JSON-like
+    // structure used for data IO to and from disk)
     Layer
     (
         ShaderThingApp& app,
@@ -487,9 +471,6 @@ public:
     
     //
     vir::Framebuffer*& writeOnlyFramebuffer() {return writeOnlyFramebuffer_;}
-
-    //
-    const glm::vec2* const timeUniformLimits() const {return timeUniformLimits_;}
 
     // Setters ---------------------------------------------------------------//
 
