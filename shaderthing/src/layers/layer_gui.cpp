@@ -643,7 +643,7 @@ void Layer::renderGuiUniforms()
                 if (ImGui::Button("Delete", ImVec2(-1, 0)))
                     deleteRow = row-uniformsStartRow;
             }
-            else if (uniform->name == "iFrame")
+            else if (uniform->specialType == Uniform::SpecialType::Frame)
             {
                 //isShared = true;
                 if (ImGui::Button(ICON_FA_UNDO, ImVec2(2.2*fontSize, 0)))
@@ -677,7 +677,7 @@ void Layer::renderGuiUniforms()
                     isTimePaused = isRenderingPaused;
                 }
             }
-            else if (uniform->name == "iTime")
+            else if (uniform->specialType == Uniform::SpecialType::Time)
             {
                 //isShared = true;
                 bool& isTimeLooped(app_.isTimeLoopedRef());
@@ -714,7 +714,7 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
         );                                                                  \
     ImGui::EndTooltip();                                                    \
 }
-            else if (uniform->name == "iWASD")
+            else if (uniform->specialType==Uniform::SpecialType::CameraPosition)
             {
                 isShared = true;
                 tooltipText = 
@@ -749,7 +749,10 @@ Please also note that the up direction (positive y) never changes)";
                     ImGui::EndPopup();
                 }
             }
-            else if (uniform->name == "iLook")
+            else if 
+            (
+                uniform->specialType == Uniform::SpecialType::CameraDirection
+            )
             {
                 tooltipText = 
 R"(Mouse-controlled look direction in 3-D space. Click and drag (on the window)
@@ -780,7 +783,7 @@ to modify. Best suited for controlling a camera)";
                     ImGui::EndPopup();
                 }
             }
-            else if (uniform->name == "iMouse")
+            else if (uniform->specialType == Uniform::SpecialType::Mouse)
             {
                 isShared = true;
                 bool enabled = app_.isMouseInputEnabled();
@@ -891,7 +894,7 @@ to modify. Best suited for controlling a camera)";
                 case vir::Shader::Variable::Type::Bool :
                 {
                     auto value = uniform->getValue<bool>();
-                    if (uniform->name == "iUserAction")
+                    if (uniform->specialType==Uniform::SpecialType::UserAction)
                     {
                         ImGui::Text
                         (
@@ -920,12 +923,15 @@ to modify. Best suited for controlling a camera)";
                         uLimits.y = std::max((float)value, uLimits.y);
                     }
                     bool input(false);
-                    if (uniform->name == "iFrame")
+                    if (uniform->specialType == Uniform::SpecialType::Frame)
                         ImGui::Text
                         (
                             std::to_string(std::max(app_.frameRef(),0)).c_str()
                         );
-                    else if (uniform->name == "iRenderPass")
+                    else if 
+                    (
+                        uniform->specialType == Uniform::SpecialType::RenderPass
+                    )
                         ImGui::Text
                         (
                             std::to_string
@@ -1006,7 +1012,8 @@ to modify. Best suited for controlling a camera)";
                     }
                     bool input(false);
                     {
-                        ImGui::SmallButton("Δ"); ImGui::SameLine();
+                        ImGui::SmallButton(ICON_FA_MOUSE_POINTER); 
+                        ImGui::SameLine();
                         if (ImGui::IsItemActive())
                         {
                             ImGui::GetForegroundDrawList()->AddLine
@@ -1129,7 +1136,7 @@ to modify. Best suited for controlling a camera)";
                         uLimits.y = std::max(value.w, (int)uLimits.y);
                     }
                     bool input(false);
-                    if (uniform->name == "iMouse")
+                    if (uniform->specialType == Uniform::SpecialType::Mouse)
                     {
                         std::string data = 
                             std::to_string(app_.mouseRef().x)+", "+
@@ -1188,7 +1195,13 @@ is currently being held down)");
                         uLimits.y = std::max(value, uLimits.y);
                     }
                     bool input(false);
-                    if (uniform->name == "iAspectRatio")
+                    if 
+                    (
+                        uniform->specialType == 
+                            Uniform::SpecialType::WindowAspectRatio ||
+                        uniform->specialType == 
+                            Uniform::SpecialType::LayerAspectRatio
+                    )
                         ImGui::Text(std::to_string(value).c_str());
                     else
                         input = ImGui::SliderFloat
@@ -1225,27 +1238,26 @@ is currently being held down)");
                         uLimits.y = std::max(value.y, uLimits.y);
                     }
                     bool input(false);
-                    if (uniform->name == "iResolution")
+                    if 
+                    (
+                        uniform->specialType == 
+                            Uniform::SpecialType::WindowResolution || 
+                        uniform->specialType == 
+                            Uniform::SpecialType::LayerResolution
+                    )
                     {
+                        auto fvalue = uniform->getValue<glm::ivec2>();
                         std::string resolution
                         (
-                            std::to_string(resolution_.x)+" x "+
-                            std::to_string(resolution_.y)
-                        );
-                        ImGui::Text(resolution.c_str());
-                    }
-                    else if (uniform->name == "iWindowResolution")
-                    {
-                        std::string resolution
-                        (
-                            std::to_string(app_.resolutionRef().x)+" x "+
-                            std::to_string(app_.resolutionRef().y)
+                            std::to_string(fvalue.x)+" x "+
+                            std::to_string(fvalue.y)
                         );
                         ImGui::Text(resolution.c_str());
                     }
                     else 
                     {
-                        ImGui::SmallButton("Δ"); ImGui::SameLine();
+                        ImGui::SmallButton(ICON_FA_MOUSE_POINTER); 
+                        ImGui::SameLine();
                         if (ImGui::IsItemActive())
                         {
                             ImGui::GetForegroundDrawList()->AddLine
@@ -1362,7 +1374,8 @@ is currently being held down)");
                             }
                             bool isCameraDirection
                             (
-                                uniform->name == "iWASD"
+                                uniform->specialType == 
+                                    Uniform::SpecialType::CameraDirection
                             );
                             if (isCameraDirection)
                                 value = glm::normalize(value);

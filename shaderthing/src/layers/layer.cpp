@@ -872,6 +872,7 @@ void Layer::initializeDefaultUniforms()
     // Flag-uniform to signal that the user has changed inputs/uniforms. It is
     // not shared per-se but does react to changes in shared uniforms as well
     auto userActionUniform = new Uniform();
+    userActionUniform->specialType = Uniform::SpecialType::UserAction;
     userActionUniform->name = "iUserAction";
     userActionUniform->type = Uniform::Type::Bool;
     userActionUniform->setValuePtr(&app_.userActionRef());
@@ -883,6 +884,7 @@ void Layer::initializeDefaultUniforms()
     // graphically all layer quads are ultimately squeezed/stretched so to 
     // fit the window aspect ratio exactly)
     auto aspectRatio = new Uniform();
+    aspectRatio->specialType = Uniform::SpecialType::LayerAspectRatio;
     aspectRatio->name = "iAspectRatio";
     aspectRatio->type = Uniform::Type::Float;
     aspectRatio->setValuePtr(&aspectRatio_);
@@ -892,6 +894,7 @@ void Layer::initializeDefaultUniforms()
     // iResolution (of this layer, the main window resolution is handled by
     // the iWindowResolution, a shared uniform managed by the top-level app)
     auto resolutionUniform = new Uniform();
+    resolutionUniform->specialType = Uniform::SpecialType::LayerResolution;
     resolutionUniform->name = "iResolution";
     resolutionUniform->type = Uniform::Type::Float2;
     resolutionUniform->setValuePtr(&targetResolution_);

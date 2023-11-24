@@ -348,6 +348,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // iFrame
     auto frameUniform = new Uniform();
+    frameUniform->specialType = Uniform::SpecialType::Frame;
     frameUniform->name = "iFrame";
     frameUniform->type = Uniform::Type::UInt;
     frameUniform->setValuePtr(&frame_);
@@ -357,6 +358,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // iRenderPass
     auto renderPassUniform = new Uniform();
+    renderPassUniform->specialType = Uniform::SpecialType::RenderPass;
     renderPassUniform->name = "iRenderPass";
     renderPassUniform->type = Uniform::Type::UInt;
     renderPassUniform->setValuePtr(&renderPass_);
@@ -366,6 +368,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // iTime
     auto timeUniform = new Uniform();
+    timeUniform->specialType = Uniform::SpecialType::Time;
     timeUniform->name = "iTime";
     timeUniform->type = Uniform::Type::Float;
     timeUniform->setValuePtr(&time_);
@@ -374,6 +377,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // iAspectRatio
     auto aspectRatio = new Uniform();
+    aspectRatio->specialType = Uniform::SpecialType::WindowAspectRatio;
     aspectRatio->name = "iWindowAspectRatio";
     aspectRatio->type =  Uniform::Type::Float;
     aspectRatio->isShared = true;
@@ -386,6 +390,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // iResolution
     auto resolutionUniform = new Uniform();
+    resolutionUniform->specialType = Uniform::SpecialType::WindowResolution;
     resolutionUniform->name = "iWindowResolution";
     resolutionUniform->type = Uniform::Type::Float2;
     resolutionUniform->setValuePtr(&resolution_);
@@ -396,6 +401,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // iMouse
     auto mouseUniform = new Uniform();
+    mouseUniform->specialType = Uniform::SpecialType::Mouse;
     mouseUniform->name = "iMouse";
     mouseUniform->type = Uniform::Type::Int4;
     mouseUniform->setValuePtr(&mouse_);
@@ -405,6 +411,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // Shader camera position
     auto cameraPositionUniform = new Uniform();
+    cameraPositionUniform->specialType = Uniform::SpecialType::CameraPosition;
     cameraPositionUniform->name = "iWASD";
     cameraPositionUniform->type = Uniform::Type::Float3;
     cameraPositionUniform->setValuePtr(&(shaderCamera_->position()));
@@ -413,6 +420,7 @@ void ShaderThingApp::resetSharedUniforms()
 
     // Shader camera direction
     auto cameraDirectionUniform = new Uniform();
+    cameraDirectionUniform->specialType = Uniform::SpecialType::CameraDirection;
     cameraDirectionUniform->name = "iLook";
     cameraDirectionUniform->type = vir::Shader::Variable::Type::Float3;
     cameraDirectionUniform->setValuePtr(&(shaderCamera_->z()));
