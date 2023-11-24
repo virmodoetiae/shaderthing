@@ -263,7 +263,7 @@ void ShaderThingApp::onReceive(vir::Event::MouseMotionEvent& event)
     if 
     (
         vir::GlobalPtr<vir::InputState>::instance()->
-        isMouseButtonPressedOrHeld(VIR_MOUSE_BUTTON_1)
+        mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked()
     )
     {
         mouse_.x = event.x();

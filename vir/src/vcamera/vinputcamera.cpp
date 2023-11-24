@@ -26,7 +26,7 @@ void InputCamera::onReceive(Event::MouseMotionEvent& event)
     auto inputState = GlobalPtr<InputState>::instance();
     if (inputState == nullptr)
         return;
-    if (inputState->isMouseButtonPressedOrHeld(VIR_MOUSE_BUTTON_1))
+    if (inputState->mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked())
     {
         dTheta_ += -event.dy()*TPI_BY_360;
         dPhi_ += -event.dx()*TPI_BY_360;
@@ -68,14 +68,14 @@ void InputCamera::update()
     auto inputState = GlobalPtr<InputState>::instance();
     if (inputState == nullptr)
         return;
-    bool W = inputState->isKeyPressedOrHeld(VIR_KEY_W);
-    bool A = inputState->isKeyPressedOrHeld(VIR_KEY_A);
-    bool S = inputState->isKeyPressedOrHeld(VIR_KEY_S);
-    bool D = inputState->isKeyPressedOrHeld(VIR_KEY_D);
-    bool Q = inputState->isKeyPressedOrHeld(VIR_KEY_Q);
-    bool E = inputState->isKeyPressedOrHeld(VIR_KEY_E);
-    bool RSHFT = inputState->isKeyPressedOrHeld(VIR_KEY_LEFT_SHIFT);
-    bool SPACE = inputState->isKeyPressedOrHeld(VIR_KEY_SPACE);
+    bool W = inputState->keyState(VIR_KEY_W).isPressedOrHeld();
+    bool A = inputState->keyState(VIR_KEY_A).isPressedOrHeld();
+    bool S = inputState->keyState(VIR_KEY_S).isPressedOrHeld();
+    bool D = inputState->keyState(VIR_KEY_D).isPressedOrHeld();
+    bool Q = inputState->keyState(VIR_KEY_Q).isPressedOrHeld();
+    bool E = inputState->keyState(VIR_KEY_E).isPressedOrHeld();
+    bool RSHFT = inputState->keyState(VIR_KEY_LEFT_SHIFT).isPressedOrHeld();
+    bool SPACE = inputState->keyState(VIR_KEY_SPACE).isPressedOrHeld();
     bool keyPressEnabled = canCurrentlyReceive(vir::Event::Type::KeyPress);
     if 
     (

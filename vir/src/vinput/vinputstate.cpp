@@ -6,37 +6,38 @@ namespace vir
 void InputState::reset()
 {
     for (int i=0; i<VIR_N_KEYS; i++)
-    {
-        keyState_[i] = State::None;
-        keyToggle_[i] = false;
-    }
+        keyState_[i].reset();
     for (int i=0; i<VIR_N_MOUSE_BUTTONS; i++)
-        mouseButtonState_[i] = State::None;
+        mouseButtonState_[i].reset();
 }
 
 void InputState::onReceive(Event::KeyPressEvent& event)
 {
-    State& key(keyState_[event.keyCode()]);
-    bool& keyToggle(keyToggle_[event.keyCode()]);
-    if (key == State::None) 
-        keyToggle = !keyToggle;
-    key = (key == State::None) ? State::Pressed : State::Held;
+    KeyState& key(keyState_[event.keyCode()]);
+    if (key.isPressedOrHeld())
+        key.setHeld(true);
+    else
+    {
+        key.switchToggle();
+        key.setPressed(true);
+    }
 }
 
 void InputState::onReceive(Event::KeyReleaseEvent& event)
 {
-    keyState_[event.keyCode()] = State::None;
+    keyState_[event.keyCode()].setPressed(false);
 }
 
 void InputState::onReceive(Event::MouseButtonPressEvent& event)
 {
-    State& mouseButton(mouseButtonState_[event.button()]);
-    mouseButton = (mouseButton == State::None) ? State::Pressed : State::Held;
+    MouseButtonState& mouseButton(mouseButtonState_[event.button()]);
+    mouseButton.switchToggle();
+    mouseButton.setClicked(true);
 }
 
 void InputState::onReceive(Event::MouseButtonReleaseEvent& event)
 {
-    mouseButtonState_[event.button()] = State::None;
+    mouseButtonState_[event.button()].setClicked(false);
 }
 
 void InputState::onReceive(Event::MouseMotionEvent& event)

@@ -18,18 +18,48 @@ class InputState : public Event::Receiver
 {
 public :
 
-    enum class State : unsigned char
+    class KeyState
     {
-        None = 0,
-        Pressed = 1,
-        Held = 2
+    friend InputState;
+    private:
+        bool pressed_ = false;
+        bool held_ = false;
+        bool toggled_ = false;
+        void setPressed(bool flag){pressed_=flag; held_=false;}
+        void setHeld(bool flag){held_=flag; pressed_=false;}
+        void switchToggle(){toggled_=!toggled_;}
+    public:
+        void reset(){pressed_=false; held_=false; toggled_=false;}
+        bool isPressed() const {return pressed_;}
+        bool isHeld() const {return held_;}
+        bool isPressedOrHeld() const {return pressed_ || held_ ;}
+        bool isToggled() const {return toggled_;}
+        const bool& pressedRef() const {return pressed_;}
+        const bool& heldRef() const {return held_;}
+        const bool& toggleRef() const {return toggled_;}
     };
+
+    class MouseButtonState
+    {
+    friend InputState;
+    private:
+        bool clicked_ = false;
+        bool toggled_ = false;
+        void setClicked(bool flag){clicked_=flag;}
+        void switchToggle(){toggled_ = !toggled_;}
+    public:
+        void reset(){clicked_=false; toggled_=false;}
+        bool isClicked() const {return clicked_;}
+        bool isToggled() const {return toggled_;}
+        const bool& clickedRef() const {return clicked_;}
+        const bool& toggleRef() const {return toggled_;}
+    };
+
 
 protected:
     
-    State keyState_[VIR_N_KEYS];
-    bool keyToggle_[VIR_N_KEYS];
-    State mouseButtonState_[VIR_N_MOUSE_BUTTONS];
+    KeyState keyState_[VIR_N_KEYS];
+    MouseButtonState mouseButtonState_[VIR_N_MOUSE_BUTTONS];
     MousePosition mousePosition_;
     InputState() = default;
 
@@ -58,50 +88,17 @@ public:
 
     void reset();
 
-    bool isKeyPressed(int keyCode) const
-    {
-        return keyState_[keyCode] == State::Pressed;
-    };
-    bool isMouseButtonPressed(int mouseButton)
-    {
-        return mouseButtonState_[mouseButton] == State::Pressed;
-    }
-    
-    bool isKeyHeld(int keyCode) const
-    {
-        return keyState_[keyCode] == State::Held;
-    };
-    bool isMouseButtonHeld(int mouseButton)
-    {
-        return mouseButtonState_[mouseButton] == State::Held;
-    }
-    
-    bool isKeyPressedOrHeld(int keyCode) const
-    {
-        return keyState_[keyCode] != State::None;
-    };
-    bool isMouseButtonPressedOrHeld(int mouseButton)
-    {
-        return mouseButtonState_[mouseButton] != State::None;
-    }
-
-    const State& keyState(int keyCode)
+    const KeyState& keyState(int keyCode) const 
     {
         return keyState_[keyCode];
     }
-    const State& mouseButtonState(int mouseButton)
-    {
-        return mouseButtonState_[mouseButton];
-    }
 
-    bool isKeyToggled(int keyCode) const {return keyToggle_[keyCode];}
-    const bool& keyToggle(int keyCode) {return keyToggle_[keyCode];}
-    
-    //const State* const keyState() const {return keyState_;}
-    //const State* const modKeyState() const {return modKeyState_;}
-    //const State* const mouseButtonState() const {return mouseButtonState_;}
+    const MouseButtonState& mouseButtonState(int mouseButtonCode) const 
+    {
+        return mouseButtonState_[mouseButtonCode];
+    }
    
-    MousePosition& mousePosition(){return mousePosition_;}
+    const MousePosition& mousePosition(){return mousePosition_;}
 };
 
 }
