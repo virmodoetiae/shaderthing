@@ -173,6 +173,7 @@ namespace vir
 
 // Mouse button codes --------------------------------------------------------//
 
+#define VIR_MOUSE_BUTTON_UNKNOWN  -1
 #define VIR_MOUSE_BUTTON_1         0
 #define VIR_MOUSE_BUTTON_2         1
 #define VIR_MOUSE_BUTTON_3         2
@@ -194,12 +195,19 @@ extern std::unordered_map<int, std::string> keyCodeToName;
 
 // Mapping functions for different input libraries ---------------------------//
 
-// Mapping from a vir input code to a glfw input code
+// Mapping from a vir input code to a GLFW input code
 int inputKeyCodeVirToGlfw(int);
 int inputMouseCodeVirToGlfw(int);
-// Mapping from a glfw input code to a vir input code
+// Mapping from a GLFW input code to a vir input code
 int inputKeyCodeGlfwToVir(int);
 int inputMouseCodeGlfwToVir(int);
+
+// Mapping from a vir input code to an ImGui input code
+int inputKeyCodeVirToImGui(int);
+int inputMouseCodeVirToImGui(int);
+// Mapping from an ImGui input code to a vir input code
+int inputKeyCodeImGuiToVir(int);
+int inputMouseCodeImGuiToVir(int);
 
 }
 

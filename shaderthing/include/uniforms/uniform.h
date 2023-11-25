@@ -44,10 +44,11 @@ struct Uniform : public vir::Shader::Uniform
     // of a select keyboard key (down, pressed, toggled)
     bool usesKeyboardInput = false;
 
-    // True if this uniforms has been selected to be a keyboard-tracking
-    // Type::Int3 uniform but the key to track has not been selected yet by the
-    // user
-    bool isKeyboardInputBound = false;
+    // Keycode of the tracked keyboard input if usesKeyboardInput is true
+    int keyCode = -1;
+
+    // 
+    const bool* keyState[3] = {nullptr, nullptr, nullptr};
 
     // Numerical limits for the value of this uniform (or its components, if a
     // multi-component vector), only used by uniform types other than

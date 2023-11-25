@@ -971,19 +971,41 @@ void Layer::setSharedDefaultSamplerUniforms()
         userAction0_ = app_.userActionRef();
     }
 
-    // Set sampler uniforms
+    // Set sampler and keyboard-input-bound uniforms
     uint32_t unit = 0; 
     for (auto u : uniforms_)
     {
+        bool named(u->name.size() > 0);
+        bool isKeyboardInput
+        (
+            u->type == vir::Shader::Variable::Type::Int3 &&
+            u->usesKeyboardInput &&
+            u->keyCode != -1
+        );
         if 
         (
-            u->name == "" || 
+            !named || 
             (
                 u->type != vir::Shader::Variable::Type::Sampler2D &&
-                u->type != vir::Shader::Variable::Type::SamplerCube
+                u->type != vir::Shader::Variable::Type::SamplerCube &&
+                !isKeyboardInput
             )
         )
             continue;
+        
+        // Keyboard input case
+        if (isKeyboardInput)
+        {
+            auto value = u->getValue<glm::ivec3>();
+            value.x = (int)*(u->keyState[0]);
+            value.y = (int)*(u->keyState[1]);
+            value.z = (int)*(u->keyState[2]);
+            u->setValue(value);
+            shader_->setUniformInt3(u->name, value);
+            continue;
+        }
+
+        // Sampler case
         auto resource = u->getValuePtr<Resource>();
         if (resource == nullptr)
             continue;
@@ -1028,17 +1050,20 @@ case vir::Shader::Variable::Type::ST :                      \
 {                                                           \
     T value = u->getValue<T>();                             \
     u->setValue(value);                                     \
-    if (u->name != "")                                      \
+    if (named)                                              \
         shader_->F(u->name, value);                         \
     break;                                                  \
-}
+}   
     for (auto u : uniforms_)
     {
+        bool named(u->name.size() > 0);
         switch(u->type)
         {
             CASE(Bool, bool, setUniformBool)
             CASE(Int, int, setUniformInt)
             CASE(Int2, glm::ivec2, setUniformInt2)
+            CASE(Int3, glm::ivec3, setUniformInt3)
+            CASE(Int4, glm::ivec4, setUniformInt4)
             CASE(Float, float, setUniformFloat)
             CASE(Float2, glm::vec2, setUniformFloat2)
             CASE(Float3, glm::vec3, setUniformFloat3)

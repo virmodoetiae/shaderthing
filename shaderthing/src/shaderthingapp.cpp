@@ -435,6 +435,9 @@ void ShaderThingApp::saveProject(){
     if (!stateFlags_[ST_SAVE_PROJECT]) return;
     stateFlags_[ST_SAVE_PROJECT] = false;
 
+    if (projectFilepath_.size() == 0)
+        return;
+
     auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Write);
     
     project.writeObjectStart("shared");
@@ -487,6 +490,10 @@ void ShaderThingApp::loadProject()
 {
     if (!stateFlags_[ST_LOAD_PROJECT]) return;
         stateFlags_[ST_LOAD_PROJECT] = false;
+
+    if (projectFilepath_.size() == 0)
+        return;
+
     auto project = ObjectIO(projectFilepath_.c_str(), ObjectIO::Mode::Read);
     auto shared = project.readObject("shared");
     auto fontScale = shared.read<float>("UIScale");

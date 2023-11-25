@@ -114,12 +114,22 @@ TODO ---------------------------------------------------------------------------
     delete-pointer-checks when compiling with optimizations, but it is still
     being test
 
-(W) Expand code repository section
-
-( ) Add generic keyboard-based inputs as custom uniforms in addition to the 
+(W) Add generic keyboard-based inputs as custom uniforms in addition to the 
     currently existing and unreboundable WASD-based iCameraPosition/iWASD. 
     Probably not too trivial but not particularly complex either
-    
+
+(W) Expand code repository section
+
+( ) Fix a bug that can be reproduced as follows:
+    1. Create a uniform of any type
+    2. Give it a name, but do not compile the layer
+    3. Delete the give name, and here comes the bug
+    The compilation button does not go away. This might be less trivial to
+    manage than one might think, due to the vast range of scenarios that might
+    lead to this situation, some of which might not require hiding the
+    compilation button if other uncompiled changes were made (e.g., to the layer
+    shader source) in parallel as well
+
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
 

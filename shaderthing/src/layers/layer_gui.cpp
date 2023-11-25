@@ -820,6 +820,8 @@ to modify. Best suited for controlling a camera)";
             else 
                 ImGui::InputText("##name", &uniform->name);
             ImGui::PopItemWidth();
+
+            bool named(uniform->name.size() > 0);
             
             // Column 2 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
@@ -905,7 +907,7 @@ to modify. Best suited for controlling a camera)";
                     else if (ImGui::Checkbox((value) ? "true" : "false", &value))
                     {
                         uniform->setValue(value);
-                        if (uniform->name != "")
+                        if (named)
                         {
                             shader_->setUniformBool(uniform->name, value);
                             app_.userActionRef() = true;
@@ -958,7 +960,7 @@ to modify. Best suited for controlling a camera)";
                             value = std::min((float)value, uLimits.y);
                         }
                         uniform->setValue(value);
-                        if (uniform->name != "")
+                        if (named)
                         {
                             shader_->setUniformInt(uniform->name, value);
                             app_.userActionRef() = true;
@@ -992,7 +994,7 @@ to modify. Best suited for controlling a camera)";
                             value = std::min((float)value, uLimits.y);
                         }
                         uniform->setValue(value);
-                        if (uniform->name != "")
+                        if (named)
                         {
                             shader_->setUniformInt(uniform->name, value);
                             app_.userActionRef() = true;
@@ -1072,7 +1074,7 @@ to modify. Best suited for controlling a camera)";
                             value.y = std::min(value.y, (int)uLimits.y);
                         }
                         uniform->setValue(value);
-                        if (uniform->name != "")
+                        if (named)
                         {
                             shader_->setUniformInt2(uniform->name, value);
                             app_.userActionRef() = true;
@@ -1092,31 +1094,108 @@ to modify. Best suited for controlling a camera)";
                         uLimits.y = std::max(value.y, (int)uLimits.y);
                         uLimits.y = std::max(value.z, (int)uLimits.y);
                     }
-                    if 
-                    (
-                        ImGui::SliderInt3
-                        (
-                            "##i3Slider", 
-                            glm::value_ptr(value), 
-                            uLimits.x,
-                            uLimits.y
-                        )
-                    )
+                    bool keyboardInput(false);
+                    if (!(isShared || isDefault))
                     {
-                        if (limitsChanged)
+                        if 
+                        (
+                            ImGui::SmallButton
+                            (
+                                uniform->usesKeyboardInput ? 
+                                ICON_FA_SLIDERS_H : 
+                                ICON_FA_KEYBOARD
+                            )
+                        )
                         {
-                            value.x = std::max(value.x, (int)uLimits.x);
-                            value.x = std::min(value.x, (int)uLimits.y);
-                            value.y = std::max(value.y, (int)uLimits.x);
-                            value.y = std::min(value.y, (int)uLimits.y);
-                            value.z = std::max(value.z, (int)uLimits.x);
-                            value.z = std::min(value.z, (int)uLimits.y);
+                            uniform->usesKeyboardInput = 
+                                !uniform->usesKeyboardInput;
+                            uniform->keyCode = -1;
+                            value = glm::ivec3(0);
+                            if (uniform->usesKeyboardInput)
+                                uniform->showLimits = false;
                         }
-                        uniform->setValue(value);
-                        if (uniform->name != "")
+                        ImGui::SameLine();
+                        keyboardInput = uniform->usesKeyboardInput;
+                    }
+                    if (keyboardInput)
+                    {
+                        if (uniform->keyCode == -1)
                         {
-                            shader_->setUniformInt3(uniform->name, value);
-                            app_.userActionRef() = true;
+                            for 
+                            (
+                                ImGuiKey key = ImGuiKey_NamedKey_BEGIN;
+                                key < ImGuiKey_NamedKey_END;
+                                key = (ImGuiKey)(key+1)
+                            )
+                            {
+                                if (!ImGui::IsKeyDown(key))
+                                    continue;
+                                int virKey=vir::inputKeyCodeImGuiToVir(key);
+                                if (virKey != VIR_KEY_UNKNOWN)
+                                {
+                                    uniform->keyCode = virKey;
+                                    auto is = 
+                                        vir::GlobalPtr<vir::InputState>::
+                                        instance();
+                                    uniform->keyState[0] = 
+                                        &is->keyState(virKey).pressedRef();
+                                    uniform->keyState[1] = 
+                                        &is->keyState(virKey).heldRef();
+                                    uniform->keyState[2] = 
+                                        &is->keyState(virKey).toggleRef();
+                                    break;
+                                }
+                            }
+                            ImGui::Text("Press key to bind...");
+                        }
+                        else
+                        {
+                            value.x = (int)*(uniform->keyState[0]);
+                            value.y = (int)*(uniform->keyState[1]);
+                            value.z = (int)*(uniform->keyState[2]);
+                            uniform->setValue(value);
+                            if (named)
+                                shader_->setUniformInt3(uniform->name, value);
+                            if (value.x > 0 || value.y > 0)
+                                app_.userActionRef() = true;
+                            ImGui::Text
+                            (
+                                "Key: \'%s\', (%d, %d, %d)", 
+                                vir::keyCodeToName.at(uniform->keyCode).c_str(),
+                                value.x,
+                                value.y,
+                                value.z
+                            );
+                        }
+                    }
+                    if (!keyboardInput)
+                    {
+                        if 
+                        (
+                            ImGui::SliderInt3
+                            (
+                                "##i3Slider", 
+                                glm::value_ptr(value), 
+                                uLimits.x,
+                                uLimits.y
+                            )
+                        )
+                        {
+                            if (limitsChanged)
+                            {
+                                value.x = std::max(value.x, (int)uLimits.x);
+                                value.x = std::min(value.x, (int)uLimits.y);
+                                value.y = std::max(value.y, (int)uLimits.x);
+                                value.y = std::min(value.y, (int)uLimits.y);
+                                value.z = std::max(value.z, (int)uLimits.x);
+                                value.z = std::min(value.z, (int)uLimits.y);
+                            }
+                            uniform->setValue(value);
+                            if (named)
+                            {
+                                shader_->setUniformInt3(uniform->name, value);
+                                app_.userActionRef() = true;
+                            }
                         }
                     }
                     break;
@@ -1178,7 +1257,7 @@ is currently being held down)");
                             value.w = std::min(value.z, (int)uLimits.y);
                         }
                         uniform->setValue(value);
-                        if (uniform->name != "")
+                        if (named)
                         {
                             shader_->setUniformInt4(uniform->name, value);
                             app_.userActionRef() = true;
@@ -1219,7 +1298,7 @@ is currently being held down)");
                             value = std::min(value, uLimits.y);
                         }
                         uniform->setValue(value);
-                        if (uniform->name != "")
+                        if (named)
                         {
                             shader_->setUniformFloat(uniform->name, value);
                             app_.userActionRef() = true;
@@ -1316,7 +1395,7 @@ is currently being held down)");
                             value.y = std::min(value.y, uLimits.y);
                         }
                         uniform->setValue(value);
-                        if (uniform->name != "")
+                        if (named)
                         {
                             shader_->setUniformFloat2(uniform->name, value);
                             app_.userActionRef() = true;
@@ -1343,13 +1422,15 @@ is currently being held down)");
                         (
                             ImGui::SmallButton
                             (
-                                uniform->usesColorPicker ? "F" : "C"
+                                uniform->usesColorPicker ? 
+                                ICON_FA_SLIDERS_H : 
+                                ICON_FA_PAINT_BRUSH
                             )
                         )
                             uniform->usesColorPicker = !uniform->usesColorPicker;
                         ImGui::SameLine();
                         colorPicker = uniform->usesColorPicker;
-                        }
+                    }
                     if (!colorPicker)
                     {
                         if 
@@ -1380,7 +1461,7 @@ is currently being held down)");
                             if (isCameraDirection)
                                 value = glm::normalize(value);
                             uniform->setValue(value);
-                            if (uniform->name != "")
+                            if (named)
                             {
                                 shader_->setUniformFloat3(uniform->name, value);
                                 app_.userActionRef() = true;
@@ -1412,7 +1493,7 @@ is currently being held down)");
                             uLimits.x = 0.0;
                             uLimits.y = 1.0;
                             uniform->setValue(value);
-                            if (uniform->name != "")
+                            if (named)
                             {
                                 shader_->setUniformFloat3(uniform->name, value);
                                 app_.userActionRef() = true;
@@ -1442,7 +1523,9 @@ is currently being held down)");
                         (
                             ImGui::SmallButton
                             (
-                                uniform->usesColorPicker ? "F" : "C"
+                                uniform->usesColorPicker ? 
+                                ICON_FA_SLIDERS_H : 
+                                ICON_FA_PAINT_BRUSH
                             )
                         )
                             uniform->usesColorPicker = !uniform->usesColorPicker;
@@ -1474,7 +1557,7 @@ is currently being held down)");
                                 value.w = std::min(value.w, uLimits.y);
                             }
                             uniform->setValue(value);
-                            if (uniform->name != "")
+                            if (named)
                                 shader_->setUniformFloat4(uniform->name, value);
                         }
                     }
@@ -1492,7 +1575,7 @@ is currently being held down)");
                             uLimits.x = 0.0;
                             uLimits.y = 1.0;
                             uniform->setValue(value);
-                            if (uniform->name != "")
+                            if (named)
                             {
                                 shader_->setUniformFloat4(uniform->name, value);
                                 app_.userActionRef() = true;
