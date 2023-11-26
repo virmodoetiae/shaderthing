@@ -107,8 +107,11 @@ TODO ---------------------------------------------------------------------------
 (X) Add possibility to loop iTime variable with related controls in the Uniforms
     tab
 
-(W) Fixed missing extra checks on uniform names before them getting assembled
+(X) Fix missing extra checks on uniform names before them getting assembled
     into the fragment source code
+
+(X) Add generic keyboard-based inputs as custom uniforms in addition to the
+    currently existing and unreboundable WASD-based iCameraPosition/iWASD
 
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)
     (note that the thirdparty library is always compiled with max optimizations,
@@ -117,12 +120,7 @@ TODO ---------------------------------------------------------------------------
     delete-pointer-checks when compiling with optimizations, but it is still
     being test
 
-(W) Add generic keyboard-based inputs as custom uniforms in addition to the
-    currently existing and unreboundable WASD-based iCameraPosition/iWASD.
-    Probably not too trivial but not particularly complex either
-
 (W) Expand code repository section
-
 
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
@@ -145,7 +143,13 @@ TO-CONSIDER --------------------------------------------------------------------
     exporting
 
 *   Add possibility to have GIFs as resources with custom frame loop timing 
-    controls (all within the resource manager)
+    controls (all within the resource manager) | Complementary or alternative 
+    idea: add another resource type, e.g., AnimatedTexture2D, which acts as a
+    Texture2D from a shader perpective, but whose actual texture changes after
+    a certain number of user-defined frames, and consits of a collection of 
+    user-selected existing Texture2D resources. This would effectively model
+    an animation, given that all of its frames have been loaded as Texture2D
+    resources (which is fine for, e.g., GIF-like animations)
 
 *   Add possibility of rendering to cubemaps (e.g., adding a type selector for
     any layer's internal framebuffer 'type': either a Texture2D framebuffer or
