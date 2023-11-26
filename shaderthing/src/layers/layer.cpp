@@ -996,29 +996,27 @@ void Layer::setSharedDefaultSamplerUniforms()
             u->usesKeyboardInput &&
             u->keyCode != -1
         );
-        if 
-        (
-            !named || 
-            (
-                u->type != vir::Shader::Variable::Type::Sampler2D &&
-                u->type != vir::Shader::Variable::Type::SamplerCube &&
-                !isKeyboardInput
-            )
-        )
-            continue;
-        
-        // Keyboard input case
-        if (isKeyboardInput)
+        if (isKeyboardInput) // Keyboard input case
         {
             auto value = u->getValue<glm::ivec3>();
             value.x = (int)*(u->keyState[0]);
             value.y = (int)*(u->keyState[1]);
             value.z = (int)*(u->keyState[2]);
             u->setValue(value);
-            shader_->setUniformInt3(u->name, value);
+            if (named)
+                shader_->setUniformInt3(u->name, value);
             continue;
         }
-
+        if 
+        (
+            !named || 
+            (
+                u->type != vir::Shader::Variable::Type::Sampler2D &&
+                u->type != vir::Shader::Variable::Type::SamplerCube
+            )
+        )
+            continue;
+        
         // Sampler case
         auto resource = u->getValuePtr<Resource>();
         if (resource == nullptr)

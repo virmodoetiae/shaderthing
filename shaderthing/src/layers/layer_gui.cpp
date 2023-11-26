@@ -1095,6 +1095,7 @@ to modify. Best suited for controlling a camera)";
                         uLimits.y = std::max(value.z, (int)uLimits.y);
                     }
                     bool keyboardInput(false);
+                    static float recordT0(0.0f);
                     if (!(isShared || isDefault))
                     {
                         if 
@@ -1112,7 +1113,17 @@ to modify. Best suited for controlling a camera)";
                             uniform->keyCode = -1;
                             value = glm::ivec3(0);
                             if (uniform->usesKeyboardInput)
+                            {
                                 uniform->showLimits = false;
+                                recordT0 = 
+                                    vir::GlobalPtr<vir::Time>::instance()->
+                                    outerTime();
+                            }
+                            else
+                            {
+                                for (int i=0; i<3; i++)
+                                    uniform->keyState[i] = nullptr;
+                            }
                         }
                         ImGui::SameLine();
                         keyboardInput = uniform->usesKeyboardInput;
@@ -1146,18 +1157,26 @@ to modify. Best suited for controlling a camera)";
                                     break;
                                 }
                             }
-                            ImGui::Text("Press key to bind...");
+                            ImGui::PushStyleColor
+                            (
+                                ImGuiCol_Text,
+                                {
+                                    1,
+                                    0,
+                                    0,
+                                    int
+                                    (
+                                        vir::GlobalPtr<vir::Time>::instance()->
+                                        outerTime()-recordT0
+                                    )%2==0}
+                            );
+                            ImGui::Text(ICON_FA_CIRCLE);
+                            ImGui::PopStyleColor();
+                            ImGui::SameLine();
+                            ImGui::Text("Press key to bind...", ICON_FA_CIRCLE);
                         }
                         else
                         {
-                            value.x = (int)*(uniform->keyState[0]);
-                            value.y = (int)*(uniform->keyState[1]);
-                            value.z = (int)*(uniform->keyState[2]);
-                            uniform->setValue(value);
-                            if (named)
-                                shader_->setUniformInt3(uniform->name, value);
-                            if (value.x > 0 || value.y > 0)
-                                app_.userActionRef() = true;
                             ImGui::Text
                             (
                                 "Key: \'%s\', (%d, %d, %d)", 
