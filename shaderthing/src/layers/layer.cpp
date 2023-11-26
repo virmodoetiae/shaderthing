@@ -686,6 +686,9 @@ std::string Layer::assembleFragmentSource
     }
     for (auto* u : uniforms_)
     {
+        // If the uniform has no name, I can't add it to the source
+        if (u->name.size() == 0)
+            continue;
         // All names in uniformTypeToName map 1:1 to GLSL uniform names, except
         // for sampler2D (which maps to texture2D) and samplerCube (which maps
         // to cubemap). I should re-organize the mappings a bit
@@ -751,7 +754,18 @@ bool Layer::compileShader()
         tmp = nullptr;
         sharedSourceEditor_.SetErrorMarkers({});
         fragmentSourceEditor_.SetErrorMarkers({});
-        uncompiledUniforms_.clear();
+        // Remove only named uniforms form the list of the uncompiled uniforms
+        // as they are the only ones that get compiled into the source code
+        uncompiledUniforms_.erase
+        (
+            std::remove_if
+            (
+                uncompiledUniforms_.begin(),
+                uncompiledUniforms_.end(),
+                [](Uniform* u){return u->name.size()>0;}
+            ),
+            uncompiledUniforms_.end()
+        );
         hasUncompiledChanges_ = false;
         return true;
     }

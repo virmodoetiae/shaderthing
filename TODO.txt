@@ -4,7 +4,7 @@ TODO ---------------------------------------------------------------------------
 
 (X) Add project README with compilation instructions
 
-(X) Implement export control for enabling GIF palette calculation only 
+(X) Implement export control for enabling GIF palette calculation only
     on first frame
 
 (X) Add settings for keyboard and mouse sensitivity for iCameraPosition,
@@ -23,13 +23,13 @@ TODO ---------------------------------------------------------------------------
     selection
 
 (X) Check if possible to add support for GL_RGBA32F-formatted framebuffers
-    to the OpenGLKMeansQuantizer (it is possible, OpenGLKMeansQuantizer 
+    to the OpenGLKMeansQuantizer (it is possible, OpenGLKMeansQuantizer
     modified to achieve this)
 
-(X) Fix layer resolution change resulting in reset of internal framebuffer 
+(X) Fix layer resolution change resulting in reset of internal framebuffer
     filtering and magnification/minimization settings to default values
 
-(X) Prevent Ctrl+S causing project save when iCameraPosition changing due to 
+(X) Prevent Ctrl+S causing project save when iCameraPosition changing due to
     keyboard inputs (Fixed by re-mapping the LCTRL camera key to LSHIFT, not
     very creative, but the controls are likely to be reviewed anyway in the
     future)
@@ -45,7 +45,7 @@ TODO ---------------------------------------------------------------------------
     controls as in iTime is simply a time-like varying uniform that is
     not bound to the rendering process itself
 
-(X) Re-work shader controls logic: 
+(X) Re-work shader controls logic:
     manage automatic fragment shader header addition with automatic uniform
     manager, so the user only needs to manage them via the Uniforms tab,
     instead of having to type in the uniform declarations in the shader code.
@@ -71,7 +71,7 @@ TODO ---------------------------------------------------------------------------
 
 (X) Fix weird behaviour of 32-bit-float-formatted internal framebuffer-rendered,
     layers | This was found to be due to alpha-blending when the alpha value is
-    outside the [0-1] range, solved by disabling alpha-blending for internal 
+    outside the [0-1] range, solved by disabling alpha-blending for internal
     framebuffer-rendered layers
 
 (X) Fix visual differences between internal framebuffer&window-rendered layers
@@ -94,12 +94,12 @@ TODO ---------------------------------------------------------------------------
 
 (X) Fix find/replace tool not working on uncompiled editor text
 
-(X) Fix crash on loading of saved projects that were saved with shader 
+(X) Fix crash on loading of saved projects that were saved with shader
     compilation errors
 
 (X) Add noise-related and advanced ray marching code snippets to Code repository
 
-(X) Re-work the project save/load system to leverage a more structured and 
+(X) Re-work the project save/load system to leverage a more structured and
     update-resilient storage format, e.g., JSON-like files (the file format
     is still .stf for clarity, but the internal .stf file format is now pure
     JSON)
@@ -107,34 +107,28 @@ TODO ---------------------------------------------------------------------------
 (X) Add possibility to loop iTime variable with related controls in the Uniforms
     tab
 
+(W) Fixed missing extra checks on uniform names before them getting assembled
+    into the fragment source code
+
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)
     (note that the thirdparty library is always compiled with max optimizations,
-    regardless, this only pertains to vir/ and shaderthing/). 
-    Memory leaks and/or segfaults seem to habe been solved by disabling 
+    regardless, this only pertains to vir/ and shaderthing/).
+    Memory leaks and/or segfaults seem to habe been solved by disabling
     delete-pointer-checks when compiling with optimizations, but it is still
     being test
 
-(W) Add generic keyboard-based inputs as custom uniforms in addition to the 
-    currently existing and unreboundable WASD-based iCameraPosition/iWASD. 
+(W) Add generic keyboard-based inputs as custom uniforms in addition to the
+    currently existing and unreboundable WASD-based iCameraPosition/iWASD.
     Probably not too trivial but not particularly complex either
 
 (W) Expand code repository section
 
-( ) Fix a bug that can be reproduced as follows:
-    1. Create a uniform of any type
-    2. Give it a name, but do not compile the layer
-    3. Delete the give name, and here comes the bug
-    The compilation button does not go away. This might be less trivial to
-    manage than one might think, due to the vast range of scenarios that might
-    lead to this situation, some of which might not require hiding the
-    compilation button if other uncompiled changes were made (e.g., to the layer
-    shader source) in parallel as well
 
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
 
-( ) Fix (or find workaround) for ImGui window icons disappearing on 
-    ImGui docking/undocking actions (Windows-only, at least until I see how 
+( ) Fix (or find workaround) for ImGui window icons disappearing on
+    ImGui docking/undocking actions (Windows-only, at least until I see how
     this performs on Linux)
 
 ( ) Add example projects that can be loaded in ShaderThings as demos/tutorials

@@ -1641,8 +1641,16 @@ is currently being held down)");
 
             if 
             (
-                uniform->name != uniformName0 ||
-                uniform->type != uniformType0
+                std::find
+                (
+                    uncompiledUniforms_.begin(), 
+                    uncompiledUniforms_.end(), 
+                    uniform
+                ) == uncompiledUniforms_.end() &&
+                (
+                    uniform->name != uniformName0 ||
+                    uniform->type != uniformType0
+                )
             )
                 uncompiledUniforms_.emplace_back(uniform);
             
