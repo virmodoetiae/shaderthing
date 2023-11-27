@@ -254,36 +254,29 @@ bool GifEncoder::openFile
     fputc((width >> 8) & 0xff, file_);
     fputc(height & 0xff, file_);
     fputc((height >> 8) & 0xff, file_);
-
-    /*
-    fputc(0xf0, file_);  // Global color table of 2 colors (dummy)
-    fputc(0, file_);     // Background color
-    fputc(0, file_);     // Square pixel aspect ratio
-
-    // Data of the dummy global color table (r,g,b of both dummy colors)
-    fputc(0, file_);
-    fputc(0, file_);
-    fputc(0, file_);
-    fputc(0, file_);
-    fputc(0, file_);
-    fputc(0, file_);*/
     
-    // - first bit is global color table yet/no (here is no)
+    //   Reverted back to including a dummy global color table even if not used
+    //   at all, mainly for compatibility with some GIF decoders
+    // - first bit is global color table yet/no (here is yes)
     // - bits 2,3,4 are the the number of bits -1 per primary color of the 
     //   incoming frames, here set to 111 = 7, i.e. 7+1=8 bit depth
     // - bit 5 signals whether the global color table is sorted by frequency 
     //   or not (here is no)
-    // - bits 6,7,8 are log2 of size global color table - 1. Here it is 0,0,0
-    //   as no global color table is used
-    fputc(0b01110000, file_);
-    fputc(0, file_);     // Background color index (forced to have this)
+    // - bits 6,7,8 should be equal to log2(size global color table-1), set to
+    //   0 if no global color table. In this case, the global color table has
+    //   2 dummy colors, hence the last three bytes represent log2(2-1) = 0
+    fputc(0b11110000, file_);
+    fputc(0, file_);     // Background color index (forced to have this even if
+                         // table-on-off bit (bit 1) were the were to be 0)
     fputc(0, file_);     // Square pixel aspect ratio
+    for (int i=0; i<6; i++) // Write r,g,b, components of the two dummy colors
+        fputc(0, file_);
 
     // Animation header
     fputc(0x21, file_); // Extension
     fputc(0xff, file_); // Application specific
     fputc(11, file_); // Length 11
-    fputs("NETSCAPE2.0", file_); // ...
+    fputs("NETSCAPE2.0", file_);
     fputc(3, file_); // 3 bytes of NETSCAPE2.0 data
     fputc(1, file_); // Looping info
     fputc(0, file_); // Loop infinitely (byte 0)

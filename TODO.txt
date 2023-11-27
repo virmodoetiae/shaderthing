@@ -122,6 +122,9 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand code repository section
 
+( ) Add system info (OpenGL version & graphics card vendor info) to a tab
+    in the main menu
+
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
 
