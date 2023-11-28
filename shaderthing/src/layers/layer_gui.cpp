@@ -1618,6 +1618,7 @@ is currently being held down)");
                             if 
                             (
                                 r->type() != Resource::Type::Texture2D &&
+                                r->type() != Resource::Type::AnimatedTexture2D &&
                                 r->type() != 
                                     Resource::Type::FramebufferColorAttachment
                             )

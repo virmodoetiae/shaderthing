@@ -35,6 +35,7 @@ public:
     {
         Uninitialized,
         Texture2D,
+        AnimatedTexture2D,
         FramebufferColorAttachment,
         Cubemap
     };

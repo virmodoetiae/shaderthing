@@ -191,7 +191,7 @@ void ResourceManager::renderGui()
                             );
                     }
                     else    // No way inUseBy.size() != 0 if resource->type() !=
-                            // Resource::Type::Texture2D, so not cubemap stuff 
+                            // Resource::Type::Texture2D, so no cubemap stuff 
                             // here
                     {
                         ImGui::BeginDisabled();
@@ -431,6 +431,7 @@ not affect any cubemaps using this texture)");
             if 
             (
                 resource->type() == Resource::Type::Texture2D ||
+                resource->type() == Resource::Type::AnimatedTexture2D ||
                 resource->type() == Resource::Type::FramebufferColorAttachment
             )
             {
@@ -528,7 +529,7 @@ bool ResourceManager::addOrReplaceTextureGuiButton
         (
             dialogKey.c_str(), 
             "Choose image", 
-            ".png,.jpg,.jpeg,.bmp", 
+            ".png,.jpg,.jpeg,.bmp,.gif", 
             lastOpenedPath
         );
     }
@@ -752,7 +753,11 @@ bool ResourceManager::reExportTextureGuiButton
     bool validExport = false;
     if (resource == nullptr)
         return validExport;
-    if (resource->type() != Resource::Type::Texture2D)
+    if 
+    (
+        resource->type() != Resource::Type::Texture2D &&
+        resource->type() != Resource::Type::AnimatedTexture2D
+    )
         return validExport;
     static std::string lastOpenedPath(".");
     if (ImGui::Button("Re-export", size))

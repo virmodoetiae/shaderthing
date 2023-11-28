@@ -30,7 +30,8 @@ std::unordered_map<Resource::Type, std::string> Resource::typeToName =
 {
     {Resource::Type::Uninitialized, "Uninitialized"},
     {Resource::Type::Texture2D, "Texture-2D"},
-    {Resource::Type::FramebufferColorAttachment, "Buffer"},
+    {Resource::Type::AnimatedTexture2D, "Texture-2D GIF"},
+    {Resource::Type::FramebufferColorAttachment, "Layer"},
     {Resource::Type::Cubemap, "Cubemap"}
 };
 
@@ -38,7 +39,8 @@ std::unordered_map<std::string, Resource::Type> Resource::nameToType =
 {
     {"Uninitialized", Resource::Type::Uninitialized},
     {"Texture-2D", Resource::Type::Texture2D},
-    {"Buffer", Resource::Type::FramebufferColorAttachment},
+    {"Texture-2D GIF", Resource::Type::AnimatedTexture2D},
+    {"Layer", Resource::Type::FramebufferColorAttachment},
     {"Cubemap", Resource::Type::Cubemap}
 };
 
@@ -97,6 +99,7 @@ bool Resource::validCubemapFaces(Resource* faces[6])
     switch (type_) {                                                        \
         case Type::FramebufferColorAttachment :                             \
             return (*NATIVE_RESOURCE(vir::Framebuffer*))->func;             \
+        case Type::AnimatedTexture2D :                                      \
         case Type::Texture2D :                                              \
             return NATIVE_RESOURCE(vir::TextureBuffer2D)->func;             \
         case Type::Cubemap :                                                \
@@ -107,6 +110,7 @@ bool Resource::validCubemapFaces(Resource* faces[6])
     switch (type_) {                                                        \
         case Type::FramebufferColorAttachment :                             \
             return (*NATIVE_RESOURCE(vir::Framebuffer*))->func0;            \
+        case Type::AnimatedTexture2D :                                      \
         case Type::Texture2D :                                              \
             return NATIVE_RESOURCE(vir::TextureBuffer2D)->func1;            \
         case Type::Cubemap :                                                \
@@ -217,16 +221,16 @@ vir::TextureBuffer::FilterMode Resource::minFilterMode()
 }
 
 template<>
-bool Resource::set(vir::TextureBuffer2D* nativeResource)
+bool Resource::set(vir::Framebuffer** nativeResource)
 {
-    SET_NATIVE_RESOURCE(Type::Texture2D)
+    SET_NATIVE_RESOURCE(Type::FramebufferColorAttachment)
     return true;
 }
 
 template<>
-bool Resource::set(vir::Framebuffer** nativeResource)
+bool Resource::set(vir::TextureBuffer2D* nativeResource)
 {
-    SET_NATIVE_RESOURCE(Type::FramebufferColorAttachment)
+    SET_NATIVE_RESOURCE(Type::Texture2D)
     return true;
 }
 
@@ -241,38 +245,7 @@ bool Resource::set(vir::CubeMapBuffer* nativeResource)
 template<>
 bool Resource::set(std::string filepath)
 {
-    try
-    {
-        set
-        (
-            vir::TextureBuffer2D::create
-            (
-                filepath, 
-                vir::TextureBuffer::InternalFormat::RGBA_UNI_8
-            )
-        );
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-        return false;
-    }
-
-    // Set original file extension
-    originalFileExtension_ = "";
-    bool foundDot(false);
-    for (int i=filepath.size()-1; i>=0; i--)
-    {
-        char& c(filepath[i]);
-        if (!foundDot)
-        {
-            foundDot = (c == '.');
-            originalFileExtension_ = c+originalFileExtension_;
-        }
-        else break;
-    }
-
-    // Also set raw data
+    // Load image data
     std::ifstream rawDataStream
     (
         filepath, std::ios::binary | std::ios::in
@@ -283,6 +256,63 @@ bool Resource::set(std::string filepath)
     unsigned char* rawData = new unsigned char[rawDataSize];
     rawDataStream.read((char*)rawData, rawDataSize);
     rawDataStream.close();
+
+    // Read file extension to check if GIF
+    std::string fileExtension = "";
+    bool foundDot(false);
+    for (int i=filepath.size()-1; i>=0; i--)
+    {
+        char& c(filepath[i]);
+        if (!foundDot)
+        {
+            foundDot = (c == '.');
+            fileExtension = c + fileExtension;
+        }
+        else break;
+    }
+
+    if (fileExtension != ".gif")
+    {
+        try
+        {
+            set
+            (
+                vir::TextureBuffer2D::create
+                (
+                    filepath, 
+                    vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+                )
+            );
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            delete[] rawData;
+            return false;
+        }
+    }
+    else // Load GIF!
+    {
+        int w, h, nf, nc;
+        int* delays = nullptr;
+        type_ = Resource::Type::AnimatedTexture2D;
+        const unsigned char* gifData = stbi_load_gif_from_memory
+        (
+            rawData,
+            rawDataSize,
+            &delays,
+            &w,
+            &h,
+            &nf,
+            &nc,
+            4
+        );
+        stbi_image_free((void*)gifData);
+        stbi_image_free(delays);
+    }
+
+    // Set original file extension and raw data if all went well
+    originalFileExtension_ = fileExtension;
     setRawData(rawData, rawDataSize);
 
     return true;
@@ -518,6 +548,7 @@ void Resource::saveState(ObjectIO& writer)
         writer.write("minimizationFilterMode", (int)minFilterMode());
         switch (type_)
         {
+        case Resource::Type::AnimatedTexture2D :
         case Resource::Type::Texture2D :
         {
             writer.write("wrapModes", 
