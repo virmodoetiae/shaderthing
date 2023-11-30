@@ -1164,11 +1164,15 @@ to modify. Best suited for controlling a camera)";
                                     1,
                                     0,
                                     0,
-                                    int
+                                    float
                                     (
-                                        vir::GlobalPtr<vir::Time>::instance()->
-                                        outerTime()-recordT0
-                                    )%2==0}
+                                        int
+                                        (
+                                            vir::GlobalPtr<vir::Time>::instance()->
+                                            outerTime()-recordT0
+                                        )%2==0
+                                    )
+                                }
                             );
                             ImGui::Text(ICON_FA_CIRCLE);
                             ImGui::PopStyleColor();

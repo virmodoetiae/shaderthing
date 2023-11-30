@@ -102,128 +102,25 @@ const std::unordered_map<TextureBuffer::FilterMode, GLint> filterModeToGLint_ =
     {TextureBuffer::FilterMode::LinearMipmapLinear, GL_LINEAR_MIPMAP_LINEAR}
 };
 
+//----------------------------------------------------------------------------//
 // Texture2D buffer ----------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
-OpenGLTextureBuffer2D::OpenGLTextureBuffer2D
-(
-    std::string filepath, 
-    InternalFormat internalFormat
-)
-{
-    // Generating a texture buffer and binding it to one of the many possible
-    // OpenGL texture buffers (i.e., GL_TEXTURE_2D in this case)
-    // To be more precise, for any type of texture buffer (e.g. GL_TEXTURE_2D)
-    // one actually has multiple buffers available called texture "units",
-    // identified by an int (like a location). By default, unit0 is active
-    // (i.e. as if glActiveTexture(GL_TEXTURE0) was called). Then, all the
-    // calls to glBindTextures bind the int id to the GL_TEXTURE_2D type of
-    // texture at texture location 0. Typically OpenGL should have at least
-    // 16 texture units available
-    glGenTextures(1, &id_);
-    glBindTexture(GL_TEXTURE_2D, id_);
-    // Set the texture wrapping/filtering options for the s,t(,r) axes, which
-    // are equivalent to x,y(,z) but in texture coordinate space
-    float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-    for (int i=0;i<2;i++)
-        glTexParameteri
-        (
-            GL_TEXTURE_2D, 
-            wrapIndexToGLint_.at(i), 
-            wrapModeToGLint_.at(wrapModes_[i])
-        );
-    // Zoom in filter
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, 
-        filterModeToGLint_.at(magFilterMode_));
-    // Zoom out filter
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, 
-        filterModeToGLint_.at(minFilterMode_));
-
-    // Actual texture data loading
-    stbi_set_flip_vertically_on_load(true);
-    int tw, th, nc;
-    int requestedNChannels = TextureBuffer::nChannels(internalFormat);
-    unsigned char* data = stbi_load(filepath.c_str(), &tw, &th, &nc, 
-        requestedNChannels);
-    width_ = (uint32_t)tw;
-    height_ = (uint32_t)th;
-    nChannels_ = requestedNChannels ? requestedNChannels : (uint32_t)nc;
-    if (!data)
-    {   
-        throw std::runtime_error
-        (
-R"(vopenglbuffers.cpp - OpenGLTextureBuffer2D(std::string, InternalFormat), 
-failed to construct)"
-        );
-    }
-
-    if (internalFormat == InternalFormat::Undefined)
-        internalFormat = defaultInternalFormat(nChannels_);
-    internalFormat_ = internalFormat;
-    GLint glFormat = OpenGLFormat(internalFormat);
-    if (glFormat != GL_RGBA)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    else
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
-    GLint glInternalFormat = OpenGLInternalFormat(internalFormat);
-    glTexImage2D
-    (
-        GL_TEXTURE_2D, 
-        0, 
-        glInternalFormat, 
-        tw, 
-        th, 
-        0, 
-        glFormat, 
-        OpenGLType(internalFormat),
-        data
-    );
-
-    // Swizzling setting
-    if (nChannels_ == 1) 
-    {
-        GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_ONE};
-        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-    }
-    else if (nChannels_ == 2) 
-    {
-        GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_GREEN};
-        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-    }
-    else if (nChannels_ == 3)
-    {
-        GLint swizzleMask[] = {GL_RED, GL_GREEN, GL_BLUE, GL_ONE};
-        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-    }
-    // Mipmap are scaled down versions of the same texture that are used when
-    // sampling objects using said textures that are far from the camera. This
-    // avoid having to repate the same exact function call as before except for
-    // an incrementing second argument to generate all the other textures for
-    // increasing mipmap levels
-    glGenerateMipmap(GL_TEXTURE_2D);
-    // Good practice to free the memory used for image loading, since the image
-    // is OpenGL (i.e. GPU memory) anyway now
-    stbi_image_free(data);
-    data = nullptr;
-}
-
-OpenGLTextureBuffer2D::OpenGLTextureBuffer2D
+void OpenGLTextureBuffer2D::initialize
 (
     const unsigned char* data, 
     uint32_t width,
     uint32_t height,
     InternalFormat internalFormat
-) : 
-TextureBuffer2D(data, width, height, internalFormat)
+)
 {
     if (internalFormat == InternalFormat::Undefined)
         throw std::runtime_error
         (
-R"(vopenglbuffers.cpp - OpenGLTextureBuffer2D(const unsigned char*, uint32_t, 
-uint32_t, InternalFormat), cannot create a texture from the provided data if
-the internal format is undefined)"
+R"(vopenglbuffers.cpp - OpenGLTextureBuffer2D::initialize(const unsigned char*,
+uint32_t, uint32_t, InternalFormat) - Cannot create a texture from the provided
+data if the internal format is undefined)"
         );
-    
     glGenTextures(1, &id_);
     glBindTexture(GL_TEXTURE_2D, id_);
     float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -254,8 +151,8 @@ the internal format is undefined)"
         GL_TEXTURE_2D, 
         0, 
         glInternalFormat, 
-        width_, 
-        height_, 
+        width, 
+        height, 
         0, 
         glFormat, 
         OpenGLType(internalFormat),
@@ -279,6 +176,69 @@ the internal format is undefined)"
         glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
     }
     glGenerateMipmap(GL_TEXTURE_2D);
+    width_ = width;
+    height_ = height;
+    internalFormat_ = internalFormat;
+    nChannels_ = TextureBuffer::nChannels(internalFormat);
+}
+
+OpenGLTextureBuffer2D::OpenGLTextureBuffer2D
+(
+    std::string filepath, 
+    InternalFormat internalFormat
+)
+{
+    // Load textue data from file
+    stbi_set_flip_vertically_on_load(true);
+    int width, height, nChannels;
+    int requestedNChannels = TextureBuffer::nChannels(internalFormat);
+    unsigned char* data = stbi_load
+    (
+        filepath.c_str(), 
+        &width, 
+        &height, 
+        &nChannels, 
+        requestedNChannels
+    );
+    if (!data)
+    {   
+        throw std::runtime_error
+        (
+R"(vopenglbuffers.cpp - OpenGLTextureBuffer2D(std::string, InternalFormat) -
+failed to load data from file)"
+        );
+    }
+    nChannels_ = requestedNChannels ? requestedNChannels : (uint32_t)nChannels;
+    if (internalFormat == InternalFormat::Undefined)
+        internalFormat = defaultInternalFormat(nChannels_);
+    // Construct actual GL object from data
+    initialize 
+    (
+        data,
+        width,
+        height,
+        internalFormat
+    );
+    stbi_image_free(data);
+    data = nullptr;
+}
+
+OpenGLTextureBuffer2D::OpenGLTextureBuffer2D
+(
+    const unsigned char* data, 
+    uint32_t width,
+    uint32_t height,
+    InternalFormat internalFormat
+) : 
+TextureBuffer2D(data, width, height, internalFormat)
+{
+    initialize // Construct actual GL object from data
+    (
+        data,
+        width,
+        height,
+        internalFormat
+    );
 }
 
 OpenGLTextureBuffer2D::~OpenGLTextureBuffer2D()
@@ -344,97 +304,11 @@ void OpenGLTextureBuffer2D::unbind(uint32_t unit)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+//----------------------------------------------------------------------------//
 // CubeMap buffer ------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
-OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
-(
-    std::string filepaths[6], 
-    InternalFormat internalFormat
-)
-{
-    glGenTextures(1, &id_);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
-
-    int requestedNChannels = TextureBuffer::nChannels(internalFormat);
-    GLint glFormat;
-    GLint glInternalFormat;
-    stbi_set_flip_vertically_on_load(false);
-    for (unsigned int i = 0; i < 6; i++)
-    {
-        int tw, th, nc;
-        unsigned char* data = stbi_load
-        (
-            filepaths[i].c_str(), 
-            &tw, 
-            &th, 
-            &nc, 
-            requestedNChannels
-        );
-        if (i == 0)
-        {
-            width_ = (uint32_t)tw;
-            height_ = (uint32_t)th;
-            nChannels_ = requestedNChannels ? requestedNChannels : (uint32_t)nc;
-            if (internalFormat == InternalFormat::Undefined)
-                internalFormat == TextureBuffer::defaultInternalFormat(nChannels_);
-            internalFormat_ = internalFormat;
-            glFormat = OpenGLFormat(internalFormat);
-            if (glFormat != GL_RGBA)
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            else
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
-            glInternalFormat = OpenGLInternalFormat(internalFormat);
-        }
-        else if 
-        (
-            tw != width_ || 
-            th != height_ || 
-            (requestedNChannels==0 && nc != nChannels_) || 
-            !data
-        )
-        {
-            std::cout << "Failed to load cube map" << std::endl;
-            stbi_image_free(data);
-            throw std::exception();
-        }
-        glTexImage2D
-        (
-            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
-            0, 
-            glInternalFormat, 
-            width_, 
-            height_, 
-            0, 
-            glFormat, 
-            OpenGLType(internalFormat),
-            data
-        );
-        stbi_image_free(data);
-    }
-    // Zoom in filter
-    magFilterMode_ = FilterMode::Linear;
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, 
-        filterModeToGLint_.at(magFilterMode_));
-    // Zoom out filter
-    minFilterMode_ = FilterMode::Linear;
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, 
-        filterModeToGLint_.at(minFilterMode_));
-    float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    glTexParameterfv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BORDER_COLOR, borderColor);
-    for (int i=0;i<3;i++)
-    {
-        wrapModes_[i] = WrapMode::ClampToEdge;
-        glTexParameteri
-        (
-            GL_TEXTURE_CUBE_MAP, 
-            wrapIndexToGLint_.at(i), 
-            wrapModeToGLint_.at(wrapModes_[i])
-        );
-    }
-    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-}
-
-OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
+void OpenGLCubeMapBuffer::initialize
 (
     const unsigned char* faceData[6], 
     uint32_t width,
@@ -446,15 +320,11 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
         throw std::runtime_error
         (
 R"(vopenglbuffers.cpp - OpenGLCubeMapBuffer(const unsigned char**, uint32_t, 
-uint32_t, InternalFormat), cannot create a cubemap from the provided data if
+uint32_t, InternalFormat) - cannot create a cubemap from the provided data if
 the internal format is undefined)"
         );
     glGenTextures(1, &id_);
     glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
-
-    width_ = width;
-    height_ = height;
-    nChannels_ = TextureBuffer::nChannels(internalFormat);
     GLint glFormat = OpenGLFormat(internalFormat);
     if (glFormat != GL_RGBA)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -467,8 +337,8 @@ the internal format is undefined)"
             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
             0, 
             glInternalFormat, 
-            width_, 
-            height_, 
+            width, 
+            height, 
             0, 
             glFormat, 
             OpenGLType(internalFormat), 
@@ -495,6 +365,73 @@ the internal format is undefined)"
         );
     }
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    width_ = width;
+    height_ = height;
+    nChannels_ = TextureBuffer::nChannels(internalFormat);
+}
+
+OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
+(
+    std::string filepaths[6], 
+    InternalFormat internalFormat
+)
+{
+    int requestedNChannels = TextureBuffer::nChannels(internalFormat);
+    const unsigned char* faceData[6];
+    stbi_set_flip_vertically_on_load(false);
+    for (int i=0; i<6; i++)
+    {
+        int width, height, nChannels;
+        faceData[i] = stbi_load
+        (
+            filepaths[i].c_str(), 
+            &width, 
+            &height, 
+            &nChannels, 
+            requestedNChannels
+        );
+        if (i == 0)
+        {
+            width_ = (uint32_t)width;
+            height_ = (uint32_t)height;
+            nChannels_ = 
+                requestedNChannels ? requestedNChannels : (uint32_t)nChannels;
+            if (internalFormat == InternalFormat::Undefined)
+                internalFormat == 
+                    TextureBuffer::defaultInternalFormat(nChannels_);
+            internalFormat_ = internalFormat;
+        }
+        else if 
+        (
+            width != width_ || 
+            height != height_ || 
+            (requestedNChannels==0 && nChannels != nChannels_) || 
+            !faceData[i]
+        )
+        {
+            for (int j=0; j<i; j++)
+                stbi_image_free((void*)faceData[j]);
+            throw std::runtime_error
+            (
+R"(vopenglbuffers.cpp - OpenGLCubeMapBuffer(std::string[6], InternalFormat),
+failed to construct due to inconsistent face width, height or internalFormat)"
+            );
+        }
+    }
+    initialize(faceData, width_, height_, internalFormat_);
+    for (int i=0; i<6; i++)
+        stbi_image_free((void*)faceData[i]);
+}
+
+OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
+(
+    const unsigned char* faceData[6], 
+    uint32_t width,
+    uint32_t height,
+    InternalFormat internalFormat
+)
+{
+    initialize(faceData, width, height, internalFormat);
 }
 
 OpenGLCubeMapBuffer::~OpenGLCubeMapBuffer()
@@ -561,7 +498,9 @@ void OpenGLCubeMapBuffer::setMinFilterMode
     minFilterMode_ = mode;
 }
 
+//----------------------------------------------------------------------------//
 // Frame buffer --------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
 OpenGLFramebuffer::OpenGLFramebuffer
 (
@@ -692,7 +631,9 @@ void OpenGLFramebuffer::clearColorBuffer(float r, float g, float b, float a)
         previouslyActiveFramebuffer->bind();
 }
 
+//----------------------------------------------------------------------------//
 // Vertex buffer -------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
 OpenGLVertexBuffer::OpenGLVertexBuffer(float* vertices, uint32_t size)
 {
@@ -770,7 +711,9 @@ void OpenGLVertexBuffer::updateVertices(float* vertices, uint32_t size)
     glBufferSubData(GL_ARRAY_BUFFER, 0, size, vertices);
 }
 
+//----------------------------------------------------------------------------//
 // Index buffer --------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
 OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t* indices, uint32_t size)
 {
@@ -799,7 +742,9 @@ void OpenGLIndexBuffer::unbind()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+//----------------------------------------------------------------------------//
 // Vertex array --------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
 OpenGLVertexArray::OpenGLVertexArray()
 {

@@ -21,6 +21,14 @@ static GLint OpenGLType(TextureBuffer::InternalFormat internalFormat);
 
 class OpenGLTextureBuffer2D : public TextureBuffer2D
 {
+private:
+    void initialize
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        InternalFormat internalFormat
+    );
 public:
     OpenGLTextureBuffer2D
     (
@@ -46,8 +54,51 @@ public:
     void unbind(uint32_t) override;
 };
 
+/*
+class OpenGLAnimatedTextureBuffer2D : public AnimatedTextureBuffer2D
+{
+public:
+    OpenGLAnimatedTextureBuffer2D // Construct from .gif filepath
+    (
+        std::string filepath, 
+        InternalFormat internalFormat=InternalFormat::Undefined
+    );
+    OpenGLAnimatedTextureBuffer2D // Construct from raw data and frame info
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        uint32_t nFrames,
+        InternalFormat internalFormat
+    );
+    OpenGLAnimatedTextureBuffer2D // Construct from existing frames
+    (
+        std::vector<TextureBuffer2D*>& frames,
+        bool gainFrameOwnership = false
+    );
+    ~OpenGLAnimatedTextureBuffer2D();
+    void setWrapMode
+    (
+        uint32_t index,
+        WrapMode value
+    ) override;
+    void setMagFilterMode(FilterMode mode) override;
+    void setMinFilterMode(FilterMode mode) override;
+    void bind(uint32_t) override;
+    void unbind(uint32_t) override;
+};
+*/
+
 class OpenGLCubeMapBuffer : public CubeMapBuffer
 {
+private:
+    void initialize
+    (
+        const unsigned char* faceData[6], 
+        uint32_t width,
+        uint32_t height,
+        InternalFormat internalFormat
+    );
 public:
     OpenGLCubeMapBuffer
     (
@@ -56,7 +107,7 @@ public:
     );
     OpenGLCubeMapBuffer
     (
-        const unsigned char* data[6], 
+        const unsigned char* faceData[6], 
         uint32_t width,
         uint32_t height,
         InternalFormat internalFormat

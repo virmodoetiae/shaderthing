@@ -4,24 +4,9 @@
 namespace vir
 {
 
-
-
 // Buffer base ---------------------------------------------------------------//
 
 // Texture base --------------------------------------------------------------//
-
-/*
-Undefined,
-R_UNI_8,
-R_UI_8,
-RG_UNI_8,
-RG_UI_8,
-RGB_UNI_8,
-RGB_UI_8,
-RGBA_UNI_8,
-RGBA_UI_8,
-RGBA_SF_32
-*/
 
 const std::unordered_map<TextureBuffer::InternalFormat, std::string> 
     TextureBuffer::internalFormatToName =
@@ -100,6 +85,168 @@ TextureBuffer2D* TextureBuffer2D::create
             );
     }
     return nullptr;
+}
+
+// AnimatedTexture2D ---------------------------------------------------------//
+
+AnimatedTextureBuffer2D::AnimatedTextureBuffer2D
+(
+    const unsigned char* data, 
+    uint32_t width,
+    uint32_t height,
+    uint32_t nFrames,
+    InternalFormat internalFormat
+) :
+TextureBuffer2D(data, width, height, internalFormat),
+currentFrameIndex_(0),
+currentFrame_(nullptr),
+frames_(0),
+isFrameOwner_(true),
+frameDuration_(1.0f/60)
+{
+    frames_.resize(nFrames);
+}
+
+AnimatedTextureBuffer2D::AnimatedTextureBuffer2D
+(
+    std::vector<TextureBuffer2D*>& frames,
+    bool gainFrameOwnership
+) :
+TextureBuffer2D(),
+currentFrameIndex_(0),
+currentFrame_(nullptr),
+frames_(frames),
+isFrameOwner_(gainFrameOwnership),
+frameDuration_(1.0f/60)
+{
+    if (frames.size() == 0)
+        throw std::runtime_error(
+R"(vbuffers.cpp - AnimatedTextureBuffer2D(std::vector<TextureBuffer2D*>&, bool) 
+- Cannot construct from empty array of frames)"
+        );
+    // Ensure consistency between frames
+    bool firstFrame = true;
+    uint32_t width, height;
+    InternalFormat internalFormat;
+    for (auto* frame : frames_)
+    {
+        if (firstFrame)
+        {
+            width = frame->width();
+            height = frame->height();
+            internalFormat = frame->internalFormat();
+            firstFrame = false;
+        }
+        else if 
+        (
+            frame->width() != width || 
+            frame->height() != height || 
+            frame->internalFormat() != internalFormat
+        )
+        {
+            throw std::runtime_error(
+R"(vbuffers.cpp - AnimatedTextureBuffer2D(std::vector<TextureBuffer2D*>&, bool) 
+- Cannot construct because not all frames have same width, height or internal 
+format)"
+        );
+        }
+    }
+    currentFrame_ = frames_[currentFrameIndex_];
+}
+
+AnimatedTextureBuffer2D::~AnimatedTextureBuffer2D()
+{
+    if (!isFrameOwner_)
+        return;
+    for (auto* frame : frames_)
+        delete frame;
+    frames_.resize(0);
+}
+
+AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+(
+    std::string filepath, 
+    InternalFormat internalFormat
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    /*
+    switch(window->context()->type())
+    {
+        case (GraphicsContext::Type::OpenGL) :
+            return new OpenGLAnimatedTextureBuffer2D(filepath, internalFormat);
+    }*/
+    return nullptr;
+}
+
+AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+(
+    const unsigned char* data, 
+    uint32_t width,
+    uint32_t height,
+    uint32_t nFrames,
+    InternalFormat internalFormat
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    
+    /*
+    switch(window->context()->type())
+    {
+        case (GraphicsContext::Type::OpenGL) :
+            return new OpenGLAnimatedTextureBuffer2D
+            (
+                data, 
+                width, 
+                height,
+                nFrames,
+                internalFormat
+            );
+    }*/
+    return nullptr;
+}
+
+AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+(
+    std::vector<TextureBuffer2D*>& frames,
+    bool gainFrameOwnership
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    /*
+    switch(window->context()->type())
+    {
+        case (GraphicsContext::Type::OpenGL) :
+            return new OpenGLAnimatedTextureBuffer2D
+            (
+                frames, gainFrameOwnership
+            );
+    }*/
+    return nullptr;
+}
+
+TextureBuffer2D* AnimatedTextureBuffer2D::nextFrame() 
+{
+    if (frames_.size() == 0)
+        return nullptr;
+    ++currentFrameIndex_;
+    currentFrameIndex_ %= frames_.size();
+    currentFrame_ = frames_[currentFrameIndex_];
+    return currentFrame_;
+}
+
+void AnimatedTextureBuffer2D::setFrameIndex(uint32_t index)
+{
+    if (frames_.size() == 0)
+        return;
+    currentFrameIndex_ = index % frames_.size();
+    currentFrame_ = frames_[currentFrameIndex_];
 }
 
 // CubeMap -------------------------------------------------------------------//

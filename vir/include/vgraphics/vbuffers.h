@@ -169,7 +169,68 @@ public:
     );
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
-    
+};
+
+//----------------------------------------------------------------------------//
+
+class AnimatedTextureBuffer2D : public TextureBuffer2D
+{
+protected:
+    // Current frame counter
+    uint32_t currentFrameIndex_;
+    // Current frame
+    TextureBuffer2D* currentFrame_;
+    // Frames stored as individual TextureBuffer2Ds
+    std::vector<TextureBuffer2D*> frames_;
+    // True if the TextureBuffer2Ds in frames_ are owned by this object. If 
+    // such, they are deleted alongside this object
+    bool isFrameOwner_;
+    // Time duration of a frame
+    float frameDuration_;
+    // Construct from raw data and frame parameters
+    AnimatedTextureBuffer2D
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        uint32_t nFrames,
+        InternalFormat internalFormat
+    );
+    // Construct from existing TextureBuffer2Ds
+    AnimatedTextureBuffer2D
+    (
+        std::vector<TextureBuffer2D*>& frames,
+        bool gainFrameOwnership = false
+    );
+public:
+    ~AnimatedTextureBuffer2D();
+    static AnimatedTextureBuffer2D* create // From filepath (of GIF image)
+    (
+        std::string, 
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
+    static AnimatedTextureBuffer2D* create // From raw data
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        uint32_t nFrames,
+        InternalFormat internalFormat
+    );
+    static AnimatedTextureBuffer2D* create // From existing TextureBuffer2Ds
+    (
+        std::vector<TextureBuffer2D*>& frames,
+        bool gainFrameOwnership = false
+    );
+    uint32_t nFrames() const {return frames_.size();}
+    TextureBuffer2D* currentFrame() {return currentFrame_;}
+    // Advances the current frame index by 1 and returns the frame
+    TextureBuffer2D* nextFrame();
+    float currentFrameIndex() const {return currentFrameIndex_;}
+    // Set the current frame and index
+    void setFrameIndex(uint32_t index);
+    float frameDuration() const {return frameDuration_;}
+    void setFrameDuration(float dt) {frameDuration_ = dt;}
 };
 
 //----------------------------------------------------------------------------//
