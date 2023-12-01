@@ -298,8 +298,8 @@ bool Resource::set(vir::CubeMapBuffer* nativeResource)
     return true;
 }
 
-// This is specifically for reading Texture2D or AnimatedTexture2Ds from
-// an image file (.jpg/.png/.bmp for the former and .gif for the latter)
+// This is specifically for creating a Texture2D or AnimatedTexture2D from an
+// image file (.jpg/.png/.bmp for the former and .gif for the latter)
 template<>
 bool Resource::set(std::string filepath)
 {
@@ -377,7 +377,29 @@ bool Resource::set(std::string filepath)
     return true;
 }
 
-// This is specifically for generating AND setting cubemaps
+// This is specifically for generating and setting AnimatedTexture2Ds from a
+// list of existing resources
+template<>
+bool Resource::set(std::vector<Resource*>* resources)
+{
+    std::vector<vir::TextureBuffer2D*> frames(0);
+    referencedResources_.resize(0);
+    for(auto* r : *resources)
+    {
+        if (!r->valid() || r->type() != Type::Texture2D)
+            continue;
+        frames.emplace_back((vir::TextureBuffer2D*)r->nativeResource());
+        referencedResources_.emplace_back(r);
+    }
+    auto animation = vir::AnimatedTextureBuffer2D::create
+    (
+        frames,
+        false
+    );
+    return set(animation);
+}
+
+// This is specifically for generating and setting cubemaps
 template<>
 bool Resource::set(Resource* faces[6])
 {
@@ -433,40 +455,66 @@ bool Resource::set(Resource* faces[6])
     return true;
 }
 
-// Set Texture2D from actual data and data size
-bool Resource::set(const unsigned char* data, unsigned int size)
+// Set Texture2D or AnimatedTexture2D from raw file data and size
+bool Resource::set(const unsigned char* rawData, unsigned int size, bool gif)
 {
-    int w,h,nc;
-    /*
-    if (size < 10000)
+    if (gif)
     {
-        for (int i=0; i<size; i++)
-        {
-            auto di = data[i];
-            std::cout << i << "-" << (int)di << std::endl;
-        }
-        std::cout << std::endl;
-    }*/
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char* loadedData = stbi_load_from_memory
-    (
-        data, 
-        size, 
-        &w, 
-        &h, 
-        &nc,
-        4   // Force all textures to be treated as 4-component
-    );
-    nc = 4; // Force all textures to be treated as 4-component
-    auto texture = vir::TextureBuffer2D::create
-    (
-        loadedData, 
-        w,
-        h,
-        vir::TextureBuffer::defaultInternalFormat(nc)
-    ); 
-    stbi_image_free(loadedData);
-    return this->set(texture);
+        int w, h, nf, nc;
+        int* fd;
+        stbi_set_flip_vertically_on_load(true);
+        unsigned char* data = stbi_load_gif_from_memory
+        (
+            rawData, 
+            size, 
+            &fd,
+            &w, 
+            &h, 
+            &nf,
+            &nc,
+            4   // Force all textures to be treated as 4-component
+        );
+        nc = 4; // Force all textures to be treated as 4-component
+        auto animation = vir::AnimatedTextureBuffer2D::create
+        (
+            data, 
+            w, 
+            h, 
+            nf,
+            vir::TextureBuffer::defaultInternalFormat(nc)
+        );
+        float dt = 0.f;
+        for (int i=0;i<nf;i++)
+            dt += fd[i];
+        animation->setFrameDuration(dt/nf);
+        stbi_image_free(fd);
+        stbi_image_free(data);
+        return this->set(animation);
+    }
+    else
+    {
+        int w, h, nc;
+        stbi_set_flip_vertically_on_load(true);
+        unsigned char* data = stbi_load_from_memory
+        (
+            rawData, 
+            size, 
+            &w, 
+            &h, 
+            &nc,
+            4   // Force all textures to be treated as 4-component
+        );
+        nc = 4; // Force all textures to be treated as 4-component
+        auto texture = vir::TextureBuffer2D::create
+        (
+            data, 
+            w,
+            h,
+            vir::TextureBuffer::defaultInternalFormat(nc)
+        ); 
+        stbi_image_free(data);
+        return this->set(texture);
+    }
 }
 
 void Resource::setNamePtr(std::string* namePtr)
@@ -478,16 +526,6 @@ void Resource::setNamePtr(std::string* namePtr)
 void Resource::setRawData(unsigned char* rawData, int rawDataSize)
 {
     if (rawData_ != nullptr) delete[] rawData_;
-    /*
-    if (rawDataSize < 10000)
-    {
-        for (int i=0; i<rawDataSize; i++)
-        {
-            auto di = rawData[i];
-            std::cout << i << "-" << (int)di << std::endl;
-        }
-        std::cout << std::endl;
-    }*/
     rawData_ = rawData;
     rawDataSize_ = rawDataSize;
 }
@@ -537,6 +575,13 @@ float Resource::animationFps() const
         1.0/((vir::AnimatedTextureBuffer2D*)nativeResource_)->frameDuration();
 }
 
+void Resource::setAnimationFps(float fps)
+{
+     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return;
+    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setFrameDuration(1.0/fps);
+}
+
 //----------------------------------------------------------------------------//
 
 Resource::Resource
@@ -556,6 +601,79 @@ lastBoundUnit_(-1)
     type_ = nameToType.at(reader.read<std::string>("type"));
     auto readerName = std::string(reader.name());
     setNamePtr(new std::string(readerName));
+    switch(type_)
+    {
+        case Type::Texture2D :
+        {
+            unsigned int rawDataSize;
+            auto rawData = (unsigned char*)reader.read("data", true, 
+                &rawDataSize);
+            set(rawData, rawDataSize);
+            setRawData(rawData, rawDataSize);
+            setOriginalFileExtension(reader.read<std::string>(
+                "originalFileExtension"));
+            auto wrapModes = reader.read<glm::ivec2>("wrapModes");
+            setWrapMode(0, (vir::TextureBuffer::WrapMode)wrapModes.x);
+            setWrapMode(1, (vir::TextureBuffer::WrapMode)wrapModes.y);
+            break;
+        }
+        case Type::AnimatedTexture2D :
+        {
+            if (reader.hasMember("data")) // it is a .gif
+            {
+                unsigned int rawDataSize;
+                auto rawData = (unsigned char*)reader.read("data", true,
+                    &rawDataSize);
+                set(rawData, rawDataSize, true);
+                setRawData(rawData, rawDataSize);
+                setOriginalFileExtension(reader.read<std::string>(
+                    "originalFileExtension"));
+                auto wrapModes = reader.read<glm::ivec2>("wrapModes");
+                setWrapMode(0, (vir::TextureBuffer::WrapMode)wrapModes.x);
+                setWrapMode(1, (vir::TextureBuffer::WrapMode)wrapModes.y);
+                setAnimationFps(reader.read<float>("animationFps"));
+            }
+            else // it is constructed from other resources
+            {
+                auto frameNames = reader.read<std::vector<std::string>>(
+                    "frames");
+                std::vector<Resource*> referencedResources(frameNames.size());
+                int i = 0;
+                for (auto& frameName : frameNames)
+                {
+                    for (auto r : resources)
+                        if 
+                        (
+                            r->name() == frameName && 
+                            r->type() == Resource::Type::Texture2D
+                        )
+                            referencedResources[i] = r;
+                    ++i;
+                }
+                set(&referencedResources);
+            }
+            break;
+        }
+        case Type::Cubemap :
+        {
+            auto faceNames = reader.read<std::vector<std::string>>("faces");
+            Resource* faces[6];
+            int facei = 0;
+            for (auto& faceName : faceNames)
+            {
+                for (auto r : resources)
+                    if 
+                    (
+                        r->name() == faceName && 
+                        r->type() == Resource::Type::Texture2D
+                    )
+                        faces[facei] = r;
+                ++facei;
+            }
+            set(faces);
+            break;
+        }
+    }
     setMagFilterMode
     (
         (vir::TextureBuffer::FilterMode)reader.read<int>
@@ -570,41 +688,6 @@ lastBoundUnit_(-1)
             "minimizationFilterMode"
         )
     );
-    switch(type_)
-    {
-    case Type::Texture2D :
-    {
-        unsigned int rawDataSize;
-        auto rawData = (unsigned char*)reader.read("data", true, &rawDataSize);
-        set(rawData, rawDataSize);
-        setRawData(rawData, rawDataSize);
-        setOriginalFileExtension(reader.read<std::string>("originalFileExtension"));
-        auto wrapModes = reader.read<glm::ivec2>("wrapModes");
-        setWrapMode(0, (vir::TextureBuffer::WrapMode)wrapModes.x);
-        setWrapMode(1, (vir::TextureBuffer::WrapMode)wrapModes.y);
-        break;
-    }
-    case Type::Cubemap :
-    {
-        auto faceNames = reader.read<std::vector<std::string>>("faces");
-        Resource* textureResources[6];
-        int facei = 0;
-        for (auto& faceName : faceNames)
-        {
-            for (auto r : resources)
-                if 
-                (
-                    r->name() == faceName && 
-                    r->type() == Resource::Type::Texture2D
-                )
-                    textureResources[facei] = r;
-            ++facei;
-        }
-        set(textureResources);
-        break;
-    }
-    }
-    
 }
 
 void Resource::saveState(ObjectIO& writer)
@@ -623,6 +706,31 @@ void Resource::saveState(ObjectIO& writer)
         switch (type_)
         {
         case Resource::Type::AnimatedTexture2D :
+        {
+            writer.write("wrapModes", 
+                glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
+            writer.write("animationFps", animationFps());
+            if // it is a .gif
+            (
+                originalFileExtension_.size() > 0 && 
+                rawData_ != nullptr &&
+                rawDataSize_ > 0
+            )
+            {
+                writer.write("originalFileExtension", 
+                    originalFileExtension_.c_str());
+                writer.write("data", (const char*)rawData_, rawDataSize_, true);
+            }
+            else // if it is an animation constructed from other resources
+            {
+                auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+                std::vector<std::string> frameNames(animation->nFrames());
+                for (int i=0; i<frameNames.size(); i++)
+                    frameNames[i] = referencedResources_[i]->name();
+                writer.write("frames", frameNames);
+            }
+            break;
+        }
         case Resource::Type::Texture2D :
         {
             writer.write("wrapModes", 
@@ -634,7 +742,7 @@ void Resource::saveState(ObjectIO& writer)
         }
         case Resource::Type::Cubemap :
         {
-            static std::vector<std::string> faceNames(6);
+            std::vector<std::string> faceNames(6);
             for (int i=0; i<6; i++)
                 faceNames[i] = referencedResources_[i]->name();
             writer.write("faces", faceNames);

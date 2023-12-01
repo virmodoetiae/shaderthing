@@ -334,16 +334,14 @@ data if the internal format is undefined)"
     uint32_t frameSize = width*height*nChannels_;
     for (int i=0;i<nFrames;i++)
     {
-        frames_.emplace_back
-        (
+        frames_[i] = 
             new OpenGLTextureBuffer2D
             (
                 &(data[i*frameSize]),
                 width,
                 height,
                 internalFormat
-            )
-        );
+            );
     }
     currentFrameIndex_ = 0;
     currentFrame_ = frames_[currentFrameIndex_];

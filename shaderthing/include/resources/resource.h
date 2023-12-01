@@ -109,6 +109,9 @@ private:
     // Specifically for AnimatedTexture2Ds
     AnimationData* animationData_;
 
+    // Direcy access to internally managed resource
+    void* nativeResource() {return nativeResource_;}
+
 public:
 
     // Constructor/destructor
@@ -224,8 +227,9 @@ public:
     template<typename T> bool set(T nativeResource);
 
     // Initialize the internally-managed resource from the provided raw data and
-    // its size
-    bool set(const unsigned char* data, unsigned int size);
+    // its size. The gif flag is used to specify whether the resource to be
+    // set is AnimatedTexture2D starting from unpacked gif image data or not
+    bool set(const unsigned char* data, unsigned int size, bool gif=false);
 
     // Set the name pointer to the provided one (ownership is transferred to 
     // this resource)
