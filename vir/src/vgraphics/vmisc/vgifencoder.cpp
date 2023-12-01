@@ -19,8 +19,8 @@ void GifEncoder::encodeIndexedFrame
     switch(indexMode_)
     {
         case KMeansQuantizer::Options::IndexMode::Default :
-            fputc(0b00000100, file_);   // Old frame left in place, no 
-                                        // transparency
+            fputc(0b00001000, file_);   // Old frame reset to no color,
+                                        // no transparency
             break;
         case KMeansQuantizer::Options::IndexMode::Alpha :
             fputc(0b00001001, file_);   // Old frame reset to no color, 
@@ -33,8 +33,12 @@ void GifEncoder::encodeIndexedFrame
     }
     fputc(delay & 0xff, file_);
     fputc((delay >> 8) & 0xff, file_);
-    if (indexMode_ != KMeansQuantizer::Options::IndexMode::Default)
-        fputc(0, file_); // Transparent color index
+    //if (indexMode_ != KMeansQuantizer::Options::IndexMode::Default)
+    fputc(0, file_); // Transparent color index (Apparently I need this 
+                     // regardless of the transparency color flag, in
+                     // spite of the GIF89a specs, or the GIF, while 
+                     // renderable, cannot be properly read by either
+                     // stbi or online GIF editing tools...)
     fputc(0, file_); // Block terminator
 
     // Image descriptor block
