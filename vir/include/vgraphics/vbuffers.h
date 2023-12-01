@@ -24,32 +24,32 @@ public:
     // A very limited number of formats is implemented for now
     enum class InternalFormat
     {
-        Undefined,
-        R_UNI_8,
-        R_UI_8,
-        RG_UNI_8,
-        RG_UI_8,
-        RGB_UNI_8,
-        RGB_UI_8,
-        RGBA_UNI_8,
-        RGBA_UI_8,
-        RGBA_SF_32
+        Undefined = 0,
+        R_UNI_8 = 1,
+        R_UI_8 = 2,
+        RG_UNI_8 = 3,
+        RG_UI_8 = 4,
+        RGB_UNI_8 = 5,
+        RGB_UI_8 = 6,
+        RGBA_UNI_8 = 7,
+        RGBA_UI_8 = 8,
+        RGBA_SF_32 = 9
     };
     enum class WrapMode
     {
-        ClampToBorder,
-        ClampToEdge,
-        Repeat,
-        MirroredRepeat
+        ClampToBorder = 0,
+        ClampToEdge = 1,
+        Repeat = 2,
+        MirroredRepeat = 3
     };
     enum class FilterMode
     {
-        Nearest,
-        Linear,
-        NearestMipmapNearest,
-        LinearMipmapNearest,
-        NearestMipmapLinear,
-        LinearMipmapLinear
+        Nearest = 0,
+        Linear = 1,
+        NearestMipmapNearest = 2,
+        LinearMipmapNearest = 3,
+        NearestMipmapLinear = 4,
+        LinearMipmapLinear = 5
     };
     static const std::unordered_map<InternalFormat, std::string> 
         internalFormatToName;
@@ -235,6 +235,7 @@ public:
     void setFrameIndexFromTime(float time);
     float frameDuration() const {return frameDuration_;}
     void setFrameDuration(float dt) {frameDuration_ = dt;}
+    float duration() const {return frames_.size()*frameDuration_;}
 };
 
 //----------------------------------------------------------------------------//

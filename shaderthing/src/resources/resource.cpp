@@ -141,7 +141,8 @@ namePtr_(new std::string()),
 originalFileExtension_(""),
 rawDataSize_(0),
 rawData_(nullptr),
-lastBoundUnit_(-1)
+lastBoundUnit_(-1),
+animationData_(nullptr)
 {}
 
 Resource::~Resource()
@@ -171,15 +172,17 @@ void Resource::reset()
     }
     nativeResource_ = nullptr;
     referencedResources_.resize(0);
+    if (animationData_ != nullptr)
+        delete animationData_;
 }
 
-void Resource::update()
+void Resource::update(float dt)
 {
-    if (!valid() || type_ != Type::AnimatedTexture2D)
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
         return;
-    float time = vir::GlobalPtr<vir::Time>::instance()->outerTime();
     auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    animation->setFrameIndexFromTime(time);
+    animationData_->internalTime += dt;
+    animation->setFrameIndexFromTime(animationData_->internalTime);
 }
 
 void Resource::bind(int unit)
@@ -249,6 +252,23 @@ vir::TextureBuffer::FilterMode Resource::minFilterMode()
     return vir::TextureBuffer::FilterMode::Nearest;
 }
 
+void Resource::toggleAnimationPaused()
+{
+    if (type_ != Type::AnimatedTexture2D || animationData_ == nullptr)
+        return;
+    animationData_->isInternalTimePaused = 
+        !animationData_->isInternalTimePaused;
+}
+
+void Resource::advanceAnimationFrame()
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return;
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    animation->nextFrame();
+    animationData_->internalTime += animation->frameDuration();
+}
+
 template<>
 bool Resource::set(vir::Framebuffer** nativeResource)
 {
@@ -267,6 +287,7 @@ template<>
 bool Resource::set(vir::AnimatedTextureBuffer2D* nativeResource)
 {
     SET_NATIVE_RESOURCE(Type::AnimatedTexture2D)
+    animationData_ = new AnimationData{};
     return true;
 }
 
@@ -499,6 +520,21 @@ void Resource::setMinFilterMode(vir::TextureBuffer::FilterMode mode)
         setColorBufferMinFilterMode(mode), 
         setMinFilterMode(mode)
     )
+}
+
+bool Resource::isAnimationPaused() const
+{
+     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return false;
+    return animationData_->isInternalTimePaused;
+}
+
+float Resource::animationFps() const
+{
+     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return 0.f;
+    return 
+        1.0/((vir::AnimatedTextureBuffer2D*)nativeResource_)->frameDuration();
 }
 
 //----------------------------------------------------------------------------//

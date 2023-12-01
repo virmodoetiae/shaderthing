@@ -438,6 +438,7 @@ void OpenGLAnimatedTextureBuffer2D::setWrapMode
 {
     for (auto* frame : frames_)
         frame->setWrapMode(index, mode);
+    wrapModes_[index] = mode;
 }
 
 void OpenGLAnimatedTextureBuffer2D::setMagFilterMode
@@ -447,6 +448,7 @@ void OpenGLAnimatedTextureBuffer2D::setMagFilterMode
 {
     for (auto* frame : frames_)
         frame->setMagFilterMode(mode);
+    magFilterMode_ = mode;
 }
 
 void OpenGLAnimatedTextureBuffer2D::setMinFilterMode
@@ -456,6 +458,7 @@ void OpenGLAnimatedTextureBuffer2D::setMinFilterMode
 {
     for (auto* frame : frames_)
         frame->setMinFilterMode(mode);
+    minFilterMode_ = mode;
 }
 
 void OpenGLAnimatedTextureBuffer2D::bind(uint32_t unit)

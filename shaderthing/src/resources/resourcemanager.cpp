@@ -64,7 +64,7 @@ void ResourceManager::reset()
 void ResourceManager::update()
 {
     for (auto r : resources_)
-        r->update();
+        r->update(app_.timeStep());
 }
 
 //----------------------------------------------------------------------------//

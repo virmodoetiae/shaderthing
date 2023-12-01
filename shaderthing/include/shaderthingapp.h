@@ -163,6 +163,7 @@ public:
     bool isExportingAndFirstRenderPassInFrame();
     std::vector<Layer*>& layersRef();
     std::vector<Resource*>& resourcesRef();
+    float timeStep() const;
 
     // Event-related ---------------------------------------------------------//
     DECLARE_RECEIVABLE_EVENTS

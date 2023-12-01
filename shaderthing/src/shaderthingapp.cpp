@@ -629,4 +629,13 @@ void ShaderThingApp::update()
     window->update(!stateFlags_[ST_IS_RENDERING_PAUSED]);
 }
 
+//----------------------------------------------------------------------------//
+
+float ShaderThingApp::timeStep() const
+{
+    if (exportTool_->isExporting())
+        return exportTool_->exportTimeStep();
+    return vir::GlobalPtr<vir::Time>::instance()->outerTimestep();
+}
+
 }
