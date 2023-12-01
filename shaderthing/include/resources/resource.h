@@ -67,6 +67,7 @@ public:
 
     // Generic public functions
     void reset();
+    void update();
     bool valid() const 
     {
         return nativeResource_ != nullptr || type_ == Type::Uninitialized;
@@ -81,7 +82,7 @@ public:
     std::string* namePtr() {return namePtr_;}
     const std::string* nameCPtr() const {return namePtr_;}
     std::string originalFileExtension() const {return originalFileExtension_;}
-    int id() const;
+    int id(bool contentId=true) const;
     int width() const;
     int height() const;
     int rawDataSize() const {return rawDataSize_;}
@@ -105,7 +106,7 @@ public:
     void setMinFilterMode(vir::TextureBuffer::FilterMode mode);
 
     // Operators
-    bool operator==(const Resource& rhs) {return id() == rhs.id();}
+    bool operator==(const Resource& rhs) {return id(false) == rhs.id(false);}
 
 };
 

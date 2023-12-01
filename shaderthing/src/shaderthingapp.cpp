@@ -550,6 +550,7 @@ void ShaderThingApp::update()
     loadProject();
 
     auto someLayersToBeCompiled = layerManager_->update();
+    resourceManager_->update();
     exportTool_->update();
 
     // Update the rest

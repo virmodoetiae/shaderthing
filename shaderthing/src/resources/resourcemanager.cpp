@@ -57,7 +57,15 @@ void ResourceManager::reset()
     for (auto r : resources_)
         delete r;
     resources_.resize(0);
-}                                                       
+}
+
+//----------------------------------------------------------------------------//
+
+void ResourceManager::update()
+{
+    for (auto r : resources_)
+        r->update();
+}
 
 //----------------------------------------------------------------------------//
 

@@ -89,6 +89,15 @@ TextureBuffer2D* TextureBuffer2D::create
 
 // AnimatedTexture2D ---------------------------------------------------------//
 
+AnimatedTextureBuffer2D::AnimatedTextureBuffer2D() : 
+TextureBuffer2D(),
+currentFrameIndex_(0),
+currentFrame_(nullptr),
+frames_(0),
+isFrameOwner_(true),
+frameDuration_(1.0f/60)
+{}
+
 AnimatedTextureBuffer2D::AnimatedTextureBuffer2D
 (
     const unsigned char* data, 
@@ -172,12 +181,11 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    /*
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
             return new OpenGLAnimatedTextureBuffer2D(filepath, internalFormat);
-    }*/
+    }
     return nullptr;
 }
 
@@ -194,7 +202,6 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
     
-    /*
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
@@ -206,7 +213,7 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
                 nFrames,
                 internalFormat
             );
-    }*/
+    }
     return nullptr;
 }
 
@@ -219,7 +226,6 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    /*
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
@@ -227,7 +233,7 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
             (
                 frames, gainFrameOwnership
             );
-    }*/
+    }
     return nullptr;
 }
 
@@ -241,11 +247,26 @@ TextureBuffer2D* AnimatedTextureBuffer2D::nextFrame()
     return currentFrame_;
 }
 
+int AnimatedTextureBuffer2D::currentFrameId() const
+{
+    if (currentFrame_ == nullptr)
+        return -1;
+    return currentFrame_->id();
+}
+
 void AnimatedTextureBuffer2D::setFrameIndex(uint32_t index)
 {
     if (frames_.size() == 0)
         return;
     currentFrameIndex_ = index % frames_.size();
+    currentFrame_ = frames_[currentFrameIndex_];
+}
+
+void AnimatedTextureBuffer2D::setFrameIndexFromTime(float time)
+{
+    if (frames_.size() == 0)
+        return;
+    currentFrameIndex_ = int(time/frameDuration_) % frames_.size();
     currentFrame_ = frames_[currentFrameIndex_];
 }
 

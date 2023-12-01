@@ -305,6 +305,174 @@ void OpenGLTextureBuffer2D::unbind(uint32_t unit)
 }
 
 //----------------------------------------------------------------------------//
+// Animated 2D textue buffer -------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+uint32_t OpenGLAnimatedTextureBuffer2D::nextFreeId_ = 0;
+
+void OpenGLAnimatedTextureBuffer2D::initialize
+(
+    const unsigned char* data, 
+    uint32_t width,
+    uint32_t height,
+    uint32_t nFrames,
+    InternalFormat internalFormat
+)
+{
+    if (internalFormat == InternalFormat::Undefined)
+        throw std::runtime_error
+        (
+R"(vopenglbuffers.cpp - OpenGLAnimatedTextureBuffer2D::initialize(const unsigned char*,
+uint32_t, uint32_t, uint32_t, InternalFormat) - Cannot create a texture from the provided
+data if the internal format is undefined)"
+        );
+    id_ = OpenGLAnimatedTextureBuffer2D::nextFreeId_++;
+    width_ = width;
+    height_ = height;
+    nChannels_ = TextureBuffer::nChannels(internalFormat);
+    internalFormat = internalFormat;
+    uint32_t frameSize = width*height*nChannels_;
+    for (int i=0;i<nFrames;i++)
+    {
+        frames_.emplace_back
+        (
+            new OpenGLTextureBuffer2D
+            (
+                &(data[i*frameSize]),
+                width,
+                height,
+                internalFormat
+            )
+        );
+    }
+    currentFrameIndex_ = 0;
+    currentFrame_ = frames_[currentFrameIndex_];
+}
+
+OpenGLAnimatedTextureBuffer2D::OpenGLAnimatedTextureBuffer2D
+(
+    const unsigned char* data, 
+    uint32_t width,
+    uint32_t height,
+    uint32_t nFrames,
+    InternalFormat internalFormat
+) : AnimatedTextureBuffer2D(data, width, height, nFrames, internalFormat)
+{
+    initialize(data, width, height, nFrames, internalFormat);
+}
+
+OpenGLAnimatedTextureBuffer2D::OpenGLAnimatedTextureBuffer2D
+(
+    std::vector<TextureBuffer2D*>& frames,
+    bool gainFrameOwnership
+) : AnimatedTextureBuffer2D(frames, gainFrameOwnership)
+{}
+
+OpenGLAnimatedTextureBuffer2D::OpenGLAnimatedTextureBuffer2D
+(
+    std::string filepath, 
+    InternalFormat internalFormat
+)
+{
+    // Load image data
+    std::ifstream rawDataStream
+    (
+        filepath, std::ios::binary | std::ios::in
+    );
+    rawDataStream.seekg(0, std::ios::end);
+    size_t rawDataSize = rawDataStream.tellg();
+    rawDataStream.seekg(0, std::ios::beg);
+    unsigned char* rawData = new unsigned char[rawDataSize];
+    rawDataStream.read((char*)rawData, rawDataSize);
+    rawDataStream.close();
+
+    // Unpack raw gif data in memory from image data
+    int width, height, nFrames, nChannels;
+    int requestedNChannels = TextureBuffer::nChannels(internalFormat);
+    int* delays = nullptr;
+    stbi_set_flip_vertically_on_load(true);
+    const unsigned char* gifData = stbi_load_gif_from_memory
+    (
+        rawData,
+        rawDataSize,
+        &delays, // in ms, might be 0
+        &width,
+        &height,
+        &nFrames,
+        &nChannels,
+        requestedNChannels
+    );
+
+    // Create OpenGLTexture2D frames out of raw frame data
+    initialize
+    (
+        gifData,
+        width,
+        height,
+        nFrames,
+        internalFormat
+    );
+
+    // Compute average frame duration
+    frameDuration_ = 0.f;
+    for (int i=0; i<nFrames ;i++)
+        frameDuration_ += std::max(float(delays[i]/1000.0f), 0.01f);
+    frameDuration_/=nFrames;
+
+    // Clear unpacked gif data
+    stbi_image_free((void*)gifData);
+    stbi_image_free(delays);
+
+    // Clear raw data
+    delete[] rawData;
+}
+
+OpenGLAnimatedTextureBuffer2D::~OpenGLAnimatedTextureBuffer2D()
+{}
+
+void OpenGLAnimatedTextureBuffer2D::setWrapMode
+(
+    uint32_t index,
+    TextureBuffer::WrapMode mode
+)
+{
+    for (auto* frame : frames_)
+        frame->setWrapMode(index, mode);
+}
+
+void OpenGLAnimatedTextureBuffer2D::setMagFilterMode
+(
+    TextureBuffer::FilterMode mode
+)
+{
+    for (auto* frame : frames_)
+        frame->setMagFilterMode(mode);
+}
+
+void OpenGLAnimatedTextureBuffer2D::setMinFilterMode
+(
+    TextureBuffer::FilterMode mode
+)
+{
+    for (auto* frame : frames_)
+        frame->setMinFilterMode(mode);
+}
+
+void OpenGLAnimatedTextureBuffer2D::bind(uint32_t unit)
+{
+    if (currentFrame_ == nullptr)
+        return;
+    currentFrame_->bind(unit);
+}
+
+void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
+{
+    if (currentFrame_ == nullptr)
+        return;
+    currentFrame_->unbind(unit);
+}
+
+//----------------------------------------------------------------------------//
 // CubeMap buffer ------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 

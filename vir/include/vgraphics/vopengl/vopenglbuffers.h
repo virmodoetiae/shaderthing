@@ -1,8 +1,9 @@
 #ifndef V_OPENGL_BUFFERS_H
 #define V_OPENGL_BUFFERS_H
 
-#include "vgraphics/vbuffers.h"
 #include <unordered_map>
+#include "vgraphics/vbuffers.h"
+#include "thirdparty/glad/include/glad/glad.h"
 
 namespace vir
 {
@@ -54,9 +55,20 @@ public:
     void unbind(uint32_t) override;
 };
 
-/*
 class OpenGLAnimatedTextureBuffer2D : public AnimatedTextureBuffer2D
 {
+private:
+    static uint32_t nextFreeId_; // Global Id counter since id of animation
+                                 // container not tied to any TextureBuffer2D 
+                                 // instance
+    void initialize
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        uint32_t nFrames,
+        InternalFormat internalFormat
+    );
 public:
     OpenGLAnimatedTextureBuffer2D // Construct from .gif filepath
     (
@@ -87,7 +99,6 @@ public:
     void bind(uint32_t) override;
     void unbind(uint32_t) override;
 };
-*/
 
 class OpenGLCubeMapBuffer : public CubeMapBuffer
 {

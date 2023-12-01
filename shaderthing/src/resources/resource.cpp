@@ -30,7 +30,7 @@ std::unordered_map<Resource::Type, std::string> Resource::typeToName =
 {
     {Resource::Type::Uninitialized, "Uninitialized"},
     {Resource::Type::Texture2D, "Texture-2D"},
-    {Resource::Type::AnimatedTexture2D, "Texture-2D GIF"},
+    {Resource::Type::AnimatedTexture2D, "Animation-2D"},
     {Resource::Type::FramebufferColorAttachment, "Layer"},
     {Resource::Type::Cubemap, "Cubemap"}
 };
@@ -39,7 +39,7 @@ std::unordered_map<std::string, Resource::Type> Resource::nameToType =
 {
     {"Uninitialized", Resource::Type::Uninitialized},
     {"Texture-2D", Resource::Type::Texture2D},
-    {"Texture-2D GIF", Resource::Type::AnimatedTexture2D},
+    {"Animation-2D", Resource::Type::AnimatedTexture2D},
     {"Layer", Resource::Type::FramebufferColorAttachment},
     {"Cubemap", Resource::Type::Cubemap}
 };
@@ -100,19 +100,33 @@ bool Resource::validCubemapFaces(Resource* faces[6])
         case Type::FramebufferColorAttachment :                             \
             return (*NATIVE_RESOURCE(vir::Framebuffer*))->func;             \
         case Type::AnimatedTexture2D :                                      \
+            return NATIVE_RESOURCE(vir::AnimatedTextureBuffer2D)->func;     \
         case Type::Texture2D :                                              \
             return NATIVE_RESOURCE(vir::TextureBuffer2D)->func;             \
         case Type::Cubemap :                                                \
             return NATIVE_RESOURCE(vir::CubeMapBuffer)->func;               \
     }}
 
-#define CALL_NATIVE_RESOURCE_FUNC_HETERO(func0, func1) {                    \
+#define CALL_NATIVE_RESOURCE_FUNC_HETERO2(func0, func1) {                   \
     switch (type_) {                                                        \
         case Type::FramebufferColorAttachment :                             \
             return (*NATIVE_RESOURCE(vir::Framebuffer*))->func0;            \
-        case Type::AnimatedTexture2D :                                      \
         case Type::Texture2D :                                              \
             return NATIVE_RESOURCE(vir::TextureBuffer2D)->func1;            \
+        case Type::AnimatedTexture2D :                                      \
+            return NATIVE_RESOURCE(vir::AnimatedTextureBuffer2D)->func1;    \
+        case Type::Cubemap :                                                \
+            return NATIVE_RESOURCE(vir::CubeMapBuffer)->func1;              \
+    }}
+
+#define CALL_NATIVE_RESOURCE_FUNC_HETERO3(func0, func1, func2) {            \
+    switch (type_) {                                                        \
+        case Type::FramebufferColorAttachment :                             \
+            return (*NATIVE_RESOURCE(vir::Framebuffer*))->func0;            \
+        case Type::Texture2D :                                              \
+            return NATIVE_RESOURCE(vir::TextureBuffer2D)->func1;            \
+        case Type::AnimatedTexture2D :                                      \
+            return NATIVE_RESOURCE(vir::AnimatedTextureBuffer2D)->func2;    \
         case Type::Cubemap :                                                \
             return NATIVE_RESOURCE(vir::CubeMapBuffer)->func1;              \
     }}
@@ -151,17 +165,28 @@ void Resource::reset()
     {
         case Type::FramebufferColorAttachment : break;
         case Type::Texture2D : DELETE_NATIVE_RESOUCE(vir::TextureBuffer2D)
+        case Type::AnimatedTexture2D : DELETE_NATIVE_RESOUCE(
+            vir::AnimatedTextureBuffer2D)
         case Type::Cubemap : DELETE_NATIVE_RESOUCE(vir::CubeMapBuffer)
     }
     nativeResource_ = nullptr;
     referencedResources_.resize(0);
 }
 
+void Resource::update()
+{
+    if (!valid() || type_ != Type::AnimatedTexture2D)
+        return;
+    float time = vir::GlobalPtr<vir::Time>::instance()->outerTime();
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    animation->setFrameIndexFromTime(time);
+}
+
 void Resource::bind(int unit)
 {
     if (!valid()) return;
     lastBoundUnit_ = unit;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO(bindColorBuffer(unit), bind(unit))
+    CALL_NATIVE_RESOURCE_FUNC_HETERO2(bindColorBuffer(unit), bind(unit))
 }
 
 void Resource::unbind(int unit)
@@ -172,13 +197,17 @@ void Resource::unbind(int unit)
         if (lastBoundUnit_ == -1) return;
         else unit = lastBoundUnit_;
     }
-    CALL_NATIVE_RESOURCE_FUNC_HETERO(unbind(), unbind(unit))
+    CALL_NATIVE_RESOURCE_FUNC_HETERO2(unbind(), unbind(unit))
 }
 
-int Resource::id() const
+int Resource::id(bool contentId) const
 {
-    if (valid())
-        CALL_NATIVE_RESOURCE_FUNC_HETERO(colorBufferId(), id())
+    if (!valid()) return -1;
+    if (!contentId)
+        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferId(), id())
+    else
+        CALL_NATIVE_RESOURCE_FUNC_HETERO3(colorBufferId(), id(), 
+            currentFrameId())
     return -1;
 }
 
@@ -199,7 +228,7 @@ int Resource::height() const
 vir::TextureBuffer::WrapMode Resource::wrapMode(int i)
 {
     if (valid()) 
-        CALL_NATIVE_RESOURCE_FUNC_HETERO(colorBufferWrapMode(i), 
+        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferWrapMode(i), 
             wrapMode(i))
     return vir::TextureBuffer::WrapMode::ClampToBorder;
 }
@@ -207,7 +236,7 @@ vir::TextureBuffer::WrapMode Resource::wrapMode(int i)
 vir::TextureBuffer::FilterMode Resource::magFilterMode()
 {
     if (valid()) 
-        CALL_NATIVE_RESOURCE_FUNC_HETERO(colorBufferMagFilterMode(), 
+        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferMagFilterMode(), 
             magFilterMode())
     return vir::TextureBuffer::FilterMode::Nearest;
 }
@@ -215,7 +244,7 @@ vir::TextureBuffer::FilterMode Resource::magFilterMode()
 vir::TextureBuffer::FilterMode Resource::minFilterMode()
 {
     if (valid())
-        CALL_NATIVE_RESOURCE_FUNC_HETERO(colorBufferMinFilterMode(), 
+        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferMinFilterMode(), 
             minFilterMode())
     return vir::TextureBuffer::FilterMode::Nearest;
 }
@@ -235,13 +264,21 @@ bool Resource::set(vir::TextureBuffer2D* nativeResource)
 }
 
 template<>
+bool Resource::set(vir::AnimatedTextureBuffer2D* nativeResource)
+{
+    SET_NATIVE_RESOURCE(Type::AnimatedTexture2D)
+    return true;
+}
+
+template<>
 bool Resource::set(vir::CubeMapBuffer* nativeResource)
 {
     SET_NATIVE_RESOURCE(Type::Cubemap)
     return true;
 }
 
-// This is specifically for generating AND setting texture2Ds
+// This is specifically for reading Texture2D or AnimatedTexture2Ds from
+// an image file (.jpg/.png/.bmp for the former and .gif for the latter)
 template<>
 bool Resource::set(std::string filepath)
 {
@@ -271,7 +308,7 @@ bool Resource::set(std::string filepath)
         else break;
     }
 
-    if (fileExtension != ".gif")
+    if (fileExtension != ".gif") // If not gif, regular Texture2D
     {
         try
         {
@@ -291,24 +328,25 @@ bool Resource::set(std::string filepath)
             return false;
         }
     }
-    else // Load GIF!
+    else // If gif, AnimatedTexture2D
     {
-        int w, h, nf, nc;
-        int* delays = nullptr;
-        type_ = Resource::Type::AnimatedTexture2D;
-        const unsigned char* gifData = stbi_load_gif_from_memory
-        (
-            rawData,
-            rawDataSize,
-            &delays,
-            &w,
-            &h,
-            &nf,
-            &nc,
-            4
-        );
-        stbi_image_free((void*)gifData);
-        stbi_image_free(delays);
+        try
+        {
+            set
+            (
+                vir::AnimatedTextureBuffer2D::create
+                (
+                    filepath, 
+                    vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+                )
+            );
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            delete[] rawData;
+            return false;
+        }
     }
 
     // Set original file extension and raw data if all went well
@@ -436,7 +474,7 @@ void Resource::setRawData(unsigned char* rawData, int rawDataSize)
 void Resource::setWrapMode(int index, vir::TextureBuffer::WrapMode mode)
 {
     if (!valid()) return;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO
+    CALL_NATIVE_RESOURCE_FUNC_HETERO2
     (
         setColorBufferWrapMode(index, mode), 
         setWrapMode(index, mode)
@@ -446,7 +484,7 @@ void Resource::setWrapMode(int index, vir::TextureBuffer::WrapMode mode)
 void Resource::setMagFilterMode(vir::TextureBuffer::FilterMode mode)
 {
     if (!valid()) return;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO
+    CALL_NATIVE_RESOURCE_FUNC_HETERO2
     (
         setColorBufferMagFilterMode(mode), 
         setMagFilterMode(mode)
@@ -456,7 +494,7 @@ void Resource::setMagFilterMode(vir::TextureBuffer::FilterMode mode)
 void Resource::setMinFilterMode(vir::TextureBuffer::FilterMode mode)
 {
     if (!valid()) return;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO
+    CALL_NATIVE_RESOURCE_FUNC_HETERO2
     (
         setColorBufferMinFilterMode(mode), 
         setMinFilterMode(mode)

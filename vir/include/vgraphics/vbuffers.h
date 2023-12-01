@@ -154,7 +154,7 @@ protected:
         nDimensions_=2;
     }
 public:
-    ~TextureBuffer2D(){}
+    virtual ~TextureBuffer2D(){}
     static TextureBuffer2D* create
     (
         std::string, 
@@ -187,6 +187,8 @@ protected:
     bool isFrameOwner_;
     // Time duration of a frame
     float frameDuration_;
+    // Default constructor
+    AnimatedTextureBuffer2D();
     // Construct from raw data and frame parameters
     AnimatedTextureBuffer2D
     (
@@ -203,7 +205,7 @@ protected:
         bool gainFrameOwnership = false
     );
 public:
-    ~AnimatedTextureBuffer2D();
+    virtual ~AnimatedTextureBuffer2D();
     static AnimatedTextureBuffer2D* create // From filepath (of GIF image)
     (
         std::string, 
@@ -226,9 +228,11 @@ public:
     TextureBuffer2D* currentFrame() {return currentFrame_;}
     // Advances the current frame index by 1 and returns the frame
     TextureBuffer2D* nextFrame();
-    float currentFrameIndex() const {return currentFrameIndex_;}
+    int currentFrameId() const;
+    uint32_t currentFrameIndex() const {return currentFrameIndex_;}
     // Set the current frame and index
     void setFrameIndex(uint32_t index);
+    void setFrameIndexFromTime(float time);
     float frameDuration() const {return frameDuration_;}
     void setFrameDuration(float dt) {frameDuration_ = dt;}
 };
@@ -247,7 +251,7 @@ protected:
         InternalFormat internalFormat
     ):TextureBuffer2D(nullptr, width, height, internalFormat){}
 public:
-    ~CubeMapBuffer(){}
+    virtual ~CubeMapBuffer(){}
     static CubeMapBuffer* create
     (
         std::string filepaths[6], 

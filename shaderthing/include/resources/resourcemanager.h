@@ -66,6 +66,7 @@ public:
     virtual ~ResourceManager();
 
     void reset();
+    void update();
 
     void addLayerAsResource(Layer* layer);
     void removeLayerAsResource(Layer* layer);
