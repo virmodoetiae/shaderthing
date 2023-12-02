@@ -283,6 +283,12 @@ void OpenGLTextureBuffer2D::setMinFilterMode
 )
 {
     glBindTexture(GL_TEXTURE_2D, id_);
+    if 
+    (
+        mode != TextureBuffer::FilterMode::Nearest &&
+        mode != TextureBuffer::FilterMode::Linear
+    )
+        glGenerateMipmap(GL_TEXTURE_2D);
     glTexParameteri
     (
         GL_TEXTURE_2D, 
@@ -664,6 +670,12 @@ void OpenGLCubeMapBuffer::setMinFilterMode
 )
 {
     glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
+    if 
+    (
+        mode != TextureBuffer::FilterMode::Nearest &&
+        mode != TextureBuffer::FilterMode::Linear
+    )
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
     glTexParameteri
     (
         GL_TEXTURE_CUBE_MAP, 

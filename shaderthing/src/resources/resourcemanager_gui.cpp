@@ -151,7 +151,10 @@ void ResourceManager::renderGui()
                                     if (f->nameCPtr() == resource->namePtr())
                                         inUseBy.emplace_back(r->namePtr());
                             }
-                            else if (r->type() == Resource::Type::AnimatedTexture2D)
+                            else if 
+                            (
+                                r->type() == Resource::Type::AnimatedTexture2D
+                            )
                             {
                                 for (auto& f : r->referencedResourcesCRef())
                                     if (f->nameCPtr() == resource->namePtr())
@@ -196,6 +199,29 @@ affect any cubemaps or animations using this texture)");
                             ImGui::EndDisabled();
                             ImGui::SameLine();
                             ImGui::Text("/ %d", nFrames);
+
+                            bool iTimeBound
+                            (
+                                resource->isAnimationBoundToGlobalTime()
+                            );
+                            ImGui::Text("Animation timing    ");
+                            ImGui::SameLine();
+                            if 
+                            (
+                                ImGui::Button
+                                (
+                                    iTimeBound ?
+                                    "Bound to iTime" :
+                                    "Manual control",
+                                    ImVec2(buttonWidth, 0)
+                                )
+                            )
+                            {
+                                iTimeBound = !iTimeBound;
+                                resource->toggleAnimationBoundToGlobalTime();
+                            }
+                            if (iTimeBound)
+                                ImGui::BeginDisabled();
                             ImGui::Text("Animation controls  ");
                             ImGui::SameLine();
                             if 
@@ -229,6 +255,8 @@ affect any cubemaps or animations using this texture)");
                                 )
                             )
                                 resource->stepAnimationForwards();
+                            if (iTimeBound)
+                                ImGui::EndDisabled();
                             ImGui::Text("Animation FPS       ");
                             ImGui::SameLine();
                             float fps(resource->animationFps());
@@ -239,7 +267,7 @@ affect any cubemaps or animations using this texture)");
                                 (
                                     "##animationFpsDragFloat",
                                     &fps,
-                                    1.0f,
+                                    0.1f,
                                     0.1f,
                                     160.0f,
                                     "%.1f"
@@ -259,7 +287,7 @@ affect any cubemaps or animations using this texture)");
                                 (
                                     "##animationDurationDragFloat",
                                     &duration,
-                                    1.0f,
+                                    0.1f,
                                     nFrames/1000.0f,
                                     nFrames/.1f,
                                     "%.3f"
@@ -345,7 +373,10 @@ affect any cubemaps or animations using this texture)");
                         {
                             for (auto e : vir::TextureBuffer::filterModeToName)
                             {
-                                if 
+                                // Mipmap filters are for minimization only,
+                                // not effect on magnification, hence they 
+                                // are skipped here
+                                if
                                 (
                                     e.first != 
                                     vir::TextureBuffer::FilterMode::Nearest &&

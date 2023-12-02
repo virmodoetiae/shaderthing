@@ -174,16 +174,19 @@ void Resource::reset()
     referencedResources_.resize(0);
     if (animationData_ != nullptr)
         delete animationData_;
+    animationData_ = nullptr;
 }
 
-void Resource::update(float dt)
+void Resource::update(float globalTime, float timeStep)
 {
     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
         return;
-    if (animationData_->isInternalTimePaused)
-        return;
     auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    animationData_->internalTime += dt;
+    animationData_->internalTime = 
+        animationData_->isInternalTimeBoundToGlobalTime ?
+        globalTime :
+        animationData_->internalTime + 
+            (!animationData_->isInternalTimePaused)*timeStep;
     animation->setFrameIndexFromTime(animationData_->internalTime);
 }
 
@@ -260,6 +263,14 @@ void Resource::toggleAnimationPaused()
         return;
     animationData_->isInternalTimePaused = 
         !animationData_->isInternalTimePaused;
+}
+
+void Resource::toggleAnimationBoundToGlobalTime()
+{
+     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return;
+    animationData_->isInternalTimeBoundToGlobalTime = 
+        !animationData_->isInternalTimeBoundToGlobalTime;
 }
 
 void Resource::stepAnimationForwards()
@@ -602,6 +613,13 @@ bool Resource::isAnimationPaused() const
     return animationData_->isInternalTimePaused;
 }
 
+bool Resource::isAnimationBoundToGlobalTime() const
+{
+     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return false;
+    return animationData_->isInternalTimeBoundToGlobalTime;
+}
+
 float Resource::animationFps() const
 {
      if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
@@ -614,7 +632,10 @@ void Resource::setAnimationFps(float fps)
 {
     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
         return;
-    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setFrameDuration(1.0/fps);
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    auto frameIndex0 = animation->currentFrameIndex();
+    animation->setFrameDuration(1.0/fps);
+    setAnimationFrameIndex(frameIndex0);
 }
 
 void Resource::setAnimationDuration(float t)
@@ -622,7 +643,18 @@ void Resource::setAnimationDuration(float t)
     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
         return;
     auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    auto frameIndex0 = animation->currentFrameIndex();
     animation->setFrameDuration(t/animation->nFrames());
+    setAnimationFrameIndex(frameIndex0);
+}
+
+void Resource::setAnimationFrameIndex(unsigned int frameIndex)
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return;
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    animation->setFrameIndex(frameIndex);
+    animationData_->internalTime = frameIndex*animation->frameDuration();
 }
 
 //----------------------------------------------------------------------------//
@@ -639,7 +671,8 @@ namePtr_(new std::string()),
 originalFileExtension_(""),
 rawDataSize_(0),
 rawData_(nullptr),
-lastBoundUnit_(-1)
+lastBoundUnit_(-1),
+animationData_(nullptr)
 {
     type_ = nameToType.at(reader.read<std::string>("type"));
     auto readerName = std::string(reader.name());
@@ -671,10 +704,6 @@ lastBoundUnit_(-1)
                 setRawData(rawData, rawDataSize);
                 setOriginalFileExtension(reader.read<std::string>(
                     "originalFileExtension"));
-                auto wrapModes = reader.read<glm::ivec2>("wrapModes");
-                setWrapMode(0, (vir::TextureBuffer::WrapMode)wrapModes.x);
-                setWrapMode(1, (vir::TextureBuffer::WrapMode)wrapModes.y);
-                setAnimationFps(reader.read<float>("animationFps"));
             }
             else // it is constructed from other resources
             {
@@ -695,6 +724,19 @@ lastBoundUnit_(-1)
                 }
                 set(&referencedResources);
             }
+            auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+            auto wrapModes = reader.read<glm::ivec2>("wrapModes");
+            setWrapMode(0, (vir::TextureBuffer::WrapMode)wrapModes.x);
+            setWrapMode(1, (vir::TextureBuffer::WrapMode)wrapModes.y);
+            setAnimationFps(reader.read<float>("animationFps"));
+            setAnimationFrameIndex
+            (
+                reader.read<uint32_t>("animationFrameIndex")
+            );
+            if (reader.read<bool>("animationPaused"))
+                toggleAnimationPaused();
+            if (reader.read<bool>("animationBoundToGlobalTime"))
+                toggleAnimationBoundToGlobalTime();
             break;
         }
         case Type::Cubemap :
@@ -753,6 +795,10 @@ void Resource::saveState(ObjectIO& writer)
             writer.write("wrapModes", 
                 glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
             writer.write("animationFps", animationFps());
+            writer.write("animationFrameIndex", animationFrameIndex());
+            writer.write("animationPaused", isAnimationPaused());
+            writer.write("animationBoundToGlobalTime", 
+                isAnimationBoundToGlobalTime());
             if // it is a .gif
             (
                 originalFileExtension_.size() > 0 && 

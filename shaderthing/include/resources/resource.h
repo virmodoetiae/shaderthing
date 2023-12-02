@@ -61,6 +61,7 @@ public:
     {
         float internalTime = 0.0;
         bool isInternalTimePaused = false;
+        bool isInternalTimeBoundToGlobalTime = false;
     };
 
 private:
@@ -124,9 +125,9 @@ public:
     void reset();
 
     // If this resource is of AnimatedTexture2D type, this will advance the 
-    // animation in time according by the provided time step. Otherwise, this
-    // function has no effect
-    void update(float dt);
+    // animation in time according to the provided global time OR time step
+    // depending on the animation settings
+    void update(float globalTime, float timeStep);
 
     // True if this resource is actually managing a nativeResource of any kind
     bool valid() const 
@@ -147,6 +148,9 @@ public:
     // Internal time play/pause toggle if this resource is an AnimatedTexture2D,
     // no effect otherwise
     void toggleAnimationPaused();
+
+    //
+    void toggleAnimationBoundToGlobalTime();
 
     // Steps the animation to the next frame, regardless of whether the internal
     // animation time is paused or not. Has an effect only if this resource is
@@ -221,6 +225,10 @@ public:
     // time is paused
     bool isAnimationPaused() const;
 
+    // True if this resource is an AnimatedTexture2D and its internal animation
+    // time is bound to the global iTime uniform
+    bool isAnimationBoundToGlobalTime() const;
+
     // Animation speed in frames per second if this resource is an 
     // AnimatedTexture2D, returns 0 otherwise
     float animationFps() const;
@@ -273,6 +281,9 @@ public:
 
     // Set the animation duration by adjusting its speed
     void setAnimationDuration(float t);
+
+    //
+    void setAnimationFrameIndex(unsigned int frameIndex);
 
     // Operators -------------------------------------------------------------//
 
