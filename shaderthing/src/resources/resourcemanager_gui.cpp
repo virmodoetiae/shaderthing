@@ -686,8 +686,10 @@ bool ResourceManager::loadOrReplaceTextureOrAnimationGuiButton
         ImGuiFileDialog::Instance()->OpenDialog
         (
             dialogKey.c_str(), 
-            "Select an image", 
-            animation ? ".gif" : ".png,.jpg,.jpeg,.bmp", 
+            ICON_FA_IMAGE " Select an image", 
+            animation ? 
+            ".gif" : 
+            "Image files (.png, .jpg, .jpeg, .bmp){.png,.jpg,.jpeg,.bmp}",
             lastOpenedPath
         );
     }
@@ -924,7 +926,7 @@ bool ResourceManager::reExportTextureGuiButton
         ImGuiFileDialog::Instance()->OpenDialog
         (
             "##exportTextureDialog", 
-            "Provide export filepath", 
+            ICON_FA_IMAGE " Provide export filepath", 
             resource->originalFileExtension().c_str(), 
             lastOpenedPath
         );

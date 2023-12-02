@@ -487,8 +487,8 @@ void ShaderThingApp::renderGuiSaveProject()
         ImGuiFileDialog::Instance()->OpenDialog
         (
             "SaveAsFileDialog", 
-            "Save as", 
-            ".stf", 
+            ICON_FA_FILE " Save as", 
+            "ShaderThing file (.stf){.stf}", 
             lastOpenedPath
         );
     }
@@ -518,8 +518,8 @@ void ShaderThingApp::renderGuiLoadProject()
         ImGuiFileDialog::Instance()->OpenDialog
         (
             "LoadFileDialog", 
-            "Load project", 
-            ".stf", 
+            ICON_FA_FILE " Load project", 
+            "ShaderThing file (.stf){.stf}", 
             lastOpenedPath
         );
     }
