@@ -332,6 +332,12 @@ data if the internal format is undefined)"
     nChannels_ = TextureBuffer::nChannels(internalFormat);
     internalFormat = internalFormat;
     uint32_t frameSize = width*height*nChannels_;
+    if (frames_.size() != nFrames)
+    {
+        for (int i=0; i<frames_.size(); i++)
+            delete frames_[i];
+        frames_.resize(nFrames);
+    }
     for (int i=0;i<nFrames;i++)
     {
         frames_[i] = 

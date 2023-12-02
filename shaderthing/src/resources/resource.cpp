@@ -180,6 +180,8 @@ void Resource::update(float dt)
 {
     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
         return;
+    if (animationData_->isInternalTimePaused)
+        return;
     auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
     animationData_->internalTime += dt;
     animation->setFrameIndexFromTime(animationData_->internalTime);
@@ -260,13 +262,46 @@ void Resource::toggleAnimationPaused()
         !animationData_->isInternalTimePaused;
 }
 
-void Resource::advanceAnimationFrame()
+void Resource::stepAnimationForwards()
 {
     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
         return;
     auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
     animation->nextFrame();
     animationData_->internalTime += animation->frameDuration();
+}
+
+void Resource::stepAnimationBackwards()
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return;
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    animation->previousFrame();
+    animationData_->internalTime -= animation->frameDuration();
+}
+
+float Resource::animationDuration() const
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return 0.f;
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    return animation->frameDuration()*animation->nFrames();
+}
+
+unsigned int Resource::animationFrameIndex() const
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return 0;
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    return animation->currentFrameIndex();
+}
+
+unsigned int Resource::nAnimationFrames() const
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return 0;
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    return animation->nFrames();
 }
 
 template<>
@@ -577,9 +612,17 @@ float Resource::animationFps() const
 
 void Resource::setAnimationFps(float fps)
 {
-     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
         return;
     ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setFrameDuration(1.0/fps);
+}
+
+void Resource::setAnimationDuration(float t)
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+        return;
+    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
+    animation->setFrameDuration(t/animation->nFrames());
 }
 
 //----------------------------------------------------------------------------//

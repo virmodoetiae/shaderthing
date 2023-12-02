@@ -605,11 +605,16 @@ void Layer::renderGuiUniforms()
             {
                 ImGui::TableSetColumnIndex(col++);
                 ImGui::PushItemWidth(-1);
-                if (ImGui::Button("Add", ImVec2(-1, 0)))
+                if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
                 {
                     auto uniform = new Uniform();
                     uniforms_.emplace_back(uniform);
                     uncompiledUniforms_.emplace_back(uniform);
+                }
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text("Add new uniform");
+                    ImGui::EndTooltip();
                 }
                 ImGui::PopItemWidth();
                 ImGui::PopID();
@@ -640,8 +645,13 @@ void Layer::renderGuiUniforms()
             ImGui::PushItemWidth(-1);
             if (row >= uniformsStartRow)
             {
-                if (ImGui::Button("Delete", ImVec2(-1, 0)))
+                if (ImGui::Button(ICON_FA_TRASH, ImVec2(-1, 0)))
                     deleteRow = row-uniformsStartRow;
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text("Delete this uniform");
+                    ImGui::EndTooltip();
+                }
             }
             else if (uniform->specialType == Uniform::SpecialType::Frame)
             {
@@ -716,7 +726,6 @@ if(ImGui::IsItemHovered() && ImGui::BeginTooltip())                         \
 }
             else if (uniform->specialType==Uniform::SpecialType::CameraPosition)
             {
-                isShared = true;
                 tooltipText = 
 R"(Keyboard-controlled vec3 position in 3-D space. All movement is with respect to 
 the current direction of iLook. For an iLook aligned with the z axis in a right
@@ -724,7 +733,7 @@ handed reference frame, z is forward, x is left, y is up.  With respect to said
 reference frame, pressing/holding the W, A, S, D, space or left-shift keys will
 move the position forwards, left, backwards, right, up, down respectively.
 Please also note that the up direction (positive y) never changes)";
-                if (ImGui::Button("Settings", ImVec2(-1, 0)))
+                if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
                     ImGui::OpenPopup("##iCameraPositionSettings");
                 if (ImGui::BeginPopup("##iCameraPositionSettings"))
                 {
@@ -757,8 +766,7 @@ Please also note that the up direction (positive y) never changes)";
                 tooltipText = 
 R"(Mouse-controlled look direction in 3-D space. Click and drag (on the window)
 to modify. Best suited for controlling a camera)";
-                isShared = true;
-                if (ImGui::Button("Settings", ImVec2(-1, 0)))
+                if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
                     ImGui::OpenPopup("##iCameraDirectionSettings");
                 if (ImGui::BeginPopup("##iCameraDirectionSettings"))
                 {
@@ -785,12 +793,19 @@ to modify. Best suited for controlling a camera)";
             }
             else if (uniform->specialType == Uniform::SpecialType::Mouse)
             {
-                isShared = true;
-                bool enabled = app_.isMouseInputEnabled();
-                std::string text = enabled ? "Disable" : "Enable";
-                if (ImGui::Button(text.c_str(), ImVec2(-1, 0)))
-                    app_.setMouseInputsEnabled(!enabled);
-                ENABLE_DISABLE_APP_INPUT_TOOLTIP(mouse inputs)
+                if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+                    ImGui::OpenPopup("##iMouseSettings");
+                if (ImGui::BeginPopup("##iMouseSettings"))
+                {
+                    bool enabled = app_.isMouseInputEnabled();
+                    std::string text = enabled ? "Disable" : "Enable";
+                    if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+                    {
+                        app_.setMouseInputsEnabled(!enabled);
+                    }
+                    ENABLE_DISABLE_APP_INPUT_TOOLTIP(mouse inputs)
+                    ImGui::EndPopup();
+                }
             }
             ImGui::PopItemWidth();
 

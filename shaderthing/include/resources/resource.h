@@ -151,7 +151,12 @@ public:
     // Steps the animation to the next frame, regardless of whether the internal
     // animation time is paused or not. Has an effect only if this resource is
     // an AnimatedTexture2D
-    void advanceAnimationFrame();
+    void stepAnimationForwards();
+
+    // Steps the animation to the previous frame, regardless of whether the 
+    // internal animation time is paused or not. Has an effect only if this 
+    // resource is an AnimatedTexture2D
+    void stepAnimationBackwards();
 
     // Accessors -------------------------------------------------------------//
 
@@ -219,6 +224,15 @@ public:
     // Animation speed in frames per second if this resource is an 
     // AnimatedTexture2D, returns 0 otherwise
     float animationFps() const;
+
+    // Total duration of the animation in seconds
+    float animationDuration() const;
+
+    // The current animation frame index
+    unsigned int animationFrameIndex() const;
+
+    // Returns the total number of frames in the animation
+    unsigned int nAnimationFrames() const;
     
     // Setters ---------------------------------------------------------------//
     
@@ -256,6 +270,9 @@ public:
     // Set the animation speed in frames per second. Has an effect only if this
     // resource is an AnimatedTexture2D
     void setAnimationFps(float fps);
+
+    // Set the animation duration by adjusting its speed
+    void setAnimationDuration(float t);
 
     // Operators -------------------------------------------------------------//
 

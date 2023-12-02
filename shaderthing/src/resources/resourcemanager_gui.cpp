@@ -71,7 +71,7 @@ void ResourceManager::renderGui()
     {
         // Declare columns
         static ImGuiTableColumnFlags flags = 0;
-        ImGui::TableSetupColumn("Actions ", flags, 8.0*fontSize);
+        ImGui::TableSetupColumn("##controls", flags, 8.0*fontSize);
         ImGui::TableSetupColumn("Type", flags, 8.0*fontSize);
         ImGui::TableSetupColumn("Preview", flags, 4.0*fontSize);
         ImGui::TableSetupColumn("Name", flags, 8.0*fontSize);
@@ -97,8 +97,13 @@ void ResourceManager::renderGui()
             {
                 ImGui::TableSetColumnIndex(col++);
                 ImGui::PushItemWidth(-1);
-                if (ImGui::Button("Add", ImVec2(-1,0)))
+                if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1,0)))
                     ImGui::OpenPopup("##addResourcePopup");
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text("Add new resource");
+                    ImGui::EndTooltip();
+                }
                 if (ImGui::BeginPopup("##addResourcePopup"))
                 {
                     addOrReplaceTextureGuiButton
@@ -129,136 +134,144 @@ void ResourceManager::renderGui()
             if (resource->type() != Resource::Type::FramebufferColorAttachment)
             {
                 bool replacedResource(false);
-                if (ImGui::Button("Actions", ImVec2(-1,0)))
-                    ImGui::OpenPopup("##textureManagerActions");
-                if (ImGui::BeginPopup("##textureManagerActions"))
+                if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1,0)))
+                    ImGui::OpenPopup("##textureManagerSettings");
+                if (ImGui::BeginPopup("##textureManagerSettings"))
                 {
                     std::vector<std::string*> inUseBy(0);
                     if (resource->type() == Resource::Type::Texture2D)
                     {
                         for (auto* r : resources_)
                         {
-                            if (r->type() != Resource::Type::Cubemap) continue;
-                            auto& faces = r->referencedResourcesCRef();
-                            if (faces.size() != 6) continue;
-                            for (auto& f : faces)
-                                if (f->nameCPtr() == resource->namePtr())
-                                    inUseBy.emplace_back(r->namePtr());
+                            if (r->type() == Resource::Type::Cubemap)
+                            {
+                                auto& faces = r->referencedResourcesCRef();
+                                if (faces.size() != 6) continue;
+                                for (auto& f : faces)
+                                    if (f->nameCPtr() == resource->namePtr())
+                                        inUseBy.emplace_back(r->namePtr());
+                            }
+                            else if (r->type() == Resource::Type::AnimatedTexture2D)
+                            {
+                                for (auto& f : r->referencedResourcesCRef())
+                                    if (f->nameCPtr() == resource->namePtr())
+                                        inUseBy.emplace_back(r->namePtr());
+                            }
                         }
                     }
-                    if (inUseBy.size() == 0)
-                    {
-                        if (ImGui::Button("Delete", ImVec2(buttonWidth,0)))
-                            toBeDeleted = resource;
-                    }
-                    else
-                    {
-                        ImGui::BeginDisabled();
-                        ImGui::Button("Delete", ImVec2(buttonWidth,0));
-                        ImGui::EndDisabled();
-                        if 
-                        (
-                            ImGui::IsItemHovered
-                            (
-                                ImGuiHoveredFlags_AllowWhenDisabled
-                            ) && ImGui::BeginTooltip()
-                        )
-                        {
-                            std::string hoverText = 
-"This texture is in use by the following cube maps:\n";
-                            for (int i=0;i<inUseBy.size();i++)
-                                hoverText += 
-                                "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
-                            hoverText += 
-"To delete this texture, first delete the cube maps which use it";
-                            ImGui::Text(hoverText.c_str());
-                            ImGui::EndTooltip();
-                        }
-                    }
-                    if (inUseBy.size() == 0)
-                    {
-                        if (resource->type() == Resource::Type::Texture2D)
-                            replacedResource = addOrReplaceTextureGuiButton
-                            (
-                                row,
-                                ImVec2(buttonWidth, 0)
-                            );
-                        else if (resource->type() == Resource::Type::Cubemap)
-                            replacedResource = addOrReplaceCubemapGuiButton
-                            (
-                                row,
-                                ImVec2(buttonWidth, 0)
-                            );
-                    }
-                    else    // No way inUseBy.size() != 0 if resource->type() !=
-                            // Resource::Type::Texture2D, so no cubemap stuff 
-                            // here
-                    {
-                        ImGui::BeginDisabled();
-                        replacedResource = addOrReplaceTextureGuiButton
-                        (
-                            row,
-                            ImVec2(buttonWidth, 0),
-                            true
-                        );
-                        ImGui::EndDisabled();
-                        if 
-                        (
-                            ImGui::IsItemHovered
-                            (
-                                ImGuiHoveredFlags_AllowWhenDisabled
-                            ) && ImGui::BeginTooltip()
-                        )
-                        {
-                            std::string hoverText = 
-"This texture is in use by the following cube maps:\n";
-                            for (int i=0;i<inUseBy.size();i++)
-                                hoverText += 
-                                "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
-                            hoverText += 
-"To replace this texture, first delete the cube maps which use it";
-                            ImGui::Text(hoverText.c_str());
-                            ImGui::EndTooltip();
-                        }
-                    }
-                    if (resource->type() == Resource::Type::Texture2D)
-                    {
-                        reExportTextureGuiButton
-                        (
-                            resource,
-                            ImVec2(buttonWidth,0)
-                        );
-                        if 
-                        (
-                            ImGui::Button("Data to clipboard", 
-                            ImVec2(buttonWidth,0))
-                        )
-                        {
-                            std::stringstream data;
-                            data << "const unsigned char imageData[" 
-                                << resource->rawDataSize() 
-                                << "] = {";
-                            for (int i=0; i< resource->rawDataSize(); i++)
-                                data << (int)resource->rawData()[i] << ",";
-                            data << "};";
-                            ImGui::SetClipboardText(data.str().c_str());
-                            data.str(std::string());
-                        }
-                    }
-                    if (ImGui::Button("Options", ImVec2(buttonWidth,0)))
-                        ImGui::OpenPopup("##resourceOptions");
+                    //----------------------------------------------------------
+
+                    if (ImGui::Button("Settings", ImVec2(buttonWidth,0)))
+                        ImGui::OpenPopup("##resourceSettings");
                     if (ImGui::IsItemHovered() && inUseBy.size() > 0)
                     {
                         // Again, if inUseBy.size() > 0 I am assured this 
-                        // resource is a Texture2D, not a Cubemap
+                        // resource is a Texture2D, not a Cubemap nor an Animation
                         ImGui::BeginTooltip();
                         ImGui::Text(
-R"(These options only affect this texture and do
-not affect any cubemaps using this texture)");
+R"(These options only affect this texture and do not 
+affect any cubemaps or animations using this texture)");
                         ImGui::EndTooltip();
                     }
-                    if (ImGui::BeginPopup("##resourceOptions"))
+                    if (ImGui::BeginPopup("##resourceSettings"))
                     {
+                        if 
+                        (
+                            resource->valid() && 
+                            resource->type() == 
+                                Resource::Type::AnimatedTexture2D
+                        )
+                        {
+                            //--------------------------------//
+                            unsigned int frame=resource->animationFrameIndex();
+                            unsigned int nFrames=resource->nAnimationFrames();
+                            ImGui::Text("Animation frame     ");
+                            ImGui::SameLine();
+                            ImGui::BeginDisabled();
+                            ImGui::Button
+                            (   
+                                std::to_string(frame).c_str(),
+                                ImVec2(buttonWidth/3.25, 0)
+                            );
+                            ImGui::EndDisabled();
+                            ImGui::SameLine();
+                            ImGui::Text("/ %d", nFrames);
+                            ImGui::Text("Animation controls  ");
+                            ImGui::SameLine();
+                            if 
+                            (
+                                ImGui::Button
+                                (
+                                    ICON_FA_STEP_BACKWARD, 
+                                    ImVec2(buttonWidth/3.25, 0)
+                                )
+                            )
+                                resource->stepAnimationBackwards();
+                            ImGui::SameLine();
+                            if 
+                            (
+                                ImGui::Button
+                                (
+                                    resource->isAnimationPaused() ? 
+                                    ICON_FA_PLAY : 
+                                    ICON_FA_PAUSE,
+                                    ImVec2(buttonWidth/3.25, 0)
+                                )
+                            )
+                                resource->toggleAnimationPaused();
+                            ImGui::SameLine();
+                            if 
+                            (
+                                ImGui::Button
+                                (
+                                    ICON_FA_STEP_FORWARD, 
+                                    ImVec2(-1, 0)
+                                )
+                            )
+                                resource->stepAnimationForwards();
+                            ImGui::Text("Animation FPS       ");
+                            ImGui::SameLine();
+                            float fps(resource->animationFps());
+                            ImGui::PushItemWidth(buttonWidth);
+                            if 
+                            (
+                                ImGui::DragFloat
+                                (
+                                    "##animationFpsDragFloat",
+                                    &fps,
+                                    1.0f,
+                                    0.1f,
+                                    160.0f,
+                                    "%.1f"
+                                )
+                            )
+                            {
+                                fps = std::min(std::max(0.1f, fps), 1000.f);
+                                resource->setAnimationFps(fps);
+                            }
+                            ImGui::Text("Animation duration  ");
+                            ImGui::SameLine();
+                            float duration(resource->animationDuration());
+                            ImGui::PushItemWidth(buttonWidth);
+                            if 
+                            (
+                                ImGui::DragFloat
+                                (
+                                    "##animationDurationDragFloat",
+                                    &duration,
+                                    1.0f,
+                                    nFrames/1000.0f,
+                                    nFrames/.1f,
+                                    "%.3f"
+                                )
+                            )
+                            {
+                                fps = nFrames/duration;
+                                resource->setAnimationFps(fps);
+                            }
+                            ImGui::PopItemWidth();
+                            ImGui::Separator();
+                        }
                         std::string selectedWrapModeX = "";
                         std::string selectedWrapModeY = "";
                         std::string selectedMagFilterMode = "";
@@ -366,6 +379,101 @@ not affect any cubemaps using this texture)");
                         }
                         ImGui::PopItemWidth();
                         ImGui::EndPopup();
+                    }
+                    //----------------------------------------------------------
+                    if (inUseBy.size() == 0)
+                    {
+                        switch (resource->type())
+                        {
+                            case Resource::Type::Texture2D:
+                            case Resource::Type::AnimatedTexture2D:
+                                replacedResource = addOrReplaceTextureGuiButton
+                                (
+                                    row,
+                                    ImVec2(buttonWidth, 0)
+                                );
+                                break;
+                            case Resource::Type::Cubemap:
+                                replacedResource = addOrReplaceCubemapGuiButton
+                                (
+                                    row,
+                                    ImVec2(buttonWidth, 0)
+                                );
+                        }
+                    }
+                    else    // No way inUseBy.size() != 0 if resource->type() !=
+                            // Resource::Type::Texture2D, so no cubemaps or 
+                            // animations here
+                    {
+                        ImGui::BeginDisabled();
+                        replacedResource = addOrReplaceTextureGuiButton
+                        (
+                            row,
+                            ImVec2(buttonWidth, 0),
+                            true
+                        );
+                        ImGui::EndDisabled();
+                        if 
+                        (
+                            ImGui::IsItemHovered
+                            (
+                                ImGuiHoveredFlags_AllowWhenDisabled
+                            ) && ImGui::BeginTooltip()
+                        )
+                        {
+                            std::string hoverText = 
+"This texture is in use by the following resources:\n";
+                            for (int i=0;i<inUseBy.size();i++)
+                                hoverText += 
+                                "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
+                            hoverText += 
+"To replace this texture, first delete the resources which use it";
+                            ImGui::Text(hoverText.c_str());
+                            ImGui::EndTooltip();
+                        }
+                    }
+                    //----------------------------------------------------------
+                    if 
+                    (
+                        resource->type() == Resource::Type::Texture2D ||
+                        resource->type() == Resource::Type::AnimatedTexture2D
+                    )
+                    {
+                        reExportTextureGuiButton
+                        (
+                            resource,
+                            ImVec2(buttonWidth,0)
+                        );
+                    }
+                    //----------------------------------------------------------
+                    if (inUseBy.size() == 0)
+                    {
+                        if (ImGui::Button("Delete", ImVec2(buttonWidth,0)))
+                            toBeDeleted = resource;
+                    }
+                    else
+                    {
+                        ImGui::BeginDisabled();
+                        ImGui::Button("Delete", ImVec2(buttonWidth,0));
+                        ImGui::EndDisabled();
+                        if 
+                        (
+                            ImGui::IsItemHovered
+                            (
+                                ImGuiHoveredFlags_AllowWhenDisabled
+                            ) && ImGui::BeginTooltip()
+                        )
+                        {
+                            std::string hoverText = 
+"This texture is in use by the following resources:\n";
+                            for (int i=0;i<inUseBy.size();i++)
+                                hoverText += 
+                                "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
+                            hoverText += 
+"To delete this texture, first delete the resources which use it";
+                            ImGui::Text(hoverText.c_str());
+                            ImGui::EndTooltip();
+                        }
                     }
                     if (replacedResource)
                         ImGui::CloseCurrentPopup();
@@ -518,7 +626,7 @@ bool ResourceManager::addOrReplaceTextureGuiButton
     bool validSelection(false);
     static std::string lastOpenedPath(".");
     std::string buttonName = (rowIndex==-1) ? 
-        "Add texture" : "Replace texture";
+        "Add texture" : "Replace";
     static std::string dialogKey("##addOrReplaceTextureDialog");
     ImGui::BeginDisabled(disabled);
     if (ImGui::Button(buttonName.c_str(), size))
@@ -598,7 +706,7 @@ bool ResourceManager::addOrReplaceCubemapGuiButton
     (
         ImGui::Button
         (
-            rowIndex == -1 ? "Add cubemap" : "Replace cubemap", 
+            rowIndex == -1 ? "Add cubemap" : "Replace", 
             size
         )
     )
@@ -760,18 +868,18 @@ bool ResourceManager::reExportTextureGuiButton
     )
         return validExport;
     static std::string lastOpenedPath(".");
-    if (ImGui::Button("Re-export", size))
+    if (ImGui::Button("Export", size))
     {
         ImGui::SetNextWindowSize(ImVec2(800,400), ImGuiCond_FirstUseEver);
         ImGuiFileDialog::Instance()->OpenDialog
         (
-            "##reExportTextureDialog", 
-            "Provide re-export filepath", 
+            "##exportTextureDialog", 
+            "Provide export filepath", 
             resource->originalFileExtension().c_str(), 
             lastOpenedPath
         );
     }
-    if (ImGuiFileDialog::Instance()->Display("##reExportTextureDialog")) 
+    if (ImGuiFileDialog::Instance()->Display("##exportTextureDialog")) 
     {
         if (ImGuiFileDialog::Instance()->IsOk())
         {

@@ -228,6 +228,8 @@ public:
     TextureBuffer2D* currentFrame() {return currentFrame_;}
     // Advances the current frame index by 1 and returns the frame
     TextureBuffer2D* nextFrame();
+    // Reduceds the current frame index by 1 and returns the frame
+    TextureBuffer2D* previousFrame();
     int currentFrameId() const;
     uint32_t currentFrameIndex() const {return currentFrameIndex_;}
     // Set the current frame and index

@@ -247,6 +247,18 @@ TextureBuffer2D* AnimatedTextureBuffer2D::nextFrame()
     return currentFrame_;
 }
 
+TextureBuffer2D* AnimatedTextureBuffer2D::previousFrame() 
+{
+    if (frames_.size() == 0)
+        return nullptr;
+    --currentFrameIndex_;
+    // It's an unsigned int so it overflows when <0
+    if (currentFrameIndex_ > frames_.size())
+        currentFrameIndex_ = frames_.size()-1;
+    currentFrame_ = frames_[currentFrameIndex_];
+    return currentFrame_;
+}
+
 int AnimatedTextureBuffer2D::currentFrameId() const
 {
     if (currentFrame_ == nullptr)
