@@ -590,6 +590,26 @@ void Layer::saveState(ObjectIO& writer)
                 WRITE_MIN_MAX
                 break;
             }
+            case vir::Shader::Variable::Type::Int2 :
+            {
+                writer.write("value", u->getValue<glm::ivec2>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int3 :
+            {
+                writer.write("value", u->getValue<glm::ivec3>());
+                WRITE_MIN_MAX
+                if (u->keyCode != -1 && u->usesKeyboardInput)
+                    writer.write("keyCode", u->keyCode);
+                break;
+            }
+            case vir::Shader::Variable::Type::Int4 :
+            {
+                writer.write("value", u->getValue<glm::ivec4>());
+                WRITE_MIN_MAX
+                break;
+            }
             case vir::Shader::Variable::Type::Float :
             {
                 writer.write("value", u->getValue<float>());
@@ -1314,11 +1334,48 @@ internalFramebufferClearPolicyOnExport_
             case vir::Shader::Variable::Type::Bool :
             {
                 SET_UNIFORM(bool)
+                uniform->showLimits = false;
                 break;
             }
             case vir::Shader::Variable::Type::Int :
             {
                 SET_UNIFORM(int)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int2 :
+            {
+                SET_UNIFORM(glm::ivec2)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int3 :
+            {
+                if (uniformData.hasMember("keyCode"))
+                {
+                    uniform->showLimits = false;
+                    uniform->usesKeyboardInput = true;
+                    uniform->keyCode = uniformData.read<int>("keyCode");
+                    auto is = 
+                        vir::GlobalPtr<vir::InputState>::
+                        instance();
+                    uniform->keyState[0] = 
+                        &is->keyState(uniform->keyCode).pressedRef();
+                    uniform->keyState[1] = 
+                        &is->keyState(uniform->keyCode).heldRef();
+                    uniform->keyState[2] = 
+                        &is->keyState(uniform->keyCode).toggleRef();
+                }
+                else
+                {
+                    SET_UNIFORM(glm::ivec3)
+                    READ_MIN_MAX
+                }
+                break;
+            }
+            case vir::Shader::Variable::Type::Int4 :
+            {
+                SET_UNIFORM(glm::ivec4)
                 READ_MIN_MAX
                 break;
             }
@@ -1340,6 +1397,7 @@ internalFramebufferClearPolicyOnExport_
                 READ_MIN_MAX
                 uniform->usesColorPicker = uniformData.read<bool>(
                     "usesColorPicker");
+                uniform->showLimits = !uniform->usesColorPicker;
                 break;
             }
             case vir::Shader::Variable::Type::Float4 :
@@ -1348,12 +1406,14 @@ internalFramebufferClearPolicyOnExport_
                 READ_MIN_MAX
                 uniform->usesColorPicker = uniformData.read<bool>(
                     "usesColorPicker");
+                uniform->showLimits = !uniform->usesColorPicker;
                 break;
             }
             case vir::Shader::Variable::Type::Sampler2D :
             case vir::Shader::Variable::Type::SamplerCube :
             {
                 std::string resourceName = uniformData.read("value", false);
+                uniform->showLimits = false;
                 bool found = false;
                 for (auto r : app.resourceManagerRef().resourcesRef())
                 {
