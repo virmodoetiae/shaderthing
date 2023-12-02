@@ -536,7 +536,7 @@ void Layer::renderGuiUniforms()
     if (ImGui::BeginTable("##uniformTable", nColumns, tableFlags))
     {
         // Declare columns
-        ImGui::TableSetupColumn("Actions", 0, 5*fontSize);
+        ImGui::TableSetupColumn("##actions", 0, 5*fontSize);
         ImGui::TableSetupColumn("Uniform name", 0, 9*fontSize);
         ImGui::TableSetupColumn("Uniform type", 0, 7*fontSize);
         ImGui::TableSetupColumn("Value limits", 0, 7*fontSize);

@@ -90,6 +90,7 @@ void ResourceManager::renderGui()
         for (int row = 0; row < nRows+1; row++)
         {
             int col = 0;
+            float buttonWidth(10*fontSize);
             ImGui::PushID(row);
             ImGui::TableNextRow(0, 1.6*fontSize);
             
@@ -106,15 +107,22 @@ void ResourceManager::renderGui()
                 }
                 if (ImGui::BeginPopup("##addResourcePopup"))
                 {
-                    addOrReplaceTextureGuiButton
+                    loadOrReplaceTextureOrAnimationGuiButton
                     (
                         -1,
-                        ImVec2(8*fontSize, 0)
+                        ImVec2(buttonWidth, 0),
+                        false
                     );
-                    addOrReplaceCubemapGuiButton
+                    loadOrReplaceTextureOrAnimationGuiButton
                     (
                         -1,
-                        ImVec2(8*fontSize, 0)
+                        ImVec2(buttonWidth, 0),
+                        true
+                    );
+                    createOrReplaceCubemapGuiButton
+                    (
+                        -1,
+                        ImVec2(buttonWidth, 0)
                     );
                     ImGui::EndPopup();
                 }
@@ -130,7 +138,6 @@ void ResourceManager::renderGui()
             // Column 0 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
-            float buttonWidth(10*fontSize);
             if (resource->type() != Resource::Type::FramebufferColorAttachment)
             {
                 bool replacedResource(false);
@@ -417,15 +424,25 @@ affect any cubemaps or animations using this texture)");
                         switch (resource->type())
                         {
                             case Resource::Type::Texture2D:
-                            case Resource::Type::AnimatedTexture2D:
-                                replacedResource = addOrReplaceTextureGuiButton
+                                replacedResource = 
+                                loadOrReplaceTextureOrAnimationGuiButton
                                 (
                                     row,
-                                    ImVec2(buttonWidth, 0)
+                                    ImVec2(buttonWidth, 0),
+                                    false
+                                );
+                                break;
+                            case Resource::Type::AnimatedTexture2D:
+                                replacedResource = 
+                                loadOrReplaceTextureOrAnimationGuiButton
+                                (
+                                    row,
+                                    ImVec2(buttonWidth, 0),
+                                    true
                                 );
                                 break;
                             case Resource::Type::Cubemap:
-                                replacedResource = addOrReplaceCubemapGuiButton
+                                replacedResource = createOrReplaceCubemapGuiButton
                                 (
                                     row,
                                     ImVec2(buttonWidth, 0)
@@ -437,10 +454,11 @@ affect any cubemaps or animations using this texture)");
                             // animations here
                     {
                         ImGui::BeginDisabled();
-                        replacedResource = addOrReplaceTextureGuiButton
+                        replacedResource = loadOrReplaceTextureOrAnimationGuiButton
                         (
                             row,
                             ImVec2(buttonWidth, 0),
+                            resource->type() == Resource::Type::AnimatedTexture2D,
                             true
                         );
                         ImGui::EndDisabled();
@@ -646,10 +664,11 @@ affect any cubemaps or animations using this texture)");
 //----------------------------------------------------------------------------//
 // Private functions ---------------------------------------------------------//
 
-bool ResourceManager::addOrReplaceTextureGuiButton
+bool ResourceManager::loadOrReplaceTextureOrAnimationGuiButton
 (
     int rowIndex,
     ImVec2 size,
+    bool animation,
     bool disabled
 )
 {
@@ -657,8 +676,8 @@ bool ResourceManager::addOrReplaceTextureGuiButton
     bool validSelection(false);
     static std::string lastOpenedPath(".");
     std::string buttonName = (rowIndex==-1) ? 
-        "Add texture" : "Replace";
-    static std::string dialogKey("##addOrReplaceTextureDialog");
+        (animation ? "Load animation" : "Load texture") : "Replace";
+    static std::string dialogKey("##loadOrReplaceTextureOrAnimationDialog");
     ImGui::BeginDisabled(disabled);
     if (ImGui::Button(buttonName.c_str(), size))
     {
@@ -667,13 +686,13 @@ bool ResourceManager::addOrReplaceTextureGuiButton
         ImGuiFileDialog::Instance()->OpenDialog
         (
             dialogKey.c_str(), 
-            "Choose image", 
-            ".png,.jpg,.jpeg,.bmp,.gif", 
+            "Select an image", 
+            animation ? ".gif" : ".png,.jpg,.jpeg,.bmp", 
             lastOpenedPath
         );
     }
     ImGui::EndDisabled();
-    if (ImGuiFileDialog::Instance()->Display(dialogKey)) 
+    if (ImGuiFileDialog::Instance()->Display(dialogKey))
     {
         if (ImGuiFileDialog::Instance()->IsOk())
         {
@@ -708,7 +727,7 @@ bool ResourceManager::addOrReplaceTextureGuiButton
             }
             catch (const std::exception& e)
             {
-                std::cout << "Failed to load texture from " << filepath 
+                std::cout << "Failed to load " << filepath 
                 << std::endl;
             }
         }
@@ -719,7 +738,7 @@ bool ResourceManager::addOrReplaceTextureGuiButton
 
 //----------------------------------------------------------------------------//
 
-bool ResourceManager::addOrReplaceCubemapGuiButton
+bool ResourceManager::createOrReplaceCubemapGuiButton
 (
     int rowIndex,
     ImVec2 size
@@ -737,19 +756,19 @@ bool ResourceManager::addOrReplaceCubemapGuiButton
     (
         ImGui::Button
         (
-            rowIndex == -1 ? "Add cubemap" : "Replace", 
+            rowIndex == -1 ? "Create cubemap" : "Replace", 
             size
         )
     )
     {
-        ImGui::OpenPopup("##addOrReplaceCubeMapPopup");
+        ImGui::OpenPopup("##createOrReplaceCubeMapPopup");
         sIndex = rowIndex;
         width = 0;
         height = 0;
         for (int i=0;i<6;i++)
             selectedTextureResources[i] = nullptr;
     }
-    if (ImGui::BeginPopup("##addOrReplaceCubeMapPopup"))
+    if (ImGui::BeginPopup("##createOrReplaceCubeMapPopup"))
     {
         static std::string labels[6] = 
         {
@@ -837,7 +856,7 @@ bool ResourceManager::addOrReplaceCubemapGuiButton
         if (!validFaces)
         {
             ImGui::BeginDisabled();
-            ImGui::Button("Generate cubemap", ImVec2(buttonSize, 0));
+            ImGui::Button("Create cubemap", ImVec2(buttonSize, 0));
             ImGui::EndDisabled();
             if 
             (
@@ -857,7 +876,7 @@ among those loaded in the resource manager.)");
                 ImGui::EndTooltip();
             }
         }
-        else if (ImGui::Button("Generate cubemap", ImVec2(buttonSize,0)))
+        else if (ImGui::Button("Create cubemap", ImVec2(buttonSize,0)))
         {
             Resource* resource;
             if (sIndex != -1)

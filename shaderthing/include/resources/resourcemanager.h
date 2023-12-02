@@ -43,13 +43,14 @@ private:
     bool isGuiOpen_;
     bool isGuiInMenu_;
     
-    bool addOrReplaceTextureGuiButton
+    bool loadOrReplaceTextureOrAnimationGuiButton
     (
         int rowIndex=-1,
         ImVec2 size=ImVec2(0,0),
+        bool animation=false,
         bool disabled=false
     );
-    bool addOrReplaceCubemapGuiButton
+    bool createOrReplaceCubemapGuiButton
     (
         int rowIndex=-1,
         ImVec2 size=ImVec2(0,0)
