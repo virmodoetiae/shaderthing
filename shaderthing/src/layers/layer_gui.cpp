@@ -536,13 +536,13 @@ void Layer::renderGuiUniforms()
     if (ImGui::BeginTable("##uniformTable", nColumns, tableFlags))
     {
         // Declare columns
-        ImGui::TableSetupColumn("##actions", 0, 5*fontSize);
-        ImGui::TableSetupColumn("Uniform name", 0, 9*fontSize);
-        ImGui::TableSetupColumn("Uniform type", 0, 7*fontSize);
-        ImGui::TableSetupColumn("Value limits", 0, 7*fontSize);
+        ImGui::TableSetupColumn("##actions", 0, 4*fontSize);
+        ImGui::TableSetupColumn("Name", 0, 10*fontSize);
+        ImGui::TableSetupColumn("Type", 0, 5*fontSize);
+        ImGui::TableSetupColumn("Bounds", 0, 4*fontSize);
         ImGui::TableSetupColumn
         (
-            "Uniform value", 
+            "Value", 
             0, 
             ImGui::GetContentRegionAvail().x
         );
@@ -643,6 +643,7 @@ void Layer::renderGuiUniforms()
             // Column 0 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
+            float haflButtonSize(1.7*fontSize);
             if (row >= uniformsStartRow)
             {
                 if (ImGui::Button(ICON_FA_TRASH, ImVec2(-1, 0)))
@@ -656,7 +657,7 @@ void Layer::renderGuiUniforms()
             else if (uniform->specialType == Uniform::SpecialType::Frame)
             {
                 //isShared = true;
-                if (ImGui::Button(ICON_FA_UNDO, ImVec2(2.2*fontSize, 0)))
+                if (ImGui::Button(ICON_FA_UNDO, ImVec2(haflButtonSize, 0)))
                     app_.restartRendering();
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                 {
@@ -696,7 +697,7 @@ void Layer::renderGuiUniforms()
                     ImGui::Button
                     (
                         isTimeLooped ? ICON_FA_MINUS : ICON_FA_CIRCLE_NOTCH, 
-                        ImVec2(2.2*fontSize, 0)
+                        ImVec2(haflButtonSize, 0)
                     )
                 )
                     isTimeLooped = !isTimeLooped;
@@ -886,20 +887,43 @@ to modify. Best suited for controlling a camera)";
             bool limitsChanged(false);
             if (uniform->showLimits)
             {
-                std::string format = 
-                    (uniform->type == vir::Shader::Variable::Type::Int) ?
-                    "%.0f" :
-                    "%.1f";
-                glm::vec2 uLimits0(uLimits);
-                if (uniform->type == vir::Shader::Variable::Type::UInt)
-                    uLimits.x = std::max(uLimits.x, 0.0f);
-                ImGui::InputFloat2
-                (
-                    "##f2Input", 
-                    glm::value_ptr(uLimits), 
-                    format.c_str()
-                );
-                limitsChanged = (uLimits != uLimits0);
+                if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
+                    ImGui::OpenPopup("##uniformLimits");
+                if (ImGui::BeginPopup("##uniformLimits"))
+                {
+                    std::string format = 
+                        (uniform->type == vir::Shader::Variable::Type::Int) ?
+                        "%.0f" :
+                        "%.1f";
+                    glm::vec2 uLimits0(uLimits);
+                    if (uniform->type == vir::Shader::Variable::Type::UInt)
+                        uLimits.x = std::max(uLimits.x, 0.0f);
+                    float* minValue = &(glm::value_ptr(uLimits)[0]);
+                    float* maxValue = &(glm::value_ptr(uLimits)[1]);
+                    ImGui::Text("Minimum value ");
+                    ImGui::SameLine();
+                    float inputWidth = 6*ImGui::GetFontSize();
+                    ImGui::PushItemWidth(inputWidth);
+                    ImGui::InputFloat
+                    (
+                        "##minValueInput", 
+                        minValue, 0.f, 0.f,
+                        Misc::getFormat(uLimits0.x).c_str()
+                    );
+                    ImGui::PopItemWidth();
+                    ImGui::Text("Maximum value ");
+                    ImGui::SameLine();
+                    ImGui::PushItemWidth(inputWidth);
+                    ImGui::InputFloat
+                    (
+                        "##maxValueInput", 
+                        maxValue, 0.f, 0.f,
+                        Misc::getFormat(uLimits0.y).c_str()
+                    );
+                    ImGui::PopItemWidth();
+                    limitsChanged = (uLimits != uLimits0);
+                    ImGui::EndPopup();
+                }
             }
             ImGui::PopItemWidth();
 
@@ -1255,12 +1279,14 @@ to modify. Best suited for controlling a camera)";
                     bool input(false);
                     if (uniform->specialType == Uniform::SpecialType::Mouse)
                     {
-                        std::string data = 
-                            std::to_string(app_.mouseRef().x)+", "+
-                            std::to_string(app_.mouseRef().y)+", "+
-                            std::to_string(app_.mouseRef().z)+", "+
-                            std::to_string(app_.mouseRef().w);
-                        ImGui::Text(data.c_str());
+                        ImGui::Text
+                        (
+                            "%d, %d, %d, %d",
+                            app_.mouseRef().x,
+                            app_.mouseRef().y,
+                            app_.mouseRef().z,
+                            app_.mouseRef().w
+                        );
                         if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                         {
                             ImGui::Text(
@@ -1319,14 +1345,15 @@ is currently being held down)");
                         uniform->specialType == 
                             Uniform::SpecialType::LayerAspectRatio
                     )
-                        ImGui::Text(std::to_string(value).c_str());
+                        ImGui::Text("%.3f", value);
                     else
                         input = ImGui::SliderFloat
                         (
                             "##fSlider", 
                             &value, 
                             uLimits.x,
-                            uLimits.y
+                            uLimits.y,
+                            Misc::getFormat(value).c_str()
                         );
                     if (input || limitsChanged)
                     {
@@ -1363,13 +1390,12 @@ is currently being held down)");
                             Uniform::SpecialType::LayerResolution
                     )
                     {
-                        auto fvalue = uniform->getValue<glm::ivec2>();
-                        std::string resolution
+                        auto ivalue = uniform->getValue<glm::ivec2>();
+                        ImGui::Text
                         (
-                            std::to_string(fvalue.x)+" x "+
-                            std::to_string(fvalue.y)
+                            "%d x %d",
+                            ivalue.x, ivalue.y
                         );
-                        ImGui::Text(resolution.c_str());
                     }
                     else 
                     {
@@ -1419,7 +1445,8 @@ is currently being held down)");
                             "##f2Slider", 
                             glm::value_ptr(value), 
                             uLimits.x,
-                            uLimits.y
+                            uLimits.y,
+                            Misc::getFormat(value).c_str()
                         );
                         input = input || input2;
                     }
@@ -1478,7 +1505,8 @@ is currently being held down)");
                                 "##f3Slider", 
                                 glm::value_ptr(value), 
                                 uLimits.x,
-                                uLimits.y
+                                uLimits.y,
+                                Misc::getFormat(value).c_str()
                             ) || limitsChanged
                         )
                         {
@@ -1579,7 +1607,8 @@ is currently being held down)");
                                 "##f4Slider", 
                                 glm::value_ptr(value), 
                                 uLimits.x,
-                                uLimits.y
+                                uLimits.y,
+                                Misc::getFormat(value).c_str()
                             ) || limitsChanged
                         )
                         {
@@ -1714,7 +1743,11 @@ is currently being held down)");
             uniform->type == Uniform::Type::Sampler2D ||
             uniform->type == Uniform::Type::SamplerCube
         )
-            uniform->getValuePtr<Resource>()->unbind();
+        {
+            auto* resource = uniform->getValuePtr<Resource>();
+            if (resource != nullptr)
+                resource->unbind();
+        }
         delete uniform;
         uniforms_.erase(uniforms_.begin()+deleteRow);
         uniform = nullptr;

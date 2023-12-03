@@ -38,7 +38,7 @@ std::unordered_map<Shader::Variable::Type, std::string>
     {Shader::Variable::Type::Mat3, "mat3"},
     {Shader::Variable::Type::Mat4, "mat4"},
     {Shader::Variable::Type::Sampler2D, "texture2D"},
-    {Shader::Variable::Type::SamplerCube, "cubeMap"}
+    {Shader::Variable::Type::SamplerCube, "cubemap"}
 };
 
 std::unordered_map<std::string, Shader::Variable::Type> 
@@ -57,7 +57,7 @@ std::unordered_map<std::string, Shader::Variable::Type>
     {"mat3", Shader::Variable::Type::Mat3},
     {"mat4", Shader::Variable::Type::Mat4},
     {"texture2D", Shader::Variable::Type::Sampler2D},
-    {"cubeMap", Shader::Variable::Type::SamplerCube}
+    {"cubemap", Shader::Variable::Type::SamplerCube}
 };
 
 std::vector<Shader::Variable::Type> Shader::uniformTypes = 
@@ -93,7 +93,7 @@ std::vector<std::string> Shader::uniformNames =
     "mat3",
     "mat4",
     "texture2D",
-    "cubeMap"
+    "cubemap"
 };
 
 Shader::Uniform::~Uniform()
