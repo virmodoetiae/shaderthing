@@ -41,7 +41,7 @@ std::string Misc::randomString(int length)
 // did not result in pixel-perfect alignment with other lines rendered with the
 // traditional ImGui::Text(). This approach fixes this, but it is currently
 // limited to one-line-only-text (not meant to be used with multi-line static
-// text). I suspect It wouldn't be too difficult to implement, I simply don't
+// text). I suspect It wouldn't be too difficult to extend, I simply don't
 // need it, for now
 void Misc::OneLineColorfulText
 (
@@ -148,10 +148,10 @@ void Misc::limitWindowResolution(glm::ivec2& resolution)
 
 #define RETURN_SCALAR_FORMAT                                            \
     if (value == 0)                                                     \
-        return "%.3f";                                                  \
+        return "%.1e";                                                  \
     floatDigits = floatDigits > 9 ? 9 : floatDigits;                    \
     expDigits = expDigits > 9 ? 9 : expDigits;                          \
-    char format[4] = {'%', '.', '3', 'f'};                              \
+    static char format[4] = {'%', '.', char(0), char(0)};               \
     if (abs(value) < lowExpThreshold || abs(value) > highExpThreshold)  \
         sprintf(&(format[2]), "%de", expDigits);                        \
     else                                                                \
@@ -164,7 +164,7 @@ void Misc::limitWindowResolution(glm::ivec2& resolution)
         return "%.1e";                                                  \
     floatDigits = floatDigits > 9 ? 9 : floatDigits;                    \
     expDigits = expDigits > 9 ? 9 : expDigits;                          \
-    char format[4] = {'%', '.', char(0), char(0)};                      \
+    static char format[4] = {'%', '.', char(0), char(0)};               \
     for (int i=0; i<nCmpts; i++)                                        \
     {                                                                   \
         const float& vi(value[i]);                                      \

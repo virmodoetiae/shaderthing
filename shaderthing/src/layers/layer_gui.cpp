@@ -1353,7 +1353,8 @@ is currently being held down)");
                             &value, 
                             uLimits.x,
                             uLimits.y,
-                            Misc::getFormat(value).c_str()
+                            uniform->specialType == Uniform::SpecialType::Time ?
+                            "%.3f" : Misc::getFormat(value).c_str()
                         );
                     if (input || limitsChanged)
                     {
@@ -1498,6 +1499,8 @@ is currently being held down)");
                     }
                     if (!colorPicker)
                     {
+                        if (!uniform->showLimits)
+                            uniform->showLimits = true;
                         if 
                         (
                             ImGui::SliderFloat3
@@ -1547,6 +1550,8 @@ is currently being held down)");
                     }
                     else
                     {
+                        if (uniform->showLimits)
+                            uniform->showLimits = false;
                         if 
                         (
                             ImGui::ColorEdit3
@@ -1600,6 +1605,8 @@ is currently being held down)");
                     }
                     if (!colorPicker)
                     {
+                        if (!uniform->showLimits)
+                            uniform->showLimits = true;
                         if 
                         (
                             ImGui::SliderFloat4
@@ -1630,6 +1637,8 @@ is currently being held down)");
                     }
                     else
                     {
+                        if (uniform->showLimits)
+                            uniform->showLimits = false;
                         if 
                         (
                             ImGui::ColorEdit4

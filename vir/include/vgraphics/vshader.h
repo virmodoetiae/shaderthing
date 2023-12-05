@@ -86,7 +86,6 @@ public:
     private:
         bool isValueOwner_ = true;
         void* value_ = nullptr;
-        bool valueIsPtr_ = false;
         // Delete copy constructors
         Uniform(const Uniform&) = delete;
         Uniform& operator=(const Uniform& other) = delete;
@@ -103,7 +102,6 @@ public:
                 resetValue();        
             value_ = (void*)value;
             isValueOwner_ = isValueOwner;
-            valueIsPtr_ = true;
         }
         template<class ValueType>
         ValueType* getValuePtr()
@@ -116,10 +114,9 @@ public:
         void setValue(ValueType value)
         {
             if (value_ == nullptr)
-                value_ = new ValueType(value);
+                value_ = (void*) new ValueType(value);
             else 
                 *(ValueType*)(value_) = value;
-            valueIsPtr_ = false;
         }
         template<class ValueType>
         ValueType getValue()
@@ -129,7 +126,6 @@ public:
             return ValueType();
         }
         void resetValue();
-        bool valueIsPtr() const {return valueIsPtr_;}
     };
 
 protected:
