@@ -333,7 +333,8 @@ template<>
 bool Resource::set(vir::AnimatedTextureBuffer2D* nativeResource)
 {
     SET_NATIVE_RESOURCE(Type::AnimatedTexture2D)
-    animationData_ = new AnimationData{};
+    if (animationData_ == nullptr)
+        animationData_ = new AnimationData{};
     return true;
 }
 
@@ -429,20 +430,29 @@ template<>
 bool Resource::set(std::vector<Resource*>* resources)
 {
     std::vector<vir::TextureBuffer2D*> frames(0);
-    referencedResources_.resize(0);
     for(auto* r : *resources)
     {
         if (!r->valid() || r->type() != Type::Texture2D)
             continue;
         frames.emplace_back((vir::TextureBuffer2D*)r->nativeResource());
-        referencedResources_.emplace_back(r);
     }
     auto animation = vir::AnimatedTextureBuffer2D::create
     (
         frames,
         false
     );
-    return set(animation);
+    bool status = set(animation);
+    if (status)
+    {
+        referencedResources_.resize(0);
+        for(auto* r : *resources)
+        {
+            if (!r->valid() || r->type() != Type::Texture2D)
+                continue;
+            referencedResources_.emplace_back(r);
+        }
+    }
+    return status;
 }
 
 // This is specifically for generating and setting cubemaps
@@ -604,6 +614,17 @@ void Resource::setMinFilterMode(vir::TextureBuffer::FilterMode mode)
         setColorBufferMinFilterMode(mode), 
         setMinFilterMode(mode)
     )
+}
+
+bool Resource::areAnimationFramesResources() const
+{
+    return 
+        (
+            type_ == Type::AnimatedTexture2D &&
+            rawData_ == nullptr &&
+            rawDataSize_ == 0 &&
+            originalFileExtension_.size() == 0
+        );
 }
 
 bool Resource::isAnimationPaused() const

@@ -135,22 +135,20 @@ R"(vbuffers.cpp - AnimatedTextureBuffer2D(std::vector<TextureBuffer2D*>&, bool)
         );
     // Ensure consistency between frames
     bool firstFrame = true;
-    uint32_t width, height;
-    InternalFormat internalFormat;
     for (auto* frame : frames_)
     {
         if (firstFrame)
         {
-            width = frame->width();
-            height = frame->height();
-            internalFormat = frame->internalFormat();
+            width_ = frame->width();
+            height_ = frame->height();
+            internalFormat_ = frame->internalFormat();
             firstFrame = false;
         }
         else if 
         (
-            frame->width() != width || 
-            frame->height() != height || 
-            frame->internalFormat() != internalFormat
+            frame->width() != width_ || 
+            frame->height() != height_ || 
+            frame->internalFormat() != internalFormat_
         )
         {
             throw std::runtime_error(

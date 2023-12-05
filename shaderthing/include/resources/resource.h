@@ -221,6 +221,8 @@ public:
         return referencedResources_;
     }
 
+    bool areAnimationFramesResources() const;
+
     // True if this resource is an AnimatedTexture2D and the internal animation
     // time is paused
     bool isAnimationPaused() const;

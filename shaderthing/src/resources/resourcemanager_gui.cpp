@@ -119,6 +119,11 @@ void ResourceManager::renderGui()
                         ImVec2(buttonWidth, 0),
                         true
                     );
+                    createOrEditAnimationGuiButton
+                    (
+                        -1,
+                        ImVec2(buttonWidth, 0)
+                    );
                     createOrReplaceCubemapGuiButton
                     (
                         -1,
@@ -200,7 +205,7 @@ affect any cubemaps or animations using this texture)");
                             ImGui::BeginDisabled();
                             ImGui::Button
                             (   
-                                std::to_string(frame).c_str(),
+                                std::to_string(frame+1).c_str(),
                                 ImVec2(buttonWidth/3.25, 0)
                             );
                             ImGui::EndDisabled();
@@ -425,28 +430,35 @@ affect any cubemaps or animations using this texture)");
                         {
                             case Resource::Type::Texture2D:
                                 replacedResource = 
-                                loadOrReplaceTextureOrAnimationGuiButton
-                                (
-                                    row,
-                                    ImVec2(buttonWidth, 0),
-                                    false
-                                );
+                                    loadOrReplaceTextureOrAnimationGuiButton
+                                    (
+                                        row,
+                                        ImVec2(buttonWidth, 0),
+                                        false
+                                    );
                                 break;
                             case Resource::Type::AnimatedTexture2D:
                                 replacedResource = 
-                                loadOrReplaceTextureOrAnimationGuiButton
-                                (
-                                    row,
-                                    ImVec2(buttonWidth, 0),
-                                    true
-                                );
+                                    resource->areAnimationFramesResources() ? 
+                                    createOrEditAnimationGuiButton
+                                    (
+                                        row,
+                                        ImVec2(buttonWidth, 0)
+                                    ) :
+                                    loadOrReplaceTextureOrAnimationGuiButton
+                                    (
+                                        row,
+                                        ImVec2(buttonWidth, 0),
+                                        true
+                                    );
                                 break;
                             case Resource::Type::Cubemap:
-                                replacedResource = createOrReplaceCubemapGuiButton
-                                (
-                                    row,
-                                    ImVec2(buttonWidth, 0)
-                                );
+                                replacedResource = 
+                                    createOrReplaceCubemapGuiButton
+                                    (
+                                        row,
+                                        ImVec2(buttonWidth, 0)
+                                    );
                         }
                     }
                     else    // No way inUseBy.size() != 0 if resource->type() !=
@@ -488,7 +500,7 @@ affect any cubemaps or animations using this texture)");
                         resource->type() == Resource::Type::AnimatedTexture2D
                     )
                     {
-                        reExportTextureGuiButton
+                        exportTextureOrAnimationGuiButton
                         (
                             resource,
                             ImVec2(buttonWidth,0)
@@ -689,7 +701,7 @@ bool ResourceManager::loadOrReplaceTextureOrAnimationGuiButton
             ICON_FA_IMAGE " Select an image", 
             animation ? 
             ".gif" : 
-            "Image files (.png, .jpg, .jpeg, .bmp){.png,.jpg,.jpeg,.bmp}",
+            "Image files (*.png *.jpg *.jpeg *.bmp){.png,.jpg,.jpeg,.bmp}",
             lastOpenedPath
         );
     }
@@ -904,7 +916,7 @@ among those loaded in the resource manager.)");
 
 //----------------------------------------------------------------------------//
 
-bool ResourceManager::reExportTextureGuiButton
+bool ResourceManager::exportTextureOrAnimationGuiButton
 (
     Resource* resource,
     ImVec2 size
@@ -956,6 +968,212 @@ bool ResourceManager::reExportTextureGuiButton
         ImGuiFileDialog::Instance()->Close();
     }
     return validExport;
+}
+
+//----------------------------------------------------------------------------//
+
+bool ResourceManager::createOrEditAnimationGuiButton
+(
+    int rowIndex,
+    ImVec2 size
+)
+{
+    bool validAnimation = false;
+    static int sIndex;
+    static int width(0);
+    static int height(0);
+    static Resource* frameToBeAdded(nullptr);
+    static std::vector<Resource*> frames(0);
+    static std::vector<std::string> numberedFrameNames(0);
+    Resource* animation = nullptr;
+    if 
+    (
+        ImGui::Button
+        (
+            rowIndex == -1 ? "Create animation" : "Edit", 
+            size
+        )
+    )
+    {
+        ImGui::OpenPopup("##createOrEditAnimationPopup");
+        sIndex = rowIndex;
+        if (sIndex != -1)
+            animation = resources_[sIndex];
+        width = 0;
+        height = 0;
+        frameToBeAdded = nullptr;
+        if (animation != nullptr)
+        {
+            frames = std::vector<Resource*>
+            (
+                animation->referencedResourcesCRef()
+            );
+            static auto initFrameNames = [](Resource* animation)
+            {
+                int n(animation->referencedResourcesCRef().size());
+                std::vector<std::string> names(n);
+                for (int i=0; i<n; i++)
+                    names[i] = std::to_string(i+1) + " - " + 
+                        animation->referencedResourcesCRef()[i]->name();
+                return names;
+            };
+            // The need for a separate array to store the names is required by 
+            // the fact that I cannot have two selectable, re-orderable entries
+            // with the same name. Hence, I prefix a unique number (the frame
+            // number) to the name of every frame, and that is the final name
+            // shown in the drag-re-orderable list. Then, while dragging to
+            // re-order, the displayed names don't change, they will only be
+            // updated once the mouse is let go of to finalize the re-ordering.
+            // Why could multiple frames have the same name? Because I want to
+            // give that extra layer of generality wherein a certain texture
+            // might be re-used multiple times for different animation frames
+            numberedFrameNames = initFrameNames(animation);
+        }
+    }
+    if (ImGui::BeginPopup("##createOrEditAnimationPopup"))
+    {
+        ImGui::SeparatorText("Animation frames");
+        if (width == 0 && height == 0 && frames.size() == 1)
+        {
+            width = frames[0]->width();
+            height = frames[0]->height();
+        }
+        static bool reordered(false);
+        int iFrameToBeDeleted = -1;
+        for (int i=0; i<frames.size(); i++)
+        {
+            auto* frame = frames[i];
+            auto name = numberedFrameNames[i];
+            if (ImGui::SmallButton(ICON_FA_TRASH))
+                iFrameToBeDeleted=i;
+            ImGui::SameLine();
+            ImGui::Selectable
+            (
+                name.c_str(), 
+                false, 
+                ImGuiSelectableFlags_DontClosePopups
+            );
+            if (ImGui::IsItemActive() && !ImGui::IsItemHovered())
+            {
+                int j = i + (ImGui::GetMouseDragDelta(0).y<0.f?-1:1);
+                if (j >= 0 && j < frames.size())
+                {
+                    reordered = true;
+                    numberedFrameNames[i] = numberedFrameNames[j];
+                    numberedFrameNames[j] = name;
+                    frames[i] = frames[j];
+                    frames[j] = frame;
+                    ImGui::ResetMouseDragDelta();
+                }
+            }
+        }
+        // As previously said, only re-order if the mouse button is no 
+        // longer pressed
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) && reordered)
+        {
+            for (int i=0; i<frames.size(); i++)
+                numberedFrameNames[i] = 
+                    std::to_string(i+1)+" - "+
+                    std::string(frames[i]->name());
+            reordered = false;
+        }
+        if (iFrameToBeDeleted != -1)
+        {
+            frames.erase(frames.begin()+iFrameToBeDeleted);
+            numberedFrameNames.erase
+            (
+                numberedFrameNames.begin() + iFrameToBeDeleted
+            );
+        }
+        bool frameToBeAddedIsNullptr(frameToBeAdded == nullptr);
+        if (frameToBeAddedIsNullptr)
+            ImGui::BeginDisabled();
+        if (ImGui::Button(ICON_FA_PLUS))
+        {
+            if (frameToBeAdded != nullptr)
+            {
+                frames.push_back(frameToBeAdded);
+                numberedFrameNames.push_back
+                (
+                    std::to_string(frames.size()) +
+                    " - " + frameToBeAdded->name()
+                );
+                frameToBeAdded = nullptr;
+            }
+        }
+        if (frameToBeAddedIsNullptr)
+            ImGui::EndDisabled();
+        ImGui::SameLine();
+        if
+        (
+            ImGui::BeginCombo
+            (
+                "##addAnimationFrameCombo",
+                frameToBeAdded!=nullptr?frameToBeAdded->name().c_str():""
+            )
+        )
+        {
+            for (auto* resource : resources_)
+            {
+                if 
+                (
+                    width*height > 0 && 
+                    (
+                        resource->width() != width ||
+                        resource->height() != height
+                    )
+                )
+                    continue;
+                if (ImGui::Selectable(resource->name().c_str()))
+                    frameToBeAdded = resource;
+            }
+            ImGui::EndCombo();
+        }
+        bool noFrames(frames.size() == 0);
+        if (noFrames)
+            ImGui::BeginDisabled();
+        if 
+        (
+            ImGui::Button
+            (
+                sIndex == -1 ? "Create animation" : "Edit animation", 
+                ImVec2(-1,0)
+            )
+        )
+        {
+            if (sIndex == -1)
+                animation = new Resource();
+            else
+                animation = resources_[sIndex];
+            auto isAnimationPaused = animation->isAnimationPaused();
+            auto isAnimationTimeBoundToGlobalTime = 
+                animation->isAnimationBoundToGlobalTime();
+            auto fps = animation->animationFps();
+            animation->set(&frames);
+            if (sIndex == -1)
+                resources_.emplace_back(animation);
+            else
+            {
+                if (isAnimationPaused != animation->isAnimationPaused())
+                    animation->toggleAnimationPaused();
+                if 
+                (
+                    isAnimationTimeBoundToGlobalTime != 
+                    animation->isAnimationBoundToGlobalTime()
+                )
+                    animation->toggleAnimationBoundToGlobalTime();
+                animation->setAnimationFps(fps);
+                animation->setAnimationFrameIndex(0);
+            }
+            frames.clear();
+            numberedFrameNames.clear();
+            validAnimation = true;
+        }
+        if (noFrames)
+            ImGui::EndDisabled();
+        ImGui::EndPopup();
+    }
+    return validAnimation;
 }
 
 }

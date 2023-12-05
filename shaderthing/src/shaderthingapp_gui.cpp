@@ -434,7 +434,7 @@ resetting the iFrame uniform (Ctrl+R))"
         exportTool_->renderGui();
 
     ImGui::End();
-    //ImGui::ShowDemoWindow();
+    ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 
@@ -488,7 +488,7 @@ void ShaderThingApp::renderGuiSaveProject()
         (
             "SaveAsFileDialog", 
             ICON_FA_FILE " Save as", 
-            "ShaderThing file (.stf){.stf}", 
+            ".stf", 
             lastOpenedPath
         );
     }
@@ -519,7 +519,7 @@ void ShaderThingApp::renderGuiLoadProject()
         (
             "LoadFileDialog", 
             ICON_FA_FILE " Load project", 
-            "ShaderThing file (.stf){.stf}", 
+            ".stf", 
             lastOpenedPath
         );
     }

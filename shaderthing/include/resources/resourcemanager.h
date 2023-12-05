@@ -50,12 +50,17 @@ private:
         bool animation=false,
         bool disabled=false
     );
+    bool createOrEditAnimationGuiButton
+    (
+        int rowIndex=-1,
+        ImVec2 size=ImVec2(0,0)
+    );
     bool createOrReplaceCubemapGuiButton
     (
         int rowIndex=-1,
         ImVec2 size=ImVec2(0,0)
     );
-    bool reExportTextureGuiButton
+    bool exportTextureOrAnimationGuiButton
     (
         Resource* resource,
         ImVec2 size=ImVec2(0,0)
