@@ -160,8 +160,12 @@ void ResourceManager::renderGui()
                                 auto& faces = r->referencedResourcesCRef();
                                 if (faces.size() != 6) continue;
                                 for (auto& f : faces)
-                                    if (f->nameCPtr() == resource->namePtr())
-                                        inUseBy.emplace_back(r->namePtr());
+                                {
+                                    if (f->nameCPtr() != resource->namePtr())
+                                        continue;
+                                    inUseBy.emplace_back(r->namePtr());
+                                    break;
+                                }
                             }
                             else if 
                             (
@@ -169,8 +173,12 @@ void ResourceManager::renderGui()
                             )
                             {
                                 for (auto& f : r->referencedResourcesCRef())
-                                    if (f->nameCPtr() == resource->namePtr())
-                                        inUseBy.emplace_back(r->namePtr());
+                                {
+                                    if (f->nameCPtr() != resource->namePtr())
+                                        continue;
+                                    inUseBy.emplace_back(r->namePtr());
+                                    break;
+                                }
                             }
                         }
                     }
@@ -1142,18 +1150,24 @@ bool ResourceManager::createOrEditAnimationGuiButton
         )
         {
             if (sIndex == -1)
+            {
                 animation = new Resource();
-            else
-                animation = resources_[sIndex];
-            auto isAnimationPaused = animation->isAnimationPaused();
-            auto isAnimationTimeBoundToGlobalTime = 
-                animation->isAnimationBoundToGlobalTime();
-            auto fps = animation->animationFps();
-            animation->set(&frames);
-            if (sIndex == -1)
+                animation->set(&frames);
+                animation->setAnimationFps(4.f);
                 resources_.emplace_back(animation);
+            }
             else
             {
+                animation = resources_[sIndex];
+                auto isAnimationPaused = animation->isAnimationPaused();
+                auto isAnimationTimeBoundToGlobalTime = 
+                    animation->isAnimationBoundToGlobalTime();
+                auto fps = animation->animationFps();
+                auto xWrapMode = animation->wrapMode(0);
+                auto yWrapMode = animation->wrapMode(1);
+                auto magFilterMode = animation->magFilterMode();
+                auto minFilterMode = animation->minFilterMode();
+                animation->set(&frames);
                 if (isAnimationPaused != animation->isAnimationPaused())
                     animation->toggleAnimationPaused();
                 if 
@@ -1164,6 +1178,10 @@ bool ResourceManager::createOrEditAnimationGuiButton
                     animation->toggleAnimationBoundToGlobalTime();
                 animation->setAnimationFps(fps);
                 animation->setAnimationFrameIndex(0);
+                animation->setWrapMode(0, xWrapMode);
+                animation->setWrapMode(1, yWrapMode);
+                animation->setMagFilterMode(magFilterMode);
+                animation->setMinFilterMode(minFilterMode);
             }
             frames.clear();
             numberedFrameNames.clear();
