@@ -113,6 +113,16 @@ TODO ---------------------------------------------------------------------------
 (X) Add generic keyboard-based inputs as custom uniforms in addition to the
     currently existing and unreboundable WASD-based iCameraPosition/iWASD
 
+(W) Add AnimatedTexture2D as a new resource type, which can represent either:
+    1) a GIF loaded from memory OR 2) a series of existing, user-selected
+    Texture2D resources which are used as frames for the animation. Make it
+    such that the user has access to custom timing/loop controls for said 
+    animation, which from a shared perspective behave exaclty like uniforms
+    of type 'texture2D' and can be bound accordingly
+
+(W) Add de/serialization of new AnimatedTexture2D for both "sub-types" (i.e., 
+    GIFs and manually constructed animations)
+
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains to vir/ and shaderthing/).
@@ -144,15 +154,6 @@ TO-CONSIDER --------------------------------------------------------------------
 
 *   Enable option to use the quantizer palette for GIF quantization on GIF 
     exporting
-
-*   Add possibility to have GIFs as resources with custom frame loop timing 
-    controls (all within the resource manager) | Complementary or alternative 
-    idea: add another resource type, e.g., AnimatedTexture2D, which acts as a
-    Texture2D from a shader perpective, but whose actual texture changes after
-    a certain number of user-defined frames, and consits of a collection of 
-    user-selected existing Texture2D resources. This would effectively model
-    an animation, given that all of its frames have been loaded as Texture2D
-    resources (which is fine for, e.g., GIF-like animations)
 
 *   Add possibility of rendering to cubemaps (e.g., adding a type selector for
     any layer's internal framebuffer 'type': either a Texture2D framebuffer or

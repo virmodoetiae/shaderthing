@@ -436,7 +436,7 @@ void Layer::renderGuiMain()
 "this coordinate will maintain its angle if the window aspect ratio is "
 "changed by resizing. The origin is at the window center;");
                     ImGui::Bullet();ImGui::Text(
-"the texture coordinate 'tc' varies in the [0-1] range across both sides of "
+"the texture coordinate 'tc' varies in the [0., 1.] range across both sides of "
 "the window, regardless of the window size. The origin is at the bottom-left "
 "corner of the window;");
                     ImGui::Bullet();ImGui::Text(
