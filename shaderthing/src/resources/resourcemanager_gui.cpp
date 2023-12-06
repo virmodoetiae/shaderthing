@@ -798,7 +798,7 @@ bool ResourceManager::createOrReplaceCubemapGuiButton
         };
         int textureResourcei(0);
         int nSelectedTextureResources(0);
-        for (int i=0;i<6;i++)
+        for (int i=0; i<6; i++)
         {
             if (selectedTextureResources[i] != nullptr)
             {
@@ -808,7 +808,7 @@ bool ResourceManager::createOrReplaceCubemapGuiButton
         }
         
         bool validFaces = true;
-        for (int i=0;i<6;i++)
+        for (int i=0; i<6; i++)
         {
             ImGui::Text(labels[i].c_str());
             ImGui::SameLine();
@@ -827,7 +827,7 @@ bool ResourceManager::createOrReplaceCubemapGuiButton
                 )
             )
             {
-                for(int j=0;j<resources_.size()+1;j++)
+                for(int j=0; j<resources_.size()+1 ;j++)
                 {
                     if (j==0)
                     {

@@ -417,6 +417,24 @@ resetting the iFrame uniform (Ctrl+R))"
         {
             IN_MENU_ENTRY(codeRepository_, "Code repository")
             IN_MENU_ENTRY(about_, "About ShaderThing")
+            if (ImGui::BeginMenu("System info"))
+            {
+                ImGui::Text("Graphics card in use:");
+                ImGui::SameLine();
+                ImGui::Text
+                (
+                    vir::GlobalPtr<vir::Renderer>::instance()->
+                    deviceName().c_str()
+                );
+                ImGui::Text("Graphics context:    ");
+                ImGui::SameLine();
+                ImGui::Text
+                (
+                    vir::GlobalPtr<vir::Window>::instance()->
+                    context()->name().c_str()
+                );
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -434,7 +452,7 @@ resetting the iFrame uniform (Ctrl+R))"
         exportTool_->renderGui();
 
     ImGui::End();
-    ImGui::ShowDemoWindow();
+    //ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 

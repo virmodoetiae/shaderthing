@@ -113,15 +113,18 @@ TODO ---------------------------------------------------------------------------
 (X) Add generic keyboard-based inputs as custom uniforms in addition to the
     currently existing and unreboundable WASD-based iCameraPosition/iWASD
 
-(W) Add AnimatedTexture2D as a new resource type, which can represent either:
+(X) Add AnimatedTexture2D as a new resource type, which can represent either:
     1) a GIF loaded from memory OR 2) a series of existing, user-selected
     Texture2D resources which are used as frames for the animation. Make it
     such that the user has access to custom timing/loop controls for said 
     animation, which from a shared perspective behave exaclty like uniforms
     of type 'texture2D' and can be bound accordingly
 
-(W) Add de/serialization of new AnimatedTexture2D for both "sub-types" (i.e., 
+(X) Add de/serialization of new AnimatedTexture2D for both "sub-types" (i.e., 
     GIFs and manually constructed animations)
+
+(X) Add system info related to graphics cards being used and info on graphics 
+    context (e.g., OpenGL version in use) to top-level app menu, under "Help"
 
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)
     (note that the thirdparty library is always compiled with max optimizations,
