@@ -990,7 +990,6 @@ bool ResourceManager::createOrEditAnimationGuiButton
     static int sIndex;
     static int width(0);
     static int height(0);
-    static Resource* frameToBeAdded(nullptr);
     static std::vector<Resource*> frames(0);
     static std::vector<std::string> numberedFrameNames(0);
     Resource* animation = nullptr;
@@ -1009,7 +1008,6 @@ bool ResourceManager::createOrEditAnimationGuiButton
             animation = resources_[sIndex];
         width = 0;
         height = 0;
-        frameToBeAdded = nullptr;
         if (animation != nullptr)
         {
             frames = std::vector<Resource*>
@@ -1048,12 +1046,31 @@ bool ResourceManager::createOrEditAnimationGuiButton
         }
         static bool reordered(false);
         int iFrameToBeDeleted = -1;
+        ImGui::BeginChild
+        (
+            "##framesChild", 
+            ImVec2
+            (
+                ImGui::GetContentRegionAvail().x, 
+                std::min
+                (
+                    (float)std::max((int)frames.size(), 1), 
+                    15.f
+                )*
+                ImGui::GetTextLineHeightWithSpacing()
+            ), 
+            false
+        );
         for (int i=0; i<frames.size(); i++)
         {
             auto* frame = frames[i];
             auto name = numberedFrameNames[i];
+            ImGui::PushID(1389+i); // Can't have an array of buttons all
+                                   // named the same way outside a table,
+                                   // so I use PushID/PopID to manage that
             if (ImGui::SmallButton(ICON_FA_TRASH))
                 iFrameToBeDeleted=i;
+            ImGui::PopID();
             ImGui::SameLine();
             ImGui::Selectable
             (
@@ -1085,6 +1102,7 @@ bool ResourceManager::createOrEditAnimationGuiButton
                     std::string(frames[i]->name());
             reordered = false;
         }
+        ImGui::EndChild();
         if (iFrameToBeDeleted != -1)
         {
             frames.erase(frames.begin()+iFrameToBeDeleted);
@@ -1093,31 +1111,12 @@ bool ResourceManager::createOrEditAnimationGuiButton
                 numberedFrameNames.begin() + iFrameToBeDeleted
             );
         }
-        bool frameToBeAddedIsNullptr(frameToBeAdded == nullptr);
-        if (frameToBeAddedIsNullptr)
-            ImGui::BeginDisabled();
-        if (ImGui::Button(ICON_FA_PLUS))
-        {
-            if (frameToBeAdded != nullptr)
-            {
-                frames.push_back(frameToBeAdded);
-                numberedFrameNames.push_back
-                (
-                    std::to_string(frames.size()) +
-                    " - " + frameToBeAdded->name()
-                );
-                frameToBeAdded = nullptr;
-            }
-        }
-        if (frameToBeAddedIsNullptr)
-            ImGui::EndDisabled();
-        ImGui::SameLine();
         if
         (
             ImGui::BeginCombo
             (
                 "##addAnimationFrameCombo",
-                frameToBeAdded!=nullptr?frameToBeAdded->name().c_str():""
+                "Select frame to add"
             )
         )
         {
@@ -1125,15 +1124,26 @@ bool ResourceManager::createOrEditAnimationGuiButton
             {
                 if 
                 (
-                    width*height > 0 && 
+                    resource->type() != Resource::Type::Texture2D ||
                     (
-                        resource->width() != width ||
-                        resource->height() != height
+                        width*height > 0 && 
+                        (
+                            resource->width() != width ||
+                            resource->height() != height
+                        )
                     )
                 )
                     continue;
                 if (ImGui::Selectable(resource->name().c_str()))
-                    frameToBeAdded = resource;
+                {
+                    frames.push_back(resource);
+                    numberedFrameNames.push_back
+                    (
+                        std::to_string(frames.size()) +
+                        " - " + resource->name()
+                    );
+                }
+                    
             }
             ImGui::EndCombo();
         }

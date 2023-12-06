@@ -86,8 +86,21 @@ void ResourceManager::loadState(ObjectIO& reader)
 void ResourceManager::saveState(ObjectIO& writer)
 {
     writer.writeObjectStart("resources");
+    // First save all the Texture2D resources to avoid dependency issues when
+    // loading any other resources which might depend on other Texture2D
+    // resources, i.e., AnimatedTexture2Ds and Cubemaps
     for (auto r : resources_)
+    {
+        if (r->type() != Resource::Type::Texture2D)
+            continue;
         r->saveState(writer);
+    }
+    for (auto r : resources_)
+    {
+        if (r->type() == Resource::Type::Texture2D)
+            continue;
+        r->saveState(writer);
+    }
     writer.writeObjectEnd();
 }
 
