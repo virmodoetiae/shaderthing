@@ -126,6 +126,11 @@ TODO ---------------------------------------------------------------------------
 (X) Add system info related to graphics cards being used and info on graphics 
     context (e.g., OpenGL version in use) to top-level app menu, under "Help"
 
+(X) Add mipmap minimization filter option for Layer-type resources
+
+(X) Add system info (OpenGL version & graphics card vendor info) to a tab
+    in the main menu
+
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains to vir/ and shaderthing/).
@@ -134,12 +139,6 @@ TODO ---------------------------------------------------------------------------
     being test
 
 (W) Expand code repository section
-
-( ) Add mipmap minimization filter option for Layer-type resources (maybe
-    expensive since the mipmaps would need to be regenerated at every step?)
-
-( ) Add system info (OpenGL version & graphics card vendor info) to a tab
-    in the main menu
 
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
@@ -164,11 +163,11 @@ TO-CONSIDER --------------------------------------------------------------------
 *   Add possibility of rendering to cubemaps (e.g., adding a type selector for
     any layer's internal framebuffer 'type': either a Texture2D framebuffer or
     a Cubemap framebuffer). This is probably a lot of work for a feature I don't
-    see very often in the art shader community
+    see very often in the shader art community
 
 *   Add support for 3D-textures management in vir, the ShaderThing resource
     manager and uniform system. This isn't a lot of work but it's a feature I 
-    don't see very often in the art shader community
+    don't see very often in the shader art community
 
 *   Record video tutorial(s) of application usage, host them on YouTube, 
     possibly find a way to add tutorial links within the application
