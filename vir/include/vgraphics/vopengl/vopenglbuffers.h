@@ -151,6 +151,7 @@ public:
     void bindDepthBuffer(uint32_t) override;
     void colorBufferData(unsigned char*, bool yFlip=false) override;
     void clearColorBuffer(float r=0,float g=0,float b=0,float a=0) override;
+    void updateColorBufferMipmap() override;
 };
 
 class OpenGLVertexBuffer : public VertexBuffer

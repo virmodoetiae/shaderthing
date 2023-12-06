@@ -703,6 +703,7 @@ OpenGLFramebuffer::OpenGLFramebuffer
     glGenFramebuffers(1, &id_);
     glBindFramebuffer(GL_FRAMEBUFFER, id_);
 
+    // Create color attachment texture
     colorBuffer_ = new OpenGLTextureBuffer2D
     (
         NULL, 
@@ -710,7 +711,6 @@ OpenGLFramebuffer::OpenGLFramebuffer
         height, 
         internalFormat
     );
-
     colorBufferId_ = colorBuffer_->id();
     colorBuffer_->setMinFilterMode(TextureBuffer::FilterMode::Linear);
     glFramebufferTexture2D
@@ -722,6 +722,7 @@ OpenGLFramebuffer::OpenGLFramebuffer
         0
     );
 
+    // Create depth buffer
     glGenRenderbuffers(1, &depthBufferId_);
     glBindRenderbuffer(GL_RENDERBUFFER, depthBufferId_);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
@@ -745,6 +746,9 @@ OpenGLFramebuffer::OpenGLFramebuffer
     glDrawBuffers(1, buffers);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Init color attachment mipmaps
+    updateColorBufferMipmap();
 }
 
 OpenGLFramebuffer::~OpenGLFramebuffer()
@@ -816,6 +820,12 @@ void OpenGLFramebuffer::clearColorBuffer(float r, float g, float b, float a)
     glClear(GL_COLOR_BUFFER_BIT);
     if (previouslyActiveFramebuffer != nullptr)
         previouslyActiveFramebuffer->bind();
+}
+
+void OpenGLFramebuffer::updateColorBufferMipmap()
+{
+    glBindTexture(GL_TEXTURE_2D, colorBufferId_);
+    glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 //----------------------------------------------------------------------------//

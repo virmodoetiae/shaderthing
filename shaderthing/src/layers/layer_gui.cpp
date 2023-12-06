@@ -327,12 +327,6 @@ locked to that of the main window)"
             {
                 for (auto entry : vir::TextureBuffer::filterModeToName)
                 {
-                    if 
-                    (
-                        entry.first != vir::TextureBuffer::FilterMode::Nearest&&
-                        entry.first != vir::TextureBuffer::FilterMode::Linear
-                    )
-                        continue;
                     if (ImGui::Selectable(entry.second.c_str()))
                     {
                         readOnlyFramebuffer_->setColorBufferMinFilterMode

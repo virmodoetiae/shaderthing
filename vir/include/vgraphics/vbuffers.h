@@ -299,6 +299,7 @@ public:
     virtual void bindDepthBuffer(uint32_t) = 0;
     virtual void colorBufferData(unsigned char*, bool yFlip=false) = 0;
     virtual void clearColorBuffer(float r=0,float g=0,float b=0,float a=0)=0;
+    virtual void updateColorBufferMipmap() = 0;
     uint32_t id() const {return id_;}
     uint32_t colorBufferId() const {return colorBufferId_;}
     uint32_t width() const {return width_;}
