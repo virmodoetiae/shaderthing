@@ -355,8 +355,8 @@ data if the internal format is undefined)"
                 internalFormat
             );
     }
-    currentFrameIndex_ = 0;
-    currentFrame_ = frames_[currentFrameIndex_];
+    frameIndex_ = 0;
+    frame_ = frames_[frameIndex_];
 }
 
 OpenGLAnimatedTextureBuffer2D::OpenGLAnimatedTextureBuffer2D
@@ -473,16 +473,16 @@ void OpenGLAnimatedTextureBuffer2D::setMinFilterMode
 
 void OpenGLAnimatedTextureBuffer2D::bind(uint32_t unit)
 {
-    if (currentFrame_ == nullptr)
+    if (frame_ == nullptr)
         return;
-    currentFrame_->bind(unit);
+    frame_->bind(unit);
 }
 
 void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
 {
-    if (currentFrame_ == nullptr)
+    if (frame_ == nullptr)
         return;
-    currentFrame_->unbind(unit);
+    frame_->unbind(unit);
 }
 
 //----------------------------------------------------------------------------//

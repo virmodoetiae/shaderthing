@@ -142,7 +142,8 @@ originalFileExtension_(""),
 rawDataSize_(0),
 rawData_(nullptr),
 lastBoundUnit_(-1),
-animationData_(nullptr)
+isAnimationPaused_(false),
+isAnimationBoundToGlobalTime_(false)
 {}
 
 Resource::~Resource()
@@ -172,22 +173,19 @@ void Resource::reset()
     }
     nativeResource_ = nullptr;
     referencedResources_.resize(0);
-    if (animationData_ != nullptr)
-        delete animationData_;
-    animationData_ = nullptr;
+    isAnimationPaused_ = false;
+    isAnimationBoundToGlobalTime_ = false;
 }
 
 void Resource::update(float globalTime, float timeStep)
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return;
     auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    animationData_->internalTime = 
-        animationData_->isInternalTimeBoundToGlobalTime ?
-        globalTime :
-        animationData_->internalTime + 
-            (!animationData_->isInternalTimePaused)*timeStep;
-    animation->setFrameIndexFromTime(animationData_->internalTime);
+    if (isAnimationBoundToGlobalTime_)
+        animation->setTime(globalTime);
+    else if (!isAnimationPaused_)
+        animation->advanceTime(timeStep);
 }
 
 void Resource::bind(int unit)
@@ -215,7 +213,7 @@ int Resource::id(bool contentId) const
         CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferId(), id())
     else
         CALL_NATIVE_RESOURCE_FUNC_HETERO3(colorBufferId(), id(), 
-            currentFrameId())
+            frameId())
     return -1;
 }
 
@@ -231,6 +229,31 @@ int Resource::height() const
     if (valid())
         CALL_NATIVE_RESOURCE_FUNC_HOMO(height())
     return 0;
+}
+
+void Resource::cacheSettings()
+{
+    if (!valid())
+        return;
+    settingsCache_.type = type_;
+    settingsCache_.filterModes[0] = magFilterMode();
+    settingsCache_.filterModes[1] = minFilterMode();
+    settingsCache_.wrapModes[0] = wrapMode(0);
+    settingsCache_.wrapModes[1] = wrapMode(1);
+    settingsCache_.isAnimationPaused = isAnimationPaused_;
+    settingsCache_.isAnimationBoundToGlobalTime = isAnimationBoundToGlobalTime_;
+}
+
+void Resource::applyCachedSettings()
+{
+    if (!valid() || settingsCache_.type != type_)
+        return;
+    setMagFilterMode(settingsCache_.filterModes[0]);
+    setMinFilterMode(settingsCache_.filterModes[1]);
+    setWrapMode(0, settingsCache_.wrapModes[0]);
+    setWrapMode(1, settingsCache_.wrapModes[1]);
+    isAnimationPaused_ = settingsCache_.isAnimationPaused;
+    isAnimationBoundToGlobalTime_ = settingsCache_.isAnimationBoundToGlobalTime;
 }
 
 vir::TextureBuffer::WrapMode Resource::wrapMode(int i)
@@ -259,60 +282,51 @@ vir::TextureBuffer::FilterMode Resource::minFilterMode()
 
 void Resource::toggleAnimationPaused()
 {
-    if (type_ != Type::AnimatedTexture2D || animationData_ == nullptr)
+    if (type_ != Type::AnimatedTexture2D)
         return;
-    animationData_->isInternalTimePaused = 
-        !animationData_->isInternalTimePaused;
+    isAnimationPaused_ = !isAnimationPaused_;
 }
 
 void Resource::toggleAnimationBoundToGlobalTime()
 {
-     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+     if (!valid() || type_!=Type::AnimatedTexture2D)
         return;
-    animationData_->isInternalTimeBoundToGlobalTime = 
-        !animationData_->isInternalTimeBoundToGlobalTime;
+    isAnimationBoundToGlobalTime_ = !isAnimationBoundToGlobalTime_;
 }
 
 void Resource::stepAnimationForwards()
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    animation->nextFrame();
-    animationData_->internalTime += animation->frameDuration();
+    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->nextFrame();
 }
 
 void Resource::stepAnimationBackwards()
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    animation->previousFrame();
-    animationData_->internalTime -= animation->frameDuration();
+    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->previousFrame();
 }
 
 float Resource::animationDuration() const
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return 0.f;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    return animation->frameDuration()*animation->nFrames();
+    return ((vir::AnimatedTextureBuffer2D*)nativeResource_)->duration();
 }
 
 unsigned int Resource::animationFrameIndex() const
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return 0;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    return animation->currentFrameIndex();
+    return ((vir::AnimatedTextureBuffer2D*)nativeResource_)->frameIndex();
 }
 
 unsigned int Resource::nAnimationFrames() const
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return 0;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    return animation->nFrames();
+    return ((vir::AnimatedTextureBuffer2D*)nativeResource_)->nFrames();
 }
 
 template<>
@@ -333,8 +347,6 @@ template<>
 bool Resource::set(vir::AnimatedTextureBuffer2D* nativeResource)
 {
     SET_NATIVE_RESOURCE(Type::AnimatedTexture2D)
-    if (animationData_ == nullptr)
-        animationData_ = new AnimationData{};
     return true;
 }
 
@@ -629,53 +641,59 @@ bool Resource::areAnimationFramesResources() const
 
 bool Resource::isAnimationPaused() const
 {
-     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+     if (!valid() || type_!=Type::AnimatedTexture2D)
         return false;
-    return animationData_->isInternalTimePaused;
+    return isAnimationPaused_;
 }
 
 bool Resource::isAnimationBoundToGlobalTime() const
 {
-     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+     if (!valid() || type_!=Type::AnimatedTexture2D)
         return false;
-    return animationData_->isInternalTimeBoundToGlobalTime;
+    return isAnimationBoundToGlobalTime_;
 }
 
 float Resource::animationFps() const
 {
-     if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return 0.f;
     return 
-        1.0/((vir::AnimatedTextureBuffer2D*)nativeResource_)->frameDuration();
+        ((vir::AnimatedTextureBuffer2D*)nativeResource_)->fps();
+}
+
+void Resource::setAnimationPaused(bool flag)
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D)
+        return;
+    isAnimationPaused_=flag;
+}
+
+void Resource::setAnimationBoundToGlobalTime(bool flag)
+{
+    if (!valid() || type_!=Type::AnimatedTexture2D)
+        return;
+    isAnimationBoundToGlobalTime_=flag;
 }
 
 void Resource::setAnimationFps(float fps)
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    auto frameIndex0 = animation->currentFrameIndex();
-    animation->setFrameDuration(1.0/fps);
-    setAnimationFrameIndex(frameIndex0);
+    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setFps(fps);
 }
 
 void Resource::setAnimationDuration(float t)
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    auto frameIndex0 = animation->currentFrameIndex();
-    animation->setFrameDuration(t/animation->nFrames());
-    setAnimationFrameIndex(frameIndex0);
+    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setDuration(t);
 }
 
 void Resource::setAnimationFrameIndex(unsigned int frameIndex)
 {
-    if (!valid() || type_!=Type::AnimatedTexture2D || animationData_==nullptr)
+    if (!valid() || type_!=Type::AnimatedTexture2D)
         return;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    animation->setFrameIndex(frameIndex);
-    animationData_->internalTime = frameIndex*animation->frameDuration();
+    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setDuration(frameIndex);
 }
 
 //----------------------------------------------------------------------------//
@@ -693,7 +711,8 @@ originalFileExtension_(""),
 rawDataSize_(0),
 rawData_(nullptr),
 lastBoundUnit_(-1),
-animationData_(nullptr)
+isAnimationPaused_(false),
+isAnimationBoundToGlobalTime_(false)
 {
     type_ = nameToType.at(reader.read<std::string>("type"));
     auto readerName = std::string(reader.name());

@@ -45,6 +45,16 @@ public:
     static std::unordered_map<Resource::Type, std::string> typeToName;
     static std::unordered_map<std::string, Resource::Type> nameToType;
 
+    //
+    struct SettingsCache
+    {
+        Type type = Type::Uninitialized;
+        vir::TextureBuffer::WrapMode wrapModes[2];
+        vir::TextureBuffer::FilterMode filterModes[2];
+        bool isAnimationPaused;
+        bool isAnimationBoundToGlobalTime;
+    };
+
     // Checks if the provided resource would be a valid face for a cubemap.
     // The key aspects are: 1) being of Texture2D type; 2) having a square
     // aspect ratio; 3) having a resolution which is a multiple of 2 along
@@ -54,15 +64,6 @@ public:
     // Checks if the provided array of resources would be a valid set of
     // faces for a new cubemap resource
     static bool validCubemapFaces(Resource* faces[6]);
-
-    // Struct for wrapping additional data in case this resource is
-    // of AnimatedTexture2D type
-    struct AnimationData
-    {
-        float internalTime = 0.0;
-        bool isInternalTimePaused = false;
-        bool isInternalTimeBoundToGlobalTime = false;
-    };
 
 private:
 
@@ -108,9 +109,17 @@ private:
     int lastBoundUnit_ = -1;
 
     // Specifically for AnimatedTexture2Ds
-    AnimationData* animationData_;
+    // True if this resource represents an AnimatedTexture2D and its internal
+    // animation time is paused
+    bool isAnimationPaused_;
+    // True if this resource represents an AnimatedTexture2D and its internal
+    // time is bound to be always equal to the global all iTime
+    bool isAnimationBoundToGlobalTime_;
 
-    // Direcy access to internally managed resource
+    //
+    SettingsCache settingsCache_;
+
+    // Direct access to internally managed resource
     void* nativeResource() {return nativeResource_;}
 
 public:
@@ -202,6 +211,10 @@ public:
     // internally-managed resource, if any
     const unsigned char* rawData() const {return rawData_;}
 
+    //
+    void cacheSettings();
+    void applyCachedSettings();
+
     // Wrap mode of the internally-managed resource along direction the 'width'
     // direction (if index == 0) or 'height' direction (if index == 1)
     vir::TextureBuffer::WrapMode wrapMode(int index);
@@ -276,6 +289,12 @@ public:
     // Set the interpolation mode of the internally-managed resource on 
     // minimization to the provided one
     void setMinFilterMode(vir::TextureBuffer::FilterMode mode);
+
+    // Set the pause/play status of the animation
+    void setAnimationPaused(bool flag);
+
+    // Set if the animation internal time is bound to the global app time
+    void setAnimationBoundToGlobalTime(bool flag);
 
     // Set the animation speed in frames per second. Has an effect only if this
     // resource is an AnimatedTexture2D

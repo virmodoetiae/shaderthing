@@ -1,4 +1,5 @@
 #include "vpch.h"
+#include <cmath>
 #include "vgraphics/vopengl/vopenglbuffers.h"
 
 namespace vir
@@ -91,8 +92,9 @@ TextureBuffer2D* TextureBuffer2D::create
 
 AnimatedTextureBuffer2D::AnimatedTextureBuffer2D() : 
 TextureBuffer2D(),
-currentFrameIndex_(0),
-currentFrame_(nullptr),
+time_(0),
+frameIndex_(0),
+frame_(nullptr),
 frames_(0),
 isFrameOwner_(true),
 frameDuration_(1.0f/60)
@@ -107,8 +109,9 @@ AnimatedTextureBuffer2D::AnimatedTextureBuffer2D
     InternalFormat internalFormat
 ) :
 TextureBuffer2D(data, width, height, internalFormat),
-currentFrameIndex_(0),
-currentFrame_(nullptr),
+time_(0),
+frameIndex_(0),
+frame_(nullptr),
 frames_(0),
 isFrameOwner_(true),
 frameDuration_(1.0f/60)
@@ -122,8 +125,9 @@ AnimatedTextureBuffer2D::AnimatedTextureBuffer2D
     bool gainFrameOwnership
 ) :
 TextureBuffer2D(),
-currentFrameIndex_(0),
-currentFrame_(nullptr),
+time_(0),
+frameIndex_(0),
+frame_(nullptr),
 frames_(frames),
 isFrameOwner_(gainFrameOwnership),
 frameDuration_(1.0f/60)
@@ -158,7 +162,7 @@ format)"
         );
         }
     }
-    currentFrame_ = frames_[currentFrameIndex_];
+    frame_ = frames_[frameIndex_];
 }
 
 AnimatedTextureBuffer2D::~AnimatedTextureBuffer2D()
@@ -239,45 +243,80 @@ TextureBuffer2D* AnimatedTextureBuffer2D::nextFrame()
 {
     if (frames_.size() == 0)
         return nullptr;
-    ++currentFrameIndex_;
-    currentFrameIndex_ %= frames_.size();
-    currentFrame_ = frames_[currentFrameIndex_];
-    return currentFrame_;
+    ++frameIndex_;
+    time_ += frameDuration_;
+    frameIndex_ %= frames_.size();
+    frame_ = frames_[frameIndex_];
+    return frame_;
 }
 
 TextureBuffer2D* AnimatedTextureBuffer2D::previousFrame() 
 {
     if (frames_.size() == 0)
         return nullptr;
-    --currentFrameIndex_;
+    --frameIndex_;
+    time_ -= frameDuration_;
     // It's an unsigned int so it overflows when <0
-    if (currentFrameIndex_ > frames_.size())
-        currentFrameIndex_ = frames_.size()-1;
-    currentFrame_ = frames_[currentFrameIndex_];
-    return currentFrame_;
+    if (frameIndex_ > frames_.size())
+        frameIndex_ = frames_.size()-1;
+    frame_ = frames_[frameIndex_];
+    return frame_;
 }
 
-int AnimatedTextureBuffer2D::currentFrameId() const
+int AnimatedTextureBuffer2D::frameId() const
 {
-    if (currentFrame_ == nullptr)
+    if (frame_ == nullptr)
         return -1;
-    return currentFrame_->id();
+    return frame_->id();
 }
 
 void AnimatedTextureBuffer2D::setFrameIndex(uint32_t index)
 {
     if (frames_.size() == 0)
         return;
-    currentFrameIndex_ = index % frames_.size();
-    currentFrame_ = frames_[currentFrameIndex_];
+    frameIndex_ = index % frames_.size();
+    time_ = frameIndex_*frameDuration_;
+    frame_ = frames_[frameIndex_];
 }
 
-void AnimatedTextureBuffer2D::setFrameIndexFromTime(float time)
+void AnimatedTextureBuffer2D::setTime(float time)
 {
     if (frames_.size() == 0)
         return;
-    currentFrameIndex_ = int(time/frameDuration_) % frames_.size();
-    currentFrame_ = frames_[currentFrameIndex_];
+    frameIndex_ = (int)std::floor(time/frameDuration_) % frames_.size();
+    time_ = time;
+    float duration = frames_.size()*frameDuration_;
+    if (time_ > duration)
+        time_ -= std::floor(time/duration)*duration;
+    frame_ = frames_[frameIndex_];
+}
+
+void AnimatedTextureBuffer2D::setFrameDuration(float dt)
+{
+    if (dt == 0)
+        return;
+    float d = dt/frameDuration_;
+    frameDuration_*=d;
+    time_*=d;
+}
+
+void AnimatedTextureBuffer2D::setFps(float fps)
+{
+    setFrameDuration(1.f/fps);
+}
+
+void AnimatedTextureBuffer2D::setDuration(float t)
+{
+    if (frames_.size() == 0)
+        return;
+    int frameIndex0 = frameIndex_;
+    setFrameDuration(t/frames_.size());
+    setFrameIndex(frameIndex0);
+}
+
+void AnimatedTextureBuffer2D::advanceTime(float dt)
+{
+    setTime(time_+dt);
 }
 
 // CubeMap -------------------------------------------------------------------//

@@ -176,16 +176,18 @@ public:
 class AnimatedTextureBuffer2D : public TextureBuffer2D
 {
 protected:
+    // Current animation time
+    float time_;
     // Current frame counter
-    uint32_t currentFrameIndex_;
+    uint32_t frameIndex_;
     // Current frame
-    TextureBuffer2D* currentFrame_;
+    TextureBuffer2D* frame_;
     // Frames stored as individual TextureBuffer2Ds
     std::vector<TextureBuffer2D*> frames_;
     // True if the TextureBuffer2Ds in frames_ are owned by this object. If 
     // such, they are deleted alongside this object
     bool isFrameOwner_;
-    // Time duration of a frame
+    // Duration of a frame in time
     float frameDuration_;
     // Default constructor
     AnimatedTextureBuffer2D();
@@ -224,20 +226,41 @@ public:
         std::vector<TextureBuffer2D*>& frames,
         bool gainFrameOwnership = false
     );
+    // Current animation time
+    float time() const {return time_;}
+    // Number of frames
     uint32_t nFrames() const {return frames_.size();}
-    TextureBuffer2D* currentFrame() {return currentFrame_;}
+    // Current animation frame
+    TextureBuffer2D* frame() {return frame_;}
     // Advances the current frame index by 1 and returns the frame
     TextureBuffer2D* nextFrame();
     // Reduceds the current frame index by 1 and returns the frame
     TextureBuffer2D* previousFrame();
-    int currentFrameId() const;
-    uint32_t currentFrameIndex() const {return currentFrameIndex_;}
-    // Set the current frame and index
-    void setFrameIndex(uint32_t index);
-    void setFrameIndexFromTime(float time);
+    // Current frame native texture ID
+    int frameId() const;
+    // Current frame index in [0, nFrames-1]
+    uint32_t frameIndex() const {return frameIndex_;}
+    // Frame duration in time
     float frameDuration() const {return frameDuration_;}
-    void setFrameDuration(float dt) {frameDuration_ = dt;}
+    // Overall animation duration
     float duration() const {return frames_.size()*frameDuration_;}
+    // Frames per second
+    float fps() const {return (frameDuration_ == 0) ? 0. : 1.f/frameDuration_;}
+    // Set current animation frame, frameIndex, time, from a given desired
+    // frameIndex. If index >= nFrames, it is modulo'd
+    void setFrameIndex(uint32_t index);
+    // Set current animation frame, frameIndex, time, from a given desired
+    // time. If time >= duration, it is modulo'd
+    void setTime(float time);
+    // Set animation duration
+    void setFrameDuration(float dt);
+    // Set animation fps
+    void setFps(float fps);
+    // Set overall animation duration
+    void setDuration(float t);
+    // Increase the animation time by dt, which might or might not advance the
+    // animation frame
+    void advanceTime(float dt);
 };
 
 //----------------------------------------------------------------------------//

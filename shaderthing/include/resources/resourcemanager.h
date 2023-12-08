@@ -55,7 +55,7 @@ private:
         int rowIndex=-1,
         ImVec2 size=ImVec2(0,0)
     );
-    bool createOrReplaceCubemapGuiButton
+    bool createOrEditCubemapGuiButton
     (
         int rowIndex=-1,
         ImVec2 size=ImVec2(0,0)

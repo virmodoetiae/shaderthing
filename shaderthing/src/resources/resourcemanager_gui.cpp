@@ -124,7 +124,7 @@ void ResourceManager::renderGui()
                         -1,
                         ImVec2(buttonWidth, 0)
                     );
-                    createOrReplaceCubemapGuiButton
+                    createOrEditCubemapGuiButton
                     (
                         -1,
                         ImVec2(buttonWidth, 0)
@@ -342,43 +342,45 @@ affect any cubemaps or animations using this texture)");
                             (
                                 resource->minFilterMode()
                             );
-                        ImGui::Text("Texture wrap mode H ");
-                        ImGui::SameLine();
-                        ImGui::PushItemWidth(buttonWidth);
-                        if 
-                        (
-                            ImGui::BeginCombo
-                            (
-                                "##bufferWrapModeXCombo",
-                                selectedWrapModeX.c_str()
-                            )
-                        )
+                        if (resource->type() != Resource::Type::Cubemap)
                         {
-                            for (auto e : vir::TextureBuffer::wrapModeToName)
-                                if (ImGui::Selectable(e.second.c_str()))
-                                    resource->setWrapMode(0, e.first);
-                            ImGui::EndCombo();
-                        }
-                        ImGui::PopItemWidth();
-                        ImGui::Text("Texture wrap mode V ");
-                        ImGui::SameLine();
-                        ImGui::PushItemWidth(buttonWidth);
-                        if 
-                        (
-                            ImGui::BeginCombo
+                            ImGui::Text("Texture wrap mode H ");
+                            ImGui::SameLine();
+                            ImGui::PushItemWidth(buttonWidth);
+                            if 
                             (
-                                "##bufferWrapModeYCombo",
-                                selectedWrapModeY.c_str()
+                                ImGui::BeginCombo
+                                (
+                                    "##bufferWrapModeXCombo",
+                                    selectedWrapModeX.c_str()
+                                )
                             )
-                        )
-                        {
-                            for (auto e : vir::TextureBuffer::wrapModeToName)
-                                if (ImGui::Selectable(e.second.c_str()))
-                                    resource->setWrapMode(1, e.first);
-                            ImGui::EndCombo();
+                            {
+                                for (auto e:vir::TextureBuffer::wrapModeToName)
+                                    if (ImGui::Selectable(e.second.c_str()))
+                                        resource->setWrapMode(0, e.first);
+                                ImGui::EndCombo();
+                            }
+                            ImGui::PopItemWidth();
+                            ImGui::Text("Texture wrap mode V ");
+                            ImGui::SameLine();
+                            ImGui::PushItemWidth(buttonWidth);
+                            if 
+                            (
+                                ImGui::BeginCombo
+                                (
+                                    "##bufferWrapModeYCombo",
+                                    selectedWrapModeY.c_str()
+                                )
+                            )
+                            {
+                                for (auto e:vir::TextureBuffer::wrapModeToName)
+                                    if (ImGui::Selectable(e.second.c_str()))
+                                        resource->setWrapMode(1, e.first);
+                                ImGui::EndCombo();
+                            }
+                            ImGui::PopItemWidth();
                         }
-                        ImGui::PopItemWidth();
-
                         ImGui::Text("Texture mag. filter ");
                         ImGui::SameLine();
                         ImGui::PushItemWidth(buttonWidth);
@@ -462,7 +464,7 @@ affect any cubemaps or animations using this texture)");
                                 break;
                             case Resource::Type::Cubemap:
                                 replacedResource = 
-                                    createOrReplaceCubemapGuiButton
+                                    createOrEditCubemapGuiButton
                                     (
                                         row,
                                         ImVec2(buttonWidth, 0)
@@ -744,7 +746,11 @@ bool ResourceManager::loadOrReplaceTextureOrAnimationGuiButton
                     }
                 }
                 r->setNamePtr(new std::string(filename));
+                if (rowIndex > -1)
+                    r->cacheSettings();
                 r->set(filepath);
+                if (rowIndex > -1)
+                    r->applyCachedSettings();
                 validSelection = true;
             }
             catch (const std::exception& e)
@@ -760,7 +766,7 @@ bool ResourceManager::loadOrReplaceTextureOrAnimationGuiButton
 
 //----------------------------------------------------------------------------//
 
-bool ResourceManager::createOrReplaceCubemapGuiButton
+bool ResourceManager::createOrEditCubemapGuiButton
 (
     int rowIndex,
     ImVec2 size
@@ -787,9 +793,19 @@ bool ResourceManager::createOrReplaceCubemapGuiButton
         sIndex = rowIndex;
         width = 0;
         height = 0;
-        for (int i=0;i<6;i++)
-            selectedTextureResources[i] = nullptr;
-    }
+        if (sIndex == -1)
+        {
+            for (int i=0;i<6;i++)
+                selectedTextureResources[i] = nullptr;
+        }
+        else
+        {
+            auto cubemap = resources_[sIndex];
+            for (int i=0;i<6;i++)
+                selectedTextureResources[i] = 
+                    cubemap->referencedResourcesCRef()[i];
+        }
+    }   
     if (ImGui::BeginPopup("##createOrReplaceCubeMapPopup"))
     {
         static std::string labels[6] = 
@@ -900,19 +916,23 @@ among those loaded in the resource manager.)");
         }
         else if (ImGui::Button("Create cubemap", ImVec2(buttonSize,0)))
         {
-            Resource* resource;
+            Resource* cubemap;
             if (sIndex != -1)
-                resource = resources_[sIndex];
+                cubemap = resources_[sIndex];
             else
             {
-                resource = new Resource();
-                resources_.emplace_back(resource);
+                cubemap = new Resource();
+                resources_.emplace_back(cubemap);
             }
-            resource->set(selectedTextureResources);
+            if (rowIndex > -1)
+                cubemap->cacheSettings();
+            cubemap->set(selectedTextureResources);
+            if (rowIndex > -1)
+                cubemap->applyCachedSettings();
             Misc::enforceUniqueItemName
             (
-                *resource->namePtr(), 
-                resource, 
+                *cubemap->namePtr(), 
+                cubemap, 
                 app_.resourcesRef()
             );
             validSelection = true;
@@ -1169,29 +1189,12 @@ bool ResourceManager::createOrEditAnimationGuiButton
             else
             {
                 animation = resources_[sIndex];
-                auto isAnimationPaused = animation->isAnimationPaused();
-                auto isAnimationTimeBoundToGlobalTime = 
-                    animation->isAnimationBoundToGlobalTime();
+                
                 auto fps = animation->animationFps();
-                auto xWrapMode = animation->wrapMode(0);
-                auto yWrapMode = animation->wrapMode(1);
-                auto magFilterMode = animation->magFilterMode();
-                auto minFilterMode = animation->minFilterMode();
+                animation->cacheSettings();
                 animation->set(&frames);
-                if (isAnimationPaused != animation->isAnimationPaused())
-                    animation->toggleAnimationPaused();
-                if 
-                (
-                    isAnimationTimeBoundToGlobalTime != 
-                    animation->isAnimationBoundToGlobalTime()
-                )
-                    animation->toggleAnimationBoundToGlobalTime();
                 animation->setAnimationFps(fps);
-                animation->setAnimationFrameIndex(0);
-                animation->setWrapMode(0, xWrapMode);
-                animation->setWrapMode(1, yWrapMode);
-                animation->setMagFilterMode(magFilterMode);
-                animation->setMinFilterMode(minFilterMode);
+                animation->applyCachedSettings();
             }
             frames.clear();
             numberedFrameNames.clear();
