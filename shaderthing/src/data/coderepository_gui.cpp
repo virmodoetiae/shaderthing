@@ -188,9 +188,10 @@ R"(float random3D(vec3 x)
 
             CODE_ENTRY(
 "Perlin noise",
-"Returns a pseudo-random float representative of a single octave of Perlin-like"
+"Returns a pseudo-random float representative of a single octave of Perlin-like "
 "noise at 3D coordinates 'x'. A 'random3D' function should be defined as well, "
-"e.g., the one provided in Code repository -> Noise -> 3D -> Pseudo-random number generator",
+"e.g., the one provided in Code repository -> Noise -> 3D -> Pseudo-random "
+"number generator",
 R"(float noise3D(vec3 x)
 {
     vec3 l = floor(x);
@@ -281,33 +282,127 @@ R"(float fractionalNoise3D(vec2 x, float h, uint o)
     }
 
     //------------------------------------------------------------------------//
-    if (ImGui::TreeNode("Miscellaneous")) //----------------------------------//
+    if (ImGui::TreeNode("Color manipulation"))
     {
-        //--------------------------------------------------------------------//
-        if (ImGui::TreeNode("Vector rotation"))
-        {
-            CODE_ENTRY(
-"2D Rotation",
-"Counter-clock-wise rotation of a 2D vector 'v' by a given angle 't' (in "
-"radians)",
-R"(vec2 rotate(vec2 v, float t)
+        CODE_ENTRY
+        (
+"Luminance",
+"This function takes a color 'c' as input and returns its perceived luminance",
+R"(float luminance(vec3 c)
 {
-    float s = sin(t);
-    float c = cos(t);
-    return mat2(c, s, -s, c)*v;
-})")
+    return dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
+})"
+        )
 
-            CODE_ENTRY(
-"3D Rotation",
-"Counter-clock-wise rotation of a 3D vector 'v' by a given angle 't' (in "
-"radians) around a given axis 'a'. This implementation leverages quaternions",
-R"(vec3 rotate(vec3 v, float t, vec3 a)
+        CODE_ENTRY
+        (
+"sRGB to linear color",
+"Convert a color 'c' from non-linear sRGB space to linear RGB space. Should be "
+"used on a color before manipulating it in linear space (e.g., before "
+"blurring, filtering, etc.), otherwise luminosity is not preserved ",
+R"(vec3 sRGBToLinear(vec3 c)
 {
-    vec4 q = vec4(sin(t/2.0)*a.xyz, cos(t/2.0));
-    return v + 2.0*cross(q.xyz, cross(q.xyz, v) + q.w*v);
-})")
-            ImGui::TreePop();
-        }
+    return vec3
+    (
+        c.x <= .04045f ? c.x/12.92f : pow((c.x+.055f)/1.055, 2.4f),
+        c.y <= .04045f ? c.y/12.92f : pow((c.y+.055f)/1.055, 2.4f),
+        c.z <= .04045f ? c.z/12.92f : pow((c.z+.055f)/1.055, 2.4f)
+    );
+})"
+        )
+
+        CODE_ENTRY
+        (
+"Linear to sRGB color",
+"Convert a color 'c' from linear RGB space to non-linear sRGB space. Should be "
+"used on a color after manipulating it in linear space (e.g., after "
+"blurring, filtering, etc.), before finally rendering it ",
+R"(vec3 linearToSRGB(vec3 c)
+{
+    return vec3
+    (
+        c.x <= .0031308f?c.x*12.92f:max(pow(c.x, 1.f/2.4f)*1.055f-.055f,0.f),
+        c.y <= .0031308f?c.y*12.92f:max(pow(c.y, 1.f/2.4f)*1.055f-.055f,0.f),
+        c.z <= .0031308f?c.z*12.92f:max(pow(c.z, 1.f/2.4f)*1.055f-.055f,0.f)
+    );
+})"
+        )
+
+        CODE_ENTRY
+        (
+"sRGB to linear color (fast)",
+"Approximate faster conversion of a color 'c' from non-linear sRGB space to "
+"linear RGB space. Should be used on a color before manipulating it in linear "
+"space (e.g., before blurring, filtering, etc.), otherwise luminosity is not "
+" preserved",
+R"(vec3 sRGBToLinearFast(vec3 c)
+{
+    return pow(c, vec3(2.2f));
+})"
+        )
+
+        CODE_ENTRY
+        (
+"Linear to sRGB color (fast)",
+"Approximate faster conversion of a color 'c' from linear RGB space to "
+"non-linear sRGB space. Should be used on a color after manipulating it in "
+"linear space (e.g., after blurring, filtering, etc.), before finally "
+"rendering it",
+R"(vec3 linearToSRGBFast(vec3 c)
+{
+    return pow(c, vec3(.4545f));
+})"
+        )
+
+        CODE_ENTRY
+        (
+"Reinhard tone map",
+"Function to map a High Dynamic Range (HDR) color 'c' (e.g., from a loaded "
+"texture) to Low Dynamic Range (LDR) via the extended Reinhard tone map. Any "
+"color whose luminance matches or exceeds the provided white point luminance "
+"'wpl' will be mapped to white",
+R"(vec3 tonemapReinhard(vec3 c, float wpl=1.0)
+{
+    float l = dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
+    return c*(1.f + l/wpl/wpl)/(1.f + l);
+})"
+        )
+
+        CODE_ENTRY
+        (
+"Reinhard-Jolie tone map",
+"Function to map a High Dynamic Range (HDR) color 'c' (e.g., from a loaded "
+"texture) to Low Dynamic Range (LDR) via the Reinhard-Jolie tone map",
+R"(vec3 tonemapReinhardJolie(vec3 c)
+{
+    vec3 r = c/(c + 1.0);
+    return mix(r/(dot(c, vec3(0.2126f, 0.7152f, 0.0722f)) + 1.0), r, r);
+})"
+        )
+
+        CODE_ENTRY
+        (
+"ACES tone map",
+"Function to map a High Dynamic Range (HDR) color 'c' (e.g., from a loaded "
+"texture) to Low Dynamic Range (LDR) via the Academy Color Encoding System "
+"(ACES) filmic tone map (used e.g., by default in Unreal Engine 4)",
+R"(vec3 tonemapACES(vec3 v)
+{
+    v = vec3(
+        .59719f*v.x + .35458f*v.y + .04823f*v.z,
+        .07600f*v.x + .90834f*v.y + .01566f*v.z,
+        .02840f*v.x + .13383f*v.y + .83777f*v.z
+    );
+    v = (v*(v + .0245786f) - .000090537f)/
+        (v*(.983729f*v + .4329510f) + .238081f);
+    return vec3(
+        1.60475f*v.x + -.53108f*v.y + -.07367f*v.z,
+        -.10208f*v.x + 1.10813f*v.y + -.00605f*v.z,
+        -.00327f*v.x + -.07276f*v.y + 1.07602f*v.z
+    );
+})"
+        )
+
         ImGui::TreePop();
     }
 
@@ -316,12 +411,50 @@ R"(vec3 rotate(vec3 v, float t, vec3 a)
     {
         CODE_ENTRY
         (
-"Fast Approximate Anti-Aliasing",
+"1-D Gaussain blur",
+"This complete shader applies a 1-D Gaussian blur to a provided 'target' "
+"texture in the selected direction. The target texture needs to be added as a "
+"layer uniform and needs to be named 'target'. Please note that the original "
+"texture is not modified, and the blurred texture is the output of the shader. "
+"A 2-D Gaussian blur can be achieved e.g., by inputting the output of a 1-D "
+"Gaussian blur shader (in direction 0) into another 1-D Gaussian blur shader "
+"(in direction 1)",
+R"(#define DIRECTION 0 // 0 Horizontal, 1 is vertical
+#define BLUR_RADIUS 10
+#ifndef SIGMA // Feel free to set your own value for the gaussian std. dev.
+    #define SIGMA sqrt(BLUR_RADIUS)
+#endif
+#define GAUSS(i) exp(-(i*i)/(2*SIGMA*SIGMA));
+
+void main()
+{   
+    #if (DIRECTION == 0)
+    vec2 d = vec2(1.0/targetResolution.x, 0.0);
+    #endif
+    #if (DIRECTION == 1)
+    vec2 d = vec2(0.0, 1.0/targetResolution.y);
+    #endif
+    fragColor = texture(target, tc);
+    float gaussSum = GAUSS(0);
+    for(int i = 1; i < BLUR_RADIUS; i++)
+    {
+        float g = GAUSS(i);
+        gaussSum += g;
+        fragColor += .5*g*texture(target, tc+i*d);
+        fragColor += .5*g*texture(target, tc-i*d);
+    }
+    fragColor /= gaussSum;
+})"
+        )
+
+        CODE_ENTRY
+        (
+"Fast approximate anti-aliasing (FXAA)",
 "This complete shader performes fast approximate anti-aliasing (FXAA) on a "
-"target texture2D uniform via the FXAA 3.11 algorithm. The target texture  "
+"target texture2D uniform via the FXAA 3.11 algorithm. The target texture "
 "needs to be added as a layer uniform and needs to be named 'target'. Please "
 "note that the original texture is not modified, and the anti-aliased texture "
-"is the output of this shader. Please also note that this code snipped is too"
+"is the output of this shader. Please also note that this code snipped is too "
 "long to be viewed in its entirety, but it can be copied entirely to clipoboard",
 R"(/*--------------------------------------------------------------------------*\
   FXAA 3.11 Implementation by effendiian & cleanup by virmodoetiae
@@ -1638,6 +1771,37 @@ void main(void)
             ImGui::TreePop();
         }
 
+        ImGui::TreePop();
+    }
+
+    //------------------------------------------------------------------------//
+    if (ImGui::TreeNode("Miscellaneous")) //----------------------------------//
+    {
+        //--------------------------------------------------------------------//
+        if (ImGui::TreeNode("Vector rotation"))
+        {
+            CODE_ENTRY(
+"2D Rotation",
+"Counter-clock-wise rotation of a 2D vector 'v' by a given angle 't' (in "
+"radians)",
+R"(vec2 rotate(vec2 v, float t)
+{
+    float s = sin(t);
+    float c = cos(t);
+    return mat2(c, s, -s, c)*v;
+})")
+
+            CODE_ENTRY(
+"3D Rotation",
+"Counter-clock-wise rotation of a 3D vector 'v' by a given angle 't' (in "
+"radians) around a given axis 'a'. This implementation leverages quaternions",
+R"(vec3 rotate(vec3 v, float t, vec3 a)
+{
+    vec4 q = vec4(sin(t/2.0)*a.xyz, cos(t/2.0));
+    return v + 2.0*cross(q.xyz, cross(q.xyz, v) + q.w*v);
+})")
+            ImGui::TreePop();
+        }
         ImGui::TreePop();
     }
 
