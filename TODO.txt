@@ -140,6 +140,13 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand code repository section
 
+( ) Implement layer cloning (for convenience)
+
+( ) Implement additional keyboard-input-uniform management, however on a global
+    basis (i.e., a uniform with the state of all the keys, e.g., like done in
+    ShaderToy via a dedicated texture uniform just for that) instead of local
+    basis as it is currently implemented (i.e., one key -> one uniform)
+
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
 
@@ -159,6 +166,8 @@ TO-CONSIDER --------------------------------------------------------------------
 
 *   Enable option to use the quantizer palette for GIF quantization on GIF 
     exporting
+    
+*   Add dedicated Bloom effect (i.e., same hierarchical level as the Quantizer)
 
 *   Add possibility of rendering to cubemaps (e.g., adding a type selector for
     any layer's internal framebuffer 'type': either a Texture2D framebuffer or
