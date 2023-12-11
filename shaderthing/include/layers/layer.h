@@ -405,7 +405,7 @@ public:
     void update();
 
     // Mark this layer's fragment shader for compilation
-    void markForCompilation(){toBeCompiled_ = true;}
+    void markForCompilation(){toBeCompiled_=true; hasUncompiledChanges_=true;}
 
     // Serialize buffer data
     void saveState(ObjectIO& writer);

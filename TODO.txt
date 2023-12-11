@@ -131,7 +131,10 @@ TODO ---------------------------------------------------------------------------
 (X) Add system info (OpenGL version & graphics card vendor info) to a tab
     in the main menu
 
-(W) Test performance of ShaderThing compiled with max level optimizations (-O3)
+(X) Fix compilation of shared fragment source not affecting/not being reflected
+    in all layers
+
+(W) Test performance of ShaderThing compiled with max level optimizations (-O3)6
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains to vir/ and shaderthing/).
     Memory leaks and/or segfaults seem to habe been solved by disabling
