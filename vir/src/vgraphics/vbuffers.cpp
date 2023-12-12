@@ -167,10 +167,14 @@ format)"
 
 AnimatedTextureBuffer2D::~AnimatedTextureBuffer2D()
 {
+    frame_ = nullptr;
     if (!isFrameOwner_)
         return;
     for (auto* frame : frames_)
+    {
         delete frame;
+        frame = nullptr;
+    }
     frames_.resize(0);
 }
 

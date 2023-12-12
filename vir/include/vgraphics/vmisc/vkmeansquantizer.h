@@ -104,6 +104,9 @@ struct Options
     // quantization
     bool regenerateMipmap=true;
 
+    //
+    bool overwriteInput=true;
+
     // The target TEXTURE2D unit to which the input texture will be bound
     // in order to perform the quantization. Inconsequential on the quantization
     // process
@@ -121,6 +124,9 @@ protected:
     bool canRunOnDeviceInUse_;
     std::string errorMessage_;
 
+    //
+    Framebuffer* output_;
+
     // Size of the last quantized image
     uint32_t width_;
     uint32_t height_;
@@ -135,10 +141,15 @@ protected:
     // created via the static create function
     KMeansQuantizer():
         canRunOnDeviceInUse_(true),
+        output_(nullptr),
         width_(0),
         height_(0),
         paletteSize_(0),
         options_({}){};
+
+    //
+    void prepareOutput(const Framebuffer* input);
+    void prepareOutput(const TextureBuffer2D* input);
 
 public:
 
@@ -146,11 +157,12 @@ public:
     static KMeansQuantizer* create();
 
     // Destructor
-    virtual ~KMeansQuantizer(){};
+    virtual ~KMeansQuantizer();
 
     // Accessors
     bool canRunOnDeviceInUse() const {return canRunOnDeviceInUse_;}
     const std::string& errorMessage() const {return errorMessage_;}
+    Framebuffer* output() {return output_;}
     uint32_t width(){return width_;}
     uint32_t height(){return height_;}
     uint32_t paletteSize(){return paletteSize_;}

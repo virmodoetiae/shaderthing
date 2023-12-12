@@ -289,7 +289,8 @@ uniform int ditherLevel;
 uniform float ditherThreshold;
 uniform int alphaCutoff;
 uniform int indexMode;
-layout(rgba32f, binding=0) uniform image2D image;
+layout(rgba32f, binding=0) uniform image2D inputImage;
+layout(rgba32f, binding=4) uniform image2D outputImage;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(r8ui, binding=2) uniform uimage2D indexedImage;
 layout(rgba32f, binding=3) uniform image2D oldQuantizedImage;
@@ -335,7 +336,7 @@ vec4 to32f(uvec4 v)
 void main() 
 { 
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
-    uvec4 img = to8ui(imageLoad(image, gid));
+    uvec4 img = to8ui(imageLoad(inputImage, gid));
     switch (ditherLevel)
     {
         case 0 :
@@ -386,7 +387,7 @@ void main()
         }
         imageStore(oldQuantizedImage, gid, to32f(newColor));
     }
-    imageStore(image, gid, to32f(newColor));
+    imageStore(outputImage, gid, to32f(newColor));
     imageStore(indexedImage, gid, uvec4(index, 0, 0, 0));
 })" );
 
@@ -557,7 +558,8 @@ uniform int ditherLevel;
 uniform float ditherThreshold;
 uniform int alphaCutoff;
 uniform int indexMode;
-layout(rgba8ui, binding=0) uniform uimage2D image;
+layout(rgba8ui, binding=0) uniform uimage2D inputImage;
+layout(rgba8ui, binding=4) uniform uimage2D outputImage;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(r8ui, binding=2) uniform uimage2D indexedImage;
 layout(rgba8ui, binding=3) uniform uimage2D oldQuantizedImage;
@@ -597,7 +599,7 @@ const float ditherMask4x4[16] = float[16]
 void main() 
 { 
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
-    uvec4 img = uvec4(imageLoad(image, gid));
+    uvec4 img = uvec4(imageLoad(inputImage, gid));
     switch (ditherLevel)
     {
         case 0 :
@@ -648,7 +650,7 @@ void main()
         }
         imageStore(oldQuantizedImage, gid, newColor);
     }
-    imageStore(image, gid, newColor);
+    imageStore(outputImage, gid, newColor);
     imageStore(indexedImage, gid, uvec4(index, 0, 0, 0));
 })" );
 
@@ -666,6 +668,10 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     bool isFloat32
 )
 {
+    //
+    uint32_t textureUnit = options.inputUnit;
+    uint32_t inputDataUnit = textureUnit++;
+
     // Figure out which compute shaders to use based on input texture
     // internal format
     ComputeShaderStage* findMaxSqrDistCol;
@@ -726,7 +732,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     
     // Bind buffers
     // Input image
-    glActiveTexture(GL_TEXTURE0+options_.inputUnit);
+    glActiveTexture(GL_TEXTURE0+inputDataUnit);
     glBindTexture(GL_TEXTURE_2D, id);
 
     uint32_t targetLevel = 0;
@@ -781,21 +787,21 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         GL_READ_WRITE, 
         isFloat32 ? GL_RGBA32F : GL_RGBA8UI
     );
-    
+
     // Palette data texture
-    uint32_t paletteDataUnit = options_.inputUnit+1;
+    uint32_t paletteDataUnit = textureUnit++;
     glActiveTexture(GL_TEXTURE0+paletteDataUnit);
     glBindTexture(GL_TEXTURE_2D, paletteData_);
     glBindImageTexture(paletteDataUnit, paletteData_, 0, GL_FALSE, 0, 
         GL_READ_WRITE, GL_R32UI);
     // Indexed data texture
-    uint32_t indexedDataUnit = options_.inputUnit+2;
+    uint32_t indexedDataUnit = textureUnit++;
     glActiveTexture(GL_TEXTURE0+indexedDataUnit);
     glBindTexture(GL_TEXTURE_2D, indexedData_);
     glBindImageTexture(indexedDataUnit, indexedData_, 0, GL_FALSE, 0, 
         GL_READ_WRITE, GL_R8UI);
     //
-    uint32_t oldQuantizedInputUnit = options_.inputUnit+3;
+    uint32_t oldQuantizedInputUnit = textureUnit++;
     // Atomic error counter
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, clusteringError_);
     uint32_t binding = 0;
@@ -1134,7 +1140,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     // Bind quantizer inputs
     quantizeInput->setUniformInt
     (
-        "image", 
+        "inputImage", 
         options_.inputUnit
     );
     quantizeInput->setUniformInt
@@ -1207,8 +1213,31 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         0, 
         GL_FALSE, 
         0, 
-        GL_READ_WRITE, 
+        options_.overwriteInput ? GL_READ_WRITE : GL_READ_ONLY, 
         isFloat32 ? GL_RGBA32F : GL_RGBA8UI
+    );
+    uint32_t outputDataUnit;
+    if (!options_.overwriteInput)
+    {
+        outputDataUnit = textureUnit++;
+        glActiveTexture(GL_TEXTURE0+outputDataUnit);
+        glBindTexture(GL_TEXTURE_2D, output_->colorBufferId());
+        glBindImageTexture
+        (
+            outputDataUnit, 
+            output_->colorBufferId(), 
+            0, 
+            GL_FALSE, 
+            0, 
+            GL_WRITE_ONLY, 
+            isFloat32 ? GL_RGBA32F : GL_RGBA8UI
+        );
+        
+    }
+    quantizeInput->setUniformInt
+    (
+        "outputImage", 
+        options_.overwriteInput ? options_.inputUnit : outputDataUnit
     );
     quantizeInput->use();
     quantizeInput->run(width, height, 1);
@@ -1434,6 +1463,8 @@ void OpenGLKMeansQuantizer::quantize
         return;
     if (input == nullptr)
         return;
+    if (!options.overwriteInput)
+        prepareOutput(input);
     quantizeOpenGLTexture
     (
         input->id(),

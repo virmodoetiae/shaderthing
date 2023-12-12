@@ -76,31 +76,10 @@ protected:
     // 
     GLuint oldQuantizedInput_;
 
-    // Actual quantization function that operates on pure OpenGL handles
-    /*
+    //
     void quantizeOpenGLTexture
     (
-        GLuint id,
-        uint32_t width,
-        uint32_t height,
-        uint32_t paletteSize, 
-        unsigned char* palette=nullptr,
-        uint32_t ditherLevel=0,
-        bool reseedPalette=false,
-        bool recalculatePalette=true, 
-        float relTol=1e-2,
-        float ditherThreshold=0,
-        int alphaCutoff=-1,
-        bool regenerateMipmap=true,
-        bool fastKMeans=true,
-        bool computeDelta=false,
-        uint32_t inputUnit=0,
-        bool isSF32=false
-    );*/
-
-    void quantizeOpenGLTexture
-    (
-        GLuint id,
+        GLuint id, // inputId
         uint32_t width,
         uint32_t height,
         unsigned int paletteSize,
