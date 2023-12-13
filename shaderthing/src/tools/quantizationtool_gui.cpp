@@ -221,6 +221,26 @@ void QuantizationTool::renderGui()
                 ImGui::SameLine();
         }
     }
+    auto qOut = quantizer_->output();
+    if (qOut!=nullptr)
+    {
+        ImVec2 hoverSize{256,256};
+        float aspectRatio = qOut->width()/qOut->height();
+        if (aspectRatio > 1.0)
+            hoverSize.y /= aspectRatio;
+        else
+            hoverSize.x *= aspectRatio;
+        float startx = ImGui::GetCursorPosX();
+        ImVec2 uv0{0,1};
+        ImVec2 uv1{1,0};
+        ImGui::Image
+        (
+            (void*)(uintptr_t)(qOut->colorBufferId()), 
+            hoverSize, 
+            uv0, 
+            uv1
+        );
+    }
     if (!isGuiInMenu_)
         ImGui::End();
 }

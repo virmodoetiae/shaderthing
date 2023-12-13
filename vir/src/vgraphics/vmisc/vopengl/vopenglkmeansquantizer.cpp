@@ -1488,6 +1488,8 @@ void OpenGLKMeansQuantizer::quantize
         return;
     if (input == nullptr)
         return;
+    if (!options.overwriteInput)
+        prepareOutput(input);
     quantizeOpenGLTexture
     (
         input->colorBufferId(),

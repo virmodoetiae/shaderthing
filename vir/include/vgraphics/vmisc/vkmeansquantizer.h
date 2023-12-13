@@ -105,7 +105,7 @@ struct Options
     bool regenerateMipmap=true;
 
     //
-    bool overwriteInput=true;
+    bool overwriteInput=false;
 
     // The target TEXTURE2D unit to which the input texture will be bound
     // in order to perform the quantization. Inconsequential on the quantization
