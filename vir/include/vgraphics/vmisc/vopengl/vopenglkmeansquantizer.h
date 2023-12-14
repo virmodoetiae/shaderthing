@@ -83,7 +83,7 @@ protected:
         uint32_t width,
         uint32_t height,
         unsigned int paletteSize,
-        const Options& options,
+        const Settings& settings,
         bool float32=false
     );
 
@@ -101,13 +101,13 @@ public:
     (
         TextureBuffer2D* input, 
         unsigned int paletteSize,
-        const Options& options
+        const Settings& settings
     ) override;
     virtual void quantize
     (
         Framebuffer* input, 
         unsigned int paletteSize,
-        const Options& options
+        const Settings& settings
     ) override;
 
     // Retrieve the palette colors and store them in the provided data array. If

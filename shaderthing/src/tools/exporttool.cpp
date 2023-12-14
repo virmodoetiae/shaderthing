@@ -280,8 +280,8 @@ void ExportTool::exportFrame()
                 gifEncoder = new vir::GifEncoder
                 (
                     gifAlphaCutoff_ > 0 ?
-                    vir::KMeansQuantizer::Options::IndexMode::Alpha :
-                    vir::KMeansQuantizer::Options::IndexMode::Default
+                    vir::KMeansQuantizer::Settings::IndexMode::Alpha :
+                    vir::KMeansQuantizer::Settings::IndexMode::Default
                 );
                 gifEncoder->openFile
                 ( 
@@ -295,7 +295,7 @@ void ExportTool::exportFrame()
             vir::GifEncoder::EncodingOptions options = {};
             options.delay = std::max(100.0f/exportFps_, 1.0f);
             options.ditherMode = 
-                (vir::KMeansQuantizer::Options::DitherMode)gifDitheringLevel_;
+                (vir::KMeansQuantizer::Settings::DitherMode)gifDitheringLevel_;
             options.flipVertically = true;
             options.updatePalette = updatePaletteEveryFrame_;
             options.alphaCutoff = gifAlphaCutoff_;

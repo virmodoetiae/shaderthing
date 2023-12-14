@@ -1481,11 +1481,11 @@ internalFramebufferClearPolicyOnExport_
     );
     writeOnlyFramebuffer_ = framebufferB_;
 
-    // Set framebuffer color attachment wrapping and filtering options
+    // Set framebuffer color attachment wrapping and filtering settings
     auto magFilter = framebufferData.read<int>("magnificationFilterMode");
     auto minFilter = framebufferData.read<int>("minimizationFilterMode");
     auto wrapModes = framebufferData.read<glm::ivec2>("wrapModes");
-    auto setWrapFilterOptions = [&](vir::Framebuffer* framebuffer)->void
+    auto setWrapFilterSettings = [&](vir::Framebuffer* framebuffer)->void
     {
         framebuffer->setColorBufferMagFilterMode
         (
@@ -1506,8 +1506,8 @@ internalFramebufferClearPolicyOnExport_
             (vir::TextureBuffer::WrapMode)wrapModes.y
         );
     };
-    setWrapFilterOptions(framebufferA_);
-    setWrapFilterOptions(framebufferB_);
+    setWrapFilterSettings(framebufferA_);
+    setWrapFilterSettings(framebufferB_);
 
     //
     if (rendersTo_ != RendersTo::Window)

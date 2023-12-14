@@ -25,8 +25,8 @@ public:
         bool flipVertically = false;
 
         //
-        KMeansQuantizer::Options::DitherMode ditherMode = 
-            KMeansQuantizer::Options::DitherMode::None;
+        KMeansQuantizer::Settings::DitherMode ditherMode = 
+            KMeansQuantizer::Settings::DitherMode::None;
         
         // 
         float ditherThreshold = 0;
@@ -61,7 +61,7 @@ protected:
     uint32_t width_, height_, paletteBitDepth_, paletteSize_;
     unsigned char* indexedTexture_;
     unsigned char* palette_;
-    KMeansQuantizer::Options::IndexMode indexMode_;
+    KMeansQuantizer::Settings::IndexMode indexMode_;
 
     KMeansQuantizer* quantizer_;
     
@@ -71,8 +71,8 @@ public:
 
     GifEncoder
     (
-        KMeansQuantizer::Options::IndexMode indexMode =
-        KMeansQuantizer::Options::IndexMode::Default
+        KMeansQuantizer::Settings::IndexMode indexMode =
+        KMeansQuantizer::Settings::IndexMode::Default
     );
     ~GifEncoder();
 

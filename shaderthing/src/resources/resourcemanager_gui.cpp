@@ -192,7 +192,7 @@ void ResourceManager::renderGui()
                         // resource is a Texture2D, not a Cubemap nor an Animation
                         ImGui::BeginTooltip();
                         ImGui::Text(
-R"(These options only affect this texture and do not 
+R"(These settings only affect this texture and do not 
 affect any cubemaps or animations using this texture)");
                         ImGui::EndTooltip();
                     }

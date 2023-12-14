@@ -13,7 +13,7 @@ class KMeansQuantizer
 {
 public:
 
-struct Options
+struct Settings
 {
     // Texture index mode
     enum IndexMode
@@ -134,8 +134,8 @@ protected:
     // (Real) size of the latest computed palette
     uint32_t paletteSize_;
 
-    // (Cached) set of options used for the latest quantize call
-    Options options_;
+    // (Cached) set of settings used for the latest quantize call
+    Settings settings_;
     
     // Protected constructor as any instances of KMeansQuantizer are meant to be
     // created via the static create function
@@ -145,7 +145,7 @@ protected:
         width_(0),
         height_(0),
         paletteSize_(0),
-        options_({}){};
+        settings_({}){};
 
     //
     void prepareOutput(const Framebuffer* input);
@@ -168,21 +168,21 @@ public:
     uint32_t paletteSize(){return paletteSize_;}
 
     // Quantize the provided texture (it is overwritten) with the provided 
-    // options
+    // settings
     virtual void quantize
     (
         TextureBuffer2D* input, 
         unsigned int paletteSize,
-        const Options& options
+        const Settings& settings
     ) = 0;
 
     // Quantize the framebuffer color attachment texture (it is overwritten)
-    // with the provided options
+    // with the provided settings
     virtual void quantize
     (
         Framebuffer* input, 
         unsigned int paletteSize,
-        const Options& options
+        const Settings& settings
     ) = 0;
 
     // Retrieve the palette colors and store them in the provided data array. If

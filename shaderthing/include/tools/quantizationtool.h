@@ -71,7 +71,7 @@ protected:
     // Level of dithering. 0 is no dithering, 1 is ordered dithering with a
     // 2x2 kernel, 2 is dithering with a 4x4 kernel.
     // This currently uses an int instead of a
-    // vir::KMeansQuantizer::Options::DitherMode enum because of legacy
+    // vir::KMeansQuantizer::Settings::DitherMode enum because of legacy
     // implementation reasons, should be updated at some point
     int ditheringLevel_;
 

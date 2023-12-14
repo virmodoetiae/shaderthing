@@ -664,12 +664,12 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     uint32_t width,
     uint32_t height,
     unsigned int paletteSize,
-    const Options& options,
+    const Settings& settings,
     bool isFloat32
 )
 {
     //
-    uint32_t textureUnit = options.inputUnit;
+    uint32_t textureUnit = settings.inputUnit;
     uint32_t inputDataUnit = textureUnit++;
 
     // Figure out which compute shaders to use based on input texture
@@ -705,8 +705,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     bool paletteSizeChanged(paletteSize_ != paletteSize);
     bool internalFormatChanged(isFloat320 != isFloat32);
     
-    // Cache options
-    options_ = options;
+    // Cache settings
+    settings_ = settings;
 
     // Limit and adjust palette size (no reason why more than 256 colors can't
     // be processed, however, I feel an upper bound can't hurt, also because
@@ -717,17 +717,17 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         std::min
         (
             std::max(paletteSize, 2u), 
-            options_.indexMode != Options::IndexMode::Default ? 255u : 256u
+            settings_.indexMode != Settings::IndexMode::Default ? 255u : 256u
         );
     
     //
     if 
     (
-        options_.indexMode == Options::IndexMode::Alpha && 
-        options_.alphaCutoff == -1
+        settings_.indexMode == Settings::IndexMode::Alpha && 
+        settings_.alphaCutoff == -1
     )
     {
-        options_.alphaCutoff = 127;
+        settings_.alphaCutoff = 127;
     }
     
     // Bind buffers
@@ -740,10 +740,10 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     int mHeight = height;
     if 
     (
-        options_.fastKMeans && 
+        settings_.fastKMeans && 
         (
             paletteSizeChanged ||
-            options_.recalculatePalette ||
+            settings_.recalculatePalette ||
             internalFormatChanged
         ) && width*height > 2500
     )
@@ -779,7 +779,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     }
     glBindImageTexture
     (
-        options_.inputUnit, 
+        settings_.inputUnit, 
         id, 
         targetLevel, 
         GL_FALSE, 
@@ -852,7 +852,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
         //
-        if (options_.indexMode == Options::IndexMode::Delta)
+        if (settings_.indexMode == Settings::IndexMode::Delta)
         {
             glGenTextures(1, &oldQuantizedInput_);
             glActiveTexture(GL_TEXTURE_2D+oldQuantizedInputUnit);
@@ -876,7 +876,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         }
     }
 
-    if (options_.indexMode == Options::IndexMode::Delta)
+    if (settings_.indexMode == Settings::IndexMode::Delta)
     {
         glActiveTexture(GL_TEXTURE_2D+oldQuantizedInputUnit);
         glBindTexture(GL_TEXTURE_2D, oldQuantizedInput_);
@@ -895,8 +895,8 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     // Resize paletteData if necessary
     if (paletteSizeChanged || internalFormatChanged)
     {
-        options_.reseedPalette = true;
-        options_.recalculatePalette = true;
+        settings_.reseedPalette = true;
+        settings_.recalculatePalette = true;
         paletteSize_ = paletteSize;
         glActiveTexture(GL_TEXTURE0+paletteDataUnit);
         glBindTexture(GL_TEXTURE_2D, paletteData_);
@@ -977,9 +977,9 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
 
     // If provided, upload the palette to the GPU and use it instead of running
     // the KMeans
-    if (options_.paletteData != nullptr)
+    if (settings_.paletteData != nullptr)
     {
-        options_.recalculatePalette = false;
+        settings_.recalculatePalette = false;
         glActiveTexture(GL_TEXTURE0+paletteDataUnit);
         glBindTexture(GL_TEXTURE_2D, paletteData_);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, paletteDataWriteOnlyPBO_);
@@ -987,7 +987,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         std::memcpy
         (
             mappedWriteOnlyPaletteData_, 
-            (void*)options_.paletteData, 
+            (void*)settings_.paletteData, 
             3*paletteSize*sizeof(unsigned char)
         );
         resetSync();
@@ -1006,14 +1006,14 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     }
 
-    if (options_.recalculatePalette || internalFormatChanged)
+    if (settings_.recalculatePalette || internalFormatChanged)
     {
         // Build initial palette
 
         // I suspect that that the largest bottleneck is this first CPU-based 
         // loop from which async OpenGL commands are issued. Is there a 
         // smarter way?
-        if (options_.reseedPalette || internalFormatChanged)
+        if (settings_.reseedPalette || internalFormatChanged)
         {
             for (int counter = 0; counter < paletteSize; counter++)
             {
@@ -1029,7 +1029,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
                     findMaxSqrDistCol->setUniformInt
                     (
                         "image", 
-                        options_.inputUnit, 
+                        settings_.inputUnit, 
                         false
                     );
                     findMaxSqrDistCol->setUniformInt
@@ -1053,7 +1053,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
                     setNextPaletteCol->setUniformInt
                     (
                         "image", 
-                        options_.inputUnit, 
+                        settings_.inputUnit, 
                         false
                     );
                     setNextPaletteCol->setUniformInt
@@ -1071,7 +1071,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         buildClustersFromPalette->setUniformInt
         (
             "image", 
-            options_.inputUnit
+            settings_.inputUnit
         );
         buildClustersFromPalette->setUniformInt
         (
@@ -1087,7 +1087,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         updatePaletteFromClusters->setUniformInt
         (
             "image", 
-            options_.inputUnit, 
+            settings_.inputUnit, 
             false
         );
         updatePaletteFromClusters->setUniformInt
@@ -1107,7 +1107,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         float sqErr0 = 3.0f*255.0f*255.0f*mWidth*mHeight;
         //int iter = 0;
         auto sqErrPtr = new uint32_t;
-        options_.relTol = std::min(std::max(options_.relTol, 0.0f), 1.0f);
+        settings_.relTol = std::min(std::max(settings_.relTol, 0.0f), 1.0f);
         while(true)
         {
             // Cluster colors around current palette colors
@@ -1124,7 +1124,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             );
 
             // Quantize with currently available palette on break
-            if (*sqErrPtr >= (1.0f-options_.relTol)*sqErr0)
+            if (*sqErrPtr >= (1.0f-settings_.relTol)*sqErr0)
                 break;
             sqErr0 = *sqErrPtr;
             
@@ -1141,7 +1141,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     quantizeInput->setUniformInt
     (
         "inputImage", 
-        options_.inputUnit
+        settings_.inputUnit
     );
     quantizeInput->setUniformInt
     (
@@ -1164,36 +1164,36 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     quantizeInput->setUniformInt
     (
         "ditherLevel", 
-        (int)options_.ditherMode, 
+        (int)settings_.ditherMode, 
         false
     );
     quantizeInput->setUniformInt
     (
         "alphaCutoff", 
-        options_.alphaCutoff, 
+        settings_.alphaCutoff, 
         false
     );
     quantizeInput->setUniformInt
     (
         "indexMode", 
-        int(options_.indexMode), 
+        int(settings_.indexMode), 
         false
     );
-    if (options_.ditherMode != Options::DitherMode::None)
+    if (settings_.ditherMode != Settings::DitherMode::None)
     {
-        if (options_.ditherThreshold == 0)
-            options_.ditherThreshold = 1.0f/std::sqrt(float(paletteSize));
+        if (settings_.ditherThreshold == 0)
+            settings_.ditherThreshold = 1.0f/std::sqrt(float(paletteSize));
         else 
-            options_.ditherThreshold = 
-                std::min(std::max(options_.ditherThreshold,0.0f),1.0f);
+            settings_.ditherThreshold = 
+                std::min(std::max(settings_.ditherThreshold,0.0f),1.0f);
         quantizeInput->setUniformFloat
         (
             "ditherThreshold", 
-            options_.ditherThreshold, 
+            settings_.ditherThreshold, 
             false
         );
     } 
-    if (options_.indexMode == Options::IndexMode::Delta)
+    if (settings_.indexMode == Settings::IndexMode::Delta)
     {
         quantizeInput->setUniformInt
         (
@@ -1204,20 +1204,20 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     }
 
     // Quantize input with k-means-determined palettes
-    glActiveTexture(GL_TEXTURE0+options_.inputUnit);
+    glActiveTexture(GL_TEXTURE0+settings_.inputUnit);
     glBindTexture(GL_TEXTURE_2D, id);
     glBindImageTexture
     (
-        options_.inputUnit, 
+        settings_.inputUnit, 
         id, 
         0, 
         GL_FALSE, 
         0, 
-        options_.overwriteInput ? GL_READ_WRITE : GL_READ_ONLY, 
+        settings_.overwriteInput ? GL_READ_WRITE : GL_READ_ONLY, 
         isFloat32 ? GL_RGBA32F : GL_RGBA8UI
     );
     uint32_t outputDataUnit;
-    if (!options_.overwriteInput)
+    if (!settings_.overwriteInput)
     {
         outputDataUnit = textureUnit++;
         glActiveTexture(GL_TEXTURE0+outputDataUnit);
@@ -1237,7 +1237,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     quantizeInput->setUniformInt
     (
         "outputImage", 
-        options_.overwriteInput ? options_.inputUnit : outputDataUnit
+        settings_.overwriteInput ? settings_.inputUnit : outputDataUnit
     );
     quantizeInput->use();
     quantizeInput->run(width, height, 1);
@@ -1276,9 +1276,9 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     resetSync();    // For whatever reason, this appears to be vital to ensure
                     // proper overwriting of mappedPaletteData
     
-    if (options_.regenerateMipmap)
+    if (settings_.regenerateMipmap)
     {
-        glActiveTexture(GL_TEXTURE0+options_.inputUnit);
+        glActiveTexture(GL_TEXTURE0+settings_.inputUnit);
         glBindTexture(GL_TEXTURE_2D, id);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
@@ -1456,14 +1456,14 @@ void OpenGLKMeansQuantizer::quantize
 (
     TextureBuffer2D* input, 
     unsigned int paletteSize,
-    const Options& options
+    const Settings& settings
 )
 {
     if (!canRunOnDeviceInUse_)
         return;
     if (input == nullptr)
         return;
-    if (!options.overwriteInput)
+    if (!settings.overwriteInput)
         prepareOutput(input);
     quantizeOpenGLTexture
     (
@@ -1471,7 +1471,7 @@ void OpenGLKMeansQuantizer::quantize
         input->width(),
         input->height(),
         paletteSize,
-        options,
+        settings,
         input->internalFormat() == TextureBuffer::InternalFormat::RGBA_SF_32
     );
 }
@@ -1481,14 +1481,14 @@ void OpenGLKMeansQuantizer::quantize
 (
     Framebuffer* input, 
     unsigned int paletteSize,
-    const Options& options
+    const Settings& settings
 )
 {
     if (!canRunOnDeviceInUse_)
         return;
     if (input == nullptr)
         return;
-    if (!options.overwriteInput)
+    if (!settings.overwriteInput)
         prepareOutput(input);
     quantizeOpenGLTexture
     (
@@ -1496,7 +1496,7 @@ void OpenGLKMeansQuantizer::quantize
         input->width(),
         input->height(),
         paletteSize,
-        options,
+        settings,
         input->colorBufferInternalFormat() == 
             TextureBuffer::InternalFormat::RGBA_SF_32
     );
@@ -1506,7 +1506,7 @@ void OpenGLKMeansQuantizer::getPalette(unsigned char*& data, bool allocate)
 {
     if (!canRunOnDeviceInUse_)
         return;
-    bool nonDefaultIndexing(options_.indexMode != Options::IndexMode::Default);
+    bool nonDefaultIndexing(settings_.indexMode != Settings::IndexMode::Default);
     int paletteSize = nonDefaultIndexing ? paletteSize_ + 1 : paletteSize_;
     if (allocate)
         data = new unsigned char[3*paletteSize];

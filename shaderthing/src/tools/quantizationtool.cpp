@@ -200,12 +200,12 @@ void QuantizationTool::quantize(Layer* layer)
         (
             1.0f-clusteringFidelity_*clusteringFidelity_
         );
-        vir::KMeansQuantizer::Options options = {};
+        vir::KMeansQuantizer::Settings options = {};
         options.paletteData = paletteModified_ ? uIntPalette_ : nullptr;
         options.reseedPalette = firstQuantization_;
         options.recalculatePalette = autoUpdatePalette_ || firstQuantization_;
         options.ditherMode = 
-            (vir::KMeansQuantizer::Options::DitherMode)ditheringLevel_;
+            (vir::KMeansQuantizer::Settings::DitherMode)ditheringLevel_;
         options.ditherThreshold = ditheringThreshold_;
         options.relTol = clusteringTolerance;
         options.alphaCutoff = isAlphaCutoff_ ? alphaCutoffThreshold_ : -1;
