@@ -94,6 +94,14 @@ public:
     // in a C++ context
     virtual void saveState(ObjectIO& writer) = 0;
 
+    // Assign the address of the post-processing output framebuffer to the 
+    // input layer writeonly framebuffer. In this way, the post-processed
+    // changes are instantly visible to all resources using the input layer
+    // as an input of their own. This modification is overwritten anyways
+    // at the start of the input layer's rendering step, during front and
+    // back-buffer swapping
+    void replaceInputLayerWriteOnlyFramebuffer();
+
     //
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
 

@@ -64,6 +64,15 @@ void KMeansQuantizer::prepareOutput(const Framebuffer* input)
             input->colorBufferInternalFormat()
         );
     }
+    for (int i=0; i<2; i++)
+    {
+        if (output_->colorBufferWrapMode(i) != input->colorBufferWrapMode(i))
+            output_->setColorBufferWrapMode(i, input->colorBufferWrapMode(i));
+    }
+    if (output_->colorBufferMagFilterMode()!=input->colorBufferMagFilterMode())
+        output_->setColorBufferMagFilterMode(input->colorBufferMagFilterMode());
+    if (output_->colorBufferMinFilterMode()!=input->colorBufferMinFilterMode())
+        output_->setColorBufferMinFilterMode(input->colorBufferMinFilterMode());
 }
 
 void KMeansQuantizer::prepareOutput(const TextureBuffer2D* input)

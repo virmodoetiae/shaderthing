@@ -9,8 +9,8 @@ namespace ShaderThing
 
 std::unordered_map<PostProcess::Type, std::string> PostProcess::typeToName = 
 {
-    {PostProcess::Type::Quantization, "Quantization"},
-    {PostProcess::Type::Bloom, "Bloom"}
+    {PostProcess::Type::Bloom, "Bloom"},
+    {PostProcess::Type::Quantization, "Quantization"}
 };
 
 PostProcess::PostProcess
@@ -41,6 +41,11 @@ PostProcess* PostProcess::create
         default:
             return nullptr;
     }
+}
+
+void PostProcess::replaceInputLayerWriteOnlyFramebuffer()
+{
+    inputLayer_->writeOnlyFramebuffer_ = outputFramebuffer();
 }
 
 }

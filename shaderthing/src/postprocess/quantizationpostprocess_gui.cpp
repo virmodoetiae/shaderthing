@@ -108,13 +108,19 @@ void QuantizationPostProcess::renderGui()
         ImGui::Text("Dithering threshold ");
         ImGui::SameLine();
         ImGui::PushItemWidth(entryWidth);
-        ImGui::SliderFloat
+        float threshold = std::sqrt(settings_.ditherThreshold);
+        if 
         (
-            "##ditheringThreshold", 
-            &settings_.ditherThreshold, 
-            0.001f, 
-            1.0f
-        );
+            ImGui::SliderFloat
+            (
+                "##ditheringThreshold", 
+                &threshold, 
+                0.01f, 
+                1.00f,
+                "%.2f"
+            )
+        )
+            settings_.ditherThreshold = threshold*threshold;
         ImGui::PopItemWidth();
     }
 
@@ -132,11 +138,11 @@ void QuantizationPostProcess::renderGui()
     (
         ImGui::SliderFloat
         (
-            "##fidelitySliderFloat", 
-            &fidelity, 
-            0.01f, 
-            1.00f, 
-            "%.2f", 
+            "##fidelitySliderFloat",
+            &fidelity,
+            0.01f,
+            1.00f,
+            "%.2f",
             ImGuiSliderFlags_AlwaysClamp
         )
     )
@@ -173,6 +179,7 @@ void QuantizationPostProcess::renderGui()
                 ImGui::SameLine();
         }
     }
+    /*
     auto qOut = quantizer_->output();
     if (qOut!=nullptr)
     {
@@ -193,6 +200,7 @@ void QuantizationPostProcess::renderGui()
             uv1
         );
     }
+    */
     if (!isGuiInMenu_)
         ImGui::End();
 }

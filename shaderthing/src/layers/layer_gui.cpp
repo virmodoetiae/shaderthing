@@ -156,7 +156,7 @@ locked to that of the main window)"
                     "##layerInternalFormatCombo",
                     vir::TextureBuffer::internalFormatToName.at
                     (
-                        writeOnlyFramebuffer_->
+                        readOnlyFramebuffer_->
                             colorBufferInternalFormat()
                     ).c_str()
                 )
@@ -231,18 +231,7 @@ locked to that of the main window)"
                 for (auto entry : vir::TextureBuffer::wrapModeToName)
                 {
                     if (ImGui::Selectable(entry.second.c_str()))
-                    {
-                        readOnlyFramebuffer_->setColorBufferWrapMode
-                        (
-                            0, 
-                            entry.first
-                        );
-                        writeOnlyFramebuffer_->setColorBufferWrapMode
-                        (
-                            0, 
-                            entry.first
-                        );
-                    }
+                        setFramebufferWrapMode(0, entry.first);
                 }
                 ImGui::EndCombo();
             }
@@ -262,18 +251,7 @@ locked to that of the main window)"
                 for (auto entry : vir::TextureBuffer::wrapModeToName)
                 {
                     if (ImGui::Selectable(entry.second.c_str()))
-                    {
-                        readOnlyFramebuffer_->setColorBufferWrapMode
-                        (
-                            1, 
-                            entry.first
-                        );
-                        writeOnlyFramebuffer_->setColorBufferWrapMode
-                        (
-                            1, 
-                            entry.first
-                        );
-                    }
+                        setFramebufferWrapMode(1, entry.first);
                 }
                 ImGui::EndCombo();
             }
@@ -300,16 +278,7 @@ locked to that of the main window)"
                     )
                         continue;
                     if (ImGui::Selectable(entry.second.c_str()))
-                    {
-                        readOnlyFramebuffer_->setColorBufferMagFilterMode
-                        (
-                            entry.first
-                        );
-                        writeOnlyFramebuffer_->setColorBufferMagFilterMode
-                        (
-                            entry.first
-                        );
-                    }
+                        setFramebufferMagFilterMode(entry.first);
                 }
                 ImGui::EndCombo();
             }
@@ -330,16 +299,7 @@ locked to that of the main window)"
                 for (auto entry : vir::TextureBuffer::filterModeToName)
                 {
                     if (ImGui::Selectable(entry.second.c_str()))
-                    {
-                        readOnlyFramebuffer_->setColorBufferMinFilterMode
-                        (
-                            entry.first
-                        );
-                        writeOnlyFramebuffer_->setColorBufferMinFilterMode
-                        (
-                            entry.first
-                        );
-                    }
+                        setFramebufferMinFilterMode(entry.first);
                 }
                 ImGui::EndCombo();
             }
@@ -453,10 +413,15 @@ locked to that of the main window)"
             for (auto type : availableTypes)
             {
                 if (ImGui::Selectable(PostProcess::typeToName.at(type).c_str()))
-                    postProcesses_.emplace_back
-                    (
-                        PostProcess::create(app_, this, type)
-                    );
+                {
+                    PostProcess* postProcess = 
+                        PostProcess::create(app_, this, type);
+                    if (postProcess != nullptr)
+                        postProcesses_.emplace_back
+                        (
+                            postProcess
+                        );
+                }
             }
             ImGui::EndCombo();
         }
@@ -522,7 +487,7 @@ void Layer::renderGuiMain()
                 (
                     fragmentSourceEditor_
                 ) || hasUncompiledChanges_;
-            if (app_.findReplaceTextToolRef().isGuiOpen()) 
+            if (app_.findReplaceTextToolRef().isGuiOpen())
                 ImGui::Separator();
             ImGui::Indent();
             if (hasHeaderErrors_)

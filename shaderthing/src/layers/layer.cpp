@@ -1051,7 +1051,19 @@ void Layer::setSharedDefaultSamplerUniforms()
         // in readOnlyFramebuffer() to avoid visual artifacts. Depending on
         // the outcome of my experiments, I might keep this approach
         if (resource->namePtr() == &name_)
-            readOnlyFramebuffer_->bindColorBuffer(unit);
+        {
+            vir::Framebuffer* sourceFramebuffer = readOnlyFramebuffer_;
+            for (auto* postProcess : postProcesses_)
+            {
+                if 
+                (
+                    postProcess->isActive() && 
+                    postProcess->outputFramebuffer() != nullptr
+                )
+                    sourceFramebuffer = postProcess->outputFramebuffer();
+            }
+            sourceFramebuffer->bindColorBuffer(unit);
+        }
         else
             resource->bind(unit);
         shader_->setUniformInt(u->name, unit);
@@ -1521,6 +1533,24 @@ internalFramebufferClearPolicyOnExport_
         app.resourceManagerRef().addLayerAsResource(this);
 
     ++LayerManager::nLayersSinceNewProject_;
+}
+
+void Layer::setFramebufferWrapMode(int i, vir::TextureBuffer::WrapMode mode)
+{
+    framebufferA_->setColorBufferWrapMode(i, mode);
+    framebufferB_->setColorBufferWrapMode(i, mode);
+}
+
+void Layer::setFramebufferMagFilterMode(vir::TextureBuffer::FilterMode mode)
+{
+    framebufferA_->setColorBufferMagFilterMode(mode);
+    framebufferB_->setColorBufferMagFilterMode(mode);
+}
+
+void Layer::setFramebufferMinFilterMode(vir::TextureBuffer::FilterMode mode)
+{
+    framebufferA_->setColorBufferMinFilterMode(mode);
+    framebufferB_->setColorBufferMinFilterMode(mode);
 }
 
 }

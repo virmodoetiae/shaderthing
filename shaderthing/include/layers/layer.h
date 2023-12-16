@@ -38,6 +38,8 @@ class PostProcess;
 class Layer
 {
 
+friend PostProcess;
+
 // Enums ---------------------------------------------------------------------//
 
 public :
@@ -218,6 +220,9 @@ private :
     vir::Framebuffer* readOnlyFramebuffer_;
     vir::Framebuffer* framebufferA_;
     vir::Framebuffer* framebufferB_;
+
+    //
+
 
     // Shader
     vir::Shader* shader_;
@@ -486,6 +491,11 @@ public:
     
     //
     void setTargetResolution(glm::ivec2, bool rescale=true);
+
+    //
+    void setFramebufferWrapMode(int i, vir::TextureBuffer::WrapMode mode);
+    void setFramebufferMagFilterMode(vir::TextureBuffer::FilterMode mode);
+    void setFramebufferMinFilterMode(vir::TextureBuffer::FilterMode mode);
 
     // Operators -------------------------------------------------------------//
     

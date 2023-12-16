@@ -452,7 +452,7 @@ resetting the iFrame uniform (Ctrl+R))"
         exportTool_->renderGui();
 
     ImGui::End();
-    ImGui::ShowDemoWindow();
+    //ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 

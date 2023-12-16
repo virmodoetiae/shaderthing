@@ -47,6 +47,7 @@ void QuantizationPostProcess::resetSettings()
     settings_.fastKMeans = true;
     settings_.overwriteInput = false;
     settings_.relTol = .5f;
+    settings_.ditherThreshold = .25f;
 }
 
 void QuantizationPostProcess::reset()
@@ -107,15 +108,16 @@ void QuantizationPostProcess::run()
         settings_.reseedPalette = false;
     if (paletteModified_)
         paletteModified_ = false;
+
+    // Essential step
+    replaceInputLayerWriteOnlyFramebuffer();
 }
 
 // Return access to output framebuffer with the applied post-processing 
 // effect
 vir::Framebuffer* QuantizationPostProcess::outputFramebuffer()
 {
-    if (quantizer_!=nullptr)
-        return quantizer_->output();
-    return nullptr;
+    return quantizer_->output();
 }
 
 // Re-initialize all object members from the data stored in the provided
