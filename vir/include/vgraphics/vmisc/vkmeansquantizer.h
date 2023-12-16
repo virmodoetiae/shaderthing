@@ -32,6 +32,12 @@ struct Settings
         Order4 = 2,
     };
 
+    // Name mappings for convenience
+    static std::unordered_map<Settings::IndexMode, std::string> 
+        indexModeToName;
+    static std::unordered_map<Settings::DitherMode, std::string> 
+        ditherModeToName;
+
     // Palette color data used for quantization if provided, if not provided
     // the palette is determined automatically by the KMeans algorithm
     unsigned char* paletteData=nullptr;

@@ -5,6 +5,26 @@
 namespace vir
 {
 
+typedef KMeansQuantizer::Settings::IndexMode IndexMode;
+typedef KMeansQuantizer::Settings::DitherMode DitherMode;
+
+std::unordered_map<IndexMode, std::string> 
+    KMeansQuantizer::Settings::indexModeToName = 
+    {
+        {IndexMode::Delta, "Delta indexing"},
+        {IndexMode::Alpha, "Alpha indexing"},
+        {IndexMode::Default, "Default indexing"}
+        
+    };
+
+std::unordered_map<DitherMode, std::string> 
+    KMeansQuantizer::Settings::ditherModeToName = 
+    {
+        {DitherMode::Order4, "4x4 Kernel"},
+        {DitherMode::Order2, "2x2 Kernel"},
+        {DitherMode::None, "None"}
+    };
+
 KMeansQuantizer* KMeansQuantizer::create()
 {
     Window* window = nullptr;

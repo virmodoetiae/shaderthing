@@ -18,6 +18,7 @@
 #include "layers/layermanager.h"
 #include "resources/resource.h"
 #include "resources/resourcemanager.h"
+#include "postprocess/postprocess.h"
 #include "tools/quantizationtool.h"
 #include "tools/exporttool.h"
 #include "misc/misc.h"
@@ -261,6 +262,7 @@ viewport_
 ),
 fragmentSourceHeader_(""),
 fragmentSource_(defaultFragmentSource_),
+postProcesses_(0),
 screenQuad_(new vir::Quad(viewport_.x, viewport_.y, depth)),
 screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
@@ -330,6 +332,8 @@ Layer::~Layer()
     app_.quantizationToolRef().removeLayerAsTarget(this);
 
     // Delete all managed resources
+    for (auto* pp : postProcesses_)
+        delete pp;
     delete screenQuad_;
     screenQuad_ = nullptr;
     delete shader_;
@@ -405,7 +409,9 @@ void Layer::render(vir::Framebuffer* target, bool clearTarget)
         vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
 
     // Check if layer should be quantized
-    app_.quantizationToolRef().quantize(this);
+    // app_.quantizationToolRef().quantize(this);
+    for (auto postProcess : postProcesses_)
+        postProcess->run();
 
     if (rendersTo_ != RendersTo::InternalFramebufferAndWindow)
         return;
@@ -1277,6 +1283,7 @@ fragmentSourceHeader_(""),
 hasUncompiledChanges_(false),
 hasHeaderErrors_(false),
 isAspectRatioBoundToWindow_(true),
+postProcesses_(0),
 screenCamera_(app.screnCameraRef()),
 shaderCamera_(app.shaderCameraRef()),
 renderer_(*vir::GlobalPtr<vir::Renderer>::instance()),

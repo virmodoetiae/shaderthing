@@ -11,7 +11,7 @@ QuantizationPostProcess::QuantizationPostProcess
     ShaderThingApp& app,
     Layer* inputLayer
 ) :
-PostProcess(app, inputLayer),
+PostProcess(app, inputLayer, Type::Quantization),
 quantizer_(vir::KMeansQuantizer::create()),
 settings_({}),
 paletteSize_(4),
@@ -46,6 +46,7 @@ void QuantizationPostProcess::resetSettings()
     settings_.regenerateMipmap = true;
     settings_.fastKMeans = true;
     settings_.overwriteInput = false;
+    settings_.relTol = .5f;
 }
 
 void QuantizationPostProcess::reset()
@@ -65,7 +66,7 @@ void QuantizationPostProcess::reset()
 
 void QuantizationPostProcess::run()
 {
-    if 
+    if
     (
         !isActive_ || 
         inputLayer_ == nullptr ||

@@ -33,6 +33,7 @@ namespace ShaderThing
 
 class ShaderThingApp;
 class ObjectIO;
+class PostProcess;
 
 class Layer
 {
@@ -240,6 +241,9 @@ private :
     // loaded (done in rebindLayerUniforms())
     std::unordered_map<Uniform*, std::string>
         uniformLayerNamesToBeSet_;
+
+    // Post-processing effects to be applied to the layer, if any
+    std::vector<PostProcess*> postProcesses_;
 
     // Ref to global camera for looking at the quad
     vir::Camera& screenCamera_;

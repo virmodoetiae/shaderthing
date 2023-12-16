@@ -1108,6 +1108,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
         //int iter = 0;
         auto sqErrPtr = new uint32_t;
         settings_.relTol = std::min(std::max(settings_.relTol, 0.0f), 1.0f);
+        //uint32_t iter = 0;
         while(true)
         {
             // Cluster colors around current palette colors
@@ -1133,6 +1134,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
             updatePaletteFromClusters->run(paletteSize, 1, 1);
             //iter++;
         }
+        //std::cout << iter << std::endl;
         delete sqErrPtr;
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
     }

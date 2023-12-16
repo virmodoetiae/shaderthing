@@ -18,6 +18,7 @@
 #include "layers/layermanager.h"
 #include "resources/resource.h"
 #include "resources/resourcemanager.h"
+#include "postprocess/postprocess.h"
 #include "tools/findreplacetexttool.h"
 #include "misc/misc.h"
 #include "data/data.h"
@@ -141,7 +142,8 @@ locked to that of the main window)"
 
     if (rendersTo_ != RendersTo::Window)
     {
-        if (ImGui::CollapsingHeader("Framebuffer color attachment settings"))
+        ImGui::SeparatorText("Framebuffer settings");
+        //if (ImGui::CollapsingHeader("Framebuffer color attachment settings"))
         {
             ImGui::Text("Internal data format ");
             ImGui::SameLine();
@@ -364,6 +366,131 @@ locked to that of the main window)"
             }
             ImGui::PopItemWidth();
         }
+
+        ImGui::SeparatorText("Post-processing effects");
+        int iDelete = -1;
+        static int iActive = -1;
+        for (int i = 0; i < postProcesses_.size(); i++)
+        {
+            PostProcess* postProcess = postProcesses_[i];
+            ImGui::PushID(i);
+            if (ImGui::SmallButton(ICON_FA_TRASH))
+                iDelete = i;
+            ImGui::SameLine();
+            if 
+            (
+                ImGui::BeginMenu
+                (
+                    std::string
+                    (
+                        std::to_string(i+1)+" - "+postProcess->name()
+                    ).c_str()
+                )
+            )
+            {
+                // This part here is for the click & drag re-order mechanics
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                {
+                    if (iActive == -1)
+                        iActive = i;
+                    else if (iActive != i)
+                    {
+                        postProcesses_[i] = postProcesses_[iActive];
+                        postProcesses_[iActive] = postProcess;
+                        iActive = -1;
+                    }
+                }
+                else
+                    iActive = -1;
+                // Render post-processing effect GUI
+                *(postProcess->isGuiOpenPtr()) = true;
+                postProcess->renderGui();
+                ImGui::EndMenu();
+            }
+            else
+                *(postProcess->isGuiOpenPtr()) = false;
+            ImGui::PopID();
+        }
+        if (iDelete != -1)
+        {
+            auto* postProcess = postProcesses_[iDelete];
+            delete postProcess;
+            postProcess = nullptr;
+            postProcesses_.erase(postProcesses_.begin()+iDelete);
+        }
+        // Selector for adding a new post-processing effect with the constraint
+        // that each layer may have at most one post-processing effect of each
+        // type
+        ImGui::PushItemWidth(-1);
+        if 
+        (
+            ImGui::BeginCombo
+            (
+                "##postProcessingCombo", 
+                "Add a post-processing effect"
+            )
+        )
+        {
+            static std::vector<PostProcess::Type> allAvailableTypes(0);
+            if (allAvailableTypes.size() == 0)
+            {
+                allAvailableTypes.reserve(PostProcess::typeToName.size());
+                for (auto kv : PostProcess::typeToName)
+                    allAvailableTypes.push_back(kv.first);
+            }
+            std::vector<PostProcess::Type> availableTypes(allAvailableTypes);
+            for (auto* postProcess : postProcesses_)
+            {
+                auto it = std::find
+                (
+                    availableTypes.begin(), 
+                    availableTypes.end(), 
+                    postProcess->type()
+                );
+                if (it != availableTypes.end())
+                    availableTypes.erase(it);
+            }
+            for (auto type : availableTypes)
+            {
+                if (ImGui::Selectable(PostProcess::typeToName.at(type).c_str()))
+                    postProcesses_.emplace_back
+                    (
+                        PostProcess::create(app_, this, type)
+                    );
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
+
+        /* Checkpoint
+        ImGui::SeparatorText("Post-processing effects");
+        static const char* item_names[] = { "Item One", "Item Two", "Item Three", "Item Four", "Item Five" };
+        static int iActive = -1;
+        for (int n = 0; n < IM_ARRAYSIZE(item_names); n++)
+        {
+            const char* item = item_names[n];
+            ImGui::PushID(n);
+            if (ImGui::BeginMenu(std::string(std::to_string(n+1)+" - "+std::string(item)).c_str()))
+            {
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                {
+                    if (iActive == -1)
+                        iActive = n;
+                    else if (iActive != n)
+                    {
+                        item_names[n] = item_names[iActive];
+                        item_names[iActive] = item;
+                        iActive = -1;
+                    }
+                }
+                else
+                    iActive = -1;
+                ImGui::Text("Hey!");
+                ImGui::EndMenu();
+            }
+            ImGui::PopID();
+        }
+        */
     }
 }
 
