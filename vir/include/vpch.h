@@ -44,13 +44,13 @@
 #include "vwindow/vwindow.h"
 #include "vinput/vinputstate.h"
 
-#include "vgraphics/vgraphicscontext.h"
-#include "vgraphics/vbuffers.h"
-#include "vgraphics/vshader.h"
-#include "vgraphics/vrenderer.h"
-#include "vgraphics/vprimitives.h"
+#include "vgraphics/vcore/vgraphicscontext.h"
+#include "vgraphics/vcore/vbuffers.h"
+#include "vgraphics/vcore/vshader.h"
+#include "vgraphics/vcore/vrenderer.h"
+#include "vgraphics/vcore/vprimitives.h"
 
-#include "vgraphics/vmisc/vkmeansquantizer.h"
+#include "vgraphics/vpostprocess/vquantizer.h"
 #include "vgraphics/vmisc/vgifencoder.h"
 
 #include "vimgui/vimguirenderer.h"

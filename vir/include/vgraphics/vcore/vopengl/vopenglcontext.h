@@ -1,7 +1,7 @@
 #ifndef V_OPENGL_CONTEXT
 #define V_OPENGL_CONTEXT
 
-#include "vgraphics/vgraphicscontext.h"
+#include "vgraphics/vcore/vgraphicscontext.h"
 
 class GLFWwindow;
 

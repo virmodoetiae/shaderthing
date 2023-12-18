@@ -23,7 +23,7 @@ TODO ---------------------------------------------------------------------------
     selection
 
 (X) Check if possible to add support for GL_RGBA32F-formatted framebuffers
-    to the OpenGLKMeansQuantizer (it is possible, OpenGLKMeansQuantizer
+    to the OpenGLQuantizer (it is possible, OpenGLQuantizer
     modified to achieve this)
 
 (X) Fix layer resolution change resulting in reset of internal framebuffer

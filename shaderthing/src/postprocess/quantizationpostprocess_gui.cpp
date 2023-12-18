@@ -4,7 +4,7 @@
 #include "objectio/objectio.h"
 #include "data/data.h"
 
-typedef vir::KMeansQuantizer::Settings Settings;
+typedef vir::Quantizer::Settings Settings;
 
 namespace ShaderThing
 {

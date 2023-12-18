@@ -2,7 +2,7 @@
 #define V_OPENGL_BUFFERS_H
 
 #include <unordered_map>
-#include "vgraphics/vbuffers.h"
+#include "vgraphics/vcore/vbuffers.h"
 #include "thirdparty/glad/include/glad/glad.h"
 
 namespace vir

@@ -1,6 +1,6 @@
 #include "vpch.h"
 #include <cmath>
-#include "vgraphics/vopengl/vopenglbuffers.h"
+#include "vgraphics/vcore/vopengl/vopenglbuffers.h"
 
 namespace vir
 {

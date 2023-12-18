@@ -1,9 +1,9 @@
-#ifndef V_OPENGL_KMEANS_QUANTIZER_H
-#define V_OPENGL_KMEANS_QUANTIZER_H
+#ifndef V_OPENGL_QUANTIZER_H
+#define V_OPENGL_QUANTIZER_H
 
+#include "vgraphics/vpostprocess/vquantizer.h"
 #include "thirdparty/glad/include/glad/glad.h"
 #include <unordered_map>
-#include "vgraphics/vmisc/vkmeansquantizer.h"
 
 namespace vir
 {
@@ -11,7 +11,10 @@ namespace vir
 class TextureBuffer2D;
 class Framebuffer;
 
-class OpenGLKMeansQuantizer : public KMeansQuantizer
+// An OpenGL implementation of the color quantizer leveraging a K-Means
+// algorithm implemented on compute shaders. As such, it requires OpenGL
+// version 4.3 or higher to run
+class OpenGLQuantizer : public Quantizer
 {
 protected:
 
@@ -91,10 +94,15 @@ protected:
     void waitSync();
     void resetSync();
 
-public:
+    // Delete copy-construction & copy-assignment ops
+    OpenGLQuantizer(const OpenGLQuantizer&) = delete;
+    OpenGLQuantizer& operator= (const OpenGLQuantizer&) = delete;
 
-    OpenGLKMeansQuantizer();
-    ~OpenGLKMeansQuantizer();
+public:
+    
+    //
+    OpenGLQuantizer();
+    virtual ~OpenGLQuantizer();
 
     // Overloaded quantization functions for vir:: objects
     virtual void quantize

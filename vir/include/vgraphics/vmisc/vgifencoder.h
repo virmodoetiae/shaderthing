@@ -2,7 +2,7 @@
 #define V_GIF_ENCODER_H
 
 #include <string>
-#include "vgraphics/vmisc/vkmeansquantizer.h"
+#include "vgraphics/vpostprocess/vquantizer.h"
 
 class GifFileType;
 
@@ -25,8 +25,8 @@ public:
         bool flipVertically = false;
 
         //
-        KMeansQuantizer::Settings::DitherMode ditherMode = 
-            KMeansQuantizer::Settings::DitherMode::None;
+        Quantizer::Settings::DitherMode ditherMode = 
+            Quantizer::Settings::DitherMode::None;
         
         // 
         float ditherThreshold = 0;
@@ -61,9 +61,9 @@ protected:
     uint32_t width_, height_, paletteBitDepth_, paletteSize_;
     unsigned char* indexedTexture_;
     unsigned char* palette_;
-    KMeansQuantizer::Settings::IndexMode indexMode_;
+    Quantizer::Settings::IndexMode indexMode_;
 
-    KMeansQuantizer* quantizer_;
+    Quantizer* quantizer_;
     
     void encodeIndexedFrame(int delay, bool flipVertically);
 
@@ -71,8 +71,8 @@ public:
 
     GifEncoder
     (
-        KMeansQuantizer::Settings::IndexMode indexMode =
-        KMeansQuantizer::Settings::IndexMode::Default
+        Quantizer::Settings::IndexMode indexMode =
+            Quantizer::Settings::IndexMode::Default
     );
     ~GifEncoder();
 

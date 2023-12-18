@@ -4,7 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
-#include "vgraphics/vshader.h"
+#include "vgraphics/vcore/vshader.h"
 
 namespace vir
 {

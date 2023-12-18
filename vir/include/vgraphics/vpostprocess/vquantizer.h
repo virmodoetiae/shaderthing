@@ -1,7 +1,8 @@
-#ifndef V_KMEANS_QUANTIZER_H
-#define V_KMEANS_QUANTIZER_H
+#ifndef V_QUANTIZER_H
+#define V_QUANTIZER_H
 
-#include <string>
+#include "vgraphics/vpostprocess/vpostprocess.h"
+#include <unordered_map>
 
 namespace vir
 {
@@ -9,7 +10,9 @@ namespace vir
 class TextureBuffer2D;
 class Framebuffer;
 
-class KMeansQuantizer
+// A post-processing effect which quantizes the color range of an input
+// Framebuffer or TextureBuffer2D
+class Quantizer : public PostProcess
 {
 public:
 
@@ -121,18 +124,6 @@ struct Settings
 
 protected:
 
-    // Depending on the KMeansQuantizer implementation, it might not be able to
-    // run under certain systems. For example, the current implementation of
-    // the OpenGLKMeansQuantizer can only run if the min available OpenGL 
-    // version in use by the host system is OpenGL 4.3, because the current
-    // OpenGL implentation of the quantizer runs entirely off compute shaders,
-    // which are unavailable prior to OGL 4.3
-    bool canRunOnDeviceInUse_;
-    std::string errorMessage_;
-
-    //
-    Framebuffer* output_;
-
     // Size of the last quantized image
     uint32_t width_;
     uint32_t height_;
@@ -143,32 +134,27 @@ protected:
     // (Cached) set of settings used for the latest quantize call
     Settings settings_;
     
-    // Protected constructor as any instances of KMeansQuantizer are meant to be
+    // Protected constructor as any instances of Quantizer are meant to be
     // created via the static create function
-    KMeansQuantizer():
-        canRunOnDeviceInUse_(true),
-        output_(nullptr),
+    Quantizer() :
         width_(0),
         height_(0),
         paletteSize_(0),
         settings_({}){};
 
-    //
-    void prepareOutput(const Framebuffer* input);
-    void prepareOutput(const TextureBuffer2D* input);
+    // Delete copy-construction & copy-assignment ops
+    Quantizer(const Quantizer&) = delete;
+    Quantizer& operator= (const Quantizer&) = delete;
 
 public:
 
-    // Create a KMeansQuantizer-type object
-    static KMeansQuantizer* create();
+    // Create a Quantizer-type object
+    static Quantizer* create();
 
     // Destructor
-    virtual ~KMeansQuantizer();
+    virtual ~Quantizer(){}
 
     // Accessors
-    bool canRunOnDeviceInUse() const {return canRunOnDeviceInUse_;}
-    const std::string& errorMessage() const {return errorMessage_;}
-    Framebuffer* output() {return output_;}
     uint32_t width(){return width_;}
     uint32_t height(){return height_;}
     uint32_t paletteSize(){return paletteSize_;}

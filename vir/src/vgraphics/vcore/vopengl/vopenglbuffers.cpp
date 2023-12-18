@@ -1,5 +1,5 @@
 #include "vpch.h"
-#include "vgraphics/vopengl/vopenglbuffers.h"
+#include "vgraphics/vcore/vopengl/vopenglbuffers.h"
 #include "thirdparty/stb/stb_image.h"
 
 namespace vir

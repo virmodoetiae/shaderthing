@@ -4,7 +4,7 @@
 #include <string>
 #include "thirdparty/glm/glm.hpp"
 #include "thirdparty/glad/include/glad/glad.h"
-#include "vgraphics/vshader.h"
+#include "vgraphics/vcore/vshader.h"
 
 namespace vir
 {

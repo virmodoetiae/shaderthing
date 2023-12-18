@@ -2,7 +2,7 @@
 #define ST_UNIFORM_H
 
 #include "thirdparty/glm/glm.hpp"
-#include "vir/include/vgraphics/vshader.h"
+#include "vir/include/vgraphics/vcore/vshader.h"
 
 namespace ShaderThing
 {

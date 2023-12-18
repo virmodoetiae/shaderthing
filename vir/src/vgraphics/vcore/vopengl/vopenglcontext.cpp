@@ -1,5 +1,5 @@
 #include "vpch.h"
-#include "vgraphics/vopengl/vopenglcontext.h"
+#include "vgraphics/vcore/vopengl/vopenglcontext.h"
 
 namespace vir
 {

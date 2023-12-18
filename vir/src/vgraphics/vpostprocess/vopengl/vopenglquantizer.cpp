@@ -1,18 +1,18 @@
 #include "vpch.h"
 #include <cmath>
-#include "vgraphics/vmisc/vopengl/vopenglkmeansquantizer.h"
+#include "vgraphics/vpostprocess/vopengl/vopenglquantizer.h"
 
 namespace vir
 {
 
 // ComputeShaderStage-related ------------------------------------------------//
 
-OpenGLKMeansQuantizer::ComputeShaderStage::~ComputeShaderStage()
+OpenGLQuantizer::ComputeShaderStage::~ComputeShaderStage()
 {
     glDeleteProgram(id_);
 }
 
-void OpenGLKMeansQuantizer::ComputeShaderStage::compile()
+void OpenGLQuantizer::ComputeShaderStage::compile()
 {
     // Compile shader
     const char* sourceCstr = source_.c_str();
@@ -47,7 +47,7 @@ void OpenGLKMeansQuantizer::ComputeShaderStage::compile()
     glDeleteShader(computeShader0);
 }
 
-GLint OpenGLKMeansQuantizer::ComputeShaderStage::getUniformLocation
+GLint OpenGLQuantizer::ComputeShaderStage::getUniformLocation
 (
     std::string& uniformName
 )
@@ -64,7 +64,7 @@ GLint OpenGLKMeansQuantizer::ComputeShaderStage::getUniformLocation
     return location;
 }
 
-void OpenGLKMeansQuantizer::ComputeShaderStage::setUniformInt
+void OpenGLQuantizer::ComputeShaderStage::setUniformInt
 (
     std::string uniformName, 
     int value,
@@ -76,7 +76,7 @@ void OpenGLKMeansQuantizer::ComputeShaderStage::setUniformInt
     glUniform1i(getUniformLocation(uniformName), value);
 }
 
-void OpenGLKMeansQuantizer::ComputeShaderStage::setUniformFloat
+void OpenGLQuantizer::ComputeShaderStage::setUniformFloat
 (
     std::string uniformName, 
     float value,
@@ -88,12 +88,12 @@ void OpenGLKMeansQuantizer::ComputeShaderStage::setUniformFloat
     glUniform1f(getUniformLocation(uniformName), value);
 }
 
-void OpenGLKMeansQuantizer::ComputeShaderStage::use()
+void OpenGLQuantizer::ComputeShaderStage::use()
 {
     glUseProgram(id_);
 }
 
-void OpenGLKMeansQuantizer::ComputeShaderStage::run
+void OpenGLQuantizer::ComputeShaderStage::run
 (
     int x, 
     int y, 
@@ -107,10 +107,10 @@ void OpenGLKMeansQuantizer::ComputeShaderStage::run
 
 // OpenGLKMeanQuantizer static data ------------------------------------------//
 
-bool OpenGLKMeansQuantizer::computeShaderStagesCompiled = false;
+bool OpenGLQuantizer::computeShaderStagesCompiled = false;
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_findMaxSqrDistColSF32
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_findMaxSqrDistColSF32
     (
 R"(#version 460 core
 uniform int counter;
@@ -169,8 +169,8 @@ void main()
     }
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_setNextPaletteColSF32
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_setNextPaletteColSF32
     (
 R"(#version 460 core
 uniform int counter;
@@ -196,8 +196,8 @@ void main()
     imageStore(paletteData, d2MaxPos, uvec4(0,0,0,0));
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_buildClustersFromPaletteSF32
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_buildClustersFromPaletteSF32
     (
 R"(#version 460 core
 uniform int paletteSize;
@@ -235,8 +235,8 @@ void main()
     atomicCounterAdd(clusteringError, uint(d2m));
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_updatePaletteFromClustersSF32
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_updatePaletteFromClustersSF32
     (
 R"(#version 460 core
 layout(binding=0) uniform atomic_uint clusteringError;
@@ -280,8 +280,8 @@ void main()
     
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_quantizeInputSF32
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_quantizeInputSF32
     (
 R"(#version 460 core
 uniform int paletteSize;
@@ -394,8 +394,8 @@ void main()
 // Same compute shaders as above, but to operate on unsigned int and unsigned
 // normlaized int -type of textures
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_findMaxSqrDistColUI8
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_findMaxSqrDistColUI8
     (
 R"(#version 460 core
 uniform int counter;
@@ -450,8 +450,8 @@ void main()
     }
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_setNextPaletteColUI8
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_setNextPaletteColUI8
     (
 R"(#version 460 core
 uniform int counter;
@@ -473,8 +473,8 @@ void main()
     imageStore(paletteData, d2MaxPos, uvec4(0,0,0,0));
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_buildClustersFromPaletteUI8
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_buildClustersFromPaletteUI8
     (
 R"(#version 460 core
 uniform int paletteSize;
@@ -508,8 +508,8 @@ void main()
     atomicCounterAdd(clusteringError, uint(d2m));
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_updatePaletteFromClustersUI8
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_updatePaletteFromClustersUI8
     (
 R"(#version 460 core
 layout(binding=0) uniform atomic_uint clusteringError;
@@ -549,8 +549,8 @@ void main()
     
 })" );
 
-OpenGLKMeansQuantizer::ComputeShaderStage 
-    OpenGLKMeansQuantizer::computeShader_quantizeInputUI8
+OpenGLQuantizer::ComputeShaderStage 
+    OpenGLQuantizer::computeShader_quantizeInputUI8
     (
 R"(#version 460 core
 uniform int paletteSize;
@@ -658,7 +658,7 @@ void main()
 //----------------------------------------------------------------------------//
 // Private member functions
 
-void OpenGLKMeansQuantizer::quantizeOpenGLTexture
+void OpenGLQuantizer::quantizeOpenGLTexture
 (
     GLuint id,
     uint32_t width,
@@ -1288,7 +1288,7 @@ void OpenGLKMeansQuantizer::quantizeOpenGLTexture
     isFloat320 = isFloat32;
 }
 
-void OpenGLKMeansQuantizer::waitSync()
+void OpenGLQuantizer::waitSync()
 {
     if (firstWaitSyncCall_)
     {   
@@ -1304,7 +1304,7 @@ void OpenGLKMeansQuantizer::waitSync()
     }
 }
 
-void OpenGLKMeansQuantizer::resetSync()
+void OpenGLQuantizer::resetSync()
 {
     if (dataSync_)
         glDeleteSync(dataSync_);
@@ -1314,7 +1314,7 @@ void OpenGLKMeansQuantizer::resetSync()
 //----------------------------------------------------------------------------//
 // Constructor, destructor
 
-OpenGLKMeansQuantizer::OpenGLKMeansQuantizer() :
+OpenGLQuantizer::OpenGLQuantizer() :
 firstWaitSyncCall_(true)
 {
     auto context = GlobalPtr<Window>::instance()->context();
@@ -1338,7 +1338,7 @@ use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
     }
 
     // Compile compute shader stages
-    if (!OpenGLKMeansQuantizer::computeShaderStagesCompiled)
+    if (!OpenGLQuantizer::computeShaderStagesCompiled)
     {
         computeShader_findMaxSqrDistColSF32.compile();
         computeShader_setNextPaletteColSF32.compile();
@@ -1350,7 +1350,7 @@ use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
         computeShader_buildClustersFromPaletteUI8.compile();
         computeShader_updatePaletteFromClustersUI8.compile();
         computeShader_quantizeInputUI8.compile();
-        OpenGLKMeansQuantizer::computeShaderStagesCompiled = true;
+        OpenGLQuantizer::computeShaderStagesCompiled = true;
     }
 
     // Generate data texture (will be resized to the correct size during 
@@ -1441,7 +1441,7 @@ use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
 }
 
-OpenGLKMeansQuantizer::~OpenGLKMeansQuantizer()
+OpenGLQuantizer::~OpenGLQuantizer()
 {
     if (!canRunOnDeviceInUse_)
         return;
@@ -1454,7 +1454,7 @@ OpenGLKMeansQuantizer::~OpenGLKMeansQuantizer()
 }
 
 // 
-void OpenGLKMeansQuantizer::quantize
+void OpenGLQuantizer::quantize
 (
     TextureBuffer2D* input, 
     unsigned int paletteSize,
@@ -1479,7 +1479,7 @@ void OpenGLKMeansQuantizer::quantize
 }
 
 // 
-void OpenGLKMeansQuantizer::quantize
+void OpenGLQuantizer::quantize
 (
     Framebuffer* input, 
     unsigned int paletteSize,
@@ -1504,7 +1504,7 @@ void OpenGLKMeansQuantizer::quantize
     );
 }
 
-void OpenGLKMeansQuantizer::getPalette(unsigned char*& data, bool allocate)
+void OpenGLQuantizer::getPalette(unsigned char*& data, bool allocate)
 {
     if (!canRunOnDeviceInUse_)
         return;
@@ -1530,7 +1530,7 @@ void OpenGLKMeansQuantizer::getPalette(unsigned char*& data, bool allocate)
     resetSync();
 }
 
-void OpenGLKMeansQuantizer::getIndexedTexture
+void OpenGLQuantizer::getIndexedTexture
 (
     unsigned char*& data, 
     bool allocate

@@ -12,10 +12,10 @@ class QuantizationPostProcess : public PostProcess
 protected:
 
     // Native KMeans quantizer
-    vir::KMeansQuantizer* quantizer_;
+    vir::Quantizer* quantizer_;
 
     // Quantizer settings
-    vir::KMeansQuantizer::Settings settings_;
+    vir::Quantizer::Settings settings_;
 
     //
     unsigned int paletteSize_;

@@ -74,7 +74,7 @@ bool QuantizationTool::canRunOnDeviceInUse()
     if (quantizer_ == nullptr)  // Ehhh don't hate on me, If we could only have
                                 // virtual static functions in C++ this would
                                 // not have to look like this
-        quantizer_ = vir::KMeansQuantizer::create();
+        quantizer_ = vir::Quantizer::create();
     return quantizer_->canRunOnDeviceInUse();
 }
 
@@ -83,7 +83,7 @@ const std::string& QuantizationTool::errorMessage()
     if (quantizer_ == nullptr)  // Ehhh don't hate on me, If we could only have
                                 // virtual static functions in C++ this would
                                 // not have to look like this
-        quantizer_ = vir::KMeansQuantizer::create();
+        quantizer_ = vir::Quantizer::create();
     return quantizer_->errorMessage();
 }
 
@@ -192,7 +192,7 @@ void QuantizationTool::quantize(Layer* layer)
     if (layer->id() != targetLayer_->id() || !isActive_)
         return;
     if (quantizer_ == nullptr)
-        quantizer_ = vir::KMeansQuantizer::create();
+        quantizer_ = vir::Quantizer::create();
     if (layer->rendersTo() != Layer::RendersTo::Window)
     {
         static int paletteSize0(-1);
@@ -200,12 +200,12 @@ void QuantizationTool::quantize(Layer* layer)
         (
             1.0f-clusteringFidelity_*clusteringFidelity_
         );
-        vir::KMeansQuantizer::Settings options = {};
+        vir::Quantizer::Settings options = {};
         options.paletteData = paletteModified_ ? uIntPalette_ : nullptr;
         options.reseedPalette = firstQuantization_;
         options.recalculatePalette = autoUpdatePalette_ || firstQuantization_;
         options.ditherMode = 
-            (vir::KMeansQuantizer::Settings::DitherMode)ditheringLevel_;
+            (vir::Quantizer::Settings::DitherMode)ditheringLevel_;
         options.ditherThreshold = ditheringThreshold_;
         options.relTol = clusteringTolerance;
         options.alphaCutoff = isAlphaCutoff_ ? alphaCutoffThreshold_ : -1;

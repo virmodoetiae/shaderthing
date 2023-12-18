@@ -1,5 +1,5 @@
 #include "vpch.h"
-#include "vgraphics/vopengl/vopenglshader.h"
+#include "vgraphics/vcore/vopengl/vopenglshader.h"
 
 namespace vir
 {

@@ -18,22 +18,22 @@ void GifEncoder::encodeIndexedFrame
     fputc(0x04, file_);
     switch(indexMode_)
     {
-        case KMeansQuantizer::Settings::IndexMode::Default :
+        case Quantizer::Settings::IndexMode::Default :
             fputc(0b00001000, file_);   // Old frame reset to no color,
                                         // no transparency
             break;
-        case KMeansQuantizer::Settings::IndexMode::Alpha :
+        case Quantizer::Settings::IndexMode::Alpha :
             fputc(0b00001001, file_);   // Old frame reset to no color, 
                                         // enable transparency
             break;
-        case KMeansQuantizer::Settings::IndexMode::Delta :
+        case Quantizer::Settings::IndexMode::Delta :
             fputc(0b00000101, file_);   // Old frame left in place, 
                                         // enable transparency
             break;
     }
     fputc(delay & 0xff, file_);
     fputc((delay >> 8) & 0xff, file_);
-    //if (indexMode_ != KMeansQuantizer::Settings::IndexMode::Default)
+    //if (indexMode_ != Quantizer::Settings::IndexMode::Default)
     fputc(0, file_); // Transparent color index (Apparently I need this 
                      // regardless of the transparency color flag, in
                      // spite of the GIF89a specs, or the GIF, while 
@@ -60,7 +60,7 @@ void GifEncoder::encodeIndexedFrame
     fputc(0x80 + paletteBitDepth_-1, file_);
     
     // Write dummy color which will be used for transparency only
-    if (indexMode_ != KMeansQuantizer::Settings::IndexMode::Default)
+    if (indexMode_ != Quantizer::Settings::IndexMode::Default)
     {
         fputc(0, file_);
         fputc(0, file_);
@@ -152,7 +152,7 @@ void GifEncoder::encodeIndexedFrame
             [
                 flipVertically ? (height_-1-y)*width_+x : y*width_+x
             ];
-            if (indexMode_ != KMeansQuantizer::Settings::IndexMode::Default)
+            if (indexMode_ != Quantizer::Settings::IndexMode::Default)
             {
                 if (nextValue == paletteSize_)
                     nextValue = 0;
@@ -193,7 +193,7 @@ void GifEncoder::encodeIndexedFrame
 
 // Public functions ----------------------------------------------------------//
 
-GifEncoder::GifEncoder(KMeansQuantizer::Settings::IndexMode indexMode):
+GifEncoder::GifEncoder(Quantizer::Settings::IndexMode indexMode):
     file_(nullptr),
     firstFrame_(false),
     width_(0),
@@ -201,7 +201,7 @@ GifEncoder::GifEncoder(KMeansQuantizer::Settings::IndexMode indexMode):
     paletteSize_(0),
     indexMode_(indexMode)
 {
-    quantizer_ = vir::KMeansQuantizer::create();
+    quantizer_ = Quantizer::create();
 }
 
 GifEncoder::~GifEncoder()
@@ -229,10 +229,7 @@ bool GifEncoder::openFile
     // I need to reserve one color as the 'transparent' color for delta or alpha
     // encoding only if my paletteSize is already at max capacity, i.e. 256 (due 
     // to the GIF format limitations)
-    if 
-    ( 
-        indexMode_ != KMeansQuantizer::Settings::IndexMode::Default
-    )
+    if (indexMode_ != Quantizer::Settings::IndexMode::Default)
     {
         paletteBitDepth_ = std::min(paletteBitDepth_+1, 8u);
         if (paletteSize_ == 256)
@@ -298,7 +295,7 @@ void GifEncoder::encodeFrame
 {
     if (file_ == nullptr)
         return;
-    KMeansQuantizer::Settings quantizerOptions = {};
+    Quantizer::Settings quantizerOptions = {};
     quantizerOptions.ditherMode = options.ditherMode;
     quantizerOptions.ditherThreshold = options.ditherThreshold;
     quantizerOptions.indexMode = indexMode_;
@@ -308,30 +305,14 @@ void GifEncoder::encodeFrame
     quantizerOptions.alphaCutoff = options.alphaCutoff;
     quantizerOptions.regenerateMipmap = true;
     quantizerOptions.fastKMeans = true;
+    quantizerOptions.overwriteInput = true;
     quantizer_->quantize
     (
         frame, 
         paletteSize_, 
         quantizerOptions
-        /*nullptr,
-        ditherLevel, 
-        firstFrame_,
-        updatePalette,
-        0,
-        ditherThreshold,
-        -1,
-        true,
-        true,
-        true*/
     );
     quantizer_->getIndexedTexture(indexedTexture_, firstFrame_);
-    /*
-    for (int i = 0; i<width_*height_; i++)
-    {
-        std::cout << (int)(indexedTexture_[i]) << " ";
-        if (i % width_ == 0)
-            std::cout << std::endl;
-    }*/
     quantizer_->getPalette(palette_, firstFrame_);
     if (firstFrame_)
         firstFrame_ = false;
@@ -350,7 +331,7 @@ void GifEncoder::encodeFrame
 {
     if (file_ == nullptr)
         return;
-    KMeansQuantizer::Settings quantizerOptions = {};
+    Quantizer::Settings quantizerOptions = {};
     quantizerOptions.ditherMode = options.ditherMode;
     quantizerOptions.ditherThreshold = options.ditherThreshold;
     quantizerOptions.indexMode = indexMode_;
@@ -360,44 +341,14 @@ void GifEncoder::encodeFrame
     quantizerOptions.alphaCutoff = options.alphaCutoff;
     quantizerOptions.regenerateMipmap = true;
     quantizerOptions.fastKMeans = true;
-    /*
-    Framebuffer* input, 
-    uint32_t paletteSize, 
-    unsigned char* palette,
-    uint32_t ditherLevel,
-    bool reseedPalette,
-    bool recalculatePalette, 
-    float relTol,
-    float ditherThreshold,
-    int alphaCutoff,
-    bool regenerateMipmap,
-    bool fastKMeans,
-    bool computeDelta,
-    uint32_t inputUnit
-    */
+    quantizerOptions.overwriteInput = true;
     quantizer_->quantize
     (
         frame, 
         paletteSize_, 
         quantizerOptions
-        /*nullptr,
-        ditherLevel, 
-        firstFrame_,
-        updatePalette,
-        0,
-        ditherThreshold,
-        -1,
-        true,
-        true,
-        true*/
     );
     quantizer_->getIndexedTexture(indexedTexture_, firstFrame_);
-    /*for (int i = 0; i<width_*height_; i++)
-    {
-        std::cout << (int)(indexedTexture_[i]) << " ";
-        if ((i+1) % width_ == 0)
-            std::cout << std::endl;
-    }*/
     quantizer_->getPalette(palette_, firstFrame_);
     if (firstFrame_)
         firstFrame_ = false;

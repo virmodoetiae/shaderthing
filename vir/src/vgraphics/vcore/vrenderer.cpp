@@ -1,5 +1,5 @@
 #include "vpch.h"
-#include "vgraphics/vopengl/vopenglrenderer.h"
+#include "vgraphics/vcore/vopengl/vopenglrenderer.h"
 
 // This bit of code ensures that the most powerful GPU on the system (if there
 // are more than one) is used, at least on Windows. On other systems, I have

@@ -18,7 +18,7 @@
 
 #include <string>
 #include <vector>
-
+#include "vir/include/vir.h"
 #include "thirdparty/glm/glm.hpp"
 
 namespace ShaderThing

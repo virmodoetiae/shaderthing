@@ -1,7 +1,7 @@
 #ifndef V_OPENGL_RENDERER_H
 #define V_OPENGL_RENDERER_H
 
-#include "vgraphics/vrenderer.h"
+#include "vgraphics/vcore/vrenderer.h"
 
 namespace vir
 {

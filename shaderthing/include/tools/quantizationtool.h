@@ -71,7 +71,7 @@ protected:
     // Level of dithering. 0 is no dithering, 1 is ordered dithering with a
     // 2x2 kernel, 2 is dithering with a 4x4 kernel.
     // This currently uses an int instead of a
-    // vir::KMeansQuantizer::Settings::DitherMode enum because of legacy
+    // vir::Quantizer::Settings::DitherMode enum because of legacy
     // implementation reasons, should be updated at some point
     int ditheringLevel_;
 
@@ -91,7 +91,7 @@ protected:
     int alphaCutoffThreshold_;
 
     // Reference to native vir KMean quantizer
-    vir::KMeansQuantizer* quantizer_;
+    vir::Quantizer* quantizer_;
 
     // Palette data of size 3*paletteSize_, with each value in the [0,255] range
     unsigned char* uIntPalette_;
@@ -141,7 +141,7 @@ public:
     void saveState(ObjectIO& writer);
 
     // Returns false if the QuantizationTool cannot run on the current hardware.
-    // Related to the fact that the underlying vir::OpenGLKMeansQuantizer
+    // Related to the fact that the underlying vir::OpenGLQuantizer
     // requires OpenGL version 4.3 or greater to run (while ShaderThing can run
     // on OpenGL version 3.3 or higher)
     bool canRunOnDeviceInUse();

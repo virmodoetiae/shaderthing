@@ -1,6 +1,6 @@
 #include "vpch.h"
-#include "vgraphics/vopengl/vopenglshader.h"
-#include "vgraphics/vbuffers.h"
+#include "vgraphics/vcore/vopengl/vopenglshader.h"
+#include "vgraphics/vcore/vbuffers.h"
 
 namespace vir
 {

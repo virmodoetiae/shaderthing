@@ -12,7 +12,7 @@ QuantizationPostProcess::QuantizationPostProcess
     Layer* inputLayer
 ) :
 PostProcess(app, inputLayer, Type::Quantization),
-quantizer_(vir::KMeansQuantizer::create()),
+quantizer_(vir::Quantizer::create()),
 settings_({}),
 paletteSize_(4),
 uIntPalette_(nullptr),
@@ -41,7 +41,7 @@ void QuantizationPostProcess::resetSettings()
     settings_.reseedPalette = true;
     settings_.recalculatePalette = true;
     settings_.paletteData = nullptr;
-    settings_.ditherMode = vir::KMeansQuantizer::Settings::DitherMode::None;
+    settings_.ditherMode = vir::Quantizer::Settings::DitherMode::None;
     settings_.alphaCutoff = -1;
     settings_.regenerateMipmap = true;
     settings_.fastKMeans = true;

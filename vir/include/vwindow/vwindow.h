@@ -2,7 +2,7 @@
 #define V_WINDOW_H
 
 #include "veventsystem/vreceiver.h"
-#include "vgraphics/vgraphicscontext.h"
+#include "vgraphics/vcore/vgraphicscontext.h"
 #include "vglobalptr.h"
 
 namespace vir

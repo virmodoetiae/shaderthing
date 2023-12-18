@@ -1,8 +1,8 @@
 #include "vpch.h"
 #include "vwindow/vglfwopenglwindow.h"
 #include "vtime/vglfwtime.h"
-#include "vgraphics/vbuffers.h"
-#include "vgraphics/vopengl/vopenglcontext.h"
+#include "vgraphics/vcore/vbuffers.h"
+#include "vgraphics/vcore/vopengl/vopenglcontext.h"
 #include "thirdparty/stb/stb_image.h"
 
 namespace vir
