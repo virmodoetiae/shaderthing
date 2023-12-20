@@ -60,12 +60,20 @@ protected:
 
 public:
     
-    // Create a post-processing
+    // Create a post-processing effect from scratch
     static PostProcess* create
     (
         ShaderThingApp& app, 
         Layer* inputLayer, 
         Type type
+    );
+
+    // Create a post-processing effect from serialized data
+    static PostProcess* create
+    (
+        ShaderThingApp& app, 
+        Layer* inputLayer, 
+        ObjectIO& reader
     );
     
     //
@@ -83,11 +91,6 @@ public:
     // Return access to output framebuffer with the applied post-processing 
     // effect
     virtual vir::Framebuffer* outputFramebuffer() = 0;
-
-    // Re-initialize all object members from the data stored in the provided
-    // reader object. An ObjectIO object is fundamentally a JSON file in a C++
-    // context
-    virtual void loadState(const ObjectIO& reader) = 0;
 
     // Serialize all object members to the provided writer object, which is
     // to be written to disk. An ObjectIO object is fundamentally a JSON file

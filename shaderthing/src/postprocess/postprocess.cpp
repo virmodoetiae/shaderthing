@@ -43,6 +43,32 @@ PostProcess* PostProcess::create
     }
 }
 
+// Create a post-processing effect from serialized data
+PostProcess* PostProcess::create
+(
+    ShaderThingApp& app, 
+    Layer* inputLayer, 
+    ObjectIO& reader
+)
+{
+    std::string name = reader.name();
+    Type type;
+    for (auto kv : PostProcess::typeToName)
+    {
+        if (kv.second == name)
+            type = kv.first;
+    }
+    switch(type)
+    {
+        case Type::Quantization :
+            return new QuantizationPostProcess(app, inputLayer, reader);
+        case Type::Bloom :
+            return nullptr;
+        default:
+            return nullptr;
+    }
+}
+
 void PostProcess::replaceInputLayerWriteOnlyFramebuffer()
 {
     inputLayer_->writeOnlyFramebuffer_ = outputFramebuffer();

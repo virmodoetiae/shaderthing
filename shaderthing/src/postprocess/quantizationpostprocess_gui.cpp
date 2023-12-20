@@ -151,7 +151,7 @@ void QuantizationPostProcess::renderGui()
 
     if (!settings_.recalculatePalette)
         if (ImGui::Button("Refresh palette", ImVec2(-1, 0.0f)))
-            settings_.reseedPalette = true;
+            refreshPalette_ = true;
 
     if (floatPalette_ != nullptr)
     {

@@ -32,12 +32,23 @@ protected:
     bool paletteModified_;
 
     //
+    bool refreshPalette_;
+
+    //
     void resetSettings();
 
 public:
     
     //
     QuantizationPostProcess(ShaderThingApp& app, Layer* inputLayer);
+
+    //
+    QuantizationPostProcess
+    (
+        ShaderThingApp& app, 
+        Layer* inputLayer,
+        ObjectIO& reader
+    );
 
     //
     virtual ~QuantizationPostProcess();
@@ -54,11 +65,6 @@ public:
     // Return access to output framebuffer with the applied post-processing 
     // effect
     vir::Framebuffer* outputFramebuffer() override;
-
-    // Re-initialize all object members from the data stored in the provided
-    // reader object. An ObjectIO object is fundamentally a JSON file in a C++
-    // context
-    void loadState(const ObjectIO& reader) override;
 
     // Serialize all object members to the provided writer object, which is
     // to be written to disk. An ObjectIO object is fundamentally a JSON file

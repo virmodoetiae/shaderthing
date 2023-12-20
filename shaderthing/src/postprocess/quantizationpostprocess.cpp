@@ -17,10 +17,50 @@ settings_({}),
 paletteSize_(4),
 uIntPalette_(nullptr),
 floatPalette_(nullptr),
-paletteModified_(false)
+paletteModified_(false),
+refreshPalette_(false)
 {
     type_ = PostProcess::Type::Quantization;
     reset();
+}
+
+QuantizationPostProcess::QuantizationPostProcess
+(
+    ShaderThingApp& app,
+    Layer* inputLayer,
+    ObjectIO& reader
+) :
+PostProcess(app, inputLayer, Type::Quantization),
+quantizer_(vir::Quantizer::create()),
+settings_({}),
+paletteSize_(4),
+uIntPalette_(nullptr),
+floatPalette_(nullptr),
+paletteModified_(false),
+refreshPalette_(false)
+{
+    type_ = PostProcess::Type::Quantization;
+    reset();
+    isActive_ = reader.read<bool>("active");
+    settings_.ditherMode = 
+        (vir::Quantizer::Settings::DitherMode)reader.read<int>("ditherMode");
+    settings_.ditherThreshold = reader.read<float>("ditherThreshold");
+    settings_.relTol = reader.read<float>("quantizationTolerance");
+    settings_.alphaCutoff = reader.read<int>(
+        "transparencyCutoffThreshold");
+    settings_.recalculatePalette = reader.read<bool>("dynamicPalette");
+    settings_.reseedPalette = true;
+    if (!reader.hasMember("paletteData"))
+        return;
+    unsigned int paletteSizeX3;
+    uIntPalette_ = (unsigned char*)reader.read("paletteData", true, 
+        &paletteSizeX3);
+    paletteSize_ = paletteSizeX3/3;
+    floatPalette_ = new float[paletteSizeX3];
+    for (int i=0; i<paletteSizeX3; i++)
+        floatPalette_[i] = (float)uIntPalette_[i]/255.0;
+    paletteModified_ = !settings_.recalculatePalette;
+    settings_.reseedPalette = false;
 }
 
 QuantizationPostProcess::~QuantizationPostProcess()
@@ -77,6 +117,8 @@ void QuantizationPostProcess::run()
         return;
     static int paletteSize0(-1);
     settings_.paletteData = paletteModified_ ? uIntPalette_ : nullptr;
+    if (refreshPalette_)
+        settings_.reseedPalette = true;
     if (settings_.reseedPalette)
         settings_.recalculatePalette = true;
     
@@ -86,6 +128,12 @@ void QuantizationPostProcess::run()
         paletteSize_,
         settings_
     );
+
+    if (refreshPalette_)
+    {
+        refreshPalette_ = false;
+        settings_.recalculatePalette = false;
+    }
 
     bool paletteSizeModified(paletteSize0!=paletteSize_);
     if (paletteSizeModified)
@@ -120,20 +168,27 @@ vir::Framebuffer* QuantizationPostProcess::outputFramebuffer()
     return quantizer_->output();
 }
 
-// Re-initialize all object members from the data stored in the provided
-// reader object. An ObjectIO object is fundamentally a JSON file in a C++
-// context
-void QuantizationPostProcess::loadState(const ObjectIO& reader)
-{
-
-}
-
 // Serialize all object members to the provided writer object, which is
 // to be written to disk. An ObjectIO object is fundamentally a JSON file
 // in a C++ context
 void QuantizationPostProcess::saveState(ObjectIO& writer)
 {
-
+    writer.writeObjectStart(PostProcess::typeToName.at(type_).c_str());
+    writer.write("active", isActive_);
+    writer.write("ditherMode", (int)settings_.ditherMode);
+    writer.write("ditherThreshold", settings_.ditherThreshold);
+    writer.write("quantizationTolerance", settings_.relTol);
+    writer.write("transparencyCutoffThreshold", settings_.alphaCutoff);
+    writer.write("dynamicPalette", settings_.recalculatePalette);
+    if (uIntPalette_ != nullptr)
+        writer.write
+        (
+            "paletteData", 
+            (const char*)uIntPalette_, 
+            3*paletteSize_, 
+            true
+        );
+    writer.writeObjectEnd(); // End of quantizer
 }
 
 }

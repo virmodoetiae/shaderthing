@@ -655,6 +655,15 @@ void Layer::saveState(ObjectIO& writer)
     }
     writer.writeObjectEnd(); // End of uniforms
     writer.writeObjectEnd(); // End of shaders
+
+    // Write post-processing effects data, if any
+    if (postProcesses_.size() > 0)
+    {
+        writer.writeObjectStart("postProcesses");
+        for (auto postProcess : postProcesses_)
+            postProcess->saveState(writer);
+    }
+    writer.writeObjectEnd(); // End of postProcesses
     writer.writeObjectEnd(); // End of 'name_'
 }
 
@@ -1527,6 +1536,20 @@ internalFramebufferClearPolicyOnExport_
     };
     setWrapFilterSettings(framebufferA_);
     setWrapFilterSettings(framebufferB_);
+
+    // Initialize post-processing effects, if any were saved
+    if (reader.hasMember("postProcesses"))
+    {
+        auto postProcessData = reader.readObject("postProcesses");
+        for (auto name : postProcessData.members())
+        {
+            ObjectIO data(postProcessData.readObject(name));
+            postProcesses_.emplace_back
+            (
+                PostProcess::create(app_, this, data)
+            );
+        }
+    }
 
     //
     if (rendersTo_ != RendersTo::Window)
