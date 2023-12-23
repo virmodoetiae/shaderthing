@@ -73,7 +73,7 @@ sharedUniforms_(0)
     layerManager_ = new LayerManager(*this);
     resourceManager_ = new ResourceManager(*this);
     exportTool_ = new ExportTool(*this);
-    quantizationTool_ = new QuantizationTool(*this);
+    //quantizationTool_ = new QuantizationTool(*this);
     findReplaceTextTool_ = new FindReplaceTextTool();
     codeRepository_ = new CodeRepository();
     about_ = new About();
@@ -104,7 +104,7 @@ ShaderThingApp::~ShaderThingApp()
     delete layerManager_;
     delete resourceManager_;
     delete exportTool_;
-    delete quantizationTool_;
+    //delete quantizationTool_;
     delete codeRepository_;
     delete about_;
 }
@@ -309,7 +309,7 @@ void ShaderThingApp::reset()
     layerManager_->reset();
     resourceManager_->reset();
     exportTool_->reset();
-    quantizationTool_->reset();
+    //quantizationTool_->reset();
     exportTool_->reset();
 
     static bool startup(true);
@@ -480,7 +480,7 @@ void ShaderThingApp::saveProject(){
 
     resourceManager_->saveState(project);
     layerManager_->saveState(project);
-    quantizationTool_->saveState(project);
+    //quantizationTool_->saveState(project);
     exportTool_->saveState(project);
 }
 
@@ -529,7 +529,7 @@ void ShaderThingApp::loadProject()
 
     resourceManager_->loadState(project);
     layerManager_->loadState(project);
-    quantizationTool_->loadState(project);
+    //quantizationTool_->loadState(project);
     exportTool_->loadState(project);
     restartRendering(false);
 

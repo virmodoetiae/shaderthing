@@ -83,7 +83,7 @@ private:
     // Components
     LayerManager* layerManager_ = nullptr;
     ResourceManager* resourceManager_ = nullptr;
-    QuantizationTool* quantizationTool_ = nullptr;
+    //QuantizationTool* quantizationTool_ = nullptr;
     ExportTool* exportTool_ = nullptr;
     FindReplaceTextTool* findReplaceTextTool_ = nullptr;
     CodeRepository* codeRepository_ = nullptr;
@@ -154,7 +154,7 @@ public:
     std::vector<Uniform*> sharedUniformsRef(){return sharedUniforms_;}
     LayerManager& layerManagerRef(){return *layerManager_;}
     ResourceManager& resourceManagerRef(){return *resourceManager_;}
-    QuantizationTool& quantizationToolRef() {return *quantizationTool_;}
+    //QuantizationTool& quantizationToolRef() {return *quantizationTool_;}
     ExportTool& exportToolRef() {return *exportTool_;}
     FindReplaceTextTool& findReplaceTextToolRef(){return *findReplaceTextTool_;}
 

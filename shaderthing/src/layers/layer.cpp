@@ -329,7 +329,7 @@ Layer::~Layer()
     app_.resourceManagerRef().removeLayerAsResource(this);
 
     // (Try to) Unregister from quantizer
-    app_.quantizationToolRef().removeLayerAsTarget(this);
+    //app_.quantizationToolRef().removeLayerAsTarget(this);
 
     // Delete all managed resources
     for (auto* pp : postProcesses_)
@@ -395,10 +395,10 @@ void Layer::render(vir::Framebuffer* target, bool clearTarget)
     // Actual render call
     renderer_.submit
     (
-        *screenQuad_, 
-        shader_, 
-        target, 
-        clearTarget || 
+        *screenQuad_,
+        shader_,
+        target,
+        clearTarget ||
         rendersTo_ != RendersTo::Window  // Force clear if not
                                          // rendering to window
     );
@@ -410,6 +410,8 @@ void Layer::render(vir::Framebuffer* target, bool clearTarget)
 
     // Check if layer should be quantized
     // app_.quantizationToolRef().quantize(this);
+
+    // Apply post-processing effects, if any
     for (auto postProcess : postProcesses_)
         postProcess->run();
 

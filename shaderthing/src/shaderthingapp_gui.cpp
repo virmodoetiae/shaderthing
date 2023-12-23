@@ -397,6 +397,7 @@ resetting the iFrame uniform (Ctrl+R))"
             OZ_MENU_ENTRY(resourceManager_, "Resource manager")
             ImGui::EndMenu();
         }
+        /*
         if (ImGui::BeginMenu("Effects"))
         {
             OZ_MENU_ENTRY_DISABLEABLE
@@ -407,7 +408,7 @@ resetting the iFrame uniform (Ctrl+R))"
                 quantizationTool_->errorMessage().c_str()
             )
             ImGui::EndMenu();
-        }
+        }*/
         if (ImGui::BeginMenu("Find"))
         {
             findReplaceTextTool_->renderGuiMenu();
@@ -446,8 +447,8 @@ resetting the iFrame uniform (Ctrl+R))"
     layerManager_->renderGui();
     if (!resourceManager_->isGuiInMenu())
         resourceManager_->renderGui();
-    if (!quantizationTool_->isGuiInMenu())
-        quantizationTool_->renderGui();
+    //if (!quantizationTool_->isGuiInMenu())
+    //    quantizationTool_->renderGui();
     if (!exportTool_->isGuiInMenu())
         exportTool_->renderGui();
 
