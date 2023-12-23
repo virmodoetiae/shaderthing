@@ -7,23 +7,25 @@
 namespace ShaderThing
 {
 
-std::unordered_map<PostProcess::Type, std::string> PostProcess::typeToName = 
-{
-    {PostProcess::Type::Bloom, "Bloom"},
-    {PostProcess::Type::Quantization, "Quantization"}
-};
-
 PostProcess::PostProcess
 (
     ShaderThingApp& app,
     Layer* inputLayer,
-    Type type
+    vir::PostProcess* nativePostProcess
 ):
 app_(app),
+nativePostProcess_(nativePostProcess),
 inputLayer_(inputLayer),
-type_(type),
-name_(typeToName.at(type))
+name_(nativePostProcess->typeName())
 {}
+
+PostProcess::~PostProcess()
+{
+    if (nativePostProcess_ == nullptr)
+        return;
+    delete nativePostProcess_;
+    nativePostProcess_ = nullptr;
+}
 
 PostProcess* PostProcess::create
 (
@@ -34,9 +36,9 @@ PostProcess* PostProcess::create
 {
     switch(type)
     {
-        case Type::Quantization :
+        case vir::PostProcess::Type::Quantization :
             return new QuantizationPostProcess(app, inputLayer);
-        case Type::Bloom :
+        case vir::PostProcess::Type::Bloom :
             return nullptr;
         default:
             return nullptr;
@@ -46,23 +48,23 @@ PostProcess* PostProcess::create
 // Create a post-processing effect from serialized data
 PostProcess* PostProcess::create
 (
-    ShaderThingApp& app, 
-    Layer* inputLayer, 
+    ShaderThingApp& app,
+    Layer* inputLayer,
     ObjectIO& reader
 )
 {
     std::string name = reader.name();
     Type type;
-    for (auto kv : PostProcess::typeToName)
+    for (auto kv : vir::PostProcess::typeToName)
     {
         if (kv.second == name)
             type = kv.first;
     }
     switch(type)
     {
-        case Type::Quantization :
+        case vir::PostProcess::Type::Quantization :
             return new QuantizationPostProcess(app, inputLayer, reader);
-        case Type::Bloom :
+        case vir::PostProcess::Type::Bloom :
             return nullptr;
         default:
             return nullptr;

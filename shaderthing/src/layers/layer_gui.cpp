@@ -363,8 +363,17 @@ locked to that of the main window)"
                 else
                     iActive = -1;
                 // Render post-processing effect GUI
-                *(postProcess->isGuiOpenPtr()) = true;
-                postProcess->renderGui();
+                if (!postProcess->canRunOnDeviceInUse())
+                {
+                    ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
+                    ImGui::Text(postProcess->errorMessage().c_str());
+                    ImGui::PopTextWrapPos();
+                }
+                else
+                {
+                    *(postProcess->isGuiOpenPtr()) = true;
+                    postProcess->renderGui();
+                }
                 ImGui::EndMenu();
             }
             else
@@ -391,14 +400,15 @@ locked to that of the main window)"
             )
         )
         {
-            static std::vector<PostProcess::Type> allAvailableTypes(0);
+            static std::vector<vir::PostProcess::Type> allAvailableTypes(0);
             if (allAvailableTypes.size() == 0)
             {
-                allAvailableTypes.reserve(PostProcess::typeToName.size());
-                for (auto kv : PostProcess::typeToName)
+                allAvailableTypes.reserve(vir::PostProcess::typeToName.size());
+                for (auto kv : vir::PostProcess::typeToName)
                     allAvailableTypes.push_back(kv.first);
             }
-            std::vector<PostProcess::Type> availableTypes(allAvailableTypes);
+            std::vector<vir::PostProcess::Type> 
+                availableTypes(allAvailableTypes);
             for (auto* postProcess : postProcesses_)
             {
                 auto it = std::find
@@ -412,7 +422,13 @@ locked to that of the main window)"
             }
             for (auto type : availableTypes)
             {
-                if (ImGui::Selectable(PostProcess::typeToName.at(type).c_str()))
+                if 
+                (
+                    ImGui::Selectable
+                    (
+                        vir::PostProcess::typeToName.at(type).c_str()
+                    )
+                )
                 {
                     PostProcess* postProcess = 
                         PostProcess::create(app_, this, type);

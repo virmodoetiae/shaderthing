@@ -3,6 +3,8 @@
 #include "layers/layer.h"
 #include "objectio/objectio.h"
 
+typedef vir::Quantizer nativeType;
+
 namespace ShaderThing
 {
 
@@ -11,8 +13,7 @@ QuantizationPostProcess::QuantizationPostProcess
     ShaderThingApp& app,
     Layer* inputLayer
 ) :
-PostProcess(app, inputLayer, Type::Quantization),
-quantizer_(vir::Quantizer::create()),
+PostProcess(app, inputLayer, vir::Quantizer::create()),
 settings_({}),
 paletteSize_(4),
 uIntPalette_(nullptr),
@@ -20,7 +21,6 @@ floatPalette_(nullptr),
 paletteModified_(false),
 refreshPalette_(false)
 {
-    type_ = PostProcess::Type::Quantization;
     reset();
 }
 
@@ -30,8 +30,7 @@ QuantizationPostProcess::QuantizationPostProcess
     Layer* inputLayer,
     ObjectIO& reader
 ) :
-PostProcess(app, inputLayer, Type::Quantization),
-quantizer_(vir::Quantizer::create()),
+PostProcess(app, inputLayer, vir::Quantizer::create()),
 settings_({}),
 paletteSize_(4),
 uIntPalette_(nullptr),
@@ -39,7 +38,6 @@ floatPalette_(nullptr),
 paletteModified_(false),
 refreshPalette_(false)
 {
-    type_ = PostProcess::Type::Quantization;
     reset();
     isActive_ = reader.read<bool>("active");
     settings_.ditherMode = 
@@ -65,9 +63,6 @@ refreshPalette_(false)
 
 QuantizationPostProcess::~QuantizationPostProcess()
 {
-    if (quantizer_ != nullptr)
-        delete quantizer_;
-    quantizer_ = nullptr;
     if (uIntPalette_ != nullptr)
         delete[] uIntPalette_;
     uIntPalette_ = nullptr;
@@ -111,7 +106,7 @@ void QuantizationPostProcess::run()
     (
         !isActive_ || 
         inputLayer_ == nullptr ||
-        !quantizer_->canRunOnDeviceInUse() || 
+        !canRunOnDeviceInUse() || 
         inputLayer_->rendersTo() == Layer::RendersTo::Window
     )
         return;
@@ -122,7 +117,7 @@ void QuantizationPostProcess::run()
     if (settings_.reseedPalette)
         settings_.recalculatePalette = true;
     
-    quantizer_->quantize
+    ((nativeType*)nativePostProcess_)->quantize
     (
         inputLayer_->writeOnlyFramebuffer(),
         paletteSize_,
@@ -149,7 +144,11 @@ void QuantizationPostProcess::run()
         // Re-alloc of uIntPalette happens in quanizer_->getPalette
         // uIntPalette_ = new unsigned char[3*paletteSize_];
     }
-    quantizer_->getPalette(uIntPalette_, paletteSizeModified);
+    ((nativeType*)nativePostProcess_)->getPalette
+    (
+        uIntPalette_, 
+        paletteSizeModified
+    );
     for (int i = 0; i < 3*paletteSize_; i++)
         floatPalette_[i] = uIntPalette_[i]/255.0f;
     if (settings_.reseedPalette)
@@ -161,19 +160,12 @@ void QuantizationPostProcess::run()
     replaceInputLayerWriteOnlyFramebuffer();
 }
 
-// Return access to output framebuffer with the applied post-processing 
-// effect
-vir::Framebuffer* QuantizationPostProcess::outputFramebuffer()
-{
-    return quantizer_->output();
-}
-
 // Serialize all object members to the provided writer object, which is
 // to be written to disk. An ObjectIO object is fundamentally a JSON file
 // in a C++ context
 void QuantizationPostProcess::saveState(ObjectIO& writer)
 {
-    writer.writeObjectStart(PostProcess::typeToName.at(type_).c_str());
+    writer.writeObjectStart(nativePostProcess_->typeName().c_str());
     writer.write("active", isActive_);
     writer.write("ditherMode", (int)settings_.ditherMode);
     writer.write("ditherThreshold", settings_.ditherThreshold);

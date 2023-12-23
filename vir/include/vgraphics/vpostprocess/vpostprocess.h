@@ -11,7 +11,20 @@ class Framebuffer;
 
 class PostProcess
 {
+public:
+
+    enum class Type
+    {
+        Quantization = 0,
+        Bloom = 1
+    };
+
+    static std::unordered_map<Type, std::string> typeToName;
+
 protected:
+
+    //
+    const Type type_;
 
     // Output framebuffer
     Framebuffer* output_;
@@ -27,7 +40,7 @@ protected:
 
     // Protected as this base class is not supposed to be instantiable
     // on its own
-    PostProcess();
+    PostProcess(Type type);
 
     // Delete copy-construction & copy-assignment ops
     PostProcess(const PostProcess&) = delete;
@@ -43,6 +56,12 @@ public:
 
     // Destructor
     virtual ~PostProcess();
+
+    //
+    Type type() const {return type_;}
+
+    //
+    std::string typeName() const {return typeToName.at(type_);}
 
     // Output framebuffer for this post-processing effect
     Framebuffer* output() {return output_;}

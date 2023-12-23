@@ -4,10 +4,14 @@
 #include "unordered_map"
 #include "string"
 
+#include "vir/include/vgraphics/vpostprocess/vpostprocess.h"
+
 namespace vir
 {
     class Framebuffer;
 }
+
+typedef vir::PostProcess::Type Type;
 
 namespace ShaderThing
 {
@@ -18,23 +22,13 @@ class ObjectIO;
 
 class PostProcess
 {
-public:
-
-    enum class Type
-    {
-        Bloom = 0,
-        Quantization = 1
-    };
-
-    static std::unordered_map<Type, std::string> typeToName;
-
 protected:
 
     // Ref to top-level app
     ShaderThingApp& app_;
-    
-    // Type of this post-processing effect
-    Type type_;
+
+    // Native post processing resource (of the vir:: library)
+    vir::PostProcess* nativePostProcess_;
 
     // Name of this post-processing effect. For the time being, bind it to type
     std::string name_;
@@ -56,7 +50,12 @@ protected:
     PostProcess() = delete;
 
     // Private construct, only meant to be constructed via PostProcess::create
-    PostProcess(ShaderThingApp& app, Layer* inputLayer, Type type);
+    PostProcess
+    (
+        ShaderThingApp& app, 
+        Layer* inputLayer, 
+        vir::PostProcess* nativePostProcess
+    );
 
 public:
     
@@ -77,7 +76,7 @@ public:
     );
     
     //
-    virtual ~PostProcess(){}
+    virtual ~PostProcess();
 
     // Reset and/or de-allocate all members to default values
     virtual void reset(){};
@@ -87,10 +86,6 @@ public:
 
     // Render the GUI for controlling this post-processing effect
     virtual void renderGui() = 0;
-
-    // Return access to output framebuffer with the applied post-processing 
-    // effect
-    virtual vir::Framebuffer* outputFramebuffer() = 0;
 
     // Serialize all object members to the provided writer object, which is
     // to be written to disk. An ObjectIO object is fundamentally a JSON file
@@ -105,12 +100,32 @@ public:
     // back-buffer swapping
     void replaceInputLayerWriteOnlyFramebuffer();
 
-    //
+    // Mostly here for legacy reasons, will probably get scrapped
     void toggleIsGuiInMenu(){isGuiInMenu_ = !isGuiInMenu_;}
 
-    // Other Accessors
+    // Native accessors
+
+    //
+    Type type() const {return nativePostProcess_->type();}
+    
+    // Return access to output framebuffer with the applied post-processing 
+    // effect
+    vir::Framebuffer* outputFramebuffer(){return nativePostProcess_->output();}
+    
+    //
+    bool canRunOnDeviceInUse() const 
+    {
+        return nativePostProcess_->canRunOnDeviceInUse();
+    }
+    
+    //
+    std::string errorMessage() const 
+    {
+        return nativePostProcess_->errorMessage();
+    }
+
+    // Other accessors
     bool* isGuiOpenPtr(){return &isGuiOpen_;}
-    Type type() const {return type_;}
     std::string name() const {return name_;}
     bool isActive() const {return isActive_;}
     Layer* inputLayer() const {return inputLayer_;}

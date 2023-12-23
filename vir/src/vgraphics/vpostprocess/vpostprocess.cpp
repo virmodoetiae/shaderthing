@@ -5,7 +5,14 @@
 namespace vir
 {
 
-PostProcess::PostProcess() :
+std::unordered_map<PostProcess::Type, std::string> PostProcess::typeToName = 
+{
+    {PostProcess::Type::Bloom, "Bloom"},
+    {PostProcess::Type::Quantization, "Quantization"}
+};
+
+PostProcess::PostProcess(Type type) :
+type_(type),
 output_(nullptr),
 canRunOnDeviceInUse_(true),
 errorMessage_()

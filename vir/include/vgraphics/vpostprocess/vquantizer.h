@@ -137,10 +137,11 @@ protected:
     // Protected constructor as any instances of Quantizer are meant to be
     // created via the static create function
     Quantizer() :
+        PostProcess(Type::Quantization),
         width_(0),
         height_(0),
         paletteSize_(0),
-        settings_({}){};
+        settings_({}){}
 
     // Delete copy-construction & copy-assignment ops
     Quantizer(const Quantizer&) = delete;

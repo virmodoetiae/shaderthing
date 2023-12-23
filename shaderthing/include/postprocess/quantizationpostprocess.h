@@ -11,9 +11,6 @@ class QuantizationPostProcess : public PostProcess
 {
 protected:
 
-    // Native KMeans quantizer
-    vir::Quantizer* quantizer_;
-
     // Quantizer settings
     vir::Quantizer::Settings settings_;
 
@@ -61,10 +58,6 @@ public:
 
     // Render the GUI for controlling this post-processing effect
     void renderGui() override;
-
-    // Return access to output framebuffer with the applied post-processing 
-    // effect
-    vir::Framebuffer* outputFramebuffer() override;
 
     // Serialize all object members to the provided writer object, which is
     // to be written to disk. An ObjectIO object is fundamentally a JSON file
