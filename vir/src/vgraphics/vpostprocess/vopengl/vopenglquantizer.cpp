@@ -5,111 +5,11 @@
 namespace vir
 {
 
-// ComputeShaderStage-related ------------------------------------------------//
-
-OpenGLQuantizer::ComputeShaderStage::~ComputeShaderStage()
-{
-    glDeleteProgram(id_);
-}
-
-void OpenGLQuantizer::ComputeShaderStage::compile()
-{
-    // Compile shader
-    const char* sourceCstr = source_.c_str();
-    GLuint computeShader0 = glCreateShader(GL_COMPUTE_SHADER);
-    glShaderSource(computeShader0, 1, &sourceCstr, NULL);
-    glCompileShader(computeShader0);
-    GLint logLength0 = 0;
-    glGetShaderiv(computeShader0, GL_INFO_LOG_LENGTH, &logLength0);
-    if (logLength0 > 0)
-    {
-        std::vector<GLchar> logv(logLength0);
-        glGetShaderInfoLog(computeShader0, logLength0, &logLength0, &logv[0]);
-        std::string log(logv.begin(), logv.end());
-        glDeleteShader(computeShader0);
-        std::cout << log << std::endl;
-        throw std::runtime_error("[CS0] "+log);
-    }
-    id_ = glCreateProgram();
-    glAttachShader(id_, computeShader0);
-    glLinkProgram(id_);
-    GLint logLength = 0;
-    glGetProgramiv(id_, GL_INFO_LOG_LENGTH, &logLength);
-    if (logLength > 0)
-    {
-        std::vector<GLchar> logv(logLength);
-        glGetProgramInfoLog(id_, logLength, &logLength, &logv[0]);
-        std::string log(logv.begin(), logv.end());
-        glDeleteProgram(id_);
-        std::cout << log << std::endl;
-        throw std::runtime_error("[CSP] "+log);
-    }
-    glDeleteShader(computeShader0);
-}
-
-GLint OpenGLQuantizer::ComputeShaderStage::getUniformLocation
-(
-    std::string& uniformName
-)
-{
-    GLint location;
-    if (uniformLocations_.find(uniformName) != uniformLocations_.end())
-        location = (GLint)(uniformLocations_.at(uniformName));
-    else
-    {
-        location = glGetUniformLocation(id_, uniformName.c_str());
-        if (location != -1)
-            uniformLocations_[uniformName] = location;
-    }
-    return location;
-}
-
-void OpenGLQuantizer::ComputeShaderStage::setUniformInt
-(
-    std::string uniformName, 
-    int value,
-    bool autoUse
-)
-{
-    if (autoUse)
-        use();
-    glUniform1i(getUniformLocation(uniformName), value);
-}
-
-void OpenGLQuantizer::ComputeShaderStage::setUniformFloat
-(
-    std::string uniformName, 
-    float value,
-    bool autoUse
-)
-{
-    if (autoUse)
-        use();
-    glUniform1f(getUniformLocation(uniformName), value);
-}
-
-void OpenGLQuantizer::ComputeShaderStage::use()
-{
-    glUseProgram(id_);
-}
-
-void OpenGLQuantizer::ComputeShaderStage::run
-(
-    int x, 
-    int y, 
-    int z, 
-    GLbitfield barriers
-)
-{
-    glDispatchCompute(x, y, z);
-    glMemoryBarrier(barriers);
-}
-
 // OpenGLKMeanQuantizer static data ------------------------------------------//
 
 bool OpenGLQuantizer::computeShaderStagesCompiled = false;
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader 
     OpenGLQuantizer::computeShader_findMaxSqrDistColSF32
     (
 R"(#version 460 core
@@ -169,7 +69,7 @@ void main()
     }
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_setNextPaletteColSF32
     (
 R"(#version 460 core
@@ -196,7 +96,7 @@ void main()
     imageStore(paletteData, d2MaxPos, uvec4(0,0,0,0));
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_buildClustersFromPaletteSF32
     (
 R"(#version 460 core
@@ -235,7 +135,7 @@ void main()
     atomicCounterAdd(clusteringError, uint(d2m));
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_updatePaletteFromClustersSF32
     (
 R"(#version 460 core
@@ -280,7 +180,7 @@ void main()
     
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_quantizeInputSF32
     (
 R"(#version 460 core
@@ -394,7 +294,7 @@ void main()
 // Same compute shaders as above, but to operate on unsigned int and unsigned
 // normlaized int -type of textures
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_findMaxSqrDistColUI8
     (
 R"(#version 460 core
@@ -450,7 +350,7 @@ void main()
     }
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_setNextPaletteColUI8
     (
 R"(#version 460 core
@@ -473,7 +373,7 @@ void main()
     imageStore(paletteData, d2MaxPos, uvec4(0,0,0,0));
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_buildClustersFromPaletteUI8
     (
 R"(#version 460 core
@@ -508,7 +408,7 @@ void main()
     atomicCounterAdd(clusteringError, uint(d2m));
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_updatePaletteFromClustersUI8
     (
 R"(#version 460 core
@@ -549,7 +449,7 @@ void main()
     
 })" );
 
-OpenGLQuantizer::ComputeShaderStage 
+OpenGLComputeShader
     OpenGLQuantizer::computeShader_quantizeInputUI8
     (
 R"(#version 460 core
@@ -674,11 +574,11 @@ void OpenGLQuantizer::quantizeOpenGLTexture
 
     // Figure out which compute shaders to use based on input texture
     // internal format
-    ComputeShaderStage* findMaxSqrDistCol;
-    ComputeShaderStage* setNextPaletteCol;
-    ComputeShaderStage* buildClustersFromPalette;
-    ComputeShaderStage* updatePaletteFromClusters;
-    ComputeShaderStage* quantizeInput;
+    OpenGLComputeShader* findMaxSqrDistCol;
+    OpenGLComputeShader* setNextPaletteCol;
+    OpenGLComputeShader* buildClustersFromPalette;
+    OpenGLComputeShader* updatePaletteFromClusters;
+    OpenGLComputeShader* quantizeInput;
     if(isFloat32)
     {
         findMaxSqrDistCol = &computeShader_findMaxSqrDistColSF32;

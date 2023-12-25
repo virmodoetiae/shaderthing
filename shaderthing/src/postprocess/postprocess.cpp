@@ -1,5 +1,6 @@
 #include "postprocess/postprocess.h"
 #include "postprocess/quantizationpostprocess.h"
+#include "postprocess/bloompostprocess.h"
 #include "shaderthingapp.h"
 #include "layers/layer.h"
 #include "objectio/objectio.h"
@@ -39,7 +40,7 @@ PostProcess* PostProcess::create
         case vir::PostProcess::Type::Quantization :
             return new QuantizationPostProcess(app, inputLayer);
         case vir::PostProcess::Type::Bloom :
-            return nullptr;
+            return new BloomPostProcess(app, inputLayer);
         default:
             return nullptr;
     }

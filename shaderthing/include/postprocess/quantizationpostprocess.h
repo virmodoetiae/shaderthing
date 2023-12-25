@@ -1,5 +1,5 @@
-#ifndef QUANTIZATION_POST_PROCESS_H
-#define QUANTIZATION_POST_PROCESS_H
+#ifndef ST_QUANTIZATION_POST_PROCESS_H
+#define ST_QUANTIZATION_POST_PROCESS_H
 
 #include "postprocess/postprocess.h"
 #include "vir/include/vir.h"

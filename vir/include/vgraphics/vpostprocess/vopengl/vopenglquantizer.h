@@ -2,7 +2,7 @@
 #define V_OPENGL_QUANTIZER_H
 
 #include "vgraphics/vpostprocess/vquantizer.h"
-#include "thirdparty/glad/include/glad/glad.h"
+#include "vgraphics/vpostprocess/vopengl/vopenglcomputeshader.h"
 #include <unordered_map>
 
 namespace vir
@@ -18,39 +18,17 @@ class OpenGLQuantizer : public Quantizer
 {
 protected:
 
-    class ComputeShaderStage
-    {
-    protected:
-        GLuint id_;
-        std::string source_;
-        std::unordered_map<std::string, GLint> uniformLocations_;
-    public:
-        ComputeShaderStage(std::string source):id_(0),source_(source){}
-        ~ComputeShaderStage();
-        void compile();
-        GLint getUniformLocation(std::string& uniformName);
-        void setUniformInt(std::string uniformName,int value,bool autoUse=true);
-        void setUniformFloat
-        (
-            std::string uniformName,
-            float value,
-            bool autoUse=true
-        );
-        void use();
-        void run(int x, int y, int z, GLbitfield barriers=GL_ALL_BARRIER_BITS);
-    };
-
     static bool computeShaderStagesCompiled;
-    static ComputeShaderStage computeShader_findMaxSqrDistColSF32;
-    static ComputeShaderStage computeShader_setNextPaletteColSF32;
-    static ComputeShaderStage computeShader_buildClustersFromPaletteSF32;
-    static ComputeShaderStage computeShader_updatePaletteFromClustersSF32;
-    static ComputeShaderStage computeShader_quantizeInputSF32;
-    static ComputeShaderStage computeShader_findMaxSqrDistColUI8;
-    static ComputeShaderStage computeShader_setNextPaletteColUI8;
-    static ComputeShaderStage computeShader_buildClustersFromPaletteUI8;
-    static ComputeShaderStage computeShader_updatePaletteFromClustersUI8;
-    static ComputeShaderStage computeShader_quantizeInputUI8;
+    static OpenGLComputeShader computeShader_findMaxSqrDistColSF32;
+    static OpenGLComputeShader computeShader_setNextPaletteColSF32;
+    static OpenGLComputeShader computeShader_buildClustersFromPaletteSF32;
+    static OpenGLComputeShader computeShader_updatePaletteFromClustersSF32;
+    static OpenGLComputeShader computeShader_quantizeInputSF32;
+    static OpenGLComputeShader computeShader_findMaxSqrDistColUI8;
+    static OpenGLComputeShader computeShader_setNextPaletteColUI8;
+    static OpenGLComputeShader computeShader_buildClustersFromPaletteUI8;
+    static OpenGLComputeShader computeShader_updatePaletteFromClustersUI8;
+    static OpenGLComputeShader computeShader_quantizeInputUI8;
 
     // R32UI Texture_2D used to store data required by the algorithm on the GPU,
     // primarily palette colors, quantization error

@@ -2,6 +2,7 @@
 #define V_POST_PROCESS_H
 
 #include <string>
+#include <unordered_map>
 
 namespace vir
 {
