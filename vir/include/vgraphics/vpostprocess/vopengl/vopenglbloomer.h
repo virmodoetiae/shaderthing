@@ -16,6 +16,7 @@ protected:
     static bool computeShaderStagesCompiled_;
     static OpenGLComputeShader brightnessMask_;
     static OpenGLComputeShader downsampler_;
+    static OpenGLComputeShader upsampler_;
     static OpenGLComputeShader copyToOutput_;
 
     //

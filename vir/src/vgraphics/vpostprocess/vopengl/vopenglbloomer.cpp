@@ -96,6 +96,83 @@ void main()
     );
 
 OpenGLComputeShader
+    OpenGLBloomer::upsampler_
+    (
+R"(#version 430 core
+uniform int mipLevel;
+uniform int final;
+uniform float intensity;
+layout(binding=0) uniform sampler2D inputTexture;
+layout(rgba32f, binding=0) uniform image2D outputImage;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+vec4 upsample(sampler2D tx, vec2 tc, int mip)
+{
+    // The filter kernel is applied with a radius, specified in texture
+    // coordinates, so that the radius will vary across mip resolutions.
+    vec2 texelSize = 1.0 / textureSize(tx, mip);
+    float x = texelSize.x;
+    float y = texelSize.y;
+
+    // Take 9 samples around current texel 'e':
+    // a - b - c
+    // d - e - f
+    // g - h - i
+    vec4 a = textureLod(tx, vec2(tc.x - x, tc.y + y), mip);
+    vec4 b = textureLod(tx, vec2(tc.x,     tc.y + y), mip);
+    vec4 c = textureLod(tx, vec2(tc.x + x, tc.y + y), mip);
+    vec4 d = textureLod(tx, vec2(tc.x - x, tc.y), mip);
+    vec4 e = textureLod(tx, vec2(tc.x,     tc.y), mip);
+    vec4 f = textureLod(tx, vec2(tc.x + x, tc.y), mip);
+    vec4 g = textureLod(tx, vec2(tc.x - x, tc.y - y), mip);
+    vec4 h = textureLod(tx, vec2(tc.x,     tc.y - y), mip);
+    vec4 i = textureLod(tx, vec2(tc.x + x, tc.y - y), mip);
+
+    // Apply weighted distribution, by using a 3x3 tent filter:
+    //  1   | 1 2 1 |
+    // -- * | 2 4 2 |
+    // 16   | 1 2 1 |
+    vec4 color = e*4.0;
+    color += (b+d+f+h)*2.0;
+    color += (a+c+g+i);
+    color *= 1.0 / 16.0;
+    return color;
+}
+vec3 tonemapACES(vec3 v)
+{
+    v = vec3(
+        .59719f*v.x + .35458f*v.y + .04823f*v.z,
+        .07600f*v.x + .90834f*v.y + .01566f*v.z,
+        .02840f*v.x + .13383f*v.y + .83777f*v.z
+    );
+    v = (v*(v + .0245786f) - .000090537f)/
+        (v*(.983729f*v + .4329510f) + .238081f);
+    return vec3(
+        1.60475f*v.x + -.53108f*v.y + -.07367f*v.z,
+        -.10208f*v.x + 1.10813f*v.y + -.00605f*v.z,
+        -.00327f*v.x + -.07276f*v.y + 1.07602f*v.z
+    );
+}
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outputImage);
+    if (texel.x < size.x && texel.y < size.y)
+    {
+        vec2 uv = (vec2(texel)+.5f)/size;
+        vec4 col = upsample(inputTexture, uv, mipLevel);
+        col.rgb += textureLod(inputTexture, uv, mipLevel-1).rgb;
+        if (final == 1)
+        {
+            col.rgb = tonemapACES(col.rgb);
+            col.rgb *= intensity;
+        }
+        imageStore(outputImage, texel, col);
+    }
+}
+)"
+    );
+
+OpenGLComputeShader
     OpenGLBloomer::copyToOutput_
     (
 R"(#version 430 core
@@ -124,6 +201,7 @@ bloom_(nullptr)
         return;
     brightnessMask_.compile();
     downsampler_.compile();
+    upsampler_.compile();
     copyToOutput_.compile();
     computeShaderStagesCompiled_ = true;
 }
@@ -218,8 +296,12 @@ void OpenGLBloomer::bloom
     // Downsampling ----------------------------------------------------------//
     glActiveTexture(GL_TEXTURE0+unit0);
     glBindTexture(GL_TEXTURE_2D, bloom_->id());
-    int minSideResolution = 3;
-    int finalMipLevel=1;
+    int minSideResolution = 3; // Could be passed via settings
+    int mipLevel=1;
+    static GLint mipWidths[16];
+    static GLint mipHeights[16];
+    mipWidths[0] = input->width();
+    mipHeights[0] = input->height();
     while (true)
     {
         // Bind output target mip level image
@@ -227,7 +309,7 @@ void OpenGLBloomer::bloom
         (
             unit0, 
             bloom_->id(), 
-            finalMipLevel,
+            mipLevel,
             GL_FALSE, 
             0, 
             GL_WRITE_ONLY,
@@ -235,38 +317,72 @@ void OpenGLBloomer::bloom
         );
 
         // Get target mip level texture size
-        GLint width, height;
+        GLint* width = &mipWidths[mipLevel];
+        GLint* height = &mipHeights[mipLevel];
         glGetTexLevelParameteriv
         (
             GL_TEXTURE_2D,
-            finalMipLevel,
+            mipLevel,
             GL_TEXTURE_WIDTH, 
-            &width
+            width
         );
         glGetTexLevelParameteriv
         (
             GL_TEXTURE_2D, 
-            finalMipLevel,
+            mipLevel,
             GL_TEXTURE_HEIGHT, 
-            &height
+            height
         );
+
         //std::cout<<width<<" "<<height<<" "<<finalMipLevel<<std::endl;
 
-        downsampler_.setUniformInt("mipLevel", finalMipLevel-1);
+        downsampler_.setUniformInt("mipLevel", mipLevel-1);
         downsampler_.setUniformInt("inputTexture", unit0, false);
         downsampler_.setUniformInt("outputImage", unit0, false);
         downsampler_.run
         (
-            N_WORK_GROUPS_X(width),
-            N_WORK_GROUPS_Y(height),
+            N_WORK_GROUPS_X(*width),
+            N_WORK_GROUPS_Y(*height),
             N_WORK_GROUPS_Z
         );
         OpenGLWaitSync();
 
         //
-        if (width <= minSideResolution || height <= minSideResolution)
+        if (*width <= minSideResolution || *height <= minSideResolution)
             break;
-        ++finalMipLevel;
+        ++mipLevel;
+    }
+    int maxMipLevel = mipLevel;
+
+    // Upsampling ------------------------------------------------------------//
+    glActiveTexture(GL_TEXTURE0+unit0);
+    glBindTexture(GL_TEXTURE_2D, bloom_->id());
+    while(mipLevel > 0)
+    {
+        // Bind output target mip level image
+        glBindImageTexture
+        (
+            unit0, 
+            bloom_->id(), 
+            mipLevel-1,
+            GL_FALSE, 
+            0, 
+            GL_READ_WRITE,
+            GL_RGBA32F
+        );
+        upsampler_.setUniformInt("mipLevel", mipLevel);
+        upsampler_.setUniformInt("final", (int)(mipLevel==1));
+        upsampler_.setUniformFloat("intensity", settings.intensity);
+        upsampler_.setUniformInt("inputTexture", unit0);
+        upsampler_.setUniformInt("outputImage", unit0);
+        upsampler_.run
+        (
+            N_WORK_GROUPS_X(mipWidths[mipLevel-1]),
+            N_WORK_GROUPS_Y(mipHeights[mipLevel-1]),
+            N_WORK_GROUPS_Z
+        );
+        OpenGLWaitSync();
+        --mipLevel;
     }
 
     // Dummy copy to output for visualization purposes -----------------------//
@@ -289,7 +405,7 @@ void OpenGLBloomer::bloom
     );
 
     // Set uniforms
-    int mip = std::min(settings.mip, finalMipLevel);
+    int mip = std::min(settings.mip, maxMipLevel);
     copyToOutput_.setUniformInt("mipLevel", mip);
     copyToOutput_.setUniformInt("inputTexture", unit0, false);
     copyToOutput_.setUniformInt("outputImage", unit1, false);
