@@ -28,6 +28,8 @@ public:
         float knee = .1f;
         float radius = 1e-4f;
         ToneMap toneMap = ToneMap::ACES;
+
+        int mip = 10;
     };
 
 protected:

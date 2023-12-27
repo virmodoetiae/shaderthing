@@ -664,8 +664,8 @@ void Layer::saveState(ObjectIO& writer)
         writer.writeObjectStart("postProcesses");
         for (auto postProcess : postProcesses_)
             postProcess->saveState(writer);
+        writer.writeObjectEnd(); // End of postProcesses
     }
-    writer.writeObjectEnd(); // End of postProcesses
     writer.writeObjectEnd(); // End of 'name_'
 }
 

@@ -2,7 +2,7 @@
 #define V_OPENGL_QUANTIZER_H
 
 #include "vgraphics/vpostprocess/vquantizer.h"
-#include "vgraphics/vpostprocess/vopengl/vopenglcomputeshader.h"
+#include "vgraphics/vcore/vopengl/vopenglcomputeshader.h"
 #include <unordered_map>
 
 namespace vir
@@ -41,8 +41,8 @@ protected:
     GLuint indexedDataPBO_;
     
     //
-    bool firstWaitSyncCall_;
-    GLsync dataSync_;
+    //bool firstWaitSyncCall_;
+    //GLsync dataSync_;
 
     // Persistently GPU-to-CPU mapped palette data and indices data
     void* mappedPaletteData_;
@@ -69,8 +69,8 @@ protected:
     );
 
     //
-    void waitSync();
-    void resetSync();
+    //void waitSync();
+    //void resetSync();
 
     // Delete copy-construction & copy-assignment ops
     OpenGLQuantizer(const OpenGLQuantizer&) = delete;

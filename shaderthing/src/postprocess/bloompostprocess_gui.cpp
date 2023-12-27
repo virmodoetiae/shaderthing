@@ -73,6 +73,20 @@ void BloomPostProcess::renderGui()
         settings_.knee = std::max(0.f, settings_.knee);
     ImGui::PopItemWidth();
 
+    ImGui::Text("Mip      ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if (
+    ImGui::DragInt
+    (
+        "##bloomMipSlider", 
+        &settings_.mip, 
+        .1f, 
+        0.f
+    ))
+        settings_.mip = std::max(0, settings_.mip);
+    ImGui::PopItemWidth();
+
     if (!isGuiInMenu_)
         ImGui::End();
 }

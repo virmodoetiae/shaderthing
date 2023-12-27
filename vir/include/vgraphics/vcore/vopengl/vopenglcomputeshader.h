@@ -12,10 +12,6 @@ namespace vir
 class OpenGLComputeShader
 {
 protected:
-    //
-    static bool firstWaitSyncCall_;
-    static GLsync dataSync_;
-    //
     GLuint id_;
     std::string source_;
     std::unordered_map<std::string, GLint> uniformLocations_;
@@ -33,9 +29,6 @@ public:
     );
     void use();
     void run(int x, int y, int z, GLbitfield barriers=GL_ALL_BARRIER_BITS);
-
-    static void waitSync();
-    static void resetSync();
 };
 
 }

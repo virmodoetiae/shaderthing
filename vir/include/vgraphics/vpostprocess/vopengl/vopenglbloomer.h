@@ -2,7 +2,7 @@
 #define V_OPENGL_BLOOMER_H
 
 #include "vgraphics/vpostprocess/vbloomer.h"
-#include "vgraphics/vpostprocess/vopengl/vopenglcomputeshader.h"
+#include "vgraphics/vcore/vopengl/vopenglcomputeshader.h"
 
 namespace vir
 {
@@ -14,7 +14,9 @@ class OpenGLBloomer : public Bloomer
 protected:
 
     static bool computeShaderStagesCompiled_;
-    static OpenGLComputeShader brightnessMaskShader_;
+    static OpenGLComputeShader brightnessMask_;
+    static OpenGLComputeShader downsampler_;
+    static OpenGLComputeShader copyToOutput_;
 
     //
     TextureBuffer2D* bloom_;

@@ -1,6 +1,7 @@
 #include "vpch.h"
 #include <cmath>
 #include "vgraphics/vpostprocess/vopengl/vopenglquantizer.h"
+#include "vgraphics/vcore/vopengl/vopenglmisc.h"
 
 namespace vir
 {
@@ -883,14 +884,15 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         glActiveTexture(GL_TEXTURE0+paletteDataUnit);
         glBindTexture(GL_TEXTURE_2D, paletteData_);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, paletteDataWriteOnlyPBO_);
-        waitSync();
+        OpenGLWaitSync();
+        //waitSync();
         std::memcpy
         (
             mappedWriteOnlyPaletteData_, 
             (void*)settings_.paletteData, 
             3*paletteSize*sizeof(unsigned char)
         );
-        resetSync();
+        //resetSync();
         glTexSubImage2D
         (
             GL_TEXTURE_2D, 
@@ -1174,8 +1176,9 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     );
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
-    waitSync();
-    resetSync();    // For whatever reason, this appears to be vital to ensure
+    OpenGLWaitSync();
+    //waitSync();
+    //resetSync();    // For whatever reason, this appears to be vital to ensure
                     // proper overwriting of mappedPaletteData
     
     if (settings_.regenerateMipmap)
@@ -1188,6 +1191,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     isFloat320 = isFloat32;
 }
 
+/*
 void OpenGLQuantizer::waitSync()
 {
     if (firstWaitSyncCall_)
@@ -1210,12 +1214,13 @@ void OpenGLQuantizer::resetSync()
         glDeleteSync(dataSync_);
     dataSync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
+*/
 
 //----------------------------------------------------------------------------//
 // Constructor, destructor
 
-OpenGLQuantizer::OpenGLQuantizer() :
-firstWaitSyncCall_(true)
+OpenGLQuantizer::OpenGLQuantizer() //:
+//firstWaitSyncCall_(true)
 {
     auto context = GlobalPtr<Window>::instance()->context();
     if (context->versionMajor() < 4)
@@ -1412,7 +1417,8 @@ void OpenGLQuantizer::getPalette(unsigned char*& data, bool allocate)
     int paletteSize = nonDefaultIndexing ? paletteSize_ + 1 : paletteSize_;
     if (allocate)
         data = new unsigned char[3*paletteSize];
-    waitSync();
+    OpenGLWaitSync();
+    //waitSync();
     std::memcpy
     (
         data, 
@@ -1427,7 +1433,7 @@ void OpenGLQuantizer::getPalette(unsigned char*& data, bool allocate)
         data[3*paletteSize-2] = (unsigned char)0;
         data[3*paletteSize-1] = (unsigned char)0;
     }
-    resetSync();
+    //resetSync();
 }
 
 void OpenGLQuantizer::getIndexedTexture
@@ -1441,14 +1447,15 @@ void OpenGLQuantizer::getIndexedTexture
     int nPixels(width_*height_);
     if (allocate)
         data = new unsigned char[nPixels];
-    waitSync();
+    OpenGLWaitSync();
+    //waitSync();
     std::memcpy
     (
         data, 
         (unsigned char*)mappedIndexedData_, 
         nPixels*sizeof(unsigned char)
     );
-    resetSync();
+    //resetSync();
 }
 
 }

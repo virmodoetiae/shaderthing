@@ -1,11 +1,8 @@
 #include "vpch.h"
-#include "vgraphics/vpostprocess/vopengl/vopenglcomputeshader.h"
+#include "vgraphics/vcore/vopengl/vopenglcomputeshader.h"
 
 namespace vir
 {
-
-bool OpenGLComputeShader::firstWaitSyncCall_ = false;
-GLsync OpenGLComputeShader::dataSync_;
 
 OpenGLComputeShader::~OpenGLComputeShader()
 {
@@ -103,29 +100,6 @@ void OpenGLComputeShader::run
 {
     glDispatchCompute(x, y, z);
     glMemoryBarrier(barriers);
-}
-
-void OpenGLComputeShader::waitSync()
-{
-    if (firstWaitSyncCall_)
-    {   
-        dataSync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-        firstWaitSyncCall_ = false;
-    }
-    while (dataSync_)
-    {
-        GLenum wait = glClientWaitSync(dataSync_, 
-            GL_SYNC_FLUSH_COMMANDS_BIT, 1);
-        if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED)
-            break;
-    }
-}
-
-void OpenGLComputeShader::resetSync()
-{
-    if (dataSync_)
-        glDeleteSync(dataSync_);
-    dataSync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 
 }

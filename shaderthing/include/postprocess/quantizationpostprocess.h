@@ -25,8 +25,11 @@ protected:
 
     // True if the palette has been manually modified via the embedded color
     // picker in the quantization tool (can be accessed by clicking any color
-    // in the displayed palette)
+    // in the displayed palette), regardless of palette size changes
     bool paletteModified_;
+
+    // True if the palette size has been modified
+    bool paletteSizeModified_;
 
     //
     bool refreshPalette_;

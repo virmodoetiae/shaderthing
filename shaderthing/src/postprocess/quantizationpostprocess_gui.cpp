@@ -76,7 +76,12 @@ void QuantizationPostProcess::renderGui()
     ImGui::Text("Palette size        ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
-    ImGui::SliderInt("##paletteSizeSlider", (int*)&paletteSize_, 2, 16);
+    auto paletteSize0(paletteSize_);
+    if (ImGui::SliderInt("##paletteSizeSlider", (int*)&paletteSize_, 2, 24))
+    {
+        if (paletteSize_ != paletteSize0)
+            paletteSizeModified_ = true;
+    }
     ImGui::PopItemWidth();
 
     ImGui::Text("Color dithering     ");
@@ -159,7 +164,6 @@ void QuantizationPostProcess::renderGui()
         for (int i=0; i<paletteSize_; i++)
         {
             std::string id = "##paletteColorNo"+std::to_string(i);
-            bool paletteModified(false);
             if 
             (
                 ImGui::ColorEdit3

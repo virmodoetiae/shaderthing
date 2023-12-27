@@ -19,6 +19,7 @@ paletteSize_(4),
 uIntPalette_(nullptr),
 floatPalette_(nullptr),
 paletteModified_(false),
+paletteSizeModified_(true),
 refreshPalette_(false)
 {
     reset();
@@ -36,6 +37,7 @@ paletteSize_(4),
 uIntPalette_(nullptr),
 floatPalette_(nullptr),
 paletteModified_(false),
+paletteSizeModified_(true),
 refreshPalette_(false)
 {
     reset();
@@ -110,7 +112,6 @@ void QuantizationPostProcess::run()
         inputLayer_->rendersTo() == Layer::RendersTo::Window
     )
         return;
-    static int paletteSize0(-1);
     settings_.paletteData = paletteModified_ ? uIntPalette_ : nullptr;
     if (refreshPalette_)
         settings_.reseedPalette = true;
@@ -130,8 +131,7 @@ void QuantizationPostProcess::run()
         settings_.recalculatePalette = false;
     }
 
-    bool paletteSizeModified(paletteSize0!=paletteSize_);
-    if (paletteSizeModified)
+    if (paletteSizeModified_)
     {
         if (uIntPalette_ != nullptr)
             delete[] uIntPalette_;
@@ -139,7 +139,6 @@ void QuantizationPostProcess::run()
         if (floatPalette_ != nullptr)
             delete[] floatPalette_;
         floatPalette_ = nullptr;
-        paletteSize0 = paletteSize_;
         floatPalette_ = new float[3*paletteSize_];
         // Re-alloc of uIntPalette happens in quanizer_->getPalette
         // uIntPalette_ = new unsigned char[3*paletteSize_];
@@ -147,7 +146,7 @@ void QuantizationPostProcess::run()
     ((nativeType*)nativePostProcess_)->getPalette
     (
         uIntPalette_, 
-        paletteSizeModified
+        paletteSizeModified_
     );
     for (int i = 0; i < 3*paletteSize_; i++)
         floatPalette_[i] = uIntPalette_[i]/255.0f;
@@ -155,6 +154,8 @@ void QuantizationPostProcess::run()
         settings_.reseedPalette = false;
     if (paletteModified_)
         paletteModified_ = false;
+    if (paletteSizeModified_)
+        paletteSizeModified_ = false;
 
     // Essential step
     replaceInputLayerWriteOnlyFramebuffer();
