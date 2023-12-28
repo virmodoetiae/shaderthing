@@ -17,6 +17,7 @@ protected:
     static OpenGLComputeShader brightnessMask_;
     static OpenGLComputeShader downsampler_;
     static OpenGLComputeShader upsampler_;
+    static OpenGLComputeShader adder_;
     static OpenGLComputeShader copyToOutput_;
 
     //

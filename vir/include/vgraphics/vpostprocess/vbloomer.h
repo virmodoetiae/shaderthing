@@ -13,24 +13,28 @@ class Bloomer : public PostProcess
 {
 public:
 
-    enum class ToneMap
-    {
-        None,
-        Reinhard,
-        ReinhardExtended,
-        ACES
-    };
-
     struct Settings
     {
+        enum class ToneMap
+        {
+            None = 0,
+            Reinhard = 1,
+            ReinhardExtended = 2,
+            ACES = 3
+        };
+
         float intensity = 1.f;
         float threshold = .8f;
         float knee = .1f;
         float radius = 1e-4f;
         ToneMap toneMap = ToneMap::ACES;
-
-        int mip = 10;
+        float reinhardExposure = 2.f;
+        float reinhardWhitePoint = 1.f;
+        int mip = 0;
     };
+
+    static std::unordered_map<Settings::ToneMap, std::string> 
+        toneMapToName;
 
 protected:
 

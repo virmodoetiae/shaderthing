@@ -40,52 +40,125 @@ void BloomPostProcess::renderGui()
         ImGui::Button
         (
             (isActive_ ? "Bloom on" : "Bloom off"), 
-            ImVec2(entryWidth, 0.0f)
+            ImVec2(-1, 0.0f)
         )
     )
         isActive_ = !isActive_;
 
+    ImGui::Text("Intensity");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::DragFloat
+        (
+            "##bloomIntensitySlider",
+            &settings_.intensity, 
+            .01f, 
+            0.f
+        )
+    )
+        settings_.intensity = std::max(0.f, settings_.intensity);
+    ImGui::PopItemWidth();
+
     ImGui::Text("Threshold");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
-    if (
-    ImGui::DragFloat
+    if 
     (
-        "##bloomThresholdSlider", 
-        &settings_.threshold, 
-        .0025f, 
-        0.f
-    ))
+        ImGui::DragFloat
+        (
+            "##bloomThresholdSlider", 
+            &settings_.threshold, 
+            .01f, 
+            0.f
+        )
+    )
         settings_.threshold = std::max(0.f, settings_.threshold);
     ImGui::PopItemWidth();
 
     ImGui::Text("Knee     ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
-    if (
-    ImGui::DragFloat
+    if 
     (
-        "##bloomKneeSlider", 
-        &settings_.knee, 
-        .0025f, 
-        0.f
-    ))
+        ImGui::DragFloat
+        (
+            "##bloomKneeSlider", 
+            &settings_.knee, 
+            .01f, 
+            0.f
+        )
+    )
         settings_.knee = std::max(0.f, settings_.knee);
     ImGui::PopItemWidth();
 
-    ImGui::Text("Mip      ");
+    ImGui::Text("Tone map ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
-    if (
-    ImGui::DragInt
+    if 
     (
-        "##bloomMipSlider", 
-        &settings_.mip, 
-        .1f, 
-        0.f
-    ))
-        settings_.mip = std::max(0, settings_.mip);
+        ImGui::BeginCombo
+        (
+            "##bloomToneMapCombo",
+            vir::Bloomer::toneMapToName.at(settings_.toneMap).c_str()
+        )
+    )
+    {
+        for (auto item : vir::Bloomer::toneMapToName)
+        {
+            if (ImGui::Selectable(item.second.c_str()))
+                settings_.toneMap = item.first;
+        }
+        ImGui::EndCombo();
+    }
     ImGui::PopItemWidth();
+
+    switch (settings_.toneMap)
+    {
+    case Settings::ToneMap::Reinhard :
+    {
+        ImGui::Text("Exposure ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(entryWidth);
+        if 
+        (
+            ImGui::DragFloat
+            (
+                "##bloomReinhardExposureSlider", 
+                &settings_.reinhardExposure, 
+                .1f, 
+                0.f
+            )
+        )
+            settings_.reinhardExposure = 
+                std::max(0.f, settings_.reinhardExposure);
+        ImGui::PopItemWidth();
+        break;
+    }
+    case Settings::ToneMap::ReinhardExtended :
+    {
+        ImGui::Text("White pt.");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(entryWidth);
+        if 
+        (
+            ImGui::DragFloat
+            (
+                "##bloomReinhardWhitePointSlider", 
+                &settings_.reinhardWhitePoint, 
+                .01f, 
+                0.f
+            )
+        )
+            settings_.reinhardWhitePoint = 
+                std::max(0.f, settings_.reinhardWhitePoint);
+        ImGui::PopItemWidth();
+        break;
+    }
+    default:
+        break;
+    }
 
     if (!isGuiInMenu_)
         ImGui::End();

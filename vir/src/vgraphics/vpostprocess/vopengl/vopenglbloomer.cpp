@@ -8,6 +8,7 @@ namespace vir
 typedef TextureBuffer::InternalFormat InternalFormat;
 typedef TextureBuffer::FilterMode FilterMode;
 typedef TextureBuffer::WrapMode WrapMode;
+typedef Bloomer::Settings::ToneMap ToneMap;
 
 bool OpenGLBloomer::computeShaderStagesCompiled_ = false;
 
@@ -62,19 +63,19 @@ vec4 downsample(sampler2D tx, vec2 uv, int mip)
     // d - e - f
     // - l - m -
     // g - h - i
-    vec4 a = textureLod(tx, vec2(uv.x - 2*x, uv.y + 2*y), mip);
-    vec4 b = textureLod(tx, vec2(uv.x,       uv.y + 2*y), mip);
-    vec4 c = textureLod(tx, vec2(uv.x + 2*x, uv.y + 2*y), mip);
-    vec4 d = textureLod(tx, vec2(uv.x - 2*x, uv.y), mip);
-    vec4 e = textureLod(tx, vec2(uv.x,       uv.y), mip);
-    vec4 f = textureLod(tx, vec2(uv.x + 2*x, uv.y), mip);
-    vec4 g = textureLod(tx, vec2(uv.x - 2*x, uv.y - 2*y), mip);
-    vec4 h = textureLod(tx, vec2(uv.x,       uv.y - 2*y), mip);
-    vec4 i = textureLod(tx, vec2(uv.x + 2*x, uv.y - 2*y), mip);
-    vec4 j = textureLod(tx, vec2(uv.x - x, uv.y + y), mip);
-    vec4 k = textureLod(tx, vec2(uv.x + x, uv.y + y), mip);
-    vec4 l = textureLod(tx, vec2(uv.x - x, uv.y - y), mip);
-    vec4 m = textureLod(tx, vec2(uv.x + x, uv.y - y), mip);
+    vec4 a = textureLod(tx, vec2(uv.x -2*x, uv.y +2*y), mip);
+    vec4 b = textureLod(tx, vec2(uv.x,      uv.y +2*y), mip);
+    vec4 c = textureLod(tx, vec2(uv.x +2*x, uv.y +2*y), mip);
+    vec4 d = textureLod(tx, vec2(uv.x -2*x, uv.y     ), mip);
+    vec4 e = textureLod(tx, vec2(uv.x,      uv.y     ), mip);
+    vec4 f = textureLod(tx, vec2(uv.x +2*x, uv.y     ), mip);
+    vec4 g = textureLod(tx, vec2(uv.x -2*x, uv.y -2*y), mip);
+    vec4 h = textureLod(tx, vec2(uv.x,      uv.y -2*y), mip);
+    vec4 i = textureLod(tx, vec2(uv.x +2*x, uv.y -2*y), mip);
+    vec4 j = textureLod(tx, vec2(uv.x   -x, uv.y   +y), mip);
+    vec4 k = textureLod(tx, vec2(uv.x   +x, uv.y   +y), mip);
+    vec4 l = textureLod(tx, vec2(uv.x   -x, uv.y   -y), mip);
+    vec4 m = textureLod(tx, vec2(uv.x   +x, uv.y   -y), mip);
     // Weigh contributions and return
     vec4 color = e*0.125;
     color += (a+c+g+i)*0.03125;
@@ -100,8 +101,9 @@ OpenGLComputeShader
     (
 R"(#version 430 core
 uniform int mipLevel;
-uniform int final;
+uniform int toneMap;
 uniform float intensity;
+uniform float toneMapArg;
 layout(binding=0) uniform sampler2D inputTexture;
 layout(rgba32f, binding=0) uniform image2D outputImage;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -137,6 +139,16 @@ vec4 upsample(sampler2D tx, vec2 tc, int mip)
     color *= 1.0 / 16.0;
     return color;
 }
+vec3 tonemapReinhard(vec3 c, float ex)
+{
+    float l = dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
+    return ex*c*l/(1.f + l);
+}
+vec3 tonemapReinhardExtended(vec3 c, float wp)
+{
+    float l = dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
+    return c*(1.f + l/wp/wp)/(1.f + l);
+}
 vec3 tonemapACES(vec3 v)
 {
     v = vec3(
@@ -160,12 +172,46 @@ void main()
     {
         vec2 uv = (vec2(texel)+.5f)/size;
         vec4 col = upsample(inputTexture, uv, mipLevel);
-        col.rgb += textureLod(inputTexture, uv, mipLevel-1).rgb;
-        if (final == 1)
+        col.rgb += imageLoad(outputImage, texel).rgb;
+        if (mipLevel == 1) // i.e., final upsamling pass
         {
-            col.rgb = tonemapACES(col.rgb);
+            // if toneMap == 0 then no tone map is used
+            if (toneMap == 1)
+            {
+                col.rgb = tonemapReinhard(col.rgb, toneMapArg);
+            }
+            else if (toneMap == 2)
+            {
+                col.rgb = tonemapReinhardExtended(col.rgb, toneMapArg);
+            }
+            else if (toneMap == 3)
+            {
+                col.rgb = tonemapACES(col.rgb);
+            }
             col.rgb *= intensity;
         }
+        imageStore(outputImage, texel, col);
+    }
+}
+)"
+    );
+
+OpenGLComputeShader
+    OpenGLBloomer::adder_
+    (
+R"(#version 430 core
+layout(rgba32f, binding=0) readonly uniform image2D inputImage;
+layout(rgba32f, binding=1) readonly uniform image2D bloomImage;
+layout(rgba32f, binding=2) writeonly uniform image2D outputImage;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outputImage);
+    if (texel.x < size.x && texel.y < size.y)
+    {
+        vec4 col = imageLoad(inputImage, texel);
+        col.rgb += imageLoad(bloomImage, texel).rgb;
         imageStore(outputImage, texel, col);
     }
 }
@@ -202,6 +248,7 @@ bloom_(nullptr)
     brightnessMask_.compile();
     downsampler_.compile();
     upsampler_.compile();
+    adder_.compile();
     copyToOutput_.compile();
     computeShaderStagesCompiled_ = true;
 }
@@ -296,7 +343,7 @@ void OpenGLBloomer::bloom
     // Downsampling ----------------------------------------------------------//
     glActiveTexture(GL_TEXTURE0+unit0);
     glBindTexture(GL_TEXTURE_2D, bloom_->id());
-    int minSideResolution = 3; // Could be passed via settings
+    int minSideResolution = 2; // Could be passed via settings
     int mipLevel=1;
     static GLint mipWidths[16];
     static GLint mipHeights[16];
@@ -371,7 +418,26 @@ void OpenGLBloomer::bloom
             GL_RGBA32F
         );
         upsampler_.setUniformInt("mipLevel", mipLevel);
-        upsampler_.setUniformInt("final", (int)(mipLevel==1));
+        upsampler_.setUniformInt("toneMap", (int)(settings.toneMap));
+        switch (settings.toneMap)
+        {
+            case ToneMap::Reinhard :
+                upsampler_.setUniformFloat
+                (
+                    "toneMapArg", 
+                    settings.reinhardExposure
+                );
+                break;
+            case ToneMap::ReinhardExtended :
+                upsampler_.setUniformFloat
+                (
+                    "toneMapArg", 
+                    settings.reinhardWhitePoint
+                );
+                break;
+            default:
+                break;
+        }
         upsampler_.setUniformFloat("intensity", settings.intensity);
         upsampler_.setUniformInt("inputTexture", unit0);
         upsampler_.setUniformInt("outputImage", unit0);
@@ -385,6 +451,55 @@ void OpenGLBloomer::bloom
         --mipLevel;
     }
 
+    // Add bloom to input ----------------------------------------------------//
+    glActiveTexture(GL_TEXTURE0+unit0);
+    glBindTexture(GL_TEXTURE_2D, input->colorBufferId());
+    glBindImageTexture
+    (
+        unit0, 
+        input->colorBufferId(), 
+        0,
+        GL_FALSE, 
+        0, 
+        GL_READ_ONLY,
+        GL_RGBA32F
+    );
+    glActiveTexture(GL_TEXTURE0+unit1);
+    glBindTexture(GL_TEXTURE_2D, bloom_->id());
+    glBindImageTexture
+    (
+        unit1, 
+        bloom_->id(), 
+        0,
+        GL_FALSE, 
+        0, 
+        GL_READ_ONLY,
+        GL_RGBA32F
+    );
+    glActiveTexture(GL_TEXTURE0+2);
+    glBindTexture(GL_TEXTURE_2D, output_->colorBufferId());
+    glBindImageTexture
+    (
+        2, 
+        output_->colorBufferId(), 
+        0,
+        GL_FALSE, 
+        0, 
+        GL_WRITE_ONLY,
+        GL_RGBA32F
+    );
+    adder_.setUniformInt("inputImage", unit0);
+    adder_.setUniformInt("bloomImage", unit1);
+    adder_.setUniformInt("outputImage", 2);
+    adder_.run
+    (
+        N_WORK_GROUPS_X(mipWidths[0]),
+        N_WORK_GROUPS_Y(mipHeights[0]),
+        N_WORK_GROUPS_Z
+    );
+    OpenGLWaitSync();
+
+    /*
     // Dummy copy to output for visualization purposes -----------------------//
     // Bind input unit
     glActiveTexture(GL_TEXTURE0+unit0);
@@ -416,6 +531,7 @@ void OpenGLBloomer::bloom
         N_WORK_GROUPS_Z
     );
     OpenGLWaitSync();
+    */
 };
 
 }
