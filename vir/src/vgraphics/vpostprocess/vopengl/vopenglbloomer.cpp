@@ -16,30 +16,30 @@ OpenGLComputeShader
     OpenGLBloomer::brightnessMask_
     (
 R"(#version 430 core
-uniform float threshold;
-uniform float knee;
-layout(binding=0) uniform sampler2D inputTexture;
-layout(rgba32f, binding=1) writeonly uniform image2D outputImage;
+uniform float tr; // threshold
+uniform float kn; // knee
+uniform ivec2 sz; // tx size
+layout(binding=0)                    uniform sampler2D tx;
+layout(rgba32f, binding=1) writeonly uniform image2D   im;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main()
 {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(outputImage);
-    if (texel.x < size.x && texel.y < size.y)
+    if (texel.x < sz.x && texel.y < sz.y)
     {
-        vec2 uv = vec2(texel)/size;
-        vec4 col = textureLod(inputTexture, uv, 0);
+        vec2 uv = vec2(texel)/sz;
+        vec4 col = textureLod(tx, uv, 0);
         float lmn = dot(col.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
         float f = 1.f;
-        float tmk = threshold-knee;
+        float tmk = tr-kn;
         if (lmn <= tmk)
             f = 0.f;
-        else if (lmn < threshold)
+        else if (lmn < tr)
         {
-            f = (lmn-tmk)/knee;
+            f = (lmn-tmk)/kn;
             f *= f*(3.f-2.f*f);
         }
-        imageStore(outputImage, texel, vec4(f*col.rgb, col.a));
+        imageStore(im, texel, vec4(f*col.rgb, col.a));
     }
 })"
     );
@@ -48,26 +48,28 @@ OpenGLComputeShader
     OpenGLBloomer::downsampler_
     (
 R"(#version 430 core
-uniform int mipLevel;
-layout(binding=0) uniform sampler2D inputTexture;
-layout(rgba32f, binding=0) writeonly uniform image2D outputImage;
+uniform int mip;
+uniform ivec2 txsz; // tx size
+uniform ivec2 imsz; // im size
+layout(binding=0)                    uniform sampler2D tx;
+layout(rgba32f, binding=0) writeonly uniform image2D   im;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-vec4 downsample(sampler2D tx, vec2 uv, int mip)
+vec4 downsample(vec2 uv)
 {
-    vec2 texelSize = 1.0 / textureSize(tx, mip);
+    vec2 texelSize = 1.0 / txsz; //textureSize(tx, mip);
     float x = texelSize.x;
     float y = texelSize.y;
-    // Take 13 samples around current texel 'e':
+    // Take 13 samples around current texel 'E':
     // a - b - c
     // - j - k -
-    // d - e - f
+    // d - E - f
     // - l - m -
     // g - h - i
     vec4 a = textureLod(tx, vec2(uv.x -2*x, uv.y +2*y), mip);
     vec4 b = textureLod(tx, vec2(uv.x,      uv.y +2*y), mip);
     vec4 c = textureLod(tx, vec2(uv.x +2*x, uv.y +2*y), mip);
     vec4 d = textureLod(tx, vec2(uv.x -2*x, uv.y     ), mip);
-    vec4 e = textureLod(tx, vec2(uv.x,      uv.y     ), mip);
+    vec4 E = textureLod(tx, vec2(uv.x,      uv.y     ), mip);
     vec4 f = textureLod(tx, vec2(uv.x +2*x, uv.y     ), mip);
     vec4 g = textureLod(tx, vec2(uv.x -2*x, uv.y -2*y), mip);
     vec4 h = textureLod(tx, vec2(uv.x,      uv.y -2*y), mip);
@@ -77,7 +79,7 @@ vec4 downsample(sampler2D tx, vec2 uv, int mip)
     vec4 l = textureLod(tx, vec2(uv.x   -x, uv.y   -y), mip);
     vec4 m = textureLod(tx, vec2(uv.x   +x, uv.y   -y), mip);
     // Weigh contributions and return
-    vec4 color = e*0.125;
+    vec4 color = E*0.125;
     color += (a+c+g+i)*0.03125;
     color += (b+d+f+h)*0.0625;
     color += (j+k+l+m)*0.125;
@@ -86,12 +88,11 @@ vec4 downsample(sampler2D tx, vec2 uv, int mip)
 void main()
 {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(outputImage);
-    if (texel.x < size.x && texel.y < size.y)
+    if (texel.x < imsz.x && texel.y < imsz.y)
     {
-        vec2 uv = (vec2(texel)+.5f)/size;
-        vec4 col = downsample(inputTexture, uv, mipLevel);
-        imageStore(outputImage, texel, col);
+        vec2 uv = (vec2(texel)+.5f)/imsz;
+        vec4 col = downsample(uv);
+        imageStore(im, texel, col);
     }
 })"
     );
@@ -100,18 +101,21 @@ OpenGLComputeShader
     OpenGLBloomer::upsampler_
     (
 R"(#version 430 core
-uniform int mipLevel;
-uniform int toneMap;
-uniform float intensity;
-uniform float toneMapArg;
-layout(binding=0) uniform sampler2D inputTexture;
-layout(rgba32f, binding=0) uniform image2D outputImage;
+uniform int mip;
+uniform ivec2 txsz; // tx size
+uniform ivec2 imsz; // im size
+uniform float ii;
+uniform float cd;
+uniform int tm;
+uniform float tma;
+layout(binding=0)          uniform sampler2D tx;
+layout(rgba32f, binding=0) uniform image2D   im;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-vec4 upsample(sampler2D tx, vec2 tc, int mip)
+vec4 upsample(vec2 tc)
 {
     // The filter kernel is applied with a radius, specified in texture
     // coordinates, so that the radius will vary across mip resolutions.
-    vec2 texelSize = 1.0 / textureSize(tx, mip);
+    vec2 texelSize = 1.0 / txsz; //textureSize(tx, mip);
     float x = texelSize.x;
     float y = texelSize.y;
 
@@ -167,30 +171,34 @@ vec3 tonemapACES(vec3 v)
 void main()
 {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(outputImage);
-    if (texel.x < size.x && texel.y < size.y)
+    if (texel.x < imsz.x && texel.y < imsz.y)
     {
-        vec2 uv = (vec2(texel)+.5f)/size;
-        vec4 col = upsample(inputTexture, uv, mipLevel);
-        col.rgb += imageLoad(outputImage, texel).rgb;
-        if (mipLevel == 1) // i.e., final upsamling pass
+        vec2 uv = (vec2(texel)+.5f)/imsz;
+        vec4 col = upsample(uv);
+        col.rgb += imageLoad(im, texel).rgb;
+        if (mip == 1) // i.e., final upsamling pass
         {
             // if toneMap == 0 then no tone map is used
-            if (toneMap == 1)
+            if (tm == 1)
             {
-                col.rgb = tonemapReinhard(col.rgb, toneMapArg);
+                col.rgb = tonemapReinhard(col.rgb, tma);
             }
-            else if (toneMap == 2)
+            else if (tm == 2)
             {
-                col.rgb = tonemapReinhardExtended(col.rgb, toneMapArg);
+                col.rgb = tonemapReinhardExtended(col.rgb, tma);
             }
-            else if (toneMap == 3)
+            else if (tm == 3)
             {
                 col.rgb = tonemapACES(col.rgb);
             }
-            col.rgb *= intensity;
+            if (cd > 0)
+            {
+                float lmn = dot(col.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
+                col.rgb *= 1.0/(cd*lmn+1.0);
+            }
+            col.rgb *= ii;
         }
-        imageStore(outputImage, texel, col);
+        imageStore(im, texel, col);
     }
 }
 )"
@@ -200,45 +208,24 @@ OpenGLComputeShader
     OpenGLBloomer::adder_
     (
 R"(#version 430 core
-layout(rgba32f, binding=0) readonly uniform image2D inputImage;
-layout(rgba32f, binding=1) readonly uniform image2D bloomImage;
-layout(rgba32f, binding=2) writeonly uniform image2D outputImage;
+uniform ivec2 sz;
+layout(rgba32f, binding=0) readonly  uniform image2D imi;
+layout(rgba32f, binding=1) readonly  uniform image2D imb;
+layout(rgba32f, binding=2) writeonly uniform image2D imo;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main()
 {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(outputImage);
-    if (texel.x < size.x && texel.y < size.y)
+    if (texel.x < sz.x && texel.y < sz.y)
     {
-        vec4 col = imageLoad(inputImage, texel);
-        col.rgb += imageLoad(bloomImage, texel).rgb;
-        imageStore(outputImage, texel, col);
+        vec4 col = imageLoad(imi, texel);
+        col.rgb += imageLoad(imb, texel).rgb;
+        imageStore(imo, texel, col);
     }
 }
 )"
     );
-
-OpenGLComputeShader
-    OpenGLBloomer::copyToOutput_
-    (
-R"(#version 430 core
-uniform int mipLevel;
-layout(binding=0) uniform sampler2D inputTexture;
-layout(rgba32f, binding=1) writeonly uniform image2D outputImage;
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-void main()
-{
-    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(outputImage);
-    if (texel.x < size.x && texel.y < size.y)
-    {
-        vec2 uv = vec2(texel)/size;
-        vec4 col = textureLod(inputTexture, uv, mipLevel);
-        imageStore(outputImage, texel, col);
-    }
-}
-)");
-
+    
 //
 OpenGLBloomer::OpenGLBloomer() :
 bloom_(nullptr)
@@ -249,7 +236,6 @@ bloom_(nullptr)
     downsampler_.compile();
     upsampler_.compile();
     adder_.compile();
-    copyToOutput_.compile();
     computeShaderStagesCompiled_ = true;
 }
 
@@ -265,13 +251,12 @@ OpenGLBloomer::~OpenGLBloomer()
 void OpenGLBloomer::bloom
 (
     const Framebuffer* input,
-    Settings settings
+    Settings& settings
 )
 {
-    settings_ = settings;
-
     // Size output to match input
     prepareOutput(input);
+    bool sizeChanged(false);
     if (bloom_ == nullptr)
     {
         bloom_ = TextureBuffer2D::create
@@ -285,6 +270,7 @@ void OpenGLBloomer::bloom
         bloom_->setMinFilterMode(FilterMode::LinearMipmapNearest);
         for (int i=0;i<2;i++)
             bloom_->setWrapMode(i, WrapMode::ClampToEdge);
+        sizeChanged = true;
     }
     else if 
     (
@@ -304,18 +290,40 @@ void OpenGLBloomer::bloom
         bloom_->setMinFilterMode(FilterMode::LinearMipmapNearest);
         for (int i=0;i<2;i++)
             bloom_->setWrapMode(i, WrapMode::ClampToEdge);
+        sizeChanged = true;
     }
+    static glm::ivec2 mipSize[Bloomer::maxMipDepth];
+    mipSize[0] = glm::ivec2(input->width(), input->height());
+
+    // Bindings --------------------------------------------------------------//
+    static const unsigned int inputUnit = 0;
+    static const unsigned int outputUnit = 1;
+    static const unsigned int bloomUnit = 2;
+    glActiveTexture(GL_TEXTURE0+inputUnit);
+    glBindTexture(GL_TEXTURE_2D, input->colorBufferId());
+    glActiveTexture(GL_TEXTURE0+outputUnit);
+    glBindTexture(GL_TEXTURE_2D, output_->colorBufferId());
+    glActiveTexture(GL_TEXTURE0+bloomUnit);
+    glBindTexture(GL_TEXTURE_2D, bloom_->id());
+    brightnessMask_.setUniformInt("tx", inputUnit);
+    brightnessMask_.setUniformInt("im", bloomUnit, false);
+    downsampler_.setUniformInt("tx", bloomUnit);
+    downsampler_.setUniformInt("im", bloomUnit, false);
+    upsampler_.setUniformInt("tx", bloomUnit);
+    upsampler_.setUniformInt("im", bloomUnit, false);
+    adder_.setUniformInt("imi", inputUnit);
+    adder_.setUniformInt("imb", bloomUnit, false);
+    adder_.setUniformInt("imo", outputUnit, false);
+
+    // Macros
+#define N_WORK_GROUPS_X(x) std::ceil(float(x)/8)
+#define N_WORK_GROUPS_Y(y) std::ceil(float(y)/8)
+#define N_WORK_GROUPS_Z 1
 
     // Brightness mask -------------------------------------------------------//
-    unsigned int unit0 = 0;
-    glActiveTexture(GL_TEXTURE0+unit0);
-    glBindTexture(GL_TEXTURE_2D, input->colorBufferId());
-    unsigned int unit1 = 1;
-    glActiveTexture(GL_TEXTURE0+unit1);
-    glBindTexture(GL_TEXTURE_2D, bloom_->id());
     glBindImageTexture
     (
-        unit1, 
+        bloomUnit, 
         bloom_->id(), 
         0,
         GL_FALSE, 
@@ -323,38 +331,25 @@ void OpenGLBloomer::bloom
         GL_WRITE_ONLY,
         GL_RGBA32F
     );
-    brightnessMask_.setUniformFloat("threshold", settings.threshold);
-    brightnessMask_.setUniformFloat("knee", settings.knee, false);
-    brightnessMask_.setUniformInt("inputTexture", unit0, false);
-    brightnessMask_.setUniformInt("outputImage", unit1, false);
-
-#define N_WORK_GROUPS_X(x) std::ceil(float(x)/8)
-#define N_WORK_GROUPS_Y(y) std::ceil(float(y)/8)
-#define N_WORK_GROUPS_Z 1
-    
+    brightnessMask_.setUniformFloat("tr", settings.threshold);
+    brightnessMask_.setUniformFloat("kn", settings.knee, false);
+    brightnessMask_.setUniformInt2("sz", mipSize[0], false);
     brightnessMask_.run
     (
-        N_WORK_GROUPS_X(bloom_->width()),
-        N_WORK_GROUPS_Y(bloom_->height()),
+        N_WORK_GROUPS_X(mipSize[0].x),
+        N_WORK_GROUPS_Y(mipSize[0].y),
         N_WORK_GROUPS_Z
     );
     OpenGLWaitSync();
 
     // Downsampling ----------------------------------------------------------//
-    glActiveTexture(GL_TEXTURE0+unit0);
-    glBindTexture(GL_TEXTURE_2D, bloom_->id());
     int minSideResolution = 2; // Could be passed via settings
     int mipLevel=1;
-    static GLint mipWidths[16];
-    static GLint mipHeights[16];
-    mipWidths[0] = input->width();
-    mipHeights[0] = input->height();
     while (true)
     {
-        // Bind output target mip level image
         glBindImageTexture
         (
-            unit0, 
+            bloomUnit, 
             bloom_->id(), 
             mipLevel,
             GL_FALSE, 
@@ -362,54 +357,53 @@ void OpenGLBloomer::bloom
             GL_WRITE_ONLY,
             GL_RGBA32F
         );
-
-        // Get target mip level texture size
-        GLint* width = &mipWidths[mipLevel];
-        GLint* height = &mipHeights[mipLevel];
+        GLint width, height;
         glGetTexLevelParameteriv
         (
             GL_TEXTURE_2D,
             mipLevel,
             GL_TEXTURE_WIDTH, 
-            width
+            &width
         );
         glGetTexLevelParameteriv
         (
             GL_TEXTURE_2D, 
             mipLevel,
             GL_TEXTURE_HEIGHT, 
-            height
+            &height
         );
-
-        //std::cout<<width<<" "<<height<<" "<<finalMipLevel<<std::endl;
-
-        downsampler_.setUniformInt("mipLevel", mipLevel-1);
-        downsampler_.setUniformInt("inputTexture", unit0, false);
-        downsampler_.setUniformInt("outputImage", unit0, false);
+        glm::ivec2& size = mipSize[mipLevel];
+        size.x = width;
+        size.y = height;
+        downsampler_.setUniformInt("mip", mipLevel-1);
+        downsampler_.setUniformInt2("txsz", mipSize[mipLevel-1], false);
+        downsampler_.setUniformInt2("imsz", size, false);
         downsampler_.run
         (
-            N_WORK_GROUPS_X(*width),
-            N_WORK_GROUPS_Y(*height),
+            N_WORK_GROUPS_X(width),
+            N_WORK_GROUPS_Y(height),
             N_WORK_GROUPS_Z
         );
         OpenGLWaitSync();
-
-        //
-        if (*width <= minSideResolution || *height <= minSideResolution)
+        if 
+        (
+            width <= minSideResolution || 
+            height <= minSideResolution ||
+            mipLevel >= settings.mipDepth
+        )
             break;
         ++mipLevel;
     }
-    int maxMipLevel = mipLevel;
+    int lastMipLevel = mipLevel;
+    if (sizeChanged)
+        settings.mipDepth = lastMipLevel;
 
     // Upsampling ------------------------------------------------------------//
-    glActiveTexture(GL_TEXTURE0+unit0);
-    glBindTexture(GL_TEXTURE_2D, bloom_->id());
     while(mipLevel > 0)
     {
-        // Bind output target mip level image
         glBindImageTexture
         (
-            unit0, 
+            bloomUnit, 
             bloom_->id(), 
             mipLevel-1,
             GL_FALSE, 
@@ -417,34 +411,41 @@ void OpenGLBloomer::bloom
             GL_READ_WRITE,
             GL_RGBA32F
         );
-        upsampler_.setUniformInt("mipLevel", mipLevel);
-        upsampler_.setUniformInt("toneMap", (int)(settings.toneMap));
+        upsampler_.setUniformInt("mip", mipLevel);
+        upsampler_.setUniformInt2("txsz", mipSize[mipLevel], false);
+        const glm::ivec2& size = mipSize[mipLevel-1];
+        upsampler_.setUniformInt2("imsz", size, false);
+        upsampler_.setUniformFloat("ii", settings.intensity, false);
+        float cd = settings.coreDimming;
+        if (cd > 0.f)
+            cd *= std::pow(2, cd);
+        upsampler_.setUniformFloat("cd", cd, false);
+        upsampler_.setUniformInt("tm", (int)(settings.toneMap), false);
         switch (settings.toneMap)
         {
             case ToneMap::Reinhard :
                 upsampler_.setUniformFloat
                 (
-                    "toneMapArg", 
-                    settings.reinhardExposure
+                    "tma", 
+                    settings.reinhardExposure,
+                    false
                 );
                 break;
             case ToneMap::ReinhardExtended :
                 upsampler_.setUniformFloat
                 (
-                    "toneMapArg", 
-                    settings.reinhardWhitePoint
+                    "tma", 
+                    settings.reinhardWhitePoint,
+                    false
                 );
                 break;
             default:
                 break;
         }
-        upsampler_.setUniformFloat("intensity", settings.intensity);
-        upsampler_.setUniformInt("inputTexture", unit0);
-        upsampler_.setUniformInt("outputImage", unit0);
         upsampler_.run
         (
-            N_WORK_GROUPS_X(mipWidths[mipLevel-1]),
-            N_WORK_GROUPS_Y(mipHeights[mipLevel-1]),
+            N_WORK_GROUPS_X(size.x),
+            N_WORK_GROUPS_Y(size.y),
             N_WORK_GROUPS_Z
         );
         OpenGLWaitSync();
@@ -452,11 +453,9 @@ void OpenGLBloomer::bloom
     }
 
     // Add bloom to input ----------------------------------------------------//
-    glActiveTexture(GL_TEXTURE0+unit0);
-    glBindTexture(GL_TEXTURE_2D, input->colorBufferId());
     glBindImageTexture
     (
-        unit0, 
+        inputUnit, 
         input->colorBufferId(), 
         0,
         GL_FALSE, 
@@ -464,11 +463,9 @@ void OpenGLBloomer::bloom
         GL_READ_ONLY,
         GL_RGBA32F
     );
-    glActiveTexture(GL_TEXTURE0+unit1);
-    glBindTexture(GL_TEXTURE_2D, bloom_->id());
     glBindImageTexture
     (
-        unit1, 
+        bloomUnit, 
         bloom_->id(), 
         0,
         GL_FALSE, 
@@ -476,11 +473,9 @@ void OpenGLBloomer::bloom
         GL_READ_ONLY,
         GL_RGBA32F
     );
-    glActiveTexture(GL_TEXTURE0+2);
-    glBindTexture(GL_TEXTURE_2D, output_->colorBufferId());
     glBindImageTexture
     (
-        2, 
+        outputUnit, 
         output_->colorBufferId(), 
         0,
         GL_FALSE, 
@@ -488,50 +483,15 @@ void OpenGLBloomer::bloom
         GL_WRITE_ONLY,
         GL_RGBA32F
     );
-    adder_.setUniformInt("inputImage", unit0);
-    adder_.setUniformInt("bloomImage", unit1);
-    adder_.setUniformInt("outputImage", 2);
+    const glm::ivec2& size = mipSize[0];
+    adder_.setUniformInt2("sz", size);
     adder_.run
     (
-        N_WORK_GROUPS_X(mipWidths[0]),
-        N_WORK_GROUPS_Y(mipHeights[0]),
+        N_WORK_GROUPS_X(size.x),
+        N_WORK_GROUPS_Y(size.y),
         N_WORK_GROUPS_Z
     );
     OpenGLWaitSync();
-
-    /*
-    // Dummy copy to output for visualization purposes -----------------------//
-    // Bind input unit
-    glActiveTexture(GL_TEXTURE0+unit0);
-    glBindTexture(GL_TEXTURE_2D, bloom_->id());
-
-    // Bind output unit
-    glActiveTexture(GL_TEXTURE0+unit1);
-    glBindTexture(GL_TEXTURE_2D, output_->colorBufferId());
-    glBindImageTexture
-    (
-        unit1, 
-        output_->colorBufferId(),
-        0,
-        GL_FALSE, 
-        0, 
-        GL_WRITE_ONLY,
-        GL_RGBA32F
-    );
-
-    // Set uniforms
-    int mip = std::min(settings.mip, maxMipLevel);
-    copyToOutput_.setUniformInt("mipLevel", mip);
-    copyToOutput_.setUniformInt("inputTexture", unit0, false);
-    copyToOutput_.setUniformInt("outputImage", unit1, false);
-    copyToOutput_.run
-    (
-        N_WORK_GROUPS_X(output_->width()),
-        N_WORK_GROUPS_Y(output_->height()),
-        N_WORK_GROUPS_Z
-    );
-    OpenGLWaitSync();
-    */
 };
 
 }

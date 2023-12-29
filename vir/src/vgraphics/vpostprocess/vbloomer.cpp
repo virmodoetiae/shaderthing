@@ -5,7 +5,7 @@
 namespace vir
 {
 
-std::unordered_map<Bloomer::Settings::ToneMap, std::string> 
+const std::unordered_map<Bloomer::Settings::ToneMap, std::string> 
     Bloomer::toneMapToName = 
     {
         {Settings::ToneMap::ACES, "ACES"},

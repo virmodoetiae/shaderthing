@@ -73,6 +73,18 @@ void OpenGLComputeShader::setUniformInt
     glUniform1i(getUniformLocation(uniformName), value);
 }
 
+void OpenGLComputeShader::setUniformInt2
+(
+    std::string uniformName, 
+    glm::ivec2 value,
+    bool autoUse
+)
+{
+    if (autoUse)
+        use();
+    glUniform2iv(getUniformLocation(uniformName), 1, glm::value_ptr(value));
+}
+
 void OpenGLComputeShader::setUniformFloat
 (
     std::string uniformName, 
@@ -83,6 +95,18 @@ void OpenGLComputeShader::setUniformFloat
     if (autoUse)
         use();
     glUniform1f(getUniformLocation(uniformName), value);
+}
+
+void OpenGLComputeShader::setUniformFloat2
+(
+    std::string uniformName, 
+    glm::vec2 value,
+    bool autoUse
+)
+{
+    if (autoUse)
+        use();
+    glUniform2fv(getUniformLocation(uniformName), 1, glm::value_ptr(value));
 }
 
 void OpenGLComputeShader::use()

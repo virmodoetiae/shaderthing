@@ -18,9 +18,8 @@ protected:
     static OpenGLComputeShader downsampler_;
     static OpenGLComputeShader upsampler_;
     static OpenGLComputeShader adder_;
-    static OpenGLComputeShader copyToOutput_;
 
-    //
+    // Intermediate results texture used for a variety of purposes
     TextureBuffer2D* bloom_;
 
     // Delete copy-construction & copy-assignment ops
@@ -39,7 +38,7 @@ public:
     void bloom
     (
         const Framebuffer* input,
-        Settings settings
+        Settings& settings
     ) override;
 
 };

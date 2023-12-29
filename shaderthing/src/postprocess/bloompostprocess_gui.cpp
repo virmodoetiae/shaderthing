@@ -45,6 +45,18 @@ void BloomPostProcess::renderGui()
     )
         isActive_ = !isActive_;
 
+    ImGui::Text("Radius   ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    ImGui::SliderInt
+    (
+        "##bloomMipDepthSlider",
+        (int*)&settings_.mipDepth,
+        1,
+        vir::Bloomer::maxMipDepth
+    );
+    ImGui::PopItemWidth();
+
     ImGui::Text("Intensity");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
@@ -52,7 +64,7 @@ void BloomPostProcess::renderGui()
     (
         ImGui::DragFloat
         (
-            "##bloomIntensitySlider",
+            "##bloomIntensityDrag",
             &settings_.intensity, 
             .01f, 
             0.f
@@ -68,7 +80,7 @@ void BloomPostProcess::renderGui()
     (
         ImGui::DragFloat
         (
-            "##bloomThresholdSlider", 
+            "##bloomThresholdDrag", 
             &settings_.threshold, 
             .01f, 
             0.f
@@ -84,13 +96,29 @@ void BloomPostProcess::renderGui()
     (
         ImGui::DragFloat
         (
-            "##bloomKneeSlider", 
+            "##bloomKneeDrag", 
             &settings_.knee, 
             .01f, 
             0.f
         )
     )
         settings_.knee = std::max(0.f, settings_.knee);
+    ImGui::PopItemWidth();
+
+    ImGui::Text("Dimming  ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::DragFloat
+        (
+            "##bloomCoreDimmingDrag",
+            &settings_.coreDimming, 
+            .01f, 
+            0.f
+        )
+    )
+        settings_.coreDimming = std::max(0.f, settings_.coreDimming);
     ImGui::PopItemWidth();
 
     ImGui::Text("Tone map ");
@@ -125,7 +153,7 @@ void BloomPostProcess::renderGui()
         (
             ImGui::DragFloat
             (
-                "##bloomReinhardExposureSlider", 
+                "##bloomReinhardExposureDrag", 
                 &settings_.reinhardExposure, 
                 .1f, 
                 0.f
@@ -145,7 +173,7 @@ void BloomPostProcess::renderGui()
         (
             ImGui::DragFloat
             (
-                "##bloomReinhardWhitePointSlider", 
+                "##bloomReinhardWhitePointDrag", 
                 &settings_.reinhardWhitePoint, 
                 .01f, 
                 0.f

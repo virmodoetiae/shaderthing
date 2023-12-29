@@ -21,10 +21,22 @@ public:
     void compile();
     GLint getUniformLocation(std::string& uniformName);
     void setUniformInt(std::string uniformName,int value,bool autoUse=true);
+    void setUniformInt2
+    (
+        std::string uniformName,
+        glm::ivec2 value,
+        bool autoUse=true
+    );
     void setUniformFloat
     (
         std::string uniformName,
         float value,
+        bool autoUse=true
+    );
+    void setUniformFloat2
+    (
+        std::string uniformName,
+        glm::vec2 value,
         bool autoUse=true
     );
     void use();
