@@ -216,7 +216,7 @@ uniform int   mip;
 uniform ivec2 txsz; // tx size
 uniform ivec2 imsz; // im size
 uniform float ii;
-uniform float cd;
+uniform float hz;
 uniform int   tm;
 uniform float tma;
 layout(binding=0)          uniform sampler2D tx;
@@ -248,15 +248,15 @@ vec4 upsample()
     color     *= 1.f / 16;
     return color;
 }
-vec3 tonemapReinhard(vec3 c, float ex)
+vec3 tonemapRadman(vec3 c)
 {
     float l = dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
-    return ex*c*l/(1.f + l);
+    return tma*c*l/(1.f+tma*l);
 }
-vec3 tonemapReinhardExtended(vec3 c, float wp)
+vec3 tonemapReinhard(vec3 c)
 {
     float l = dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
-    return c*(1.f + l/wp/wp)/(1.f + l);
+    return c*(1.f + l/tma)/(1.f + l);
 }
 vec3 tonemapACES(vec3 v)
 {
@@ -281,25 +281,24 @@ void main()
         col.rgb += imageLoad(im, texel).rgb;
         if (mip == 1) // i.e., final upsamling pass
         {
-            // if toneMap == 0 then no tone map is used
-            if (tm == 1)
+            if (hz > 0) // Apply haze
             {
-                col.rgb = tonemapReinhard(col.rgb, tma);
+                float lmn = dot(col.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
+                col.rgb *= 1.0/(hz*lmn+1.0);
+            }
+            col.rgb *= ii; // Apply intensity
+            if (tm == 1) // Apply tone map
+            {
+                col.rgb = tonemapRadman(col.rgb);
             }
             else if (tm == 2)
             {
-                col.rgb = tonemapReinhardExtended(col.rgb, tma);
+                col.rgb = tonemapReinhard(col.rgb);
             }
             else if (tm == 3)
             {
                 col.rgb = tonemapACES(col.rgb);
             }
-            if (cd > 0)
-            {
-                float lmn = dot(col.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
-                col.rgb *= 1.0/(cd*lmn+1.0);
-            }
-            col.rgb *= ii;
         }
         imageStore(im, texel, col);
     }
@@ -308,7 +307,7 @@ void main()
     );
 
 OpenGLComputeShader
-    OpenGLBloomer::adder_
+    OpenGLBloomer::adderSF32_
     (
 R"(#version 430 core
 uniform ivec2 sz;
@@ -328,6 +327,28 @@ void main()
 }
 )"
     );
+
+OpenGLComputeShader
+    OpenGLBloomer::adderUI8_
+    (
+R"(#version 430 core
+uniform ivec2 sz;
+layout(rgba8ui, binding=0) readonly  uniform uimage2D imi;
+layout(rgba32f, binding=1) readonly  uniform image2D  imb;
+layout(rgba8ui, binding=2) writeonly uniform uimage2D imo;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+    if (texel.x < sz.x && texel.y < sz.y)
+    {
+        uvec4 col = imageLoad(imi, texel);
+        col.rgb += uvec3(255*imageLoad(imb, texel).rgb);
+        imageStore(imo, texel, col);
+    }
+}
+)"
+    );
     
 //
 OpenGLBloomer::OpenGLBloomer() :
@@ -338,7 +359,8 @@ bloom_(nullptr)
     brightnessMask_.compile();
     downsampler_.compile();
     upsampler_.compile();
-    adder_.compile();
+    adderSF32_.compile();
+    adderUI8_.compile();
     computeShaderStagesCompiled_ = true;
 }
 
@@ -397,6 +419,7 @@ void OpenGLBloomer::bloom
     }
     static glm::ivec2 mipSize[Bloomer::maxMipDepth];
     mipSize[0] = glm::ivec2(input->width(), input->height());
+    bool isSF32(input->colorBufferInternalFormat()==InternalFormat::RGBA_SF_32);
 
     // Bindings --------------------------------------------------------------//
     static const unsigned int inputUnit = 0;
@@ -414,9 +437,10 @@ void OpenGLBloomer::bloom
     downsampler_.setUniformInt("im", bloomUnit, false);
     upsampler_.setUniformInt("tx", bloomUnit);
     upsampler_.setUniformInt("im", bloomUnit, false);
-    adder_.setUniformInt("imi", inputUnit);
-    adder_.setUniformInt("imb", bloomUnit, false);
-    adder_.setUniformInt("imo", outputUnit, false);
+    OpenGLComputeShader* adder_ = isSF32 ? &adderSF32_ : &adderUI8_;
+    adder_->setUniformInt("imi", inputUnit);
+    adder_->setUniformInt("imb", bloomUnit, false);
+    adder_->setUniformInt("imo", outputUnit, false);
 
     // Macros
 #define N_WORK_GROUPS_X(x) std::ceil(float(x)/8)
@@ -523,29 +547,29 @@ void OpenGLBloomer::bloom
         const glm::ivec2& size = mipSize[mipLevel-1];
         upsampler_.setUniformInt2("imsz", size, false);
         upsampler_.setUniformFloat("ii", settings.intensity, false);
-        float cd = settings.coreDimming;
-        if (cd > 0.f)
-            cd *= std::pow(2, cd);
-        upsampler_.setUniformFloat("cd", cd, false);
+        float hz = settings.haze;
+        if (hz > 0.f)
+            hz *= std::pow(2, hz);
+        upsampler_.setUniformFloat("hz", hz, false);
         upsampler_.setUniformInt("tm", (int)(settings.toneMap), false);
         switch (settings.toneMap)
         {
+            case ToneMap::Radman :
+            {
+                float tma = settings.radmanExposure;
+                if (tma > 0.f)
+                    tma *= std::pow(2, tma);
+                upsampler_.setUniformFloat("tma", tma, false);
+                break;
+            }
             case ToneMap::Reinhard :
-                upsampler_.setUniformFloat
-                (
-                    "tma", 
-                    settings.reinhardExposure,
-                    false
-                );
+            {
+                float tma = 
+                    settings.reinhardWhitePoint*
+                    settings.reinhardWhitePoint;
+                upsampler_.setUniformFloat("tma", tma, false);
                 break;
-            case ToneMap::ReinhardExtended :
-                upsampler_.setUniformFloat
-                (
-                    "tma", 
-                    settings.reinhardWhitePoint,
-                    false
-                );
-                break;
+            }
             default:
                 break;
         }
@@ -568,7 +592,7 @@ void OpenGLBloomer::bloom
         GL_FALSE, 
         0, 
         GL_READ_ONLY,
-        GL_RGBA32F
+        isSF32 ? GL_RGBA32F : GL_RGBA8UI
     );
     glBindImageTexture
     (
@@ -588,11 +612,11 @@ void OpenGLBloomer::bloom
         GL_FALSE, 
         0, 
         GL_WRITE_ONLY,
-        GL_RGBA32F
+        isSF32 ? GL_RGBA32F : GL_RGBA8UI
     );
     const glm::ivec2& size = mipSize[0];
-    adder_.setUniformInt2("sz", size);
-    adder_.run
+    adder_->setUniformInt2("sz", size);
+    adder_->run
     (
         N_WORK_GROUPS_X(size.x),
         N_WORK_GROUPS_Y(size.y),

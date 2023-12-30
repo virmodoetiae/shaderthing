@@ -31,7 +31,8 @@ protected:
     static OpenGLComputeShader brightnessMask_;
     static OpenGLComputeShader downsampler_;
     static OpenGLComputeShader upsampler_;
-    static OpenGLComputeShader adder_;
+    static OpenGLComputeShader adderSF32_;
+    static OpenGLComputeShader adderUI8_;
 
     // Intermediate results texture used for a variety of purposes
     TextureBuffer2D* bloom_;

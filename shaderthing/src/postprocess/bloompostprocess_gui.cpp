@@ -82,7 +82,7 @@ void BloomPostProcess::renderGui()
         (
             "##bloomThresholdDrag", 
             &settings_.threshold, 
-            .01f, 
+            .0025f, 
             0.f
         )
     )
@@ -98,27 +98,27 @@ void BloomPostProcess::renderGui()
         (
             "##bloomKneeDrag", 
             &settings_.knee, 
-            .01f, 
+            .0025f, 
             0.f
         )
     )
         settings_.knee = std::max(0.f, settings_.knee);
     ImGui::PopItemWidth();
 
-    ImGui::Text("Dimming  ");
+    ImGui::Text("Haze     ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     if 
     (
         ImGui::DragFloat
         (
-            "##bloomCoreDimmingDrag",
-            &settings_.coreDimming, 
+            "##bloomHazeDrag",
+            &settings_.haze, 
             .01f, 
             0.f
         )
     )
-        settings_.coreDimming = std::max(0.f, settings_.coreDimming);
+        settings_.haze = std::max(0.f, settings_.haze);
     ImGui::PopItemWidth();
 
     ImGui::Text("Tone map ");
@@ -144,7 +144,7 @@ void BloomPostProcess::renderGui()
 
     switch (settings_.toneMap)
     {
-    case Settings::ToneMap::Reinhard :
+    case Settings::ToneMap::Radman :
     {
         ImGui::Text("Exposure ");
         ImGui::SameLine();
@@ -154,17 +154,17 @@ void BloomPostProcess::renderGui()
             ImGui::DragFloat
             (
                 "##bloomReinhardExposureDrag", 
-                &settings_.reinhardExposure, 
+                &settings_.radmanExposure, 
                 .1f, 
                 0.f
             )
         )
-            settings_.reinhardExposure = 
-                std::max(0.f, settings_.reinhardExposure);
+            settings_.radmanExposure = 
+                std::max(0.f, settings_.radmanExposure);
         ImGui::PopItemWidth();
         break;
     }
-    case Settings::ToneMap::ReinhardExtended :
+    case Settings::ToneMap::Reinhard :
     {
         ImGui::Text("White pt.");
         ImGui::SameLine();

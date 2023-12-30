@@ -66,7 +66,7 @@ PostProcess* PostProcess::create
         case vir::PostProcess::Type::Quantization :
             return new QuantizationPostProcess(app, inputLayer, reader);
         case vir::PostProcess::Type::Bloom :
-            return nullptr;
+            return new BloomPostProcess(app, inputLayer, reader);
         default:
             return nullptr;
     }

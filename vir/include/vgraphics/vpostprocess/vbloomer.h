@@ -18,17 +18,17 @@ public:
         enum class ToneMap
         {
             None = 0,
-            Reinhard = 1,
-            ReinhardExtended = 2,
+            Radman = 1,
+            Reinhard = 2,
             ACES = 3
         };
         unsigned int mipDepth = 16;
         float intensity = 1.f;
         float threshold = .8f;
         float knee = .1f;
-        float coreDimming = 0.f;
+        float haze = 0.f;
         ToneMap toneMap = ToneMap::ACES;
-        float reinhardExposure = 2.f;
+        float radmanExposure = 2.f;
         float reinhardWhitePoint = 1.f;
     };
 
