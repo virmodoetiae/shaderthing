@@ -6,7 +6,8 @@ namespace vir
 
 OpenGLComputeShader::~OpenGLComputeShader()
 {
-    glDeleteProgram(id_);
+    if (id_ != 0)
+        glDeleteProgram(id_);
 }
 
 void OpenGLComputeShader::compile()
