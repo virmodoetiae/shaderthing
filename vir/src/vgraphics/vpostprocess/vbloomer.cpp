@@ -10,7 +10,7 @@ const std::unordered_map<Bloomer::Settings::ToneMap, std::string>
     {
         {Settings::ToneMap::ACES, "ACES"},
         {Settings::ToneMap::Reinhard, "Reinhard"},
-        {Settings::ToneMap::Radman, "Radman"},
+        //{Settings::ToneMap::Radman, "Radman"},
         {Settings::ToneMap::None, "None"}
     };
 

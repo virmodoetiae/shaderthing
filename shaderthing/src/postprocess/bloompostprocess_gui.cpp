@@ -144,7 +144,7 @@ void BloomPostProcess::renderGui()
 
     switch (settings_.toneMap)
     {
-    case Settings::ToneMap::Radman :
+    /*case Settings::ToneMap::Radman :
     {
         ImGui::Text("Exposure ");
         ImGui::SameLine();
@@ -163,7 +163,7 @@ void BloomPostProcess::renderGui()
                 std::max(0.f, settings_.radmanExposure);
         ImGui::PopItemWidth();
         break;
-    }
+    }*/
     case Settings::ToneMap::Reinhard :
     {
         ImGui::Text("White pt.");

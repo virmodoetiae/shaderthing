@@ -37,7 +37,7 @@ settings_({})
     settings_.knee = reader.read<float>("knee");
     settings_.haze = reader.read<float>("haze");
     settings_.toneMap = (ToneMap)reader.read<int>("toneMap");
-    settings_.radmanExposure = reader.read<float>("radmanExposure");
+    //settings_.radmanExposure = reader.read<float>("radmanExposure");
     settings_.reinhardWhitePoint = reader.read<float>("reinhardWhitePoint");
 }
 
@@ -90,7 +90,7 @@ void BloomPostProcess::saveState(ObjectIO& writer)
     writer.write("knee", settings_.knee);
     writer.write("haze", settings_.haze);
     writer.write("toneMap", (int)settings_.toneMap);
-    writer.write("radmanExposure", settings_.radmanExposure);
+    //writer.write("radmanExposure", settings_.radmanExposure);
     writer.write("reinhardWhitePoint", settings_.reinhardWhitePoint);
     writer.writeObjectEnd(); // End of bloomer
 }

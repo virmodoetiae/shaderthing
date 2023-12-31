@@ -248,11 +248,11 @@ vec4 upsample()
     color     *= 1.f / 16;
     return color;
 }
-vec3 tonemapRadman(vec3 c)
+/*vec3 tonemapRadman(vec3 c)
 {
     float l = dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
     return tma*c*l/(1.f+tma*l);
-}
+}*/
 vec3 tonemapReinhard(vec3 c)
 {
     float l = dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
@@ -286,16 +286,12 @@ void main()
                 float lmn = dot(col.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
                 col.rgb *= 1.0/(hz*lmn+1.0);
             }
-            col.rgb *= ii; // Apply intensity
+            col.rgb *= ii;    // Apply intensity
             if (tm == 1) // Apply tone map
-            {
-                col.rgb = tonemapRadman(col.rgb);
-            }
-            else if (tm == 2)
             {
                 col.rgb = tonemapReinhard(col.rgb);
             }
-            else if (tm == 3)
+            else if (tm == 2)
             {
                 col.rgb = tonemapACES(col.rgb);
             }
@@ -552,7 +548,14 @@ void OpenGLBloomer::bloom
             hz *= std::pow(2, hz);
         upsampler_.setUniformFloat("hz", hz, false);
         upsampler_.setUniformInt("tm", (int)(settings.toneMap), false);
-        switch (settings.toneMap)
+        if (settings.toneMap == ToneMap::Reinhard)
+        {
+            float tma = 
+                settings.reinhardWhitePoint*
+                settings.reinhardWhitePoint;
+            upsampler_.setUniformFloat("tma", tma, false);
+        }
+        /*switch (settings.toneMap)
         {
             case ToneMap::Radman :
             {
@@ -572,7 +575,7 @@ void OpenGLBloomer::bloom
             }
             default:
                 break;
-        }
+        }*/
         upsampler_.run
         (
             N_WORK_GROUPS_X(size.x),

@@ -18,9 +18,9 @@ public:
         enum class ToneMap
         {
             None = 0,
-            Radman = 1,
-            Reinhard = 2,
-            ACES = 3
+            //Radman = 1,
+            Reinhard = 1,
+            ACES = 2
         };
         unsigned int mipDepth = 16;
         float intensity = 1.f;
@@ -28,7 +28,7 @@ public:
         float knee = .1f;
         float haze = 0.f;
         ToneMap toneMap = ToneMap::ACES;
-        float radmanExposure = 2.f;
+        //float radmanExposure = 2.f;
         float reinhardWhitePoint = 1.f;
     };
 
