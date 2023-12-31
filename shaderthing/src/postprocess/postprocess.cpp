@@ -1,6 +1,7 @@
 #include "postprocess/postprocess.h"
 #include "postprocess/quantizationpostprocess.h"
 #include "postprocess/bloompostprocess.h"
+#include "postprocess/blurpostprocess.h"
 #include "shaderthingapp.h"
 #include "layers/layer.h"
 #include "objectio/objectio.h"
@@ -41,6 +42,8 @@ PostProcess* PostProcess::create
             return new QuantizationPostProcess(app, inputLayer);
         case vir::PostProcess::Type::Bloom :
             return new BloomPostProcess(app, inputLayer);
+        case vir::PostProcess::Type::Blur :
+            return new BlurPostProcess(app, inputLayer);
         default:
             return nullptr;
     }
@@ -67,6 +70,8 @@ PostProcess* PostProcess::create
             return new QuantizationPostProcess(app, inputLayer, reader);
         case vir::PostProcess::Type::Bloom :
             return new BloomPostProcess(app, inputLayer, reader);
+        case vir::PostProcess::Type::Blur :
+            return new BlurPostProcess(app, inputLayer, reader);
         default:
             return nullptr;
     }

@@ -23,6 +23,7 @@
 #include "vgraphics/vcore/vrenderer.h"
 #include "vgraphics/vpostprocess/vquantizer.h"
 #include "vgraphics/vpostprocess/vbloomer.h"
+#include "vgraphics/vpostprocess/vblurrer.h"
 #include "vgraphics/vmisc/vgifencoder.h"
 #include "vinput/vinputcodes.h"
 #include "vinput/vinputstate.h"

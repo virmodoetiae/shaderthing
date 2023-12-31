@@ -17,7 +17,8 @@ public:
     enum class Type
     {
         Quantization = 0,
-        Bloom = 1
+        Bloom = 1,
+        Blur = 2
     };
 
     static std::unordered_map<Type, std::string> typeToName;

@@ -433,10 +433,7 @@ locked to that of the main window)"
                     PostProcess* postProcess = 
                         PostProcess::create(app_, this, type);
                     if (postProcess != nullptr)
-                        postProcesses_.emplace_back
-                        (
-                            postProcess
-                        );
+                        postProcesses_.emplace_back(postProcess);
                 }
             }
             ImGui::EndCombo();

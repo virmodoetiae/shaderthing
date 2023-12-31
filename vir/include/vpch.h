@@ -51,6 +51,8 @@
 #include "vgraphics/vcore/vprimitives.h"
 
 #include "vgraphics/vpostprocess/vquantizer.h"
+#include "vgraphics/vpostprocess/vbloomer.h"
+#include "vgraphics/vpostprocess/vblurrer.h"
 #include "vgraphics/vmisc/vgifencoder.h"
 
 #include "vimgui/vimguirenderer.h"

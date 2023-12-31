@@ -7,6 +7,7 @@ namespace vir
 
 std::unordered_map<PostProcess::Type, std::string> PostProcess::typeToName = 
 {
+    {PostProcess::Type::Blur, "Blur"},
     {PostProcess::Type::Bloom, "Bloom"},
     {PostProcess::Type::Quantization, "Quantization"}
 };
