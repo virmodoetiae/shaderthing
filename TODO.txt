@@ -134,6 +134,14 @@ TODO ---------------------------------------------------------------------------
 (X) Fix compilation of shared fragment source not affecting/not being reflected
     in all layers
 
+(X) Refactor 'Effects' management, such that each Layer can have its own set of
+    effects, not renamed to 'PostProcess'es. Refactor Quantizer class into such
+    novel scheme
+
+(X) Implemente Bloom as a new post process effect (i.e., just like the 
+    Quantizer). This was achieved by first developing a compute-shader based
+    Bloomer in the vir lib and wrapping it in a new ShaderThing::PostProcess
+
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)6
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains to vir/ and shaderthing/).
@@ -166,11 +174,6 @@ TODO ---------------------------------------------------------------------------
 TO-CONSIDER --------------------------------------------------------------------
 
 *   Add pivot-mode motion to iCameraDirection/iLook w.r.t. iCameraPosition/iWASD
-
-*   Enable option to use the quantizer palette for GIF quantization on GIF 
-    exporting
-    
-*   Add dedicated Bloom effect (i.e., same hierarchical level as the Quantizer)
 
 *   Add possibility of rendering to cubemaps (e.g., adding a type selector for
     any layer's internal framebuffer 'type': either a Texture2D framebuffer or
