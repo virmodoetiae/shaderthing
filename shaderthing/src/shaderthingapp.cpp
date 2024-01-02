@@ -48,10 +48,10 @@ sharedUniforms_(0)
     // Initialize vir lib
     vir::initialize
     (
-        vir::PlatformType::GLFWOpenGL, 
-        resolution_.x, 
-        resolution_.y, 
-        "ShaderThing", 
+        vir::PlatformType::GLFWOpenGL,
+        resolution_.x,
+        resolution_.y,
+        "ShaderThing",
         true
     );
 
@@ -59,8 +59,8 @@ sharedUniforms_(0)
     auto window = vir::GlobalPtr<vir::Window>::instance();
     window->setIcon
     (
-        (unsigned char*)IconData::sTIconData, 
-        IconData::sTIconSize, 
+        (unsigned char*)IconData::sTIconData,
+        IconData::sTIconSize,
         false
     );
 
@@ -78,7 +78,7 @@ sharedUniforms_(0)
     codeRepository_ = new CodeRepository();
     about_ = new About();
     reset();
-    
+
     // Main loop
     while(window->isOpen())
     {
@@ -107,6 +107,7 @@ ShaderThingApp::~ShaderThingApp()
     //delete quantizationTool_;
     delete codeRepository_;
     delete about_;
+    delete keyobardUniformBuffer_;
 }
 
 //----------------------------------------------------------------------------//
@@ -279,6 +280,37 @@ void ShaderThingApp::onReceive(vir::Event::MouseButtonReleaseEvent& event)
 }
 
 //----------------------------------------------------------------------------//
+
+void ShaderThingApp::onReceive(vir::Event::KeyPressEvent& event)
+{
+    struct alignas(16) ivec3A16{int x = 0; int y = 0; int z = 0;};
+    static ivec3A16 data;
+    static uint32_t size = sizeof(data);
+    static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
+    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode());
+    auto& status = inputState->keyState(event.keyCode());
+    data.x = (int)status.isPressed();
+    data.y = (int)status.isHeld();
+    data.z = (int)status.isToggled();
+    //                                  key data,   16,    key pos. in buffer
+    keyobardUniformBuffer_->setData((void*)&data, size, size*shaderToyKeyCode);
+}
+
+void ShaderThingApp::onReceive(vir::Event::KeyReleaseEvent& event)
+{
+    struct alignas(16) ivec3A16{int x = 0; int y = 0; int z = 0;};
+    static ivec3A16 data;
+    static uint32_t size = sizeof(data);
+    static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
+    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode());
+    data.x = 0;
+    data.y = 0;
+    data.z = (int)inputState->keyState(event.keyCode()).isToggled();
+    //                                  key data,   16,    key pos. in buffer
+    keyobardUniformBuffer_->setData((void*)&data, size, size*shaderToyKeyCode);
+}
+
+//----------------------------------------------------------------------------//
 // Private functions ---------------------------------------------------------//
 
 void ShaderThingApp::reset()
@@ -342,6 +374,19 @@ void ShaderThingApp::newProject()
 
 void ShaderThingApp::resetSharedUniforms()
 {
+    // Initial keyboard UBO data to all 0s. A note for future me, I chose to
+    // support only 256 keys, and each array element needs to have a padding of
+    // 16 because of the std140 layout, hence the kUBOSize value
+    static constexpr uint32_t kUBOSize = 256*16;
+    if (keyobardUniformBuffer_ == nullptr);
+        keyobardUniformBuffer_ = vir::UniformBuffer::create(kUBOSize);
+    auto keyboardData0 = new int[kUBOSize];
+    std::memset(keyboardData0, 0, kUBOSize);
+    keyobardUniformBuffer_->bind(0);
+    keyobardUniformBuffer_->setData(keyboardData0);
+    delete[] keyboardData0;
+    
+    // Clear all shared uniforms
     for (auto* u : sharedUniforms_)
         delete u;
     sharedUniforms_.resize(0);

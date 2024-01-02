@@ -72,6 +72,24 @@ private:
     glm::ivec4 mouse_ = {0,0,0,0};
     bool userAction_ = false;   // True whenever the user manually changes the
                                 // status of a uniform
+    
+    // Uniform block for managing the state of all keyboard uniforms. At some
+    // point, I will re-factor the shared uniforms into a single uniform block
+    // for efficiency as well
+    vir::UniformBuffer* keyobardUniformBuffer_ = nullptr;
+    // Because of the usage of the 140std uniform block layout, the padding
+    // between struct members is constant at 16 bytes regardless of the actual
+    // byte size of the member. In this case, I store keydata as a vec3, which
+    // would have a size of 12 bytes (= 3 * 4 bytes per float) per element.
+    // However, to avoid having to perform extremely annoying data alignment
+    // operations when setting the data in keyobardUniformBuffer_, I define
+    // a custom 16-byte aligned vec4, essentially wasting 4-bytes per array
+    // element but thus always ensuring proper data alignment
+    struct KeyboardUniformBlockData
+    {
+        struct alignas(16) ivec3A16{int x = 0; int y = 0; int z = 0;};
+        ivec3A16 data[VIR_N_KEYS]{};
+    }; // Defined but not used
 
     // Filepath of the currently loaded project/shaderthing instance
     std::string projectFilepath_ = "";
@@ -151,7 +169,8 @@ public:
     {
         return stateFlags_[ST_IS_MOUSE_INPUT_ENABLED];
     }
-    std::vector<Uniform*> sharedUniformsRef(){return sharedUniforms_;}
+    vir::UniformBuffer& keyboardUniformBufferRef(){return *keyobardUniformBuffer_;}
+    std::vector<Uniform*>& sharedUniformsRef(){return sharedUniforms_;}
     LayerManager& layerManagerRef(){return *layerManager_;}
     ResourceManager& resourceManagerRef(){return *resourceManager_;}
     //QuantizationTool& quantizationToolRef() {return *quantizationTool_;}
@@ -174,7 +193,9 @@ public:
         vir::Event::Type::WindowFocus *
         vir::Event::Type::MouseButtonPress *
         vir::Event::Type::MouseMotion *
-        vir::Event::Type::MouseButtonRelease
+        vir::Event::Type::MouseButtonRelease *
+        vir::Event::Type::KeyPress *
+        vir::Event::Type::KeyRelease
     )
     void onReceive(vir::Event::WindowResizeEvent& e) override;
     void onReceive(vir::Event::WindowIconificationEvent& e) override;
@@ -183,6 +204,8 @@ public:
     void onReceive(vir::Event::MouseButtonPressEvent& e) override;
     void onReceive(vir::Event::MouseMotionEvent& e) override;
     void onReceive(vir::Event::MouseButtonReleaseEvent& e) override;
+    void onReceive(vir::Event::KeyPressEvent& e) override;
+    void onReceive(vir::Event::KeyReleaseEvent& e) override;
 };
 
 }

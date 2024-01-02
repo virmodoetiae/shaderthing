@@ -11,6 +11,8 @@
 namespace vir
 {
 
+class UniformBuffer;
+
 class Shader
 {
 public:
@@ -167,6 +169,15 @@ public:
     virtual void setUniformFloat4(std::string, glm::vec4) = 0;
     virtual void setUniformMat3(std::string, glm::mat3) = 0;
     virtual void setUniformMat4(std::string, glm::mat4) = 0;
+
+    // Locates and binds a named uniform block in this shader to the provided
+    // uboBindingPoint, while binding the actual ubo to it
+    virtual void bindUniformBlock
+    (
+        std::string name, 
+        UniformBuffer& ubo, 
+        uint32_t uboBindingPoint=0
+    ) = 0;
 
     uint32_t id() const {return id_;}
 };

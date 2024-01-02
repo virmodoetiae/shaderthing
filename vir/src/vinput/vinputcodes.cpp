@@ -396,4 +396,118 @@ int inputMouseCodeImGuiToVir(int key)
     }
 }
 
+// I still need to map some keys as I currently do not have access to a keypad
+int inputKeyCodeVirToShaderToy(int key)
+{
+    switch (key)
+    {
+        case VIR_KEY_TAB: return 9;
+        case VIR_KEY_LEFT: return 37;
+        case VIR_KEY_RIGHT: return 39;
+        case VIR_KEY_UP: return 38;
+        case VIR_KEY_DOWN: return 40;
+        case VIR_KEY_PAGE_UP: return -1;
+        case VIR_KEY_PAGE_DOWN: return -1;
+        case VIR_KEY_HOME: return -1;
+        case VIR_KEY_END: return -1;
+        case VIR_KEY_INSERT: return -1;
+        case VIR_KEY_DELETE: return 46;
+        case VIR_KEY_BACKSPACE: return 8;
+        case VIR_KEY_SPACE: return 32;
+        case VIR_KEY_ENTER: return 13;
+        case VIR_KEY_ESCAPE: return 27;
+        case VIR_KEY_APOSTROPHE: return 222;
+        case VIR_KEY_COMMA: return 188;
+        case VIR_KEY_MINUS: return 189;
+        case VIR_KEY_PERIOD: return 190;
+        case VIR_KEY_SLASH: return 191;
+        case VIR_KEY_SEMICOLON: return 186;
+        case VIR_KEY_EQUAL: return 187;
+        case VIR_KEY_LEFT_BRACKET: return 219;
+        case VIR_KEY_BACKSLASH: return 220;
+        case VIR_KEY_RIGHT_BRACKET: return 221;
+        case VIR_KEY_GRAVE_ACCENT: return 192;
+        case VIR_KEY_CAPS_LOCK: return 20;
+        case VIR_KEY_SCROLL_LOCK: return -1;
+        case VIR_KEY_NUM_LOCK: return -1;
+        case VIR_KEY_PRINT_SCREEN: return -1;
+        case VIR_KEY_PAUSE: return -1;
+        case VIR_KEY_KP_0: return 48;
+        case VIR_KEY_KP_1: return 49;
+        case VIR_KEY_KP_2: return 50;
+        case VIR_KEY_KP_3: return 51;
+        case VIR_KEY_KP_4: return 52;
+        case VIR_KEY_KP_5: return 53;
+        case VIR_KEY_KP_6: return 54;
+        case VIR_KEY_KP_7: return 55;
+        case VIR_KEY_KP_8: return 56;
+        case VIR_KEY_KP_9: return 57;
+        case VIR_KEY_KP_DECIMAL: return -1;
+        case VIR_KEY_KP_DIVIDE: return -1;
+        case VIR_KEY_KP_MULTIPLY: return -1;
+        case VIR_KEY_KP_SUBTRACT: return 189;
+        case VIR_KEY_KP_ADD: return -1;
+        case VIR_KEY_KP_ENTER: return 13;
+        case VIR_KEY_KP_EQUAL: return 187;
+        case VIR_KEY_LEFT_SHIFT: return 16;
+        case VIR_KEY_LEFT_CONTROL: return 17;
+        case VIR_KEY_LEFT_ALT: return 18;
+        case VIR_KEY_LEFT_SUPER: return 91;
+        case VIR_KEY_RIGHT_SHIFT: return 16;
+        case VIR_KEY_RIGHT_CONTROL: return 17;
+        case VIR_KEY_RIGHT_ALT: return 18;
+        case VIR_KEY_RIGHT_SUPER: return -1;
+        case VIR_KEY_MENU: return -1;
+        case VIR_KEY_0: return 48;
+        case VIR_KEY_1: return 49;
+        case VIR_KEY_2: return 50;
+        case VIR_KEY_3: return 51;
+        case VIR_KEY_4: return 52;
+        case VIR_KEY_5: return 53;
+        case VIR_KEY_6: return 54;
+        case VIR_KEY_7: return 55;
+        case VIR_KEY_8: return 56;
+        case VIR_KEY_9: return 57;
+        case VIR_KEY_A: return 65;
+        case VIR_KEY_B: return 66;
+        case VIR_KEY_C: return 67;
+        case VIR_KEY_D: return 68;
+        case VIR_KEY_E: return 69;
+        case VIR_KEY_F: return 70;
+        case VIR_KEY_G: return 71;
+        case VIR_KEY_H: return 72;
+        case VIR_KEY_I: return 73;
+        case VIR_KEY_J: return 74;
+        case VIR_KEY_K: return 75;
+        case VIR_KEY_L: return 76;
+        case VIR_KEY_M: return 77;
+        case VIR_KEY_N: return 78;
+        case VIR_KEY_O: return 79;
+        case VIR_KEY_P: return 80;
+        case VIR_KEY_Q: return 81;
+        case VIR_KEY_R: return 82;
+        case VIR_KEY_S: return 83;
+        case VIR_KEY_T: return 84;
+        case VIR_KEY_U: return 85;
+        case VIR_KEY_V: return 86;
+        case VIR_KEY_W: return 87;
+        case VIR_KEY_X: return 88;
+        case VIR_KEY_Y: return 89;
+        case VIR_KEY_Z: return 90;
+        case VIR_KEY_F1: return 112;
+        case VIR_KEY_F2: return 113;
+        case VIR_KEY_F3: return 114;
+        case VIR_KEY_F4: return 115;
+        case VIR_KEY_F5: return 116;
+        case VIR_KEY_F6: return 117;
+        case VIR_KEY_F7: return 118;
+        case VIR_KEY_F8: return 119;
+        case VIR_KEY_F9: return 120;
+        case VIR_KEY_F10: return 121;
+        case VIR_KEY_F11: return 122;
+        case VIR_KEY_F12: return 123;
+        default: return -1;
+    }
+}
+
 }

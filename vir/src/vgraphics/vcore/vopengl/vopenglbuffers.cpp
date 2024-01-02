@@ -833,6 +833,48 @@ void OpenGLFramebuffer::updateColorBufferMipmap()
     glGenerateMipmap(GL_TEXTURE_2D);
 }
 
+
+//----------------------------------------------------------------------------//
+// Uniform buffer ------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+OpenGLUniformBuffer::OpenGLUniformBuffer(uint32_t size) :
+UniformBuffer(size)
+{
+    glGenBuffers(1, &id_);
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+    glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STATIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+OpenGLUniformBuffer::~OpenGLUniformBuffer()
+{
+    glDeleteBuffers(1, &id_);
+}
+
+void OpenGLUniformBuffer::bind(uint32_t unit)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+    glBindBufferBase(GL_UNIFORM_BUFFER, unit, id_);
+}
+
+void OpenGLUniformBuffer::unbind(uint32_t)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void OpenGLUniformBuffer::setData
+(
+    void* data,
+    uint32_t size,
+    uint32_t offset
+)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+    size = size == 0 ? size_ : size;
+    glBufferSubData(GL_UNIFORM_BUFFER, offset, size, data);
+}
+
 //----------------------------------------------------------------------------//
 // Vertex buffer -------------------------------------------------------------//
 //----------------------------------------------------------------------------//

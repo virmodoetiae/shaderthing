@@ -209,6 +209,9 @@ int inputMouseCodeVirToImGui(int);
 int inputKeyCodeImGuiToVir(int);
 int inputMouseCodeImGuiToVir(int);
 
+// Mapping from a vir input code to a ShaderToy input code
+int inputKeyCodeVirToShaderToy(int);
+
 }
 
 #endif

@@ -376,6 +376,28 @@ public:
 
 //----------------------------------------------------------------------------//
 
+class UniformBuffer
+{
+protected :
+    uint32_t id_;
+    uint32_t size_;
+    UniformBuffer(uint32_t size=0):id_(0), size_(size){};
+public :
+    virtual ~UniformBuffer(){}
+    static UniformBuffer* create(uint32_t size);
+    uint32_t id() const {return id_;}
+    virtual void bind(uint32_t) = 0;
+    virtual void unbind(uint32_t) = 0;
+    virtual void setData
+    (
+        void* data,
+        uint32_t size = 0,
+        uint32_t offset = 0
+    ) = 0;
+};
+
+//----------------------------------------------------------------------------//
+
 class GraphicsBuffer
 {
 protected :

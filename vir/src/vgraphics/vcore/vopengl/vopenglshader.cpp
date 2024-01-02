@@ -146,6 +146,16 @@ GLint OpenGLShader::getUniformLocation(std::string& name)
     return location;
 }
 
+GLint OpenGLShader::getUniformBlockIndex(std::string& name)
+{
+    if (uniformMap_.find(name) != uniformMap_.end())
+        return (GLint)(uniformMap_.at(name));
+    GLint location = glGetUniformBlockIndex(id_, name.c_str());
+    if (location != -1)
+        uniformMap_[name] = location;
+    return location;
+}
+
 void OpenGLShader::setUniformBool(std::string name, bool value)
 {
     GLint location = getUniformLocation(name);
@@ -228,6 +238,20 @@ void OpenGLShader::setUniformMat4(std::string name, glm::mat4 value)
     GLint location = getUniformLocation(name);
     if (location != -1)
         glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
+}
+
+void OpenGLShader::bindUniformBlock
+(
+    std::string name,
+    UniformBuffer& ubo,
+    uint32_t uboBindingPoint
+)
+{
+    GLint location = getUniformBlockIndex(name);
+    if (location == -1)
+        return;
+    ubo.bind(uboBindingPoint);
+    glUniformBlockBinding(id_, ubo.id(), uboBindingPoint);
 }
 
 }

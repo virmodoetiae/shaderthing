@@ -154,6 +154,22 @@ public:
     void updateColorBufferMipmap() override;
 };
 
+class OpenGLUniformBuffer : public UniformBuffer
+{
+protected :
+public :
+    OpenGLUniformBuffer(uint32_t size);
+    ~OpenGLUniformBuffer();
+    void bind(uint32_t) override;
+    void unbind(uint32_t) override;
+    void setData
+    (
+        void* data,
+        uint32_t size = 0,
+        uint32_t offset = 0
+    ) override;
+};
+
 class OpenGLVertexBuffer : public VertexBuffer
 {
 protected:

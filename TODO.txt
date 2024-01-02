@@ -142,6 +142,10 @@ TODO ---------------------------------------------------------------------------
     Quantizer). This was achieved by first developing a compute-shader based
     Bloomer in the vir lib and wrapping it in a new ShaderThing::PostProcess
 
+(X) Implemente Blur as a new post process effect (i.e., just like the 
+    Quantizer). This was achieved by first developing a compute-shader based
+    Blurrer in the vir lib and wrapping it in a new ShaderThing::PostProcess
+
 (W) Test performance of ShaderThing compiled with max level optimizations (-O3)6
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains to vir/ and shaderthing/).

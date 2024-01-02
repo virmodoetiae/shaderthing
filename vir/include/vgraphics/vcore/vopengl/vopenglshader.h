@@ -36,7 +36,15 @@ public:
     void setUniformMat3(std::string, glm::mat3) override;
     void setUniformMat4(std::string, glm::mat4) override;
 
+    void bindUniformBlock
+    (
+        std::string name, 
+        UniformBuffer& ubo, 
+        uint32_t uboBindingPoint=0
+    ) override;
+
     GLint getUniformLocation(std::string&);
+    GLint getUniformBlockIndex(std::string&);
 };
 
 }
