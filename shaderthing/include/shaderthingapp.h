@@ -85,11 +85,12 @@ private:
     // operations when setting the data in keyobardUniformBuffer_, I define
     // a custom 16-byte aligned vec4, essentially wasting 4-bytes per array
     // element but thus always ensuring proper data alignment
-    struct KeyboardUniformBlockData
+    struct KeyboardUniformData
     {
         struct alignas(16) ivec3A16{int x = 0; int y = 0; int z = 0;};
-        ivec3A16 data[VIR_N_KEYS]{};
-    }; // Defined but not used
+        ivec3A16 data[256]{};
+    };
+    KeyboardUniformData keyboardUniformData_{};
 
     // Filepath of the currently loaded project/shaderthing instance
     std::string projectFilepath_ = "";
@@ -170,6 +171,7 @@ public:
         return stateFlags_[ST_IS_MOUSE_INPUT_ENABLED];
     }
     vir::UniformBuffer& keyboardUniformBufferRef(){return *keyobardUniformBuffer_;}
+    KeyboardUniformData& keboardUniformDataRef(){return keyboardUniformData_;}
     std::vector<Uniform*>& sharedUniformsRef(){return sharedUniforms_;}
     LayerManager& layerManagerRef(){return *layerManager_;}
     ResourceManager& resourceManagerRef(){return *resourceManager_;}

@@ -26,7 +26,8 @@ struct Uniform : public vir::Shader::Uniform
         CameraDirection,
         UserAction,
         LayerAspectRatio,
-        LayerResolution
+        LayerResolution,
+        Keyboard
     };
 
     // Uniform special type if this uniform is one of the shared uniforms or if

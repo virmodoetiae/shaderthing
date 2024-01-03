@@ -283,8 +283,10 @@ void ShaderThingApp::onReceive(vir::Event::MouseButtonReleaseEvent& event)
 
 void ShaderThingApp::onReceive(vir::Event::KeyPressEvent& event)
 {
-    struct alignas(16) ivec3A16{int x = 0; int y = 0; int z = 0;};
-    static ivec3A16 data;
+    KeyboardUniformData::ivec3A16& data
+    (
+        keyboardUniformData_.data[event.keyCode()]
+    );
     static uint32_t size = sizeof(data);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
     int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode());
@@ -298,8 +300,10 @@ void ShaderThingApp::onReceive(vir::Event::KeyPressEvent& event)
 
 void ShaderThingApp::onReceive(vir::Event::KeyReleaseEvent& event)
 {
-    struct alignas(16) ivec3A16{int x = 0; int y = 0; int z = 0;};
-    static ivec3A16 data;
+    KeyboardUniformData::ivec3A16& data
+    (
+        keyboardUniformData_.data[event.keyCode()]
+    );
     static uint32_t size = sizeof(data);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
     int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode());
@@ -443,6 +447,14 @@ void ShaderThingApp::resetSharedUniforms()
     resolutionUniform->limits = glm::vec2(1.0f, 4096.0f);
     resolutionUniform->showLimits = false;
     sharedUniforms_.emplace_back(resolutionUniform);
+    
+    // Keyboard (for GUI purposes only)
+    auto keyboardUniform = new Uniform();
+    keyboardUniform->specialType = Uniform::SpecialType::Keyboard;
+    keyboardUniform->name = "iKeyboard";
+    keyboardUniform->type = Uniform::Type::Int3;
+    keyboardUniform->showLimits = false;
+    sharedUniforms_.emplace_back(keyboardUniform);
 
     // iMouse
     auto mouseUniform = new Uniform();

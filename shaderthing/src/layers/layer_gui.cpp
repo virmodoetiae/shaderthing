@@ -942,10 +942,18 @@ to modify. Best suited for controlling a camera)";
             ImGui::TableSetColumnIndex(col++);
             ImGui::PushItemWidth(-1);
             if (isShared || isDefault)
-                ImGui::Text
-                (
-                    vir::Shader::uniformTypeToName[uniform->type].c_str()
-                );
+            {
+                if (uniform->specialType != Uniform::SpecialType::Keyboard)
+                    ImGui::Text
+                    (
+                        vir::Shader::uniformTypeToName[uniform->type].c_str()
+                    );
+                else
+                    ImGui::Text
+                    (
+                        "ivec3[256]"
+                    );
+            }
             else if 
             (
                 ImGui::BeginCombo
@@ -1222,142 +1230,176 @@ to modify. Best suited for controlling a camera)";
                 }
                 case vir::Shader::Variable::Type::Int3 :
                 {
-                    auto value = uniform->getValue<glm::ivec3>();
-                    if (!limitsChanged)
+                    if (uniform->specialType != Uniform::SpecialType::Keyboard)
                     {
-                        uLimits.x = std::min(value.x, (int)uLimits.x);
-                        uLimits.x = std::min(value.y, (int)uLimits.x);
-                        uLimits.x = std::min(value.z, (int)uLimits.x);
-                        uLimits.y = std::max(value.x, (int)uLimits.y);
-                        uLimits.y = std::max(value.y, (int)uLimits.y);
-                        uLimits.y = std::max(value.z, (int)uLimits.y);
-                    }
-                    bool keyboardInput(false);
-                    static float recordT0(0.0f);
-                    if (!(isShared || isDefault))
-                    {
-                        if 
-                        (
-                            ImGui::SmallButton
-                            (
-                                uniform->usesKeyboardInput ? 
-                                ICON_FA_SLIDERS_H : 
-                                ICON_FA_KEYBOARD
-                            )
-                        )
+                        auto value = uniform->getValue<glm::ivec3>();
+                        if (!limitsChanged)
                         {
-                            uniform->usesKeyboardInput = 
-                                !uniform->usesKeyboardInput;
-                            uniform->keyCode = -1;
-                            value = glm::ivec3(0);
-                            if (uniform->usesKeyboardInput)
+                            uLimits.x = std::min(value.x, (int)uLimits.x);
+                            uLimits.x = std::min(value.y, (int)uLimits.x);
+                            uLimits.x = std::min(value.z, (int)uLimits.x);
+                            uLimits.y = std::max(value.x, (int)uLimits.y);
+                            uLimits.y = std::max(value.y, (int)uLimits.y);
+                            uLimits.y = std::max(value.z, (int)uLimits.y);
+                        }
+                        bool keyboardInput(false);
+                        static float recordT0(0.0f);
+                        if (!(isShared || isDefault))
+                        {
+                            if 
+                            (
+                                ImGui::SmallButton
+                                (
+                                    uniform->usesKeyboardInput ? 
+                                    ICON_FA_SLIDERS_H : 
+                                    ICON_FA_KEYBOARD
+                                )
+                            )
                             {
-                                uniform->showLimits = false;
-                                recordT0 = 
-                                    vir::GlobalPtr<vir::Time>::instance()->
-                                    outerTime();
+                                uniform->usesKeyboardInput = 
+                                    !uniform->usesKeyboardInput;
+                                uniform->keyCode = -1;
+                                value = glm::ivec3(0);
+                                if (uniform->usesKeyboardInput)
+                                {
+                                    uniform->showLimits = false;
+                                    recordT0 = 
+                                        vir::GlobalPtr<vir::Time>::instance()->
+                                        outerTime();
+                                }
+                                else
+                                {
+                                    for (int i=0; i<3; i++)
+                                        uniform->keyState[i] = nullptr;
+                                }
+                            }
+                            ImGui::SameLine();
+                            keyboardInput = uniform->usesKeyboardInput;
+                        }
+                        if (keyboardInput)
+                        {
+                            if (uniform->keyCode == -1)
+                            {
+                                for 
+                                (
+                                    ImGuiKey key = ImGuiKey_NamedKey_BEGIN;
+                                    key < ImGuiKey_NamedKey_END;
+                                    key = (ImGuiKey)(key+1)
+                                )
+                                {
+                                    if (!ImGui::IsKeyDown(key))
+                                        continue;
+                                    int virKey=vir::inputKeyCodeImGuiToVir(key);
+                                    if (virKey != VIR_KEY_UNKNOWN)
+                                    {
+                                        uniform->keyCode = virKey;
+                                        auto is = 
+                                            vir::GlobalPtr<vir::InputState>::
+                                            instance();
+                                        uniform->keyState[0] = 
+                                            &is->keyState(virKey).pressedRef();
+                                        uniform->keyState[1] = 
+                                            &is->keyState(virKey).heldRef();
+                                        uniform->keyState[2] = 
+                                            &is->keyState(virKey).toggleRef();
+                                        break;
+                                    }
+                                }
+                                ImGui::PushStyleColor
+                                (
+                                    ImGuiCol_Text,
+                                    {
+                                        1,
+                                        0,
+                                        0,
+                                        float
+                                        (
+                                            int
+                                            (
+                                                vir::GlobalPtr<vir::Time>::instance()->
+                                                outerTime()-recordT0
+                                            )%2==0
+                                        )
+                                    }
+                                );
+                                ImGui::Text(ICON_FA_CIRCLE);
+                                ImGui::PopStyleColor();
+                                ImGui::SameLine();
+                                ImGui::Text
+                                (
+                                    "Press key to bind...", 
+                                    ICON_FA_CIRCLE
+                                );
                             }
                             else
                             {
-                                for (int i=0; i<3; i++)
-                                    uniform->keyState[i] = nullptr;
-                            }
-                        }
-                        ImGui::SameLine();
-                        keyboardInput = uniform->usesKeyboardInput;
-                    }
-                    if (keyboardInput)
-                    {
-                        if (uniform->keyCode == -1)
-                        {
-                            for 
-                            (
-                                ImGuiKey key = ImGuiKey_NamedKey_BEGIN;
-                                key < ImGuiKey_NamedKey_END;
-                                key = (ImGuiKey)(key+1)
-                            )
-                            {
-                                if (!ImGui::IsKeyDown(key))
-                                    continue;
-                                int virKey=vir::inputKeyCodeImGuiToVir(key);
-                                if (virKey != VIR_KEY_UNKNOWN)
-                                {
-                                    uniform->keyCode = virKey;
-                                    auto is = 
-                                        vir::GlobalPtr<vir::InputState>::
-                                        instance();
-                                    uniform->keyState[0] = 
-                                        &is->keyState(virKey).pressedRef();
-                                    uniform->keyState[1] = 
-                                        &is->keyState(virKey).heldRef();
-                                    uniform->keyState[2] = 
-                                        &is->keyState(virKey).toggleRef();
-                                    break;
-                                }
-                            }
-                            ImGui::PushStyleColor
-                            (
-                                ImGuiCol_Text,
-                                {
-                                    1,
-                                    0,
-                                    0,
-                                    float
+                                ImGui::Text
+                                (
+                                    "Key: \'%s\', (%d, %d, %d)", 
+                                    vir::keyCodeToName.at
                                     (
-                                        int
-                                        (
-                                            vir::GlobalPtr<vir::Time>::instance()->
-                                            outerTime()-recordT0
-                                        )%2==0
-                                    )
-                                }
-                            );
-                            ImGui::Text(ICON_FA_CIRCLE);
-                            ImGui::PopStyleColor();
-                            ImGui::SameLine();
-                            ImGui::Text("Press key to bind...", ICON_FA_CIRCLE);
+                                        uniform->keyCode
+                                    ).c_str(),
+                                    value.x,
+                                    value.y,
+                                    value.z
+                                );
+                            }
                         }
-                        else
+                        if (!keyboardInput)
                         {
-                            ImGui::Text
+                            if 
                             (
-                                "Key: \'%s\', (%d, %d, %d)", 
-                                vir::keyCodeToName.at(uniform->keyCode).c_str(),
-                                value.x,
-                                value.y,
-                                value.z
-                            );
+                                ImGui::SliderInt3
+                                (
+                                    "##i3Slider", 
+                                    glm::value_ptr(value), 
+                                    uLimits.x,
+                                    uLimits.y
+                                )
+                            )
+                            {
+                                if (limitsChanged)
+                                {
+                                    value.x = std::max(value.x, (int)uLimits.x);
+                                    value.x = std::min(value.x, (int)uLimits.y);
+                                    value.y = std::max(value.y, (int)uLimits.x);
+                                    value.y = std::min(value.y, (int)uLimits.y);
+                                    value.z = std::max(value.z, (int)uLimits.x);
+                                    value.z = std::min(value.z, (int)uLimits.y);
+                                }
+                                uniform->setValue(value);
+                                if (named)
+                                {
+                                    shader_->setUniformInt3
+                                    (
+                                        uniform->name, 
+                                        value
+                                    );
+                                    app_.userActionRef() = true;
+                                }
+                            }
                         }
                     }
-                    if (!keyboardInput)
+                    else // Special type is Keyboard
                     {
-                        if 
-                        (
-                            ImGui::SliderInt3
-                            (
-                                "##i3Slider", 
-                                glm::value_ptr(value), 
-                                uLimits.x,
-                                uLimits.y
-                            )
-                        )
+                        auto& keyboard(app_.keboardUniformDataRef());
+                        std::string pressed = "Pressed:";
+                        std::string held    = "Held:   ";
+                        std::string toggled = "Toggled:";
+                        for (int key=0; key<255; key++)
                         {
-                            if (limitsChanged)
-                            {
-                                value.x = std::max(value.x, (int)uLimits.x);
-                                value.x = std::min(value.x, (int)uLimits.y);
-                                value.y = std::max(value.y, (int)uLimits.x);
-                                value.y = std::min(value.y, (int)uLimits.y);
-                                value.z = std::max(value.z, (int)uLimits.x);
-                                value.z = std::min(value.z, (int)uLimits.y);
-                            }
-                            uniform->setValue(value);
-                            if (named)
-                            {
-                                shader_->setUniformInt3(uniform->name, value);
-                                app_.userActionRef() = true;
-                            }
+                            auto& keyData(keyboard.data[key]);
+                            if (keyData.x > 0)
+                                pressed += " "+vir::keyCodeToName[key];
+                            else if (keyData.y > 0)
+                                held += " "+vir::keyCodeToName[key];
+                            if (keyData.z > 0)
+                                toggled += " "+vir::keyCodeToName[key];
                         }
+                        ImGui::Text(pressed.c_str());
+                        ImGui::Text(held.c_str());
+                        ImGui::Text(toggled.c_str());
                     }
                     break;
                 }

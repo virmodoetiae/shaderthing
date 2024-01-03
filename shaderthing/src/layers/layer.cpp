@@ -800,18 +800,20 @@ std::string Layer::assembleFragmentSource
     fragmentSourceHeader_ = versionInOutHeader;
     for (auto* u : app_.sharedUniformsRef())
     {
-        fragmentSourceHeader_ += 
-            "uniform "+vir::Shader::uniformTypeToName[u->type]+" "+u->name+
-            ";\n";
+        if (u->specialType == Uniform::SpecialType::Keyboard)
+        {
+            fragmentSourceHeader_ +=
+                "layout (std140) uniform KeyboardBlock{ivec3 "+u->name+
+                "[256];};\n";
+        }
+        else
+        {
+            fragmentSourceHeader_ += 
+                "uniform "+vir::Shader::uniformTypeToName[u->type]+" "+u->name+
+                ";\n";
+        }
         ++nLines;
     }
-
-    fragmentSourceHeader_ +=
-R"(layout (std140) uniform KeyboardBlock
-{
-    ivec3 iKeyboard[256];
-};
-)";
 
     for (auto* u : defaultUniforms_)
     {
