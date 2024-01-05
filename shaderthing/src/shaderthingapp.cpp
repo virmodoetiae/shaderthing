@@ -298,6 +298,8 @@ void ShaderThingApp::onReceive(vir::Event::KeyPressEvent& event)
     keyobardUniformBuffer_->setData((void*)&data, size, size*shaderToyKeyCode);
 }
 
+//----------------------------------------------------------------------------//
+
 void ShaderThingApp::onReceive(vir::Event::KeyReleaseEvent& event)
 {
     KeyboardUniformData::ivec3A16& data

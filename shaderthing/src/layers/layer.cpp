@@ -699,8 +699,6 @@ void Layer::saveState(ObjectIO& writer)
             {
                 writer.write("value", u->getValue<glm::ivec3>());
                 WRITE_MIN_MAX
-                if (u->keyCode != -1 && u->usesKeyboardInput)
-                    writer.write("keyCode", u->keyCode);
                 break;
             }
             case vir::Shader::Variable::Type::Int4 :
@@ -1128,23 +1126,6 @@ void Layer::setSharedDefaultSamplerUniforms()
     for (auto u : uniforms_)
     {
         bool named(u->name.size() > 0);
-        bool isKeyboardInput
-        (
-            u->type == vir::Shader::Variable::Type::Int3 &&
-            u->usesKeyboardInput &&
-            u->keyCode != -1
-        );
-        if (isKeyboardInput) // Keyboard input case
-        {
-            auto value = u->getValue<glm::ivec3>();
-            value.x = (int)*(u->keyState[0]);
-            value.y = (int)*(u->keyState[1]);
-            value.z = (int)*(u->keyState[2]);
-            u->setValue(value);
-            if (named)
-                shader_->setUniformInt3(u->name, value);
-            continue;
-        }
         if 
         (
             !named || 
@@ -1482,26 +1463,8 @@ internalFramebufferClearPolicyOnExport_
             }
             case vir::Shader::Variable::Type::Int3 :
             {
-                if (uniformData.hasMember("keyCode"))
-                {
-                    uniform->showLimits = false;
-                    uniform->usesKeyboardInput = true;
-                    uniform->keyCode = uniformData.read<int>("keyCode");
-                    auto is = 
-                        vir::GlobalPtr<vir::InputState>::
-                        instance();
-                    uniform->keyState[0] = 
-                        &is->keyState(uniform->keyCode).pressedRef();
-                    uniform->keyState[1] = 
-                        &is->keyState(uniform->keyCode).heldRef();
-                    uniform->keyState[2] = 
-                        &is->keyState(uniform->keyCode).toggleRef();
-                }
-                else
-                {
-                    SET_UNIFORM(glm::ivec3)
-                    READ_MIN_MAX
-                }
+                SET_UNIFORM(glm::ivec3)
+                READ_MIN_MAX
                 break;
             }
             case vir::Shader::Variable::Type::Int4 :

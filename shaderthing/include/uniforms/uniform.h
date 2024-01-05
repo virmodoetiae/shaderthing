@@ -41,16 +41,6 @@ struct Uniform : public vir::Shader::Uniform
     // set via an ImGui color picker tool
     bool usesColorPicker = false;
 
-    // True if this uniform is of Type::Int3 and its value tracks the status
-    // of a select keyboard key (down, pressed, toggled)
-    bool usesKeyboardInput = false;
-
-    // Keycode of the tracked keyboard input if usesKeyboardInput is true
-    int keyCode = -1;
-
-    // 
-    const bool* keyState[3] = {nullptr, nullptr, nullptr};
-
     // Numerical limits for the value of this uniform (or its components, if a
     // multi-component vector), only used by uniform types other than
     // Type::Bool, Type::Sampler2D, Type::Cubemap, and not necessarily used by
