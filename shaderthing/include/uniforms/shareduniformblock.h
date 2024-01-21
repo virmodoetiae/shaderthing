@@ -26,7 +26,7 @@ struct SharedUniformBlock
     struct alignas(16) ivec3A16
     {
         int x = 0;
-        int y = 0; 
+        int y = 0;
         int z = 0;
         ivec3A16&  operator= (const glm::ivec3& v)       {x=v.x;y=v.y;z=v.z;return *this;}
         bool       operator==(const ivec3A16&   v) const {return x==v.x&&y==v.y&&z==v.z;}
@@ -37,8 +37,8 @@ struct SharedUniformBlock
     };
     struct alignas(16) vec3A16
     {
-        float x = 0; 
-        float y = 0; 
+        float x = 0;
+        float y = 0;
         float z = 0;
         vec3A16&  operator= (const glm::vec3& v)       {x=v.x;y=v.y;z=v.z;return *this;}
         bool      operator==(const vec3A16&   v) const {return x==v.x&&y==v.y&&z==v.z;}
