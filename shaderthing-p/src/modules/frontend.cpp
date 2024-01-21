@@ -11,6 +11,8 @@
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 #include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
 
+#include <string>
+
 namespace ShaderThing
 {
 
@@ -274,7 +276,16 @@ resetting the iFrame uniform (Ctrl+R))"
 
 void Frontend::renderLayerSettingsGUI(Layer* layer)
 {
-    ImGui::InputText("##layerNameInputText", &layer->gui.name);
+    // Render layer name input text (if changed, it is updated later in 
+    // renderLayerTabBarGUI to avoid issues with random layer tab re-ordering)
+    {
+        ImGui::Text("Name ");
+        ImGui::SameLine();
+        static std::unique_ptr<char[]> label(new char[24]);
+        std::sprintf(label.get(), "##layer%dInputText", layer->id);
+        if (ImGui::InputText(label.get(), &layer->gui.newName))
+            layer->gui.rename = true;
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -295,14 +306,7 @@ void Frontend::renderLayerTabBarGUI(std::vector<Layer*>& layers)
     {
         if (!reorderable)
             reorderable = true;
-        if 
-        (
-            ImGui::TabItemButton
-            (
-                "+", 
-                ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip
-            )
-        )
+        if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
             Backend::addNewLayerTo(layers);
         auto tabBar = ImGui::GetCurrentTabBar();
         std::pair<unsigned int, unsigned int> swap {0,0};
@@ -310,25 +314,31 @@ void Frontend::renderLayerTabBarGUI(std::vector<Layer*>& layers)
         {
             bool open = true;
             auto l = layers[i];
-            auto name0 = l->gui.name;
-            if(ImGui::BeginTabItem(name0.c_str(), &open))
+            if(ImGui::BeginTabItem(l->gui.name.c_str(), &open))
             {
                 Frontend::renderLayerTabGUI(l);
                 ImGui::EndTabItem();
             }
-            if (!open) // if 'X' pressed to delete tab
+            if (!open) // I.e., if 'x' is pressed to delete the tab
             {
                 Backend::deleteLayerFrom(l, layers);
                 --i;
                 continue;
             }
-            auto tab = 
-                ImGui::TabBarFindTabByID(tabBar, ImGui::GetID(name0.c_str()));
-            
-            // If the name has changed, the tab bar should be made
-            if (tab == nullptr || l->gui.name != name0)
+            auto tab = ImGui::TabBarFindTabByID
+            (
+                tabBar, 
+                ImGui::GetID(l->gui.name.c_str())
+            );
+            if // the name has changed, make the tab bar non-reorderable
+            (  // and update the name
+                tab == nullptr || 
+                (l->gui.rename && !ImGui::GetIO().WantTextInput)
+            )
             {
                 reorderable = false;
+                l->gui.name = l->gui.newName;
+                l->gui.rename = false;
                 continue;
             }
             int order = std::min

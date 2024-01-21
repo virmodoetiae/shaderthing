@@ -65,6 +65,7 @@ void addNewLayerTo(std::vector<Layer*>& layers)
 
     // Set name
     layer->gui.name = "Layer "+std::to_string(layer->id);
+    layer->gui.newName = layer->gui.name;
 }
 
 void deleteLayerFrom(Layer* layer, std::vector<Layer*>& layers)
