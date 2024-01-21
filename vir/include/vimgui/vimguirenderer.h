@@ -56,6 +56,37 @@ public:
         bool isDataRaw
     );
     static void destroyDeviceObjects();
+
+    template<typename Function, typename... Args>   
+    static void run(Function&& func, Args&&... args)
+    {
+        newFrame();
+        func(std::forward<Args>(args)...);
+        render();
+    }
+    template<typename Function>   
+    static void run(Function&& func)
+    {
+        newFrame();
+        func();
+        render();
+    }
+
+    /*
+    // Recursive case for handling multiple arguments
+    template <typename ReturnType, typename... Args>
+    void run
+    (
+        const std::function<ReturnType(Args...)>& func,
+        Args&&... args
+    ) 
+    {
+        newFrame();
+        func(std::forward<Args>(args)...);
+        render();
+    }
+    */
+    
 };
 
 }

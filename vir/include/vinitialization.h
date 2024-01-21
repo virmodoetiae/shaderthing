@@ -24,7 +24,8 @@ void initialize
     uint32_t width=1200, 
     uint32_t height=600, 
     std::string windowName="Vir.exe",
-    bool windowResizable=true
+    bool windowResizable=true,
+    bool initializeImGuiRenderer=true
 );
 
 }

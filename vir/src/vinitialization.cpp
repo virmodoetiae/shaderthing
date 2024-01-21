@@ -10,14 +10,15 @@ PlatformType platform = PlatformType::None;
 
 void initialize
 (
-    PlatformType p, 
+    PlatformType platformType, 
     uint32_t width, 
     uint32_t height,
     std::string windowName,
-    bool windowResizable
+    bool windowResizable,
+    bool initializeImGuiRenderer
 )
 {
-    platform = p;
+    platform = platformType;
     Window* window = nullptr;
     switch(platform)
     {
@@ -51,9 +52,8 @@ void initialize
     InputState::initialize()->tuneIn();
     auto renderer = Renderer::initialize();
     renderer->setDepthTesting(true);
-    
-    std::cout << "Context: " << window->context()->name() << std::endl;
-    std::cout << "Device: " << renderer->deviceName() << std::endl;
+    if (initializeImGuiRenderer)
+        vir::ImGuiRenderer::initialize();
 }
 
 }

@@ -51,6 +51,30 @@ public:
 
     virtual ~Window();
 
+    // Runs the provided function with the provided arguments
+    // on every window frame while the window is open
+    template<typename Function, typename... Args>
+    void run(Function&& func, Args&&... args)
+    {
+        while(this->isOpen())
+        {
+            func(std::forward<Args>(args)...);
+            this->update();
+        }
+    }
+
+    // Runs the provided function
+    // on every window frame while the window is open
+    template<typename Function>
+    void run(Function&& func)
+    {
+        while(this->isOpen())
+        {
+            func();
+            this->update();
+        }
+    }
+
     // Returns actual window-manager from chosen platform (e.g. GLFWwindow)
     virtual void* nativeWindow() = 0;
 

@@ -51,8 +51,7 @@ sharedUniforms_(0)
         vir::PlatformType::GLFWOpenGL,
         resolution_.x,
         resolution_.y,
-        "ShaderThing",
-        true
+        "ShaderThing"
     );
 
     // Set window icon
@@ -357,9 +356,6 @@ void ShaderThingApp::reset()
         auto renderer = vir::GlobalPtr<vir::Renderer>::instance();
         renderer->setBlending(true);
         renderer->setFaceCulling(false);
-        
-        // Start ImGui
-        vir::ImGuiRenderer::initialize();
         startup = false;
     }
     else
