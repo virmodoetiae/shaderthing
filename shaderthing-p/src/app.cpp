@@ -18,14 +18,19 @@ App::App()
     );
     auto window = vir::GlobalPtr<vir::Window>::instance();
 
-    Backend::addNewLayerTo(layers);
+    Backend::initialize(*this);
 
-    Frontend::initializeGUI(this->gui.fontScale);
+    Frontend::initialize(*this);
 
     // Main loop
     window->run([this]()
     {
         vir::ImGuiRenderer::run(Frontend::renderAppGUI, this);
+        for (auto layer : layers)
+        {
+            Backend::renderLayerShader(layer, nullptr, true, sharedUniforms);
+        }
+        Backend::update(*this);
     });
 }
 

@@ -22,7 +22,7 @@ zPlusIsLookDirection_(false)
     update();
 }
 
-void Camera::setProjectionType(Camera::ProjectionType type)
+void Camera::setProjectionType(const Camera::ProjectionType type)
 {
     projectionType_ = type;
     updated_ = false;
@@ -36,7 +36,7 @@ void Camera::switchProjectionType()
         setProjectionType(Camera::ProjectionType::Perspective);
 }
 
-void Camera::setPosition(glm::vec3& position)
+void Camera::setPosition(const glm::vec3& position)
 {
     if (!modifiable_)
         return;
@@ -44,7 +44,7 @@ void Camera::setPosition(glm::vec3& position)
     updated_ = false;
 }
 
-void Camera::setPivot(glm::vec3& pivot)
+void Camera::setPivot(const glm::vec3& pivot)
 {
     if (!modifiable_)
         return;
@@ -52,7 +52,7 @@ void Camera::setPivot(glm::vec3& pivot)
     updated_ = false;
 }
 
-void Camera::setDirection(glm::vec3& direction)
+void Camera::setDirection(const glm::vec3& direction)
 {
     if (!modifiable_)
         return;
@@ -64,7 +64,7 @@ void Camera::setDirection(glm::vec3& direction)
     updated_ = false;
 }
 
-void Camera::setUp(glm::vec3& up)
+void Camera::setUp(const glm::vec3& up)
 {
     if (!modifiable_)
         return;
@@ -73,7 +73,7 @@ void Camera::setUp(glm::vec3& up)
     updated_ = false;
 }
 
-void Camera::setFov(float fov)
+void Camera::setFov(const float fov)
 {
     if (!modifiable_)
         return;
@@ -82,7 +82,7 @@ void Camera::setFov(float fov)
         updated_ = false;
 }
 
-void Camera::setViewportHeight(float vph)
+void Camera::setViewportHeight(const float vph)
 {
     if (!modifiable_)
         return;
@@ -91,7 +91,7 @@ void Camera::setViewportHeight(float vph)
         updated_ = false;
 }
 
-void Camera::setPlanes(float near, float far)
+void Camera::setPlanes(const float near, const float far)
 {
     if (!modifiable_)
         return;
@@ -100,7 +100,7 @@ void Camera::setPlanes(float near, float far)
     updated_ = false;
 }
 
-void Camera::setZPlusIsLookDirection(bool flag)
+void Camera::setZPlusIsLookDirection(const bool flag)
 {
     if (flag == zPlusIsLookDirection_)
         return;
@@ -146,7 +146,7 @@ void Camera::xRotateBy(float angle)
     updated_ = false;
 }
 
-void Camera::yRotateBy(float angle)
+void Camera::yRotateBy(const float angle)
 {
     if (!modifiable_)
         return;

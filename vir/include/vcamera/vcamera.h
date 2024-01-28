@@ -104,24 +104,24 @@ public:
     
     void lockYAxis(){yAxisType_ = YAxisType::Locked;}
     void unlockYAxis(){yAxisType_ = YAxisType::Free;}
-    void setRotationType(RotationType type){rotationType_ = type;}
-    void setProjectionType(ProjectionType);
+    void setRotationType(const RotationType type){rotationType_ = type;}
+    void setProjectionType(const ProjectionType);
     void switchProjectionType();
-    void setModifiable(bool flag){modifiable_=flag;}
-    void setPosition(glm::vec3&);
-    void setPivot(glm::vec3&);
-    void setDirection(glm::vec3&);
-    void setUp(glm::vec3&);
-    void setFov(float);
-    void setViewportHeight(float);
-    void setPlanes(float, float);
-    void setKeySensitivity(float s){keySensitivity_ = s;}
-    void setMouseSensitivity(float s){mouseSensitivity_ = s;}
-    void setMouseWheelSensitivity(float s){mouseWheelSensitivity_ = s;}
+    void setModifiable(const bool flag){modifiable_=flag;}
+    void setPosition(const glm::vec3&);
+    void setPivot(const glm::vec3&);
+    void setDirection(const glm::vec3&);
+    void setUp(const glm::vec3&);
+    void setFov(const float);
+    void setViewportHeight(const float);
+    void setPlanes(const float, const float);
+    void setKeySensitivity(const float s){keySensitivity_ = s;}
+    void setMouseSensitivity(const float s){mouseSensitivity_ = s;}
+    void setMouseWheelSensitivity(const float s){mouseWheelSensitivity_ = s;}
     void setZPlusIsLookDirection(bool);
     
-    void xRotateBy(float);
-    void yRotateBy(float);
+    void xRotateBy(const float);
+    void yRotateBy(const float);
     void zRotateBy(float);
 
     float aspectRatio();

@@ -4,6 +4,7 @@
 
 #include "shaderthing-p/include/app.h"
 #include "shaderthing-p/include/data/layer.h"
+#include "shaderthing-p/include/data/shareduniforms.h"
 #include "shaderthing-p/include/data/bytedata.h"
 
 #include "thirdparty/imgui/imgui.h"
@@ -16,7 +17,7 @@
 namespace ShaderThing
 {
 
-void Frontend::initializeGUI(float*& fontScale)
+void Frontend::initialize(App& app)
 {
     // Disable reading/writing from/to imgui.ini
     static ImGuiIO& io = ImGui::GetIO();
@@ -84,7 +85,7 @@ void Frontend::initializeGUI(float*& fontScale)
         io.Fonts->Build();
         fontLoaded = true;
         font->Scale = 0.6;
-        fontScale = &font->Scale;
+        app.gui.fontScale = &font->Scale;
     }
 }
 
@@ -101,7 +102,7 @@ void Frontend::renderAppGUI(App* app)
 
     renderAppMenuBarGUI(app);
 
-    renderLayerTabBarGUI(app->layers);
+    renderLayerTabBarGUI(app->layers, app->sharedUniforms);
 
     ImGui::Text("Here we go!");
     ImGui::End();
@@ -143,7 +144,7 @@ void Frontend::renderAppMenuBarGUI(App* app)
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.0*fontSize);
                 glm::ivec2 resolution = 
-                    app->sharedUniforms.block.iResolution.packed();
+                    app->sharedUniforms.cpuBlock.iResolution;
                 if 
                 (
                     ImGui::InputInt2
@@ -154,7 +155,7 @@ void Frontend::renderAppMenuBarGUI(App* app)
                 )
                 {
                     Backend::constrainAndSetWindowResolution(resolution);
-                    app->sharedUniforms.block.iResolution = resolution;
+                    app->sharedUniforms.cpuBlock.iResolution = resolution;
                 }
                 ImGui::PopItemWidth();
                 ImGui::EndMenu();
@@ -290,14 +291,25 @@ void Frontend::renderLayerSettingsGUI(Layer* layer)
 
 //----------------------------------------------------------------------------//
 
-void Frontend::renderLayerTabBarGUI(std::vector<Layer*>& layers)
+void Frontend::renderLayerTabBarGUI
+(
+    std::vector<Layer*>& layers,
+    SharedUniforms& sharedUniforms
+)
 {
     static bool reorderable(true);
+    if (ImGui::Button("Compile layers"))
+    {
+        for (auto layer : layers)
+        {
+            Backend::compileLayerShader(layer, sharedUniforms);
+        }
+    }
     if 
     (
         ImGui::BeginTabBar
         (
-            "##layerTabBar", 
+            "##layersTabBar", 
             reorderable ? 
             ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable :
             ImGuiTabBarFlags_AutoSelectNewTabs
@@ -307,7 +319,7 @@ void Frontend::renderLayerTabBarGUI(std::vector<Layer*>& layers)
         if (!reorderable)
             reorderable = true;
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
-            Backend::addNewLayerTo(layers);
+            Backend::createLayerIn(layers, sharedUniforms);
         auto tabBar = ImGui::GetCurrentTabBar();
         std::pair<unsigned int, unsigned int> swap {0,0};
         for (int i = 0; i < layers.size(); i++)
@@ -364,7 +376,24 @@ void Frontend::renderLayerTabBarGUI(std::vector<Layer*>& layers)
 
 void Frontend::renderLayerTabGUI(Layer* layer)
 {
-    
+    if (ImGui::BeginTabBar("##layerTabBar"))
+    {
+        if (ImGui::BeginTabItem("Fragment source"))
+        {
+            layer->gui.sourceEditor.Render("##sourceEditor");
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Shared source"))
+        {
+            layer->gui.sharedSourceEditor.Render("##sharedSourceEditor");
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Uniforms"))
+        {
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
 }
 
 //----------------------------------------------------------------------------//

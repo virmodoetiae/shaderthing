@@ -614,7 +614,9 @@ void ShaderThingApp::update()
     {   // TODO: make the base Camera class an event receiver and prevent it
         // from updating when the window is iconified, instead of having to 
         // do this other bits of code on top
+        auto mvp0 = screenCamera_->projectionViewMatrix();
         screenCamera_->update();
+        auto mvp1 = screenCamera_->projectionViewMatrix();
         shaderCamera_->update();
     }
     
