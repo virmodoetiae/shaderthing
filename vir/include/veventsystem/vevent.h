@@ -59,14 +59,9 @@ static const Type allEventTypes[] =
 
 // Event classes -------------------------------------------------------------//
 
-class Event
+struct Event
 {
-protected:
-    bool handled_;
-public:
-    Event():handled_(false){}
-    bool handled() const {return handled_;}
-    bool& handled(){return handled_;}
+    bool handled = false;
     virtual Type getType() = 0;
 };
 
@@ -74,209 +69,154 @@ public:
     Type getType() override {return Type::type;}                            \
     static constexpr Type getStaticType(){return Type::type;}
 
-class KeyPressEvent : public Event
+struct KeyPressEvent : public Event
 {
-private:
-    int keyCode_;
-    int modCode_;
-    int repeatCount_;
-public:
+    int keyCode;
+    int modCode;
+    int repeatCount;
     KeyPressEvent(int keyCode, int modCode, int repeatCount):
-        keyCode_(keyCode),modCode_(modCode),repeatCount_(repeatCount){}
+        keyCode(keyCode),modCode(modCode),repeatCount(repeatCount){}
     EVENT_IMPLEMENTS(KeyPress)
-    int keyCode(){return keyCode_;}
-    int modCode(){return modCode_;}
-    int repeatCount(){return repeatCount_;}
 };
 
-class KeyReleaseEvent : public Event
+struct KeyReleaseEvent : public Event
 {
-private:
-    int keyCode_;
-    int modCode_;
-public:
+    int keyCode;
+    int modCode;
     KeyReleaseEvent(int keyCode, int modCode):
-        keyCode_(keyCode),modCode_(modCode){}
+        keyCode(keyCode),modCode(modCode){}
     EVENT_IMPLEMENTS(KeyRelease)
-    int keyCode(){return keyCode_;}
-    int modCode(){return modCode_;}
 };
 
-class KeyCharEvent : public Event
+struct KeyCharEvent : public Event
 {
-private:
-    int keyCode_;
-public:
-    KeyCharEvent(int keyCode):keyCode_(keyCode){}
+    int keyCode;
+    KeyCharEvent(int keyCode):keyCode(keyCode){}
     EVENT_IMPLEMENTS(KeyChar)
-    int keyCode(){return keyCode_;}
 };
 
-class MouseButtonPressEvent : public Event
+struct MouseButtonPressEvent : public Event
 {
-private:
-    int x_;
-    int y_;
-    int button_;
-public:
+    int x;
+    int y;
+    int button;
     MouseButtonPressEvent(int x, int y, int button):
-        x_(x),y_(y),button_(button){}
+        x(x),y(y),button(button){}
     EVENT_IMPLEMENTS(MouseButtonPress)
-    int x(){return x_;}
-    int y(){return y_;}
-    int button(){return button_;}
 };
 
-class MouseButtonReleaseEvent : public Event
+struct MouseButtonReleaseEvent : public Event
 {
-private:
-    int x_;
-    int y_;
-    int button_;
-public:
+    int x;
+    int y;
+    int button;
     MouseButtonReleaseEvent(int x, int y, int button):
-        x_(x),y_(y),button_(button){}
+        x(x),y(y),button(button){}
     EVENT_IMPLEMENTS(MouseButtonRelease)
-    int x(){return x_;}
-    int y(){return y_;}
-    int button(){return button_;}
 };
 
-class MouseMotionEvent : public Event
+struct MouseMotionEvent : public Event
 {
 private:
     static bool first_;
     static int x0_;
     static int y0_;
-    int x_;
-    int y_;
-    int dx_ = 0.0;
-    int dy_ = 0.0;
 public:
-    MouseMotionEvent(int x, int y):x_(x),y_(y)
+    int x;
+    int y;
+    int dx = 0.0;
+    int dy = 0.0;
+    MouseMotionEvent(int x, int y):x(x),y(y)
     {
         if (!first_)
         {
-            dx_ = x_-x0_;
-            dy_ = y_-y0_;
+            dx = x-x0_;
+            dy = y-y0_;
         }
         else
             first_ = false;
     }
-    ~MouseMotionEvent(){x0_ = x_; y0_ = y_;}
+    ~MouseMotionEvent(){x0_ = x; y0_ = y;}
     EVENT_IMPLEMENTS(MouseMotion)
-    int x(){return x_;}
-    int y(){return y_;}
-    int dx(){return dx_;}
-    int dy(){return dy_;}
 };
 
-class MouseScrollEvent : public Event
+struct MouseScrollEvent : public Event
 {
-private:
-    int dx_;
-    int dy_;
-public:
-    MouseScrollEvent(int dx, int dy):dx_(dx),dy_(dy){}
+    int dx;
+    int dy;
+    MouseScrollEvent(int dx, int dy):dx(dx),dy(dy){}
     EVENT_IMPLEMENTS(MouseScroll)
-    int dx(){return dx_;}
-    int dy(){return dy_;}
 };
 
-class WindowCloseEvent : public Event
+struct WindowCloseEvent : public Event
 {
-public:
     WindowCloseEvent(){}
     EVENT_IMPLEMENTS(WindowClose)
 };
 
-class WindowFocusEvent : public Event
+struct WindowFocusEvent : public Event
 {
-private:
-    bool gainedFocus_;
-public:
-    WindowFocusEvent(bool gainedFocus):gainedFocus_(gainedFocus){}
+    const bool gainedFocus;
+    WindowFocusEvent(bool gainedFocus):gainedFocus(gainedFocus){}
     EVENT_IMPLEMENTS(WindowFocus)
-    bool gainedFocus(){return gainedFocus_;}
 };
 
-class WindowMaximizationEvent : public Event
+struct WindowMaximizationEvent : public Event
 {
-private:
     // Ture if maximized, false if restored from maximum
-    bool maximized_;
-public:
-    WindowMaximizationEvent(bool maximized):maximized_(maximized){}
+    const bool maximized;
+    WindowMaximizationEvent(bool maximized):maximized(maximized){}
     EVENT_IMPLEMENTS(WindowMaximization)
-    bool maximized(){return maximized_;}
 };
 
-class WindowIconificationEvent : public Event
+struct WindowIconificationEvent : public Event
 {
-private:
-    // Ture if iconified, false if restored from icon
-    bool toIcon_;
-public:
-    WindowIconificationEvent(bool toIcon):toIcon_(toIcon){}
+    // False if restored from icon
+    const bool iconified;
+    WindowIconificationEvent(bool iconified):iconified(iconified){}
     EVENT_IMPLEMENTS(WindowIconification)
-    bool toIcon(){return toIcon_;}
 };
 
-class WindowMotionEvent : public Event
+struct WindowMotionEvent : public Event
 {
-private:
-    int x_;
-    int y_;
-public:
-    WindowMotionEvent(int x, int y):x_(x),y_(y){}
+    int x;
+    int y;
+    WindowMotionEvent(int x, int y):x(x),y(y){}
     EVENT_IMPLEMENTS(WindowMotion)
-    int x(){return x_;}
-    int y(){return y_;}
 };
 
-class WindowResizeEvent : public Event
+struct WindowResizeEvent : public Event
 {
-private:
-    int width_;
-    int height_;
-public:
+    int width;
+    int height;
     WindowResizeEvent(int width, int height):
-        width_(width),height_(height){}
+        width(width),height(height){}
     EVENT_IMPLEMENTS(WindowResize)
-    int width(){return width_;}
-    int height(){return height_;}
 };
 
-class WindowContentRescaleEvent : public Event
+struct WindowContentRescaleEvent : public Event
 {
-private:
-    int xScale_;
-    int yScale_;
-public:
+    int xScale;
+    int yScale;
     WindowContentRescaleEvent(int xScale, int yScale):
-        xScale_(xScale),yScale_(yScale){}
+        xScale(xScale),yScale(yScale){}
     EVENT_IMPLEMENTS(WindowContentRescale)
-    int xScale(){return xScale_;}
-    int yScale(){return yScale_;}
 };
 
-class ProgramTickEvent : public Event
+struct ProgramTickEvent : public Event
 {
-public :
     ProgramTickEvent(){}
     EVENT_IMPLEMENTS(ProgramTick)
 };
 
-class ProgramUpdateEvent : public Event
+struct ProgramUpdateEvent : public Event
 {
-public :
     ProgramUpdateEvent(){}
     EVENT_IMPLEMENTS(ProgramUpdate)
 };
 
-class ProgramRenderEvent : public Event
+struct ProgramRenderEvent : public Event
 {
-public :
     ProgramRenderEvent(){}
     EVENT_IMPLEMENTS(ProgramRender)
 };

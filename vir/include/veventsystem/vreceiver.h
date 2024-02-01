@@ -21,7 +21,7 @@ private:
     // Priority freely editable, higher priority means the receiver will
     // receive events (and possibly handle/resolve them) before receivers
     // with lower priority
-    int receiverPriority_;
+    int receiverPriority_ = 0;
 
 public:
 

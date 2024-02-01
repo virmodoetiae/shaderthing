@@ -15,8 +15,8 @@ void InputCamera::onReceive(Event::KeyPressEvent& event)
 {
     if (!modifiable_)
         return;
-    if (event.keyCode() == VIR_KEY_P && event.repeatCount() == 0)
-        switchProjectionType();
+    //if (event.keyCode() == VIR_KEY_P && event.repeatCount() == 0)
+    //    switchProjectionType();
 }
 
 void InputCamera::onReceive(Event::MouseMotionEvent& event)
@@ -28,8 +28,8 @@ void InputCamera::onReceive(Event::MouseMotionEvent& event)
         return;
     if (inputState->mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked())
     {
-        dTheta_ += -event.dy()*TPI_BY_360;
-        dPhi_ += -event.dx()*TPI_BY_360;
+        dTheta_ += -event.dy*TPI_BY_360;
+        dPhi_ += -event.dx*TPI_BY_360;
         updated_ = false;
     }
 }
@@ -38,7 +38,7 @@ void InputCamera::onReceive(Event::MouseScrollEvent& event)
 {
     if (!modifiable_)
         return;
-    if (event.dy() > 0)
+    if (event.dy > 0)
     {
         fov_ *= mouseWheelSensitivity_;
         viewportHeight_ *= mouseWheelSensitivity_;

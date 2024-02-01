@@ -81,7 +81,7 @@ public:
             if (r->canCurrentlyReceive(event.getType()))
             {
                 r->onReceive(event);
-                if (event.handled())
+                if (event.handled)
                     break;
             }
         }

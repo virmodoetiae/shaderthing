@@ -13,7 +13,7 @@ void InputState::reset()
 
 void InputState::onReceive(Event::KeyPressEvent& event)
 {
-    KeyState& key(keyState_[event.keyCode()]);
+    KeyState& key(keyState_[event.keyCode]);
     if (key.isPressedOrHeld())
         key.setHeld(true);
     else
@@ -25,25 +25,25 @@ void InputState::onReceive(Event::KeyPressEvent& event)
 
 void InputState::onReceive(Event::KeyReleaseEvent& event)
 {
-    keyState_[event.keyCode()].setPressed(false);
+    keyState_[event.keyCode].setPressed(false);
 }
 
 void InputState::onReceive(Event::MouseButtonPressEvent& event)
 {
-    MouseButtonState& mouseButton(mouseButtonState_[event.button()]);
+    MouseButtonState& mouseButton(mouseButtonState_[event.button]);
     mouseButton.switchToggle();
     mouseButton.setClicked(true);
 }
 
 void InputState::onReceive(Event::MouseButtonReleaseEvent& event)
 {
-    mouseButtonState_[event.button()].setClicked(false);
+    mouseButtonState_[event.button].setClicked(false);
 }
 
 void InputState::onReceive(Event::MouseMotionEvent& event)
 {
-    mousePosition_.x = event.x();
-    mousePosition_.y = event.y();
+    mousePosition_.x = event.x;
+    mousePosition_.y = event.y;
 }
 
 }

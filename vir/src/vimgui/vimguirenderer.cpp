@@ -52,35 +52,35 @@ void ImGuiRenderer::onReceive(Event::MouseButtonPressEvent& event)
 {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     if (io.WantCaptureMouse)
-        event.handled() = true;
+        event.handled = true;
 }
 
 void ImGuiRenderer::onReceive(Event::MouseButtonReleaseEvent& event)
 {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     if (io.WantCaptureMouse)
-        event.handled() = true;
+        event.handled = true;
 }
 
 void ImGuiRenderer::onReceive(Event::KeyPressEvent& event)
 {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     if (io.WantCaptureKeyboard)
-        event.handled() = true;
+        event.handled = true;
 }
 
 void ImGuiRenderer::onReceive(Event::KeyReleaseEvent& event)
 {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     if (io.WantCaptureKeyboard)
-        event.handled() = true;
+        event.handled = true;
 }
 
 void ImGuiRenderer::onReceive(Event::KeyCharEvent& event)
 {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     if (io.WantTextInput)
-        event.handled() = true;
+        event.handled = true;
 }
 
 ImGuiRenderer* ImGuiRenderer::initialize()

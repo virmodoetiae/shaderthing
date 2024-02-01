@@ -168,8 +168,8 @@ void GLFWOpenGLWindow::update(bool swapBuffers)
 
 void GLFWOpenGLWindow::onReceive(Event::WindowResizeEvent& e)
 {
-    width_ = e.width();
-    height_ = e.height();
+    width_ = e.width;
+    height_ = e.height;
     aspectRatio_ = float(width_)/float(height_);
     setViewport(width_, height_);
 }
