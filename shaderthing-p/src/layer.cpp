@@ -12,8 +12,6 @@
 namespace ShaderThing
 {
 
-bool Layer::Flags::errorsInSharedSource = false;
-
 ImGuiExtd::TextEditor Layer::GUI::sharedSourceEditor = ImGuiExtd::TextEditor();
 
 //----------------------------------------------------------------------------//
@@ -103,8 +101,17 @@ Layer::~Layer()
 
 void Layer::onReceive(vir::Event::WindowResizeEvent& event)
 {
+    if (event.width == resolution_.x && event.width == resolution_.y)
+        return;
     resolution_ = {event.width, event.height};
     aspectRatio_ = ((float)resolution_.x)/resolution_.y;
+    DELETE_IF_NULLPTR(rendering_.quad)
+    glm::vec2 viewport =
+    {
+        aspectRatio_ > 1.f ? 1.f : aspectRatio_,
+        aspectRatio_ < 1.f ? 1.0 : 1.0/aspectRatio_
+    };
+    rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
 }
 
 //----------------------------------------------------------------------------//
@@ -220,32 +227,31 @@ Layer::fragmentShaderHeaderSourceAndLineCount
 
 bool Layer::compileShader(const SharedUniforms& sharedUniforms)
 {
-    vir::Shader* shader = nullptr;
-    std::exception_ptr exceptionPtr;
     auto headerAndLineCount = 
         fragmentShaderHeaderSourceAndLineCount(sharedUniforms);
+    gui_.headerErrors.clear();
     gui_.sourceHeader = std::get<std::string>(headerAndLineCount);
     unsigned int nHeaderLines = std::get<unsigned int>(headerAndLineCount);
-    unsigned int nSharedLines = GUI::sharedSourceEditor.GetTotalLines();
+    unsigned int nSharedLines = GUI::sharedSourceEditor.GetTotalLines()+1;
+    std::exception_ptr exceptionPtr;
+    vir::Shader* shader = nullptr;
     shader = vir::Shader::create
     (
         vertexShaderSource(sharedUniforms),
-        (   // Full fragment source assembled on spot
+        (
             gui_.sourceHeader +
-            gui_.sharedSourceEditor.GetText()+
+            gui_.sharedSourceEditor.GetText()+"\n"+
             gui_.sourceEditor.GetText()
         ),
         vir::Shader::ConstructFrom::String,
         &exceptionPtr
     );
-    flags_.errorsInSourceHeader = false;
-    flags_.errorsInSharedSource = false;
     if (shader != nullptr) // Compilation success
     {
         delete rendering_.shader;
         rendering_.shader = shader;
-        gui_.sharedSourceEditor.SetErrorMarkers({});
         gui_.sourceEditor.SetErrorMarkers({});
+        gui_.sharedSourceEditor.SetErrorMarkers({});
         // Remove only named uniforms form the list of the uncompiled uniforms
         // as they are the only ones that get compiled into the source code
         uncompiledUniforms_.erase
@@ -260,28 +266,25 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
         );
         flags_.uncompiledChanges = false;
         sharedUniforms.bindShader(rendering_.shader);
-        // if (sharedUniforms.flags.resetFrameOnCompilation)
-        // {
-        //     sharedUniforms.cpuBlock.iFrame = 0;
-        //     sharedUniforms.cpuBlock.iRenderPass = 0;
-        // }
         return true;
     }
     try {std::rethrow_exception(exceptionPtr);}
     catch(std::exception& e)
     {
-        // If the compilation fails, parse the error and show it
-        // on the editor
-        // flags.sourceEditsCompiled = true;
         std::string exception(e.what());
-        //std::cout << exception << std::endl;
-        bool isFragmentException = false;
-        if (exception[0] == '[' && exception[1] == 'F' &&
-            exception[2] == ']')
-            isFragmentException = true;
-        if (!isFragmentException)
+        if 
+        (   // Fragment source exceptions are labelled with '[F]' at their 
+            // start by the vir lib. Since fragment source is the only source
+            // that is editable by the user, if the exception does not start
+            // with '[F]', something must have gone wrong elsewhere so just let
+            // it die
+            exception[0] != '[' || 
+            exception[1] != 'F' ||
+            exception[2] != ']'
+        )
             return false;
         bool readErrorIndex = true;
+        bool headerError = false;
         bool sharedError = false;
         int firstErrorIndex = -1;
         int errorIndex = 0;
@@ -304,15 +307,14 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
                 sharedError = false;
                 if (errorIndex < 1)
                 {
-                    if (errorIndex > -nSharedLines)
+                    if (errorIndex >= -nSharedLines)
                     {
                         sharedError = true;
-                        flags_.errorsInSharedSource = true;
                         errorIndex += nSharedLines;
                     }
                     else
                     {
-                        flags_.errorsInSourceHeader = true;
+                        headerError = true;
                         errorIndex = -1;
                     }
                 }
@@ -331,6 +333,12 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
                 {
                     if (sharedError)
                         sharedErrors.insert({errorIndex, error});
+                    else if (headerError)
+                    {
+                        if (gui_.headerErrors.size() > 0)
+                            gui_.headerErrors +="\n";
+                        gui_.headerErrors += "Header: "+error;
+                    }
                     else
                         errors.insert({errorIndex+1, error});
                     error = "";
@@ -342,7 +350,7 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
         if (errors.size() > 0)
         {
             gui_.sourceEditor.SetErrorMarkers(errors);
-            auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex,0);
+            auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex, 0);
             gui_.sourceEditor.SetCursorPosition(pos);
         }
         if (sharedErrors.size() > 0)
@@ -362,13 +370,6 @@ void Layer::renderShader
     const SharedUniforms& sharedUniforms
 )
 {
-    /*// Check if shader needs to be compiled
-    if (layer->rendering.compileShader)
-    {
-        compileLayerShader(layer);
-        layer->rendering.compileShader = false;
-    }*/
-
     // Flip buffers
     rendering_.framebuffer = 
         rendering_.framebuffer == rendering_.framebufferB ? 
@@ -472,15 +473,11 @@ void Layer::renderLayersTabBarGUI
     const SharedUniforms& sharedUnifoms
 )
 {
-    // Logic for compilation button and, possibly, summary of compilation errors  
-    static ImVec4 redColor = {1,0,0,1};
-    static bool atLeastOneCompilationError(false);
-    static bool atLeasOneUncompiledChange(false);
-    if (atLeasOneUncompiledChange || atLeastOneCompilationError)
+    static bool compilationErrors(false);
+    static bool uncompiledEdits(false);
+    if (uncompiledEdits || compilationErrors) // Render compilation button ------
     {
         float time = vir::GlobalPtr<vir::Time>::instance()->outerTime();
-        static ImVec4 grayColor = 
-                ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
         ImVec4 compileButtonColor = 
         {
             .5f*glm::sin(6.283f*(time/3+0.f/3))+.3f,
@@ -503,32 +500,35 @@ void Layer::renderLayersTabBarGUI
         ImGui::SameLine();
         ImGui::Text("Compile all shaders");
         ImGui::SameLine();
+        static ImVec4 grayColor = 
+                ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
         ImGui::PushStyleColor(ImGuiCol_Text, grayColor);
         ImGui::Text("Ctrl+B");
         ImGui::PopStyleColor();
     }
+
+    // Render list of compilation errors with formatting -----------------------
     bool errorColorPushed = false;
-    if (atLeastOneCompilationError)
+    if (compilationErrors)
     {
         ImGui::Separator();
-        ImGui::PushStyleColor(ImGuiCol_Text, redColor);
+        ImGui::PushStyleColor(ImGuiCol_Text, {1,0,0,1});
         errorColorPushed = true;
         ImGui::Text("Compilation errors in:");
     }
-    atLeastOneCompilationError = false;
-    atLeasOneUncompiledChange = false;
-    auto& sharedCompilationErrors
+    compilationErrors = false;
+    uncompiledEdits = false;
+    const auto& sharedErrors // First render errors in shared source -----------
     (
         Layer::GUI::sharedSourceEditor.GetErrorMarkers()
     );
-    if (sharedCompilationErrors.size() > 0)
+    if (sharedErrors.size() > 0)
     {
-        if (!atLeastOneCompilationError)
-            atLeastOneCompilationError = true;
-        ImGui::Bullet();ImGui::Text("Common");
+        compilationErrors = true;
+        ImGui::Bullet(); ImGui::Text("Common");
         if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
         {
-            for (auto& error : sharedCompilationErrors)
+            for (auto& error : sharedErrors)
             {
                 // First is line no., second is actual error text
                 std::string errorText = 
@@ -538,23 +538,20 @@ void Layer::renderLayersTabBarGUI
             ImGui::EndTooltip();
         }
     }
-    for (auto* layer : layers)
+    for (auto* layer : layers) // Second, render layer-specific errors in either
+                               // source header or editable source -------------
     {
-        auto& compilationErrors(layer->gui_.sourceEditor.GetErrorMarkers());
-        if (compilationErrors.size() > 0 || layer->flags_.errorsInSourceHeader)
+        const auto& headerErrors(layer->gui_.headerErrors);
+        const auto& sourceErrors(layer->gui_.sourceEditor.GetErrorMarkers());
+        if (sourceErrors.size() > 0 || layer->gui_.headerErrors.size() > 0)
         {
-            if (!atLeastOneCompilationError)
-                atLeastOneCompilationError = true;
+            compilationErrors = true;
             ImGui::Bullet();ImGui::Text(layer->gui_.name.c_str());
             if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
             {
-                if (layer->flags_.errorsInSourceHeader)
-                {
-                    std::string errorText =  
-"Header: invalid uniform declaration(s), edit uniform name(s)";
-                    ImGui::Text(errorText.c_str());
-                }
-                for (auto& error : compilationErrors)
+                if (layer->gui_.headerErrors.size() > 0)
+                    ImGui::Text(layer->gui_.headerErrors.c_str());
+                for (auto& error : sourceErrors)
                 {
                     // First is line no., second is actual error text
                     std::string errorText = 
@@ -564,14 +561,20 @@ void Layer::renderLayersTabBarGUI
                 ImGui::EndTooltip();
             }
         }
-        if (layer->gui_.sourceEditor.IsTextChanged() || Layer::GUI::sharedSourceEditor.IsTextChanged())
+        if
+        (
+            layer->gui_.sourceEditor.IsTextChanged() || 
+            Layer::GUI::sharedSourceEditor.IsTextChanged()
+        )
             layer->flags_.uncompiledChanges = true;
-        if (Layer::GUI::sharedSourceEditor.IsTextChanged())
-            atLeasOneUncompiledChange = true;
-        if (layer->flags_.uncompiledChanges && !atLeasOneUncompiledChange)
-            atLeasOneUncompiledChange = true;
+        if 
+        (
+            Layer::GUI::sharedSourceEditor.IsTextChanged() ||
+            layer->flags_.uncompiledChanges
+        )
+            uncompiledEdits = true;
     }
-    if (atLeastOneCompilationError)
+    if (compilationErrors)
         ImGui::Separator();
     if (errorColorPushed)
         ImGui::PopStyleColor();
@@ -666,6 +669,7 @@ void Layer::renderTabBarGUI()
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
             static ImVec4 defaultColor = 
                 ImGui::GetStyle().Colors[ImGuiCol_Text];
+            bool headerErrors(gui_.headerErrors.size() > 0);
             //app_.findReplaceTextToolRef().renderGui();
             //flags_.uncompiledChanges =
             //    app_.findReplaceTextToolRef().findReplaceTextInEditor
@@ -675,7 +679,7 @@ void Layer::renderTabBarGUI()
             //if (app_.findReplaceTextToolRef().isGuiOpen())
             //    ImGui::Separator();
             ImGui::Indent();
-            if (flags_.errorsInSourceHeader)
+            if (headerErrors)
                 ImGui::PushStyleColor(ImGuiCol_Text, redColor);
             if (ImGui::TreeNode("Header"))
             {
@@ -685,7 +689,7 @@ void Layer::renderTabBarGUI()
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                 {
                     ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
-                    if (flags_.errorsInSourceHeader)
+                    if (headerErrors)
                     {
                         std::string error = 
 "Header has error(s), likely due to invalid uniform declaration(s), correct "
@@ -721,7 +725,7 @@ void Layer::renderTabBarGUI()
                 ImGui::Separator();
                 ImGui::Dummy(ImVec2(-1, ImGui::GetTextLineHeight()));
             }
-            if (flags_.errorsInSourceHeader)
+            if (headerErrors)
                 ImGui::PopStyleColor();
             ImGui::Unindent();
             gui_.sourceEditor.Render("##sourceEditor");

@@ -253,34 +253,22 @@ void SharedUniforms::update()
     // The goal of the following section is to reduce the number of gpuBlock
     // setData calls, hence the weird branching
 
-    // Data range I always updated
-    if (!flags_.updateDataRangeII) // If no II, data ranges I & III are not
-                                   // contiguous, hence the need for two
-                                   // separate calls
+    if (!flags_.updateDataRangeIII)
     {
-        gpuBlock_->setData(&cpuBlock_, Block::dataRangeISize(), 0);
-        if (flags_.updateDataRangeIII)
-            gpuBlock_->setData
-            (
-                &cpuBlock_,
-                Block::dataRangeIIISize(),
-                Block::dataRangeIIIOffset()
-            );
+        if (!flags_.updateDataRangeII)
+            gpuBlock_->setData(&cpuBlock_, Block::dataRangeICumulativeSize(), 0);
+        else
+        {
+            gpuBlock_->setData(&cpuBlock_, Block::dataRangeIICumulativeSize(), 0);
+            flags_.updateDataRangeII = false;
+        }
     }
     else
     {
-        if (flags_.updateDataRangeIII) // Update everything
-            gpuBlock_->setData(&cpuBlock_, Block::sizeNoKeyboard(), 0);
-        else
-            gpuBlock_->setData // If no III, update I & II in single call
-                               // becasue the cpuBlock_ data ranges I & II are
-                               // contiguous
-            (
-                &cpuBlock_,
-                Block::dataRangeISize()+Block::dataRangeIISize(),
-                0
-            );
+        gpuBlock_->setData(&cpuBlock_, Block::dataRangeIIICumulativeSize(), 0);
+        flags_.updateDataRangeIII = false;
     }
+
     flags_.updateDataRangeII = false;
     flags_.updateDataRangeIII = false;
 }

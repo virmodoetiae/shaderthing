@@ -37,16 +37,14 @@ private:
                std::string           name;
                std::string           newName;
                std::string           sourceHeader;
+               std::string           headerErrors;
                ImGuiExtd::TextEditor sourceEditor;
         static ImGuiExtd::TextEditor sharedSourceEditor;
     };
     struct Flags
     {
                bool                  rename               = false;
-               bool                  errorsInSource       = false;
-               bool                  errorsInSourceHeader = false;
                bool                  uncompiledChanges    = false;
-        static bool                  errorsInSharedSource;
     };
 
     const uint32_t                   id_;
