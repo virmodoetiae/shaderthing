@@ -44,7 +44,9 @@ public :
 
     void setViewport(uint32_t, uint32_t) override;
 
-    void setSize(uint32_t, uint32_t, bool broadcast=true) override;
+    // Never call from within an onReceive function for a WindowResizeEvent,
+    // else the program may end up in an infinite loop
+    void setSize(uint32_t, uint32_t) override;
 
     void data(unsigned char*) override;
 

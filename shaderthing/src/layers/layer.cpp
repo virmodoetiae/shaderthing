@@ -258,7 +258,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})";
         (
             Layer::assembleVertexSource(), 
             Layer::blankFragmentSource_,
-            vir::Shader::ConstructFrom::String
+            vir::Shader::ConstructFrom::SourceCode
         );
     }
     if (Layer::internalFramebufferShader_ == nullptr)
@@ -274,7 +274,7 @@ void main(){fragColor = texture(self, tc);})";
         (
             Layer::assembleVertexSource(), 
             fragmentSource,
-            vir::Shader::ConstructFrom::String
+            vir::Shader::ConstructFrom::SourceCode
         );
     }
 }
@@ -383,7 +383,7 @@ internalFramebufferClearPolicyOnExport_
         (
             Layer::assembleVertexSource(), 
             assembleFragmentSource(fragmentSource_),
-            vir::Shader::ConstructFrom::String
+            vir::Shader::ConstructFrom::SourceCode
         );
 
     // Bind shared uniform block
@@ -877,7 +877,7 @@ bool Layer::compileShader()
     (
         assembleVertexSource(),
         assembleFragmentSource(fragmentSource_, &nHeaderLines), 
-        vir::Shader::ConstructFrom::String,
+        vir::Shader::ConstructFrom::SourceCode,
         &exceptionPtr
     );
     hasHeaderErrors_ = false;
@@ -1550,13 +1550,12 @@ internalFramebufferClearPolicyOnExport_
             (
                 Layer::assembleVertexSource(),
                 Layer::blankFragmentSource_,
-                vir::Shader::ConstructFrom::String
+                vir::Shader::ConstructFrom::SourceCode
             );
 
     auto framebufferData = reader.readObject("internalFramebuffer");
     auto internalFormat = 
         (vir::TextureBuffer::InternalFormat)framebufferData.read<int>("format");
-    
 
     // Init framebuffers
     flipFramebuffers_ = false;

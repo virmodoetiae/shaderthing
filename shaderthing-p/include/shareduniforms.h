@@ -75,20 +75,14 @@ private:
         // time, medium update frequency 
                      ivec3A16   iKeyboard[256] {};           // 160-4256
 
-        static const uint32_t dataRangeIOffset()           {return 0;}
-        static const uint32_t dataRangeISize()             {return 12;}
+        static const uint32_t dataRangeICumulativeSize()   {return 12;}
         
-        static const uint32_t dataRangeIIOffset()          {return 12;}
-        static const uint32_t dataRangeIISize()            {return 68;}
+        static const uint32_t dataRangeIICumulativeSize()  {return 80;}
         
-        static const uint32_t dataRangeIIIOffset()         {return 80;}
-        static const uint32_t dataRangeIIISize()           {return 80;}
-
-        static const uint32_t sizeNoKeyboard()             {return 160;}
+        static const uint32_t dataRangeIIICumulativeSize() {return 160;}
         
         static const uint32_t iKeyboardKeyOffset(int iKey) {return 160+iKey*16;}
         static const uint32_t iKeyboardKeySize()           {return 16;}
-        static const uint32_t iKeyboardSize()              {return 4096;}
         static const uint32_t size()                       {return 4256;}
 
         
@@ -125,6 +119,8 @@ R"(layout(std140) uniform SharedBlock {
           // Movable camera which responds to keyboard and mouse controls and is
           // used to provide values to cpuBlock.iWASD, cpuBlock.iLook
           vir::Camera*   shaderCamera_   = nullptr;
+
+    void setResolution(glm::ivec2& resolution, bool windowFrameManuallyDragged);
 
 public:
 

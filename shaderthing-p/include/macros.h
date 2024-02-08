@@ -6,4 +6,4 @@
     class(class&&)=delete;                                                  \
     class& operator=(class&&)=delete;
 
-#define DELETE_IF_NULLPTR(ptr) if (ptr != nullptr) delete ptr;
+#define DELETE_IF_NOT_NULLPTR(ptr) if (ptr != nullptr) delete ptr;

@@ -71,7 +71,7 @@ OpenGLShader::OpenGLShader
     unsigned int fragmentShader;
     switch(cf)
     {
-        case ConstructFrom::File :
+        case ConstructFrom::SourceFile :
         {
             vertexShader = createShaderFromFile
             (
@@ -85,7 +85,7 @@ OpenGLShader::OpenGLShader
             );
             break;
         }
-        case ConstructFrom::String :
+        case ConstructFrom::SourceCode :
         {
             vertexShader = createShaderFromString
             (

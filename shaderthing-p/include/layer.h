@@ -25,7 +25,7 @@ private:
             InternalFramebuffer,
             InternalFramebufferAndWindow
         };
-               Target                target         = Target::Window;
+               Target                target         = Target::InternalFramebufferAndWindow;
                vir::Quad*            quad           = nullptr;
                vir::Framebuffer*     framebufferA   = nullptr;
                vir::Framebuffer*     framebufferB   = nullptr;
@@ -49,6 +49,7 @@ private:
 
     const uint32_t                   id_;
           glm::ivec2                 resolution_;
+          glm::vec2                  resolutionRatio_;
           float                      aspectRatio_;
           float                      depth_;
           std::vector<Uniform*>      uniforms_;
@@ -65,10 +66,22 @@ private:
     (
         const SharedUniforms& sharedUniforms
     );
-    std::tuple<std::string, unsigned int> fragmentShaderHeaderSourceAndLineCount
+
+    std::tuple<std::string, unsigned int> 
+    fragmentShaderHeaderSourceAndLineCount
     (
         const SharedUniforms& sharedUniforms
     ) const;
+    void setResolution
+    (
+        glm::ivec2& resolution,
+        const bool windowFrameManuallyDragged
+    );
+    void rebuildFramebuffers
+    (
+        const vir::TextureBuffer::InternalFormat& internalFormat, 
+        const glm::ivec2& resolution
+    );
 
 public:
 

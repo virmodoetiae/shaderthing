@@ -17,12 +17,12 @@ class Shader
 {
 public:
 
-    // Constructor specification (is the string a path to a file or a source 
-    // code?)
     enum class ConstructFrom
     {
-        String,
-        File
+        // The passed string is the source code itself
+        SourceCode,
+        // The passed string is a filepath to the source code
+        SourceFile 
     };
 
     // Shader variable type
@@ -50,29 +50,29 @@ public:
         Type type;
         typedef void* ValueType;
     };
-    #define DEFINE_SHADER_VARIABLE(DT, TY, NC)  \
-        struct DT : Variable                    \
-        {                                       \
-            DT()                                \
-            {                                   \
-                size=NC*sizeof(TY);             \
-                nCmpts=NC;                      \
-                type=Type::DT;                  \
-            }                                   \
+    #define DEFINE_SHADER_VARIABLE(customType, nativeType, nComponents)     \
+        struct customType : Variable                                        \
+        {                                                                   \
+            customType()                                                    \
+            {                                                               \
+                size=nComponents*sizeof(nativeType);                        \
+                nCmpts=nComponents;                                         \
+                type=Type::customType;                                      \
+            }                                                               \
         };                                      
-    DEFINE_SHADER_VARIABLE(Bool, bool, 1)
-    DEFINE_SHADER_VARIABLE(UInt, uint32_t, 1)
-    DEFINE_SHADER_VARIABLE(Int, int, 1)
-    DEFINE_SHADER_VARIABLE(Int2, int, 2)
-    DEFINE_SHADER_VARIABLE(Int3, int, 3)
-    DEFINE_SHADER_VARIABLE(Int4, int, 4)
-    DEFINE_SHADER_VARIABLE(Float, float, 1)
-    DEFINE_SHADER_VARIABLE(Float2, float, 2)
-    DEFINE_SHADER_VARIABLE(Float3, float, 3)
-    DEFINE_SHADER_VARIABLE(Float4, float, 4)
-    DEFINE_SHADER_VARIABLE(Mat3, float, 9)
-    DEFINE_SHADER_VARIABLE(Mat4, float, 16)
-    DEFINE_SHADER_VARIABLE(Sampler2D, uint32_t, 1)
+    DEFINE_SHADER_VARIABLE(Bool,        bool,     1)
+    DEFINE_SHADER_VARIABLE(UInt,        uint32_t, 1)
+    DEFINE_SHADER_VARIABLE(Int,         int,      1)
+    DEFINE_SHADER_VARIABLE(Int2,        int,      2)
+    DEFINE_SHADER_VARIABLE(Int3,        int,      3)
+    DEFINE_SHADER_VARIABLE(Int4,        int,      4)
+    DEFINE_SHADER_VARIABLE(Float,       float,    1)
+    DEFINE_SHADER_VARIABLE(Float2,      float,    2)
+    DEFINE_SHADER_VARIABLE(Float3,      float,    3)
+    DEFINE_SHADER_VARIABLE(Float4,      float,    4)
+    DEFINE_SHADER_VARIABLE(Mat3,        float,    9)
+    DEFINE_SHADER_VARIABLE(Mat4,        float,    16)
+    DEFINE_SHADER_VARIABLE(Sampler2D,   uint32_t, 1)
     DEFINE_SHADER_VARIABLE(SamplerCube, uint32_t, 1)
     static std::unordered_map<std::string, Variable::Type> 
         valueTypeToUniformTypeMap;
@@ -86,17 +86,22 @@ public:
     class Uniform
     {
     private:
-        bool isValueOwner_ = true;
-        void* value_ = nullptr;
-        // Delete copy constructors
+        
+        bool           isValueOwner_ = true;
+        void*          value_ = nullptr;
+        
         Uniform(const Uniform&) = delete;
         Uniform& operator=(const Uniform& other) = delete;
+    
     public:
-        std::string name = "";
-        uint32_t unit = 0;
+    
+        std::string    name = "";
+        uint32_t       unit = 0;
         Variable::Type type = Variable::Type::Int;
+        
         Uniform() = default;
         ~Uniform();
+        
         template<class ValueType>
         void setValuePtr(ValueType* value, bool isValueOwner=false)
         {
@@ -105,6 +110,7 @@ public:
             value_ = (void*)value;
             isValueOwner_ = isValueOwner;
         }
+        
         template<class ValueType>
         ValueType* getValuePtr()
         {       
@@ -112,6 +118,7 @@ public:
                 return (ValueType*)value_;
             return (ValueType*)nullptr;
         }
+        
         template<class ValueType>
         void setValue(ValueType value)
         {
@@ -120,6 +127,7 @@ public:
             else 
                 *(ValueType*)(value_) = value;
         }
+        
         template<class ValueType>
         ValueType getValue()
         {
@@ -127,6 +135,7 @@ public:
                 return *(ValueType*)(value_);
             return ValueType();
         }
+        
         void resetValue();
     };
 

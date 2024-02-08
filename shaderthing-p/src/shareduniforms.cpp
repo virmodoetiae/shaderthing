@@ -80,34 +80,27 @@ SharedUniforms::~SharedUniforms()
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::onReceive(vir::Event::WindowResizeEvent& event)
+void SharedUniforms::setResolution
+(
+    glm::ivec2& resolution, 
+    bool windowFrameManuallyDragged
+)
 {
     // Limit resolution
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
     auto monitorScale = window->contentScale();
     glm::ivec2 minResolution = {120*monitorScale.x, 1};
     glm::ivec2 maxResolution = window->primaryMonitorResolution();
-    event.width = 
-        std::max(std::min(event.width, maxResolution.x), minResolution.x);
-    event.height = 
-        std::max(std::min(event.height, maxResolution.y), minResolution.y);
-    if (window->width() != event.width || window->height() != event.height)
-        window->setSize
-        (
-            event.width,
-            event.height,
-            false // Do not re-trigger the whole WindowResizeEvent broadcasting
-                  // else you get an infinite loop
-        );
-
+    resolution.x = 
+        std::max(std::min(resolution.x, maxResolution.x), minResolution.x);
+    resolution.y = 
+        std::max(std::min(resolution.y, maxResolution.y), minResolution.y);
+    
     // Store in iResolution & update aspectRatio
-    glm::ivec2 resolution = {event.width, event.height};
-    if (cpuBlock_.iResolution == resolution)
-        return;
     cpuBlock_.iResolution = resolution;
     cpuBlock_.iAspectRatio = ((float)resolution.x)/resolution.y;
 
-    // Finally, update screen camera
+    // Update screen camera
     screenCamera_->setViewportHeight
     (
         std::min(1.0f, 1.0f/cpuBlock_.iAspectRatio)
@@ -115,6 +108,24 @@ void SharedUniforms::onReceive(vir::Event::WindowResizeEvent& event)
     screenCamera_->update();
     cpuBlock_.iMVP = screenCamera_->projectionViewMatrix();
     flags_.updateDataRangeIII = true;
+
+    // Set the actual window resolution and propagate event
+    if (!windowFrameManuallyDragged)
+        window->setSize
+        (
+            resolution.x,
+            resolution.y
+        );
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::onReceive(vir::Event::WindowResizeEvent& event)
+{
+    glm::ivec2 resolution{event.width, event.height};
+    setResolution(resolution, true);
+    event.width = resolution.x;
+    event.height = resolution.y;
 }
 
 //----------------------------------------------------------------------------//
@@ -268,9 +279,6 @@ void SharedUniforms::update()
         gpuBlock_->setData(&cpuBlock_, Block::dataRangeIIICumulativeSize(), 0);
         flags_.updateDataRangeIII = false;
     }
-
-    flags_.updateDataRangeII = false;
-    flags_.updateDataRangeIII = false;
 }
 
 //----------------------------------------------------------------------------//
@@ -282,15 +290,18 @@ void SharedUniforms::renderWindowResolutionMenuGUI()
         ImGui::Text("Resolution");
         ImGui::SameLine();
         ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
+        glm::ivec2 resolution(cpuBlock_.iResolution);
         if 
         (
             ImGui::InputInt2
             (
                 "##windowResolution", 
-                glm::value_ptr(cpuBlock_.iResolution)
+                glm::value_ptr(resolution)
             )
         )
         {
+            setResolution(resolution, false);
+            /*
             static const auto broadcaster =
                 vir::GlobalPtr<vir::Event::Broadcaster>::instance();
             broadcaster->broadcast
@@ -300,7 +311,7 @@ void SharedUniforms::renderWindowResolutionMenuGUI()
                     cpuBlock_.iResolution.x,
                     cpuBlock_.iResolution.y
                 )
-            );
+            );*/
         }
         ImGui::PopItemWidth();
         ImGui::EndMenu();

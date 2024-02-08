@@ -45,10 +45,10 @@ App::App()
 
 App::~App()
 {
-    DELETE_IF_NULLPTR(sharedUniforms_)
+    DELETE_IF_NOT_NULLPTR(sharedUniforms_)
     for (auto layer : layers_)
     {
-        DELETE_IF_NULLPTR(layer)
+        DELETE_IF_NOT_NULLPTR(layer)
     }
 }
 

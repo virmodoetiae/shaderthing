@@ -28,6 +28,7 @@ Layer::Layer
     // Set layer resolution from current app window resolution
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
     resolution_ = {window->width(), window->height()};
+    resolutionRatio_ = {1,1};
     aspectRatio_ = ((float)resolution_.x)/resolution_.y;
 
     // Add default uniforms
@@ -82,6 +83,13 @@ R"(void main()
     };
     rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
 
+    // Init framebuffers
+    rebuildFramebuffers
+    (
+        vir::TextureBuffer2D::InternalFormat::RGBA_SF_32,
+        resolution_
+    );
+
     // Register with event broadcaster
     this->tuneIn();
     this->receiverPriority() = -id_;
@@ -91,27 +99,18 @@ R"(void main()
 
 Layer::~Layer()
 {
-    DELETE_IF_NULLPTR(rendering_.framebufferA)
-    DELETE_IF_NULLPTR(rendering_.framebufferB)
-    DELETE_IF_NULLPTR(rendering_.shader)
-    DELETE_IF_NULLPTR(rendering_.quad)
+    DELETE_IF_NOT_NULLPTR(rendering_.framebufferA)
+    DELETE_IF_NOT_NULLPTR(rendering_.framebufferB)
+    DELETE_IF_NOT_NULLPTR(rendering_.shader)
+    DELETE_IF_NOT_NULLPTR(rendering_.quad)
 }
 
 //----------------------------------------------------------------------------//
 
 void Layer::onReceive(vir::Event::WindowResizeEvent& event)
 {
-    if (event.width == resolution_.x && event.width == resolution_.y)
-        return;
-    resolution_ = {event.width, event.height};
-    aspectRatio_ = ((float)resolution_.x)/resolution_.y;
-    DELETE_IF_NULLPTR(rendering_.quad)
-    glm::vec2 viewport =
-    {
-        aspectRatio_ > 1.f ? 1.f : aspectRatio_,
-        aspectRatio_ < 1.f ? 1.0 : 1.0/aspectRatio_
-    };
-    rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+    glm::ivec2 resolution = {event.width, event.height};
+    setResolution(resolution, true);
 }
 
 //----------------------------------------------------------------------------//
@@ -225,6 +224,105 @@ Layer::fragmentShaderHeaderSourceAndLineCount
 
 //----------------------------------------------------------------------------//
 
+void Layer::setResolution
+(
+    glm::ivec2& resolution,
+    const bool windowFrameManuallyDragged
+)
+{
+    static const auto* window(vir::GlobalPtr<vir::Window>::instance());
+    glm::vec2 windowResolution(window->width(), window->height());
+    if (windowFrameManuallyDragged)
+    {
+        resolution = 
+            glm::max(resolutionRatio_*(glm::vec2)resolution+.5f, {1,1});
+        
+        // All the layer quads used for shader rendering must have the same 
+        // size, all bound to the window aspect ratio, not the layer one
+        const float& windowAspectRatio(window->aspectRatio());
+        glm::vec2 viewport =
+        {
+            windowAspectRatio > 1.f ? 1.f : windowAspectRatio,
+            windowAspectRatio < 1.f ? 1.0 : 1.0/windowAspectRatio
+        };
+        if (rendering_.quad != nullptr)
+        {
+            glm::vec2 currentViewport = 
+            {
+                rendering_.quad->getWidthHeightDepth().x,
+                rendering_.quad->getWidthHeightDepth().y
+            };
+            if (viewport != currentViewport)
+            {
+                delete rendering_.quad;
+                rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+            }
+        }
+        else
+            rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+    }
+    else
+        resolutionRatio_ = (glm::vec2)resolution/windowResolution;
+    if (resolution == resolution_)
+        return;
+    resolution_ = resolution;
+    aspectRatio_ = ((float)resolution.x)/resolution.y;
+    rebuildFramebuffers
+    (
+        rendering_.framebuffer->colorBufferInternalFormat(),
+        resolution_
+    );
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::rebuildFramebuffers
+(
+    const vir::TextureBuffer::InternalFormat& internalFormat, 
+    const glm::ivec2& resolution
+)
+{
+    auto rebuildFramebuffer = []
+    (
+        vir::Framebuffer*& framebuffer, 
+        const vir::TextureBuffer::InternalFormat& internalFormat, 
+        const glm::ivec2& resolution
+    )
+    {
+        if (framebuffer != nullptr)
+        {
+            auto wrapModeX = framebuffer->colorBufferWrapMode(0);
+            auto wrapModeY = framebuffer->colorBufferWrapMode(1);
+            auto minFilterMode = framebuffer->colorBufferMinFilterMode();
+            auto magFilterMode = framebuffer->colorBufferMagFilterMode();
+            framebuffer->unbind();
+            delete framebuffer;
+            framebuffer = vir::Framebuffer::create
+            (
+                resolution.x, 
+                resolution.y, 
+                internalFormat
+            );
+            framebuffer->setColorBufferWrapMode(0, wrapModeX);
+            framebuffer->setColorBufferWrapMode(1, wrapModeY);
+            framebuffer->setColorBufferMinFilterMode(minFilterMode);
+            framebuffer->setColorBufferMagFilterMode(magFilterMode);
+        }
+        else
+            framebuffer = vir::Framebuffer::create
+            (
+                resolution.x, 
+                resolution.y, 
+                internalFormat
+            );
+    };
+    rebuildFramebuffer(rendering_.framebufferA, internalFormat, resolution);
+    rebuildFramebuffer(rendering_.framebufferB, internalFormat, resolution);
+    rendering_.framebuffer = rendering_.framebufferA;
+}
+
+//----------------------------------------------------------------------------//
+
 bool Layer::compileShader(const SharedUniforms& sharedUniforms)
 {
     auto headerAndLineCount = 
@@ -243,7 +341,7 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
             gui_.sharedSourceEditor.GetText()+"\n"+
             gui_.sourceEditor.GetText()
         ),
-        vir::Shader::ConstructFrom::String,
+        vir::Shader::ConstructFrom::SourceCode,
         &exceptionPtr
     );
     if (shader != nullptr) // Compilation success
@@ -433,7 +531,7 @@ in      vec2      qc;
 in      vec2      tc;
 uniform sampler2D self;
 void main(){fragColor = texture(self, tc);})",
-                vir::Shader::ConstructFrom::String
+                vir::Shader::ConstructFrom::SourceCode
             )
         )
     );
@@ -455,12 +553,25 @@ void Layer::renderSettingsMenuGUI()
 {
     if (ImGui::BeginMenu(("Layer ["+gui_.name+"]").c_str()))
     {
-        ImGui::Text("Name ");
+        const float fontSize(ImGui::GetFontSize());
+        ImGui::Text("Name                 ");
         ImGui::SameLine();
         static std::unique_ptr<char[]> label(new char[24]);
         std::sprintf(label.get(), "##layer%dInputText", id_);
+        ImGui::PushItemWidth(10*fontSize);
         if (ImGui::InputText(label.get(), &gui_.newName))
-            flags_.rename = true;
+            flags_.rename = true; // The actual renaming happens in the static
+                                  // function Layer::renderLayersTabBarGUI(...)
+        ImGui::PopItemWidth();
+
+        ImGui::Text("Resolution           ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(10*fontSize);
+        glm::ivec2 resolution = resolution_;
+        std::sprintf(label.get(), "##layer%dResolution", id_);
+        if (ImGui::InputInt2(label.get(), glm::value_ptr(resolution)))
+            setResolution(resolution, false);
+        ImGui::PopItemWidth();
         ImGui::EndMenu();
     }
 }

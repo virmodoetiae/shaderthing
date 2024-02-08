@@ -123,23 +123,11 @@ void GLFWOpenGLWindow::setViewport(uint32_t vwidth, uint32_t vheight)
     glViewport(0, 0, viewportWidth_, viewportHeight_);
 }
 
-void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height, bool broadcast)
+void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height)
 {
-    if (width == width_ && height == height_)
-        return;
-    
     // This is called automatically when the window is resized manually by
     // dragging its corners, but here, I need to call it myself
     glfwSetWindowSize(glfwWindow_, width, height);
-
-    // The width_, height_, viewport will be set in the onReceive method of
-    // this class once the event is broadcast to all listeners (which inclue
-    // the window itself), hence the return (void)
-    if (broadcast)
-        return GlobalPtr<Event::Broadcaster>::instance()->broadcast
-        (
-            Event::WindowResizeEvent(width, height)
-        );
     width_ = width;
     height_ = height;
     aspectRatio_ = float(width_)/float(height_);
