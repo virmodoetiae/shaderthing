@@ -162,35 +162,16 @@ Shader* Shader::create
 (
     const std::string& vs, 
     const std::string& fs, 
-    ConstructFrom cf, 
-    std::exception_ptr* ep
+    ConstructFrom cf
 )
 {
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    if (ep != nullptr)
+    switch(window->context()->type())
     {
-        try
-        {
-            switch(window->context()->type())
-            {
-                case (GraphicsContext::Type::OpenGL) :
-                    return new OpenGLShader(vs, fs, cf);
-            }
-        }
-        catch(...)
-        {
-            *ep = std::current_exception();
-        }
-    }
-    else
-    {
-        switch(window->context()->type())
-        {
-            case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLShader(vs, fs, cf);
-        }
+        case (GraphicsContext::Type::OpenGL) :
+            return new OpenGLShader(vs, fs, cf);
     }
     return nullptr;
 }

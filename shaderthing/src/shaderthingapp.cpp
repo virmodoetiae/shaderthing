@@ -204,7 +204,7 @@ void ShaderThingApp::onReceive(vir::Event::WindowResizeEvent& e)
     if (stateFlags_[ST_IS_WINDOW_ICONIFIED])
         return;
 
-    const glm::ivec2 resolution({e.width(), e.height()});
+    const glm::ivec2 resolution({e.width, e.height});
     
     if (resolution_ == resolution)
         return;
@@ -250,8 +250,8 @@ void ShaderThingApp::onReceive(vir::Event::WindowFocusEvent& event)
 
 void ShaderThingApp::onReceive(vir::Event::MouseButtonPressEvent& event)
 {
-    mouse_.x = event.x();
-    mouse_.y = resolution_.y-event.y();
+    mouse_.x = event.x;
+    mouse_.y = resolution_.y-event.y;
     mouse_.z = mouse_.x;
     mouse_.w = -mouse_.y;
 }
@@ -266,8 +266,8 @@ void ShaderThingApp::onReceive(vir::Event::MouseMotionEvent& event)
         mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked()
     )
     {
-        mouse_.x = event.x();
-        mouse_.y = resolution_.y-event.y();
+        mouse_.x = event.x;
+        mouse_.y = resolution_.y-event.y;
     }
 }
 
@@ -284,12 +284,12 @@ void ShaderThingApp::onReceive(vir::Event::KeyPressEvent& event)
 {
     KeyboardUniformData::ivec3A16& data
     (
-        keyboardUniformData_.data[event.keyCode()]
+        keyboardUniformData_.data[event.keyCode]
     );
     static uint32_t size = sizeof(data);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
-    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode());
-    auto& status = inputState->keyState(event.keyCode());
+    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
+    auto& status = inputState->keyState(event.keyCode);
     data.x = (int)status.isPressed();
     data.y = (int)status.isHeld();
     data.z = (int)status.isToggled();
@@ -303,14 +303,14 @@ void ShaderThingApp::onReceive(vir::Event::KeyReleaseEvent& event)
 {
     KeyboardUniformData::ivec3A16& data
     (
-        keyboardUniformData_.data[event.keyCode()]
+        keyboardUniformData_.data[event.keyCode]
     );
     static uint32_t size = sizeof(data);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
-    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode());
+    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     data.x = 0;
     data.y = 0;
-    data.z = (int)inputState->keyState(event.keyCode()).isToggled();
+    data.z = (int)inputState->keyState(event.keyCode).isToggled();
     //                                  key data,   16,    key pos. in buffer
     keyobardUniformBuffer_->setData((void*)&data, size, size*shaderToyKeyCode);
 }

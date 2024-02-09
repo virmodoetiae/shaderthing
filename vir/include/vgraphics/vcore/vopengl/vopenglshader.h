@@ -12,9 +12,10 @@ namespace vir
 class OpenGLShader : public Shader
 {
 protected:
-    void checkValidShader(const unsigned int&, std::string logPrefix="");
-    unsigned int createShaderFromString(const std::string&, GLuint);
-    unsigned int createShaderFromFile(const std::string&, GLuint);
+    static void checkValidShader(const unsigned int& id, std::string& log);
+    static unsigned int createShaderFromSource(const std::string& source, GLuint type, std::map<int, std::string>& errors);
+    static unsigned int createShaderFromFile(const std::string& filepath, GLuint type, std::map<int, std::string>& errors);
+    static void parseCompilationErrorLog(const std::string& log, std::map<int, std::string>& errors);
 public:
     // Construct of from vertex and fragment shader (either source code or file
     // path)

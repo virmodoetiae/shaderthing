@@ -327,13 +327,10 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
 {
     auto headerAndLineCount = 
         fragmentShaderHeaderSourceAndLineCount(sharedUniforms);
-    gui_.headerErrors.clear();
     gui_.sourceHeader = std::get<std::string>(headerAndLineCount);
     unsigned int nHeaderLines = std::get<unsigned int>(headerAndLineCount);
     unsigned int nSharedLines = GUI::sharedSourceEditor.GetTotalLines()+1;
-    std::exception_ptr exceptionPtr;
-    vir::Shader* shader = nullptr;
-    shader = vir::Shader::create
+    auto shader = vir::Shader::create
     (
         vertexShaderSource(sharedUniforms),
         (
@@ -341,17 +338,15 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
             gui_.sharedSourceEditor.GetText()+"\n"+
             gui_.sourceEditor.GetText()
         ),
-        vir::Shader::ConstructFrom::SourceCode,
-        &exceptionPtr
+        vir::Shader::ConstructFrom::SourceCode
     );
-    if (shader != nullptr) // Compilation success
+    if (shader->valid())
     {
         delete rendering_.shader;
         rendering_.shader = shader;
+        gui_.headerErrors.clear();
         gui_.sourceEditor.SetErrorMarkers({});
         gui_.sharedSourceEditor.SetErrorMarkers({});
-        // Remove only named uniforms form the list of the uncompiled uniforms
-        // as they are the only ones that get compiled into the source code
         uncompiledUniforms_.erase
         (
             std::remove_if
@@ -366,97 +361,37 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
         sharedUniforms.bindShader(rendering_.shader);
         return true;
     }
-    try {std::rethrow_exception(exceptionPtr);}
-    catch(std::exception& e)
+    // Else if shader not valid
+    std::map<int, std::string> sourceErrors, sharedErrors;
+    for (const auto error : shader->compilationErrors().fragmentErrors)
     {
-        std::string exception(e.what());
-        if 
-        (   // Fragment source exceptions are labelled with '[F]' at their 
-            // start by the vir lib. Since fragment source is the only source
-            // that is editable by the user, if the exception does not start
-            // with '[F]', something must have gone wrong elsewhere so just let
-            // it die
-            exception[0] != '[' || 
-            exception[1] != 'F' ||
-            exception[2] != ']'
-        )
-            return false;
-        bool readErrorIndex = true;
-        bool headerError = false;
-        bool sharedError = false;
-        int firstErrorIndex = -1;
-        int errorIndex = 0;
-        std::string errorIndexString = "";
-        std::string error = "";
-        ImGuiExtd::TextEditor::ErrorMarkers errors, sharedErrors;
-        int i = 3;
-        int n = exception.size();
-        while(i < n)
+        int sourceLineNo(error.first - nSharedLines - nHeaderLines + 1);
+        int sharedLineNo(error.first - nHeaderLines + 1);
+        if (sourceLineNo > 0)
+            sourceErrors.insert({sourceLineNo, error.second});
+        else if (sharedLineNo > 0)
+            sharedErrors.insert({sharedLineNo, error.second});
+        else 
         {
-            char ei(exception[i]);
-            char eip1(exception[std::min(n-1, i+1)]);
-            if (readErrorIndex && (ei == '0' && (eip1 == '(' || eip1 == ':')))
-            {
-                i += 2;
-                while(exception[i] != ')' && exception[i] != ':')
-                    errorIndexString += exception[i++];
-                errorIndex = 
-                    std::stoi(errorIndexString)-nHeaderLines-nSharedLines;
-                sharedError = false;
-                if (errorIndex < 1)
-                {
-                    if (errorIndex >= -nSharedLines)
-                    {
-                        sharedError = true;
-                        errorIndex += nSharedLines;
-                    }
-                    else
-                    {
-                        headerError = true;
-                        errorIndex = -1;
-                    }
-                }
-                errorIndexString = "";
-                if (firstErrorIndex == -1)
-                    firstErrorIndex = errorIndex;
-                readErrorIndex = false;
-                while (exception[++i] == ' ' || exception[i] == ':'){}
-                --i;
-            }
-            else if (firstErrorIndex != -1)
-            {
-                if (ei != '\n')
-                    error += ei;
-                else
-                {
-                    if (sharedError)
-                        sharedErrors.insert({errorIndex, error});
-                    else if (headerError)
-                    {
-                        if (gui_.headerErrors.size() > 0)
-                            gui_.headerErrors +="\n";
-                        gui_.headerErrors += "Header: "+error;
-                    }
-                    else
-                        errors.insert({errorIndex+1, error});
-                    error = "";
-                    readErrorIndex = true;
-                }
-            }
-            ++i;
+            if (gui_.headerErrors.size() > 0)
+                gui_.headerErrors += "\n";
+            gui_.headerErrors += "Header: " + error.second;
         }
-        if (errors.size() > 0)
-        {
-            gui_.sourceEditor.SetErrorMarkers(errors);
-            auto pos = ImGuiExtd::TextEditor::Coordinates(firstErrorIndex, 0);
-            gui_.sourceEditor.SetCursorPosition(pos);
-        }
-        if (sharedErrors.size() > 0)
-        {
-            gui_.sharedSourceEditor.SetErrorMarkers(sharedErrors);
-        }
-        return false;
     }
+    auto setEditorErrors = []
+    (
+        ImGuiExtd::TextEditor& editor,
+        const std::map<int, std::string>& errors
+    )
+    {
+        editor.SetErrorMarkers(errors);
+        if (errors.size() > 0)
+            editor.SetCursorPosition({errors.begin()->first, 0});
+    };
+    setEditorErrors(gui_.sourceEditor, sourceErrors);
+    setEditorErrors(gui_.sharedSourceEditor, sharedErrors);
+    delete shader;
+    return false;
 }
 
 //----------------------------------------------------------------------------//

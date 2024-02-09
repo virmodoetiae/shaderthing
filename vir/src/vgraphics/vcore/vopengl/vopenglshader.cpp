@@ -8,54 +8,101 @@ namespace vir
 
 void OpenGLShader::checkValidShader
 (
-    const unsigned int& shader, 
-    std::string logPrefix
+    const unsigned int& shader,
+    std::string& log
 )
 {
     GLint valid;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &valid);
-    if (valid == GL_FALSE)
+    if (valid != GL_FALSE)
     {
-        GLint logLength = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
-        std::vector<GLchar> logv(logLength);
-        glGetShaderInfoLog(shader, logLength, &logLength, &logv[0]);
-        std::string log(logv.begin(), logv.end());
-        glDeleteShader(shader);
-        throw std::runtime_error(logPrefix+log);
+        log.clear();
+        return;
     }
+    GLint logLength = 0;
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+    std::vector<GLchar> logv(logLength);
+    glGetShaderInfoLog(shader, logLength, &logLength, &logv[0]);
+    log = std::string(logv.begin(), logv.end());
+    glDeleteShader(shader);
 }
+
+//----------------------------------------------------------------------------//
 
 unsigned int OpenGLShader::createShaderFromFile
 (
-    const std::string& filename, 
-    GLuint shaderType
+    const std::string& filepath, 
+    GLuint shaderType,
+    std::map<int, std::string>& errors
 )
 {
-    std::ifstream ifstream(filename);
+    std::ifstream ifstream(filepath);
     std::stringstream sstream;
     sstream << ifstream.rdbuf();
-    std::string s = sstream.str();
-    return createShaderFromString(s, shaderType);
+    std::string source = sstream.str();
+    return createShaderFromSource(source, shaderType, errors);
 }
 
-unsigned int OpenGLShader::createShaderFromString
+//----------------------------------------------------------------------------//
+
+unsigned int OpenGLShader::createShaderFromSource
 (
     const std::string& sourceString, 
-    GLuint shaderType
+    GLuint shaderType,
+    std::map<int, std::string>& errors
 )
 {
     const char* source = sourceString.c_str();
-    unsigned int shader = glCreateShader(shaderType); 
+    unsigned int shader = glCreateShader(shaderType);
     glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
-    std::string logPrefix = "";
-    if (shaderType == GL_VERTEX_SHADER)
-        logPrefix = "[V] ";
-    else if (shaderType == GL_FRAGMENT_SHADER)
-        logPrefix = "[F] ";
-    checkValidShader(shader, logPrefix);
+    std::string log;
+    checkValidShader(shader, log);
+    parseCompilationErrorLog(log, errors);
     return shader;
+}
+
+//----------------------------------------------------------------------------//
+
+void OpenGLShader::parseCompilationErrorLog
+(
+    const std::string& log,
+    std::map<int, std::string>& errors
+)
+{
+    if (log.size() == 0)
+        return;
+    errors.clear();
+    bool        readErrorIndex = true;
+    int         i              = 0;
+    int         i0             = 0;
+    int         logSize        = log.size();
+    std::string lineNo;
+    // The following parsing "should" work on most NVidia and Intel (integrated
+    // graphics) OpenGL implementations. If the parsing fails, the whole log
+    // is simply added to the error map at index 0
+    while(i < logSize) 
+    {
+        int j = std::min(i+1, logSize-1);
+        if (readErrorIndex && log[i] == '0' && (log[j] == '(' || log[j] == ':'))
+        {
+            ++i;
+            while (log[++i] != ')' && log[i] != ':')
+                lineNo += log[i];
+            while (log[++i] == ' ' || log[i] == ':'){}
+            i0 = i;
+            readErrorIndex = false;
+        }
+        else if (lineNo.size() > 0 && log[i] == '\n')
+        {
+            errors.insert({std::stoi(lineNo), log.substr(i0, i-i0)});
+            lineNo.clear();
+            readErrorIndex = true;
+        }
+        ++i;
+    }
+    if (errors.size() == 0)
+        errors.insert({0, log});
 }
 
 // Public member functions ---------------------------------------------------//
@@ -76,36 +123,42 @@ OpenGLShader::OpenGLShader
             vertexShader = createShaderFromFile
             (
                 vertextShaderSource, 
-                GL_VERTEX_SHADER
+                GL_VERTEX_SHADER,
+                compilationErrors_.vertexErrors
             );
             fragmentShader = createShaderFromFile
             (
                 fragmentShaderSource, 
-                GL_FRAGMENT_SHADER
+                GL_FRAGMENT_SHADER,
+                compilationErrors_.fragmentErrors
             );
             break;
         }
         case ConstructFrom::SourceCode :
         {
-            vertexShader = createShaderFromString
+            vertexShader = createShaderFromSource
             (
                 vertextShaderSource, 
-                GL_VERTEX_SHADER
+                GL_VERTEX_SHADER,
+                compilationErrors_.vertexErrors
             );
-            fragmentShader = createShaderFromString
+            fragmentShader = createShaderFromSource
             (
                 fragmentShaderSource, 
-                GL_FRAGMENT_SHADER
+                GL_FRAGMENT_SHADER,
+                compilationErrors_.fragmentErrors
             );
             break;
         }
     }
-    id_ = glCreateProgram();
-    glAttachShader(id_, vertexShader);
-    glAttachShader(id_, fragmentShader);
-    glLinkProgram(id_);
-    /*
-    GLint valid;
+    if (valid())
+    {
+        id_ = glCreateProgram();
+        glAttachShader(id_, vertexShader);
+        glAttachShader(id_, fragmentShader);
+        glLinkProgram(id_);
+    }
+    /*GLint valid;
     glGetProgramiv(id_, GL_COMPILE_STATUS, &valid);
     GLint logLength = 0;
     glGetProgramiv(id_, GL_INFO_LOG_LENGTH, &logLength);

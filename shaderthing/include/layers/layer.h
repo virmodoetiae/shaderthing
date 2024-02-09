@@ -281,7 +281,8 @@ private :
     std::string assembleFragmentSource
     (
         const std::string& source, 
-        int* nHeaderLines=nullptr
+        int* nHeaderLines = nullptr,
+        int* nSharedLines = nullptr
     );
     
     // Create instances of blankShader_, internalFramebufferShader_, if not done

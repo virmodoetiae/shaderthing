@@ -784,7 +784,8 @@ void Layer::rebindLayerUniforms()
 std::string Layer::assembleFragmentSource
 (
     const std::string& source,
-    int* nHeaderLines
+    int* nHeaderLines,
+    int* nSharedLines
 )
 {
     int nLines = 4;
@@ -852,9 +853,10 @@ std::string Layer::assembleFragmentSource
             ++nLines;
         }
     }
-    int nSharedLines = Layer::sharedSourceEditor_.GetTotalLines();
     if (nHeaderLines != nullptr)
-        *nHeaderLines = nLines+nSharedLines;
+        *nHeaderLines = nLines;
+    if (nSharedLines != nullptr)
+        *nSharedLines = Layer::sharedSourceEditor_.GetTotalLines()+1;
     return 
         fragmentSourceHeader_+
         Layer::sharedSourceEditor_.GetText()+"\n"+
@@ -870,24 +872,21 @@ bool Layer::compileShader()
 
     fragmentSource_ = fragmentSourceEditor_.GetText();
 
-    vir::Shader* tmp = nullptr;
-    std::exception_ptr exceptionPtr;
     int nHeaderLines = 0;
-    tmp = vir::Shader::create
+    int nSharedLines = 0;
+    auto shader = vir::Shader::create
     (
         assembleVertexSource(),
-        assembleFragmentSource(fragmentSource_, &nHeaderLines), 
-        vir::Shader::ConstructFrom::SourceCode,
-        &exceptionPtr
+        assembleFragmentSource(fragmentSource_, &nHeaderLines, &nSharedLines), 
+        vir::Shader::ConstructFrom::SourceCode
     );
     hasHeaderErrors_ = false;
     sharedSourceHasErrors_ = false;
-    if (tmp != nullptr)
+    if (shader->valid())
     {
         app_.frameRef() = 0;
         delete shader_;
-        shader_ = tmp;
-        tmp = nullptr;
+        shader_ = shader;
         sharedSourceEditor_.SetErrorMarkers({});
         fragmentSourceEditor_.SetErrorMarkers({});
         // Remove only named uniforms form the list of the uncompiled uniforms
@@ -905,7 +904,35 @@ bool Layer::compileShader()
         hasUncompiledChanges_ = false;
         return true;
     }
-    try {std::rethrow_exception(exceptionPtr);}
+    // Else if shader not valid
+    std::map<int, std::string> sourceErrors, sharedErrors;
+    for (const auto error : shader->compilationErrors().fragmentErrors)
+    {
+        int sourceLineNo(error.first - nSharedLines - nHeaderLines + 1);
+        int sharedLineNo(error.first - nHeaderLines + 1);
+        if (sourceLineNo > 0)
+            sourceErrors.insert({sourceLineNo, error.second});
+        else if (sharedLineNo > 0)
+            sharedErrors.insert({sharedLineNo, error.second});
+        else 
+            hasHeaderErrors_ = true;
+    }
+    auto setEditorErrors = []
+    (
+        ImGuiExtd::TextEditor& editor,
+        const std::map<int, std::string>& errors
+    )
+    {
+        editor.SetErrorMarkers(errors);
+        if (errors.size() > 0)
+            editor.SetCursorPosition({errors.begin()->first, 0});
+    };
+    setEditorErrors(fragmentSourceEditor_, sourceErrors);
+    setEditorErrors(sharedSourceEditor_, sharedErrors);
+    delete shader;
+    return false;
+
+    /*try {std::rethrow_exception(exceptionPtr);}
     catch(std::exception& e)
     {
         // If the compilation fails, parse the error and show it
@@ -991,7 +1018,7 @@ bool Layer::compileShader()
             sharedSourceEditor_.SetErrorMarkers(sharedErrors);
         }
         return false;
-    }
+    }*/
 }
 
 //----------------------------------------------------------------------------//

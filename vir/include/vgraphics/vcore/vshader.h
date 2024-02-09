@@ -50,6 +50,7 @@ public:
         Type type;
         typedef void* ValueType;
     };
+
     #define DEFINE_SHADER_VARIABLE(customType, nativeType, nComponents)     \
         struct customType : Variable                                        \
         {                                                                   \
@@ -74,6 +75,7 @@ public:
     DEFINE_SHADER_VARIABLE(Mat4,        float,    16)
     DEFINE_SHADER_VARIABLE(Sampler2D,   uint32_t, 1)
     DEFINE_SHADER_VARIABLE(SamplerCube, uint32_t, 1)
+    
     static std::unordered_map<std::string, Variable::Type> 
         valueTypeToUniformTypeMap;
     static std::unordered_map<Variable::Type, std::string>
@@ -139,29 +141,27 @@ public:
         void resetValue();
     };
 
+    struct CompilationErrors
+    {
+        std::map<int, std::string> vertexErrors   = {};
+        std::map<int, std::string> fragmentErrors = {};
+        unsigned int size() const 
+        {
+            return vertexErrors.size() + fragmentErrors.size();
+        }
+    };
+
 protected:
     uint32_t id_;
     std::unordered_map<std::string, uint32_t> uniformMap_;
+    CompilationErrors compilationErrors_;
 public:
     static Shader* create
     (
         const std::string& vertexSource, 
         const std::string& fragmentSource, 
-        ConstructFrom constructFrom, 
-        std::exception_ptr* exceptionPtr = nullptr
+        ConstructFrom constructFrom
     ); 
-    static Shader* create
-    (
-        std::string&& vertexSource, 
-        std::string&& fragmentSource, 
-        ConstructFrom constructFrom, 
-        std::exception_ptr* exceptionPtr = nullptr
-    )
-    {
-        std::string vs(vertexSource);
-        std::string fs(fragmentSource);
-        return Shader::create(vs, fs, constructFrom, exceptionPtr);
-    }
     virtual ~Shader(){}
     virtual void bind() const = 0;
     virtual void unbind() const = 0;
@@ -189,6 +189,11 @@ public:
     ) = 0;
 
     uint32_t id() const {return id_;}
+    const CompilationErrors& compilationErrors() const 
+    {
+        return compilationErrors_;
+    }
+    bool valid() const {return compilationErrors_.size() == 0;}
 };
 
 }

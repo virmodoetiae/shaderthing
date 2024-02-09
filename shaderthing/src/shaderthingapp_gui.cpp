@@ -270,7 +270,7 @@ name##SetBuilt0 = name##SetBuilt;
                     if (resolution0 != resolution)
                     {
                         auto window = vir::GlobalPtr<vir::Window>::instance();
-                        window->setSize(resolution.x, resolution.y, false);
+                        window->setSize(resolution.x, resolution.y);
                     }
                 }
                 ImGui::PopItemWidth();
