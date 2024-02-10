@@ -38,6 +38,8 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
         std::min(1.0f, 1.0f/cpuBlock_.iAspectRatio)
     );
     screenCamera_->setPosition({0, 0, 1});
+    screenCamera_->setPlanes(.01f, 100.f);
+
     shaderCamera_->setZPlusIsLookDirection(true);
     shaderCamera_->setDirection
     (

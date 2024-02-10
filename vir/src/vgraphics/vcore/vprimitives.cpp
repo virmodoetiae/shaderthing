@@ -14,17 +14,19 @@ GeometricPrimitive::~GeometricPrimitive()
 }
 
 Quad::Quad(float width, float height, float depth):
-widthHeightDepth_(width, height, depth)
+width_(width),
+height_(height),
+depth_(depth)
 {
     vertexArray_ = VertexArray::create();
     float x = width/2.0;
     float y = height/2.0;
     float z = depth;
     float vertices[] = { // Embedded texture coordinates for simplicity
-        x, y, z, 1, 1,
-        x, -y, z, 1, 0,
-        -x, -y, z, 0, 0,
-        -x, y, z, 0, 1
+         x,  y,  z,  1,  1,
+         x, -y,  z,  1,  0,
+        -x, -y,  z,  0,  0,
+        -x,  y,  z,  0,  1
     };
     vertexBuffer_ = VertexBuffer::create(vertices, sizeof(vertices));
     vertexBuffer_->setLayout
@@ -45,18 +47,22 @@ widthHeightDepth_(width, height, depth)
 
 void Quad::update(float width, float height, float depth)
 {
+    if (width == width_ && height == height_ && depth == depth_)
+        return;
     float x = width/2.0;
     float y = height/2.0;
     float z = depth;
     float vertices[] = { // Embedded texture coordinates for simplicity
-        x, y, z, 1, 1,
-        x, -y, z, 1, 0,
-        -x, -y, z, 0, 0,
-        -x, y, z, 0, 1
+         x,  y,  z,  1,  1,
+         x, -y,  z,  1,  0,
+        -x, -y,  z,  0,  0,
+        -x,  y,  z,  0,  1
     };
     vertexArray_->bind();
     vertexBuffer_->updateVertices(vertices, sizeof(vertices));
-    widthHeightDepth_ = glm::vec3(width, height, depth);
+    width_ = width;
+    height_ = height;
+    depth_ = depth;
 }
 
 }

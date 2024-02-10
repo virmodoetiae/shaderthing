@@ -33,10 +33,7 @@ App::App()
             this->renderGUI();
         });
         // Render layer shaders
-        for (auto layer : layers_)
-        {
-            layer->renderShader(nullptr, true, *sharedUniforms_);
-        }
+        Layer::renderShaders(layers_, nullptr, *sharedUniforms_);
         this->update();
     });
 }

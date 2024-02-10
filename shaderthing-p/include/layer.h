@@ -66,17 +66,18 @@ private:
     (
         const SharedUniforms& sharedUniforms
     );
-
     std::tuple<std::string, unsigned int> 
-    fragmentShaderHeaderSourceAndLineCount
-    (
-        const SharedUniforms& sharedUniforms
-    ) const;
+        fragmentShaderHeaderSourceAndLineCount
+        (
+            const SharedUniforms& sharedUniforms
+        ) const;
+    static void updateQuad(vir::Quad& quad, const float detph);
     void setResolution
     (
         glm::ivec2& resolution,
         const bool windowFrameManuallyDragged
     );
+    void setDepth(const float depth);
     void rebuildFramebuffers
     (
         const vir::TextureBuffer::InternalFormat& internalFormat, 
@@ -84,6 +85,8 @@ private:
     );
 
 public:
+
+    static constexpr unsigned int nMaxLayers = 32;
 
     Layer
     (
@@ -100,6 +103,12 @@ public:
     (
         vir::Framebuffer* target, 
         const bool clearTarget, 
+        const SharedUniforms& sharedUniforms
+    );
+    static void renderShaders
+    (
+        const std::vector<Layer*>& layers,
+        vir::Framebuffer* target, 
         const SharedUniforms& sharedUniforms
     );
 

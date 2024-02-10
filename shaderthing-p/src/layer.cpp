@@ -23,8 +23,6 @@ Layer::Layer
 ) :
     id_(findFreeId(layers))
 {
-    depth_ = 1e-3*layers.size();
-
     // Set layer resolution from current app window resolution
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
     resolution_ = {window->width(), window->height()};
@@ -75,13 +73,8 @@ R"(void main()
     // Compile shader
     compileShader(sharedUniforms);
 
-    // Init rendering quad
-    glm::vec2 viewport =
-    {
-        aspectRatio_ > 1.f ? 1.f : aspectRatio_,
-        aspectRatio_ < 1.f ? 1.0 : 1.0/aspectRatio_
-    };
-    rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+    // Set depth (also inits rendering quad on first call)
+    setDepth((float)layers.size()/Layer::nMaxLayers);
 
     // Init framebuffers
     rebuildFramebuffers
@@ -236,30 +229,8 @@ void Layer::setResolution
     {
         resolution = 
             glm::max(resolutionRatio_*(glm::vec2)resolution+.5f, {1,1});
-        
-        // All the layer quads used for shader rendering must have the same 
-        // size, all bound to the window aspect ratio, not the layer one
-        const float& windowAspectRatio(window->aspectRatio());
-        glm::vec2 viewport =
-        {
-            windowAspectRatio > 1.f ? 1.f : windowAspectRatio,
-            windowAspectRatio < 1.f ? 1.0 : 1.0/windowAspectRatio
-        };
-        if (rendering_.quad != nullptr)
-        {
-            glm::vec2 currentViewport = 
-            {
-                rendering_.quad->getWidthHeightDepth().x,
-                rendering_.quad->getWidthHeightDepth().y
-            };
-            if (viewport != currentViewport)
-            {
-                delete rendering_.quad;
-                rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
-            }
-        }
-        else
-            rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+        auto viewport = Helpers::normalizedWindowResolution();
+        rendering_.quad->update(viewport.x, viewport.y, depth_);
     }
     else
         resolutionRatio_ = (glm::vec2)resolution/windowResolution;
@@ -272,6 +243,25 @@ void Layer::setResolution
         rendering_.framebuffer->colorBufferInternalFormat(),
         resolution_
     );
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::setDepth(const float depth)
+{
+    depth_ = depth;
+    if (rendering_.quad != nullptr)
+        rendering_.quad->update
+        (
+            rendering_.quad->width(),
+            rendering_.quad->height(),
+            depth_
+        );
+    else
+    {
+        auto viewport = Helpers::normalizedWindowResolution();
+        rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -484,6 +474,65 @@ void main(){fragColor = texture(self, tc);})",
 
 //----------------------------------------------------------------------------//
 
+void Layer::renderShaders // Static
+(
+    const std::vector<Layer*>& layers,
+    vir::Framebuffer* target, 
+    const SharedUniforms& sharedUniforms
+)
+{
+    bool clearTarget(true);
+    for (auto layer : layers)
+    {
+        layer->renderShader(target, clearTarget, sharedUniforms);
+        // At the end of this loop, the status of clearTarget will represent
+        // whether the main window has been cleared of its contents at least
+        // once (true if never cleared at least once)
+        if 
+        (
+            clearTarget &&
+            layer->rendering_.target != 
+                Layer::Rendering::Target::InternalFramebuffer
+        )
+            clearTarget = false;
+    }
+    // If the window has not been cleared at least once, or if I am not
+    // rendering to the window at all (i.e., if target != nullptr, which is
+    // only true during exports), then render a dummy/void/blank window,
+    // simply to avoid visual artifacts when nothing is rendering to the
+    // main window. As for the internalFramebufferShader in Layer::renderShader,
+    // the lifetime of the shader (and quad) is managed statically within here
+    if (clearTarget || target != nullptr)
+    {
+        static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
+        auto viewport = Helpers::normalizedWindowResolution();
+        blankQuad->update(viewport.x, viewport.y, 0);
+        static auto blankShader
+        (
+            std::unique_ptr<vir::Shader>
+            (
+                vir::Shader::create
+                (
+                    vertexShaderSource(sharedUniforms),
+                    glslVersionSource()+
+R"(out vec4 fragColor;
+in     vec2 qc;
+in     vec2 tc;
+void main(){fragColor = vec4(0, 0, 0, .5);})",
+                    vir::Shader::ConstructFrom::SourceCode
+                )
+            )
+        );
+        vir::GlobalPtr<vir::Renderer>::instance()->submit
+        (
+            *blankQuad.get(), 
+            blankShader.get()
+        );
+    }
+}
+
+//----------------------------------------------------------------------------//
+
 void Layer::renderSettingsMenuGUI()
 {
     if (ImGui::BeginMenu(("Layer ["+gui_.name+"]").c_str()))
@@ -513,7 +562,7 @@ void Layer::renderSettingsMenuGUI()
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderLayersTabBarGUI
+void Layer::renderLayersTabBarGUI // Static
 (
     std::vector<Layer*>& layers,
     const SharedUniforms& sharedUnifoms
@@ -693,9 +742,14 @@ void Layer::renderLayersTabBarGUI
         }
         if (swap.first != swap.second)
         {
-            auto tmp = layers[swap.first];
-            layers[swap.first] = layers[swap.second];
-            layers[swap.second] = tmp;
+            auto l1 = layers[swap.first];
+            auto l2 = layers[swap.second];
+            auto tl = l1;
+            auto td = l1->depth_;
+            layers[swap.first] = l2;
+            layers[swap.second] = tl;
+            l1->setDepth(l2->depth_);
+            l2->setDepth(td);
             swap = {0, 0};
         }
         ImGui::EndTabBar();

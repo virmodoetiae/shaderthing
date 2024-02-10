@@ -20,10 +20,10 @@ private:
 
     struct Flags
     {
-        const bool updateDataRangeI = true;
-        bool updateDataRangeII = false;
-        bool updateDataRangeIII = false;
-        bool isTimeResetOnRenderingRestart = true;
+        const bool updateDataRangeI              = true;
+              bool updateDataRangeII             = false;
+              bool updateDataRangeIII            = false;
+              bool isTimeResetOnRenderingRestart = true;
     };
 
     // A properly aligned layout-std140 compilant C++ representation of the
