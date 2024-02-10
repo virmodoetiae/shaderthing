@@ -904,7 +904,7 @@ void TextEditor::Render()
 
     char buf[16];
     if (!mUseSetTextStart)
-        mTextStart = GetRequiredTextStart();
+        mTextStart = GetLineIndexColumnWidth();
 
     if (!mLines.empty())
     {
@@ -3273,7 +3273,7 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Lua()
     return langDef;
 }
 
-float TextEditor::GetRequiredTextStart() const
+float TextEditor::GetLineIndexColumnWidth() const
 {
     // Deduce mTextStart by evaluating mLines size (global lineMax) plus two spaces as text width
     char buf[16];

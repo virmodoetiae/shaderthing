@@ -767,8 +767,7 @@ void Layer::renderTabBarGUI()
             static ImVec4 redColor = {1,0,0,1};
             static ImVec4 grayColor = 
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
-            static ImVec4 defaultColor = 
-                ImGui::GetStyle().Colors[ImGuiCol_Text];
+            
             bool headerErrors(gui_.headerErrors.size() > 0);
             //app_.findReplaceTextToolRef().renderGui();
             //flags_.uncompiledChanges =
@@ -778,56 +777,35 @@ void Layer::renderTabBarGUI()
             //    ) || hasUncompiledChanges_;
             //if (app_.findReplaceTextToolRef().isGuiOpen())
             //    ImGui::Separator();
-            ImGui::Indent();
-            if (headerErrors)
-                ImGui::PushStyleColor(ImGuiCol_Text, redColor);
+            
             if (ImGui::TreeNode("Header"))
             {
+                float indent(gui_.sourceEditor.GetLineIndexColumnWidth());
+                ImGui::Unindent(); // Remove indent from Header TreeNode
+                ImGui::Indent(indent);
                 ImGui::PushStyleColor(ImGuiCol_Text, grayColor);
                 ImGui::Text(gui_.sourceHeader.c_str());
                 ImGui::PopStyleColor(); 
-                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                if 
+                (
+                    headerErrors && 
+                    ImGui::IsItemHovered() && 
+                    ImGui::BeginTooltip()
+                )
                 {
                     ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
-                    if (headerErrors)
-                    {
-                        std::string error = 
-"Header has error(s), likely due to invalid uniform declaration(s), correct "
-"uniform name(s)";
-                        ImGui::PushStyleColor(ImGuiCol_Text, redColor);
-                        ImGui::Text(error.c_str());
-                        ImGui::PopStyleColor();
-                        ImGui::Separator();
-                    }
-                    ImGui::PushStyleColor(ImGuiCol_Text, defaultColor);
-                    ImGui::Text("Header information:");
-                    ImGui::Bullet();ImGui::Text(
-"the highest possible GLSL version (based on your hardware) is used;");
-                    ImGui::Bullet();ImGui::Text(
-"the quad coordinate 'qc' varies in the [-.5, .5] range across the (current) "
-"shortest side of the window, and from [-x/2, x/2] across its longest side, "
-"wherein 'x' is the ratio between the lengths of the longest and the shortest "
-"window sides. In practice, any line between e.g., two points described via  "
-"this coordinate will maintain its angle if the window aspect ratio is "
-"changed by resizing. The origin is at the window center;");
-                    ImGui::Bullet();ImGui::Text(
-"the texture coordinate 'tc' varies in the [0., 1.] range across both sides of "
-"the window, regardless of the window size. The origin is at the bottom-left "
-"corner of the window;");
-                    ImGui::Bullet();ImGui::Text(
-"uniform declarations are added automatically (on shader compilation) based "
-"on the uniforms you specify in this layer's 'Uniforms' tab.");
-                    ImGui::PopTextWrapPos();
+                    ImGui::PushStyleColor(ImGuiCol_Text, redColor);
+                    ImGui::Text(gui_.headerErrors.c_str());
                     ImGui::PopStyleColor();
+                    ImGui::PopTextWrapPos();
                     ImGui::EndTooltip();
                 }
                 ImGui::TreePop();
                 ImGui::Separator();
                 ImGui::Dummy(ImVec2(-1, ImGui::GetTextLineHeight()));
+                ImGui::Unindent(indent);
+                ImGui::Indent(); // Re-add indent from Header TreeNode
             }
-            if (headerErrors)
-                ImGui::PopStyleColor();
-            ImGui::Unindent();
             gui_.sourceEditor.Render("##sourceEditor");
             ImGui::EndTabItem();
         }

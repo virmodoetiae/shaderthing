@@ -71,7 +71,6 @@ private:
         (
             const SharedUniforms& sharedUniforms
         ) const;
-    static void updateQuad(vir::Quad& quad, const float detph);
     void setResolution
     (
         glm::ivec2& resolution,

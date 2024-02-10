@@ -240,7 +240,7 @@ public:
     inline int GetTabSize() const { return mTabSize; }
 
     void SetTextStart(float aTextStart){mUseSetTextStart = true; mTextStart = aTextStart;}
-    float GetRequiredTextStart() const;
+    float GetLineIndexColumnWidth() const;
 
     void InsertText(const std::string& aValue, bool aRegisterUndo=false, bool aPropagateUndo=false);
     void InsertText(const char* aValue, bool aRegisterUndo=false, bool aPropagateUndo=false);
