@@ -3,8 +3,6 @@
 #include "shaderthing-p/include/bytedata.h"
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/shareduniforms.h"
-#include "shaderthing-p/include/modules/backend.h"
-#include "shaderthing-p/include/modules/frontend.h"
 
 namespace ShaderThing
 {

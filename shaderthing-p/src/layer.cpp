@@ -12,7 +12,7 @@
 namespace ShaderThing
 {
 
-ImGuiExtd::TextEditor Layer::GUI::sharedSourceEditor = ImGuiExtd::TextEditor();
+TextEditor Layer::GUI::sharedSourceEditor = TextEditor();
 
 //----------------------------------------------------------------------------//
 
@@ -56,7 +56,7 @@ Layer::Layer
     gui_.newName = gui_.name;
 
     // Set default fragment source in editor
-    gui_.sourceEditor.SetText
+    gui_.sourceEditor.setText
     (
 R"(void main()
 {
@@ -68,7 +68,7 @@ R"(void main()
     );
 })"
     );
-    gui_.sourceEditor.ResetTextChanged();
+    gui_.sourceEditor.resetTextChanged();
 
     // Compile shader
     compileShader(sharedUniforms);
@@ -319,14 +319,14 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
         fragmentShaderHeaderSourceAndLineCount(sharedUniforms);
     gui_.sourceHeader = std::get<std::string>(headerAndLineCount);
     unsigned int nHeaderLines = std::get<unsigned int>(headerAndLineCount);
-    unsigned int nSharedLines = GUI::sharedSourceEditor.GetTotalLines()+1;
+    unsigned int nSharedLines = GUI::sharedSourceEditor.getTotalLines()+1;
     auto shader = vir::Shader::create
     (
         vertexShaderSource(sharedUniforms),
         (
             gui_.sourceHeader +
-            gui_.sharedSourceEditor.GetText()+"\n"+
-            gui_.sourceEditor.GetText()
+            gui_.sharedSourceEditor.getText()+"\n"+
+            gui_.sourceEditor.getText()
         ),
         vir::Shader::ConstructFrom::SourceCode
     );
@@ -335,8 +335,8 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
         delete rendering_.shader;
         rendering_.shader = shader;
         gui_.headerErrors.clear();
-        gui_.sourceEditor.SetErrorMarkers({});
-        gui_.sharedSourceEditor.SetErrorMarkers({});
+        gui_.sourceEditor.setErrorMarkers({});
+        gui_.sharedSourceEditor.setErrorMarkers({});
         uncompiledUniforms_.erase
         (
             std::remove_if
@@ -370,13 +370,13 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
     }
     auto setEditorErrors = []
     (
-        ImGuiExtd::TextEditor& editor,
+        TextEditor& editor,
         const std::map<int, std::string>& errors
     )
     {
-        editor.SetErrorMarkers(errors);
+        editor.setErrorMarkers(errors);
         if (errors.size() > 0)
-            editor.SetCursorPosition({errors.begin()->first, 0});
+            editor.setCursorPosition({errors.begin()->first, 0});
     };
     setEditorErrors(gui_.sourceEditor, sourceErrors);
     setEditorErrors(gui_.sharedSourceEditor, sharedErrors);
@@ -615,7 +615,7 @@ void Layer::renderLayersTabBarGUI // Static
     uncompiledEdits = false;
     const auto& sharedErrors // First render errors in shared source -----------
     (
-        Layer::GUI::sharedSourceEditor.GetErrorMarkers()
+        Layer::GUI::sharedSourceEditor.getErrorMarkers()
     );
     if (sharedErrors.size() > 0)
     {
@@ -637,7 +637,7 @@ void Layer::renderLayersTabBarGUI // Static
                                // source header or editable source -------------
     {
         const auto& headerErrors(layer->gui_.headerErrors);
-        const auto& sourceErrors(layer->gui_.sourceEditor.GetErrorMarkers());
+        const auto& sourceErrors(layer->gui_.sourceEditor.getErrorMarkers());
         if (sourceErrors.size() > 0 || layer->gui_.headerErrors.size() > 0)
         {
             compilationErrors = true;
@@ -658,13 +658,13 @@ void Layer::renderLayersTabBarGUI // Static
         }
         if
         (
-            layer->gui_.sourceEditor.IsTextChanged() || 
-            Layer::GUI::sharedSourceEditor.IsTextChanged()
+            layer->gui_.sourceEditor.isTextChanged() || 
+            Layer::GUI::sharedSourceEditor.isTextChanged()
         )
             layer->flags_.uncompiledChanges = true;
         if 
         (
-            Layer::GUI::sharedSourceEditor.IsTextChanged() ||
+            Layer::GUI::sharedSourceEditor.isTextChanged() ||
             layer->flags_.uncompiledChanges
         )
             uncompiledEdits = true;
@@ -777,10 +777,13 @@ void Layer::renderTabBarGUI()
             //    ) || hasUncompiledChanges_;
             //if (app_.findReplaceTextToolRef().isGuiOpen())
             //    ImGui::Separator();
-            
+            bool madeReplacements = 
+                gui_.sourceEditor.renderFindReplaceTool();
+            flags_.uncompiledChanges = 
+                flags_.uncompiledChanges || madeReplacements;
             if (ImGui::TreeNode("Header"))
             {
-                float indent(gui_.sourceEditor.GetLineIndexColumnWidth());
+                float indent(gui_.sourceEditor.getLineIndexColumnWidth());
                 ImGui::Unindent(); // Remove indent from Header TreeNode
                 ImGui::Indent(indent);
                 ImGui::PushStyleColor(ImGuiCol_Text, grayColor);
@@ -806,12 +809,16 @@ void Layer::renderTabBarGUI()
                 ImGui::Unindent(indent);
                 ImGui::Indent(); // Re-add indent from Header TreeNode
             }
-            gui_.sourceEditor.Render("##sourceEditor");
+            gui_.sourceEditor.render("##sourceEditor");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Shared source"))
         {
-            gui_.sharedSourceEditor.Render("##sharedSourceEditor");
+            bool madeReplacements = 
+                gui_.sharedSourceEditor.renderFindReplaceTool();
+            flags_.uncompiledChanges = 
+                flags_.uncompiledChanges || madeReplacements;
+            gui_.sharedSourceEditor.render("##sharedSourceEditor");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Uniforms"))

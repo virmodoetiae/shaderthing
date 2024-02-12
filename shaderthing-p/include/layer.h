@@ -3,8 +3,9 @@
 #include <string>
 #include <vector>
 
+#include "shaderthing-p/include/texteditor.h"
+
 #include "thirdparty/glm/glm.hpp"
-#include "thirdparty/imguitexteditor/imguitexteditor.h"
 
 #include "vir/include/vir.h"
 
@@ -38,8 +39,8 @@ private:
                std::string           newName;
                std::string           sourceHeader;
                std::string           headerErrors;
-               ImGuiExtd::TextEditor sourceEditor;
-        static ImGuiExtd::TextEditor sharedSourceEditor;
+               TextEditor            sourceEditor;
+        static TextEditor            sharedSourceEditor;
     };
     struct Flags
     {
