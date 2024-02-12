@@ -240,7 +240,6 @@ public:
     };
 
     TextEditor();
-    ~TextEditor();
 
     void setLanguageDefinition(const LanguageDefinition& aLanguageDef);
     const LanguageDefinition& getLanguageDefinition() const 
@@ -399,26 +398,18 @@ private:
         void undo(TextEditor* aEditor);
         void redo(TextEditor* aEditor);
 
+        bool        propagate = false;
         std::string added;
         Coordinates addedStart;
         Coordinates addedEnd;
-
         std::string removed;
         Coordinates removedStart;
         Coordinates removedEnd;
-
         EditorState before;
         EditorState after;
-
-        bool propagate = false;
     };
 
     typedef std::vector<UndoRecord> UndoBuffer;
-
-    // For the specific case of the TextEditor in shaderthing, I want the find-
-    // replace tool state/cache to be shared by all TextEditor instances across
-    // all layers, hence the static-ness
-    static FindReplaceTool findReplaceTool_;
 
     void processInputs();
     void colorize(int aFroline = 0, int aCount = -1);
@@ -461,47 +452,45 @@ private:
     void handleMouseInputs();
     void render();
 
-    float lineSpacing_;
-    Lines lines_;
-    EditorState state_;
-    UndoBuffer undoBuffer_;
-    int undoIndex_;
-
-    int tabSize_;
-    bool overwrite_;
-    bool readOnly_;
-    bool withinRender_;
-    bool scrollToCursor_;
-    bool scrollToTop_;
-    bool textChanged_;
-    bool colorizerEnabled_;
-    bool useSetTextStart_;
-    float textStart_;
-    int  leftMargin_;
-    bool cursorPositionChanged_;
-    int colorRangeMin_;
-    int colorRangeMax_;
-    SelectionMode selectionMode_;
-    bool handleKeyboardInputs_;
-    bool handleMouseInputs_;
-    bool ignoreImGuiChild_;
-    bool showWhitespaces_;
-
-    Palette paletteBase_;
-    Palette palette_;
-    LanguageDefinition languageDefinition_;
-    RegexList regexList_;
-
-    bool checkComments_;
-    Breakpoints breakpoints_;
-    ErrorMarkers errorMarkers_;
-    ImVec2 charAdvance_;
-    Coordinates interactiveStart_;
-    Coordinates interactiveEnd_;
-    std::string lineBuffer_;
-    uint64_t startTime_;
-
-    float lastClick_;
+    bool                   checkComments_         = true;
+    bool                   colorizerEnabled_      = true;
+    bool                   cursorPositionChanged_ = false;
+    bool                   handleKeyboardInputs_  = true;
+    bool                   handleMouseInputs_     = true;
+    bool                   ignoreImGuiChild_      = false;
+    bool                   overwrite_             = false;
+    bool                   readOnly_              = false;
+    bool                   scrollToCursor_        = false;
+    bool                   scrollToTop_           = false;
+    bool                   textChanged_;
+    bool                   useSetTextStart_       = false;
+    bool                   withinRender_          = false;
+    bool                   showWhitespaces_       = true;
+    int                    colorRangeMin_         = 0;
+    int                    colorRangeMax_         = 0;
+    int                    leftMargin_            = 10;
+    int                    tabSize_               = 4;
+    int                    undoIndex_             = 0;
+    uint64_t               startTime_;
+    float                  lastClick_             = -1.0f;
+    float                  lineSpacing_           = 1.f;
+    float                  textStart_             = 20.f;
+    std::string            lineBuffer_;
+    
+    Breakpoints            breakpoints_;
+    ImVec2                 charAdvance_;
+    ErrorMarkers           errorMarkers_;
+    static FindReplaceTool findReplaceTool_;
+    Coordinates            interactiveStart_;
+    Coordinates            interactiveEnd_;
+    LanguageDefinition     languageDefinition_;
+    Lines                  lines_;
+    Palette                palette_;
+    Palette                paletteBase_;
+    RegexList              regexList_;
+    SelectionMode          selectionMode_         = SelectionMode::Normal;
+    EditorState            state_;
+    UndoBuffer             undoBuffer_;
 };
 
 }

@@ -24,31 +24,8 @@ bool equals(InputIt1 first1, InputIt1 last1,
 namespace ShaderThing
 {
 
-TextEditor::TextEditor()
-    : lineSpacing_(1.0f)
-    , undoIndex_(0)
-    , tabSize_(4)
-    , overwrite_(false)
-    , readOnly_(false)
-    , withinRender_(false)
-    , scrollToCursor_(false)
-    , scrollToTop_(false)
-    , textChanged_(false)
-    , colorizerEnabled_(true)
-    , useSetTextStart_(false)
-    , textStart_(20.0f)
-    , leftMargin_(10)
-    , cursorPositionChanged_(false)
-    , colorRangeMin_(0)
-    , colorRangeMax_(0)
-    , selectionMode_(SelectionMode::Normal)
-    , checkComments_(true)
-    , lastClick_(-1.0f)
-    , handleKeyboardInputs_(true)
-    , handleMouseInputs_(true)
-    , ignoreImGuiChild_(false)
-    , showWhitespaces_(true)
-    , startTime_
+TextEditor::TextEditor() :
+    startTime_
     (
         std::chrono::duration_cast<std::chrono::milliseconds>
         (
@@ -59,10 +36,6 @@ TextEditor::TextEditor()
     setPalette(getDarkPalette());
     setLanguageDefinition(LanguageDefinition::GLSL());
     lines_.push_back(Line());
-}
-
-TextEditor::~TextEditor()
-{
 }
 
 void TextEditor::setLanguageDefinition(const LanguageDefinition & aLanguageDef)
