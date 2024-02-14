@@ -6,19 +6,11 @@ namespace vir
 namespace Event
 {
 
-Broadcaster::Broadcaster() : 
-    receiverIdCounter_(0), 
-    broadcastInReversedOrder_(false)
-{}
-
-Broadcaster::~Broadcaster()
-{
-}
-
 bool Broadcaster::addReceiver(Receiver& receiver)
 {
+    
     bool added = false;
-    for (Type te : receiver.receivableEvents())
+    for (Type te : receiver.receivableEvents_)
     {
         if (!(receivers_.find(te)==receivers_.end()))
         {
@@ -37,7 +29,7 @@ bool Broadcaster::addReceiver(Receiver& receiver)
         {
             if (!added) // First addition
             {
-                receiver.receiverId() = ++receiverIdCounter_;
+                receiver.id_ = ++receiverIdCounter_;
                 uniqueReceivers_.push_back(&receiver);
             }
             teReceivers.push_back(&receiver);
@@ -48,10 +40,10 @@ bool Broadcaster::addReceiver(Receiver& receiver)
     return added;
 }
 
-bool Broadcaster::delReceiver(Receiver& receiver)
+bool Broadcaster::removeReceiver(Receiver& receiver)
 {
     bool removed = false;
-    for (Type te : receiver.receivableEvents())
+    for (Type te : receiver.receivableEvents_)
     {
         ReceiverPtrVector& teReceivers(receivers_[te]);
         auto it = findReceiverIn(receiver, teReceivers);
@@ -79,7 +71,7 @@ ReceiverPtrVector::iterator Broadcaster::findReceiverIn
     ReceiverPtrVector& receivers
 )
 {
-    const unsigned long long int& id(receiver.receiverId());
+    const unsigned int& id(receiver.id_);
     ReceiverPtrVector::iterator it = 
         std::find_if
         (
@@ -87,7 +79,7 @@ ReceiverPtrVector::iterator Broadcaster::findReceiverIn
             receivers.end(), 
             [id](Receiver* e)
             {
-                return (e->receiverId() == id);
+                return (e->id_ == id);
             } 
         );
     return it;
@@ -105,7 +97,7 @@ void Broadcaster::sortReceivers(Type te)
             receivers.end(), 
             [](Receiver* r0, Receiver* r1)
             {
-                return (*r0 > *r1);
+                return (r0->priority_ > r1->priority_);
             }
         );
         sorted = true;

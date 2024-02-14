@@ -3,7 +3,6 @@
 
 #include <map>
 #include "veventsystem/vevent.h"
-#include "veventsystem/vreceiver.h"
 #include "vglobalptr.h"
 
 namespace vir
@@ -23,42 +22,45 @@ class Broadcaster
 protected:
 
     // Counter used to assign the receiverId to newly added receivers
-    unsigned long long int receiverIdCounter_;
+    unsigned int receiverIdCounter_              = 0;
 
     //
-    ReceiverPtrVector uniqueReceivers_;
+    ReceiverPtrVector uniqueReceivers_           = {};
 
     // Map of lists of receivers tuned in to this broadcaster, mapped by event
     // type. The same receiver can appear in multiple lists, if it can receive
     // or react to such event types
-    std::map<Type, ReceiverPtrVector> receivers_;
+    std::map<Type, ReceiverPtrVector> receivers_ = {};
 
     // Map of flags regarding the sorted status of each list of receivers, 
     // for each event Type. Have they already sorted by priority or not?
-    std::map<Type, bool> sorted_;
+    std::map<Type, bool> sorted_                 = {};
 
     // 
-    bool broadcastInReversedOrder_;
+    bool broadcastInReversedOrder_               = false;
 
-    // Default constructor
-    Broadcaster();
-    
-    // TODO: disable other constructors
+    Broadcaster() = default;
+
+    // Delete copy/move constructors
+    Broadcaster(const Broadcaster&) = delete;
+    Broadcaster& operator=(const Broadcaster&) = delete;
+    Broadcaster(Broadcaster&&) = delete;
+    Broadcaster& operator=(Broadcaster&&) = delete;
 
 public:
 
-    // D should be a derived class of Broadcaster
-    template<typename D>
+    // T should be a derived class of Broadcaster
+    template<typename T>
     static Broadcaster* initialize()
     {
-        return GlobalPtr<Broadcaster>::instance(new D());
+        return GlobalPtr<Broadcaster>::instance(new T());
     }
 
-    virtual ~Broadcaster();
+    virtual ~Broadcaster(){}
 
     // Receiver addition and removal operator
     bool addReceiver(Receiver&);
-    bool delReceiver(Receiver&);
+    bool removeReceiver(Receiver&);
 
     // Template function to broadcast any even type to the approriate onReceive
     // method implemented by all the receivers that can receive such an event
@@ -70,19 +72,28 @@ public:
         sortReceivers(t);
         ReceiverPtrVector& receivers(receivers_[t]);
         int n = receivers.size();
-        for
-        (
-            int i = (broadcastInReversedOrder_) ? n-1 : 0;
-            ((broadcastInReversedOrder_) ? (i >= 0) : (i <= n-1));
-            ((broadcastInReversedOrder_) ? i-- : i++)
-        )
+
+#define ONE_BROADCAST                                                       \
+        Receiver* r = receivers[i];                                         \
+        if (!r->isEventReceptionPaused(event.getType()))                    \
+        {                                                                   \
+            r->onReceive(event);                                            \
+            if (event.handled)                                              \
+                break;                                                      \
+        }
+
+        if (!broadcastInReversedOrder_)
         {
-            Receiver* r = receivers[i];
-            if (r->canCurrentlyReceive(event.getType()))
+            for (int i=0; i<n; i++)
             {
-                r->onReceive(event);
-                if (event.handled)
-                    break;
+                ONE_BROADCAST
+            }
+        }
+        else
+        {
+            for (int i=n-1; i>=0; i--)
+            {
+                ONE_BROADCAST
             }
         }
     }
@@ -92,8 +103,8 @@ public:
     void broadcast(TE&& event){broadcast(event);}
 
     // Accessors
-    bool broadcastInReversedOrder() const { return broadcastInReversedOrder_; }
-    bool& broadcastInReversedOrder() { return broadcastInReversedOrder_; }
+    bool broadcastInReversedOrder() const {return broadcastInReversedOrder_;}
+    bool& broadcastInReversedOrder() {return broadcastInReversedOrder_;}
 
 protected:
 

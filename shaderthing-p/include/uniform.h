@@ -7,6 +7,8 @@
 namespace ShaderThing
 {
 
+class SharedUniforms;
+
 struct Uniform : public vir::Shader::Uniform
 {
     typedef vir::Shader::Variable::Type Type;
@@ -32,11 +34,10 @@ struct Uniform : public vir::Shader::Uniform
     // it is a default layer uniform
     SpecialType specialType = SpecialType::None;
 
-    // True if this uniform is shared by all layers
-    bool isShared = false;
-
     struct GUI
     {
+        bool markedForDeletion = false;
+
         // True if this uniform is of Type::Float3 or Type::Float4 and its value
         // is set via an ImGui color picker tool
         bool usesColorPicker = false;
@@ -51,6 +52,22 @@ struct Uniform : public vir::Shader::Uniform
         bool showBounds = true;
     };
     GUI gui;
+
+    // Render the Uniforms tab bar GUI, which allows to add/remove/modify
+    // existing layer uniforms and shared uniforms. It also sets the uniform
+    // values in the provided layer shader for convenience: the GUI has 
+    // knowledge of when a uniform changes, and it is only then that the 
+    // uniform value is actually set (once) in the shader. Returns true if
+    // uniform types or names have been modified, or if some uniforms have
+    // been deleted, signalling that the underlying shader requires
+    // recompilation
+    static bool renderUniformsGUI
+    (
+        SharedUniforms& sharedUniforms,
+        std::vector<Uniform*>& uniforms,
+        std::vector<Uniform*>& uncompiledUniforms,
+        vir::Shader& shader
+    );
 };
 
 }

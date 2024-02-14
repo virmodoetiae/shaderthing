@@ -10,17 +10,50 @@ bool MouseMotionEvent::first_ = true;
 int MouseMotionEvent::x0_;
 int MouseMotionEvent::y0_;
 
-void ReceiverCore::initializeReceiver()
+Receiver::Receiver() : 
+    initialized_(false),
+    priority_(0),
+    receivableEvents_(0)
+{}
+
+Receiver::~Receiver()
 {
-    for (Type et : allEventTypes)
-    {
-        if (canReceive(et))
-            receivableEvents_.push_back(et);
-    }
-    receiverInitialized_ = true;
+    tuneOutFromEventBroadcaster();
 }
 
-bool ReceiverCore::canReceive(Type et)
+bool Receiver::tuneIntoEventBroadcaster(int priorityValue)
+{
+    Broadcaster* p(GlobalPtr<Broadcaster>::instance());
+    if (p == nullptr)
+        return false;
+    initialize();
+    bool added = p->addReceiver(*this);
+    if (added)
+        setEventReceiverPriority(priorityValue);
+    return added;
+}
+
+bool Receiver::tuneOutFromEventBroadcaster()
+{
+    Broadcaster* p(GlobalPtr<Broadcaster>::instance());
+    if (p != nullptr)
+        return p->removeReceiver(*this);
+    return false;
+}
+
+void Receiver::initialize()
+{
+    if (initialized_)
+        return;
+    for (Type et : allEventTypes)
+    {
+        if (canReceiveEvent(et))
+            receivableEvents_.push_back(et);
+    }
+    initialized_ = true;
+}
+
+bool Receiver::canReceiveEvent(Type et) const
 {
     return 
     (
@@ -32,11 +65,21 @@ bool ReceiverCore::canReceive(Type et)
     );
 }
 
-std::vector<Type>& ReceiverCore::receivableEvents() 
+bool Receiver::isEventReceptionPaused(Type t)
 {
-    if (!receiverInitialized_)
-        initializeReceiver();
-    return receivableEvents_;
+    return canReceiveEvent(t) && !currentlyReceivableEvents_[t];
+}
+
+void Receiver::resumeEventReception(Type t)
+{
+    if (canReceiveEvent(t))
+        currentlyReceivableEvents_[t]=true;
+}
+
+void Receiver::pauseEventReception(Type t)
+{
+    if (canReceiveEvent(t))
+        currentlyReceivableEvents_[t]=false;
 }
 
 }

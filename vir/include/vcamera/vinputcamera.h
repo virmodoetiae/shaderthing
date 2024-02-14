@@ -2,7 +2,7 @@
 #define V_INPUT_CAMERA_H
 
 #include "vcamera/vcamera.h"
-#include "veventsystem/vreceiver.h"
+#include "veventsystem/vevent.h"
 
 namespace vir
 {
@@ -20,12 +20,10 @@ public:
 
     DECLARE_RECEIVABLE_EVENTS
     (
-        Event::Type::KeyPress *
         Event::Type::MouseMotion *
         Event::Type::MouseScroll *
         Event::Type::WindowResize // To keep up with aspect ratio changes
     );
-    void onReceive(Event::KeyPressEvent&) override;
     void onReceive(Event::MouseMotionEvent&) override;
     void onReceive(Event::MouseScrollEvent&) override;
     void onReceive(Event::WindowResizeEvent&) override;

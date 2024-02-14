@@ -36,7 +36,6 @@
 // My libraries --------------------------------------------------------------//
 
 #include "veventsystem/vevent.h"
-#include "veventsystem/vreceiver.h"
 
 #include "vglobalptr.h"
 #include "vtime/vtime.h"

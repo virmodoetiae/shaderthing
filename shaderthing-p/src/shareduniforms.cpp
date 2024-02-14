@@ -67,8 +67,7 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
     );
 
     // Finally, register the class iteself with the vir event broadcaster
-    this->tuneIn();
-    this->receiverPriority() = 1;
+    this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY-1);
 }
 
 //----------------------------------------------------------------------------//
@@ -118,6 +117,14 @@ void SharedUniforms::setResolution
             resolution.x,
             resolution.y
         );
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::setUserAction(bool flag)
+{
+    cpuBlock_.iUserAction = int(flag);
+    flags_.updateDataRangeII;
 }
 
 //----------------------------------------------------------------------------//
@@ -194,10 +201,8 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
 
 void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 {
-    static const unsigned int size(sizeof(Block::ivec3A16));
     Block::ivec3A16& data(cpuBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
-    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     auto& status = inputState->keyState(event.keyCode);
     data.x = (int)status.isPressed();
     data.y = (int)status.isHeld();
@@ -205,14 +210,30 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
     // Only exception where I set the data immediately in the event callback in
     // order to avoid having to update the whole 4kB of key memory all at once
     // at every SharedUniforms::update call
-    gpuBlock_->setData((void*)&data, size, size*shaderToyKeyCode);
+    int offset = Block::iKeyboardKeyOffset
+    (
+        vir::inputKeyCodeVirToShaderToy(event.keyCode)
+    );
+    gpuBlock_->setData
+    (
+        (void*)&data, 
+        Block::iKeyboardKeySize(), 
+        offset
+    );
+    std::cout 
+        << event.keyCode << " " 
+        << vir::inputKeyCodeVirToShaderToy(event.keyCode) << " " 
+        << offset << " " 
+        << data.x << " " 
+        << data.y << " " 
+        << data.z << " " 
+        << std::endl;
 }
 
 //----------------------------------------------------------------------------//
 
 void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
 {
-    static const unsigned int size(sizeof(Block::ivec3A16));
     Block::ivec3A16& data(cpuBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
     int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
@@ -222,7 +243,15 @@ void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
     // Only exception where I set the data immediately in the event callback in
     // order to avoid having to update the whole 4kB of key memory all at once
     // at every SharedUniforms::update call
-    gpuBlock_->setData((void*)&data, size, size*shaderToyKeyCode);
+    gpuBlock_->setData
+    (
+        (void*)&data, 
+        Block::iKeyboardKeySize(), 
+        Block::iKeyboardKeyOffset
+        (
+            vir::inputKeyCodeVirToShaderToy(event.keyCode)
+        )
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -265,7 +294,6 @@ void SharedUniforms::update()
     
     // The goal of the following section is to reduce the number of gpuBlock
     // setData calls, hence the weird branching
-
     if (!flags_.updateDataRangeIII)
     {
         if (!flags_.updateDataRangeII)
@@ -281,6 +309,11 @@ void SharedUniforms::update()
         gpuBlock_->setData(&cpuBlock_, Block::dataRangeIIICumulativeSize(), 0);
         flags_.updateDataRangeIII = false;
     }
+    if (cpuBlock_.iUserAction) // Always reset
+    {
+        flags_.updateDataRangeII = true;
+        cpuBlock_.iUserAction = false;
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -289,7 +322,7 @@ void SharedUniforms::renderWindowResolutionMenuGUI()
 {
     if (ImGui::BeginMenu("Window"))
     {
-        ImGui::Text("Resolution");
+        ImGui::Text("Resolution ");
         ImGui::SameLine();
         ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
         glm::ivec2 resolution(cpuBlock_.iResolution);
@@ -301,28 +334,10 @@ void SharedUniforms::renderWindowResolutionMenuGUI()
                 glm::value_ptr(resolution)
             )
         )
-        {
             setResolution(resolution, false);
-            /*
-            static const auto broadcaster =
-                vir::GlobalPtr<vir::Event::Broadcaster>::instance();
-            broadcaster->broadcast
-            (
-                vir::Event::WindowResizeEvent
-                (
-                    cpuBlock_.iResolution.x,
-                    cpuBlock_.iResolution.y
-                )
-            );*/
-        }
         ImGui::PopItemWidth();
         ImGui::EndMenu();
     }
-}
-
-void SharedUniforms::renderRowsGUI()
-{
-
 }
 
 }

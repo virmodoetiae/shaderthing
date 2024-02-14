@@ -223,23 +223,44 @@ struct ProgramRenderEvent : public Event
 
 // End of Event classes ------------------------------------------------------//
 
-// Receiver core -------------------------------------------------------------//
+// Receiver ------------------------------------------------------------------//
 
 // To be used in classes derived from Receiver
 #define DECLARE_RECEIVABLE_EVENTS(Type)                                        \
-    double receivableEventsCode()                                              \
+    double receivableEventsCode() const                                        \
     {                                                                          \
-        return vir::MIN_DOUBLE*Type;                                                \
+        return vir::MIN_DOUBLE*Type;                                           \
     }
 
-class ReceiverCore 
-{
-protected:
+class Broadcaster;
 
-    bool receiverInitialized_;
+class Receiver
+{
+
+#define VIR_INPUT_PRIORITY 0
+#define VIR_WINDOW_PRIORITY 1
+#define VIR_IMGUI_PRIORITY 2
+#define VIR_CAMERA_PRIORITY 3
+#define VIR_DEFAULT_PRIORITY 10
+
+friend Broadcaster;
+
+private:
+
+    //
+    bool initialized_;
+
+    // Id assigned by broadcaster when receiver tunes in for first time
+    unsigned int id_;
+
+    // Higher priority means this receiver will receive events before others
+    // with lower priority. All priorities stored as negative numbers, so that
+    // 0 is the highest priority
+    int priority_ = -VIR_DEFAULT_PRIORITY;
 
     // List of immutable event types the derived Receiver object is intended
-    // to be able to receive
+    // to be able to receive by design, i.e., those declared via the
+    // DECLARE_RECEIVABLE_EVENTS macro
     std::vector<Type> receivableEvents_;
 
     // List of mutable event types the derived Receiver object is currently
@@ -266,28 +287,29 @@ protected:
         {ProgramRender, true}
     };
 
+    // Initialize the receivableEvents_ list based on the implementation of
+    // receivableEventsCode
+    void initialize();
+
 public:
 
     // Constructor
-    ReceiverCore() : receiverInitialized_(false), receivableEvents_(0){}
+    Receiver();
 
-    // Pure virtuals
-    virtual double receivableEventsCode() = 0;
+    virtual ~Receiver();
+
+    // Register with the global event broadcaster to enable receiving events.
+    // A priority can be specified, the highest being 0, with larger values
+    // indicating a lower priority (i.e., other receivers with a lower 
+    // priorityValue will receive events earlier)
+    bool tuneIntoEventBroadcaster(int priorityValue=VIR_DEFAULT_PRIORITY);
     
-    // Initialize the receivableEvents_ list based on the implementation of
-    // receivableEventsCode
-    void initializeReceiver();
+    // Unregister from the global event broadcaster to disable receiving events
+    bool tuneOutFromEventBroadcaster();
 
-    // True if this receiver can react to events of type t by design
-    bool canReceive(Type t);
-
-    // True if this receiver can is actively, currently listening to events of 
-    // type et
-    bool canCurrentlyReceive(Type t){return currentlyReceivableEvents_[t];}
-    
-    //
-    void enableCurrentlyReceiving(Type t){currentlyReceivableEvents_[t]=true;}
-    void disableCurrentlyReceiving(Type t){currentlyReceivableEvents_[t]=false;}
+    // Never override manually, always override via 
+    // the DECLARE_RECEIVABLE_EVENTS macro
+    virtual double receivableEventsCode() const = 0;
 
     // All possible onReceive signatures
     virtual void onReceive(KeyPressEvent& e){(void)e;}
@@ -308,9 +330,30 @@ public:
     virtual void onReceive(ProgramUpdateEvent& e){(void)e;}
     virtual void onReceive(ProgramRenderEvent& e){(void)e;}
 
-    // Accessors
-    std::vector<Type>& receivableEvents();
+    // True if this receiver can react to events of type t by design. Please
+    // note however that the reception of events of type t may be paused. To
+    // poll current event reception status for event type t, use 
+    // isEventReceptionPaused(t)
+    bool canReceiveEvent(Type t) const;
 
+    // True if this receiver can receive event type y by design but is not
+    // currently capable to react to it. To resume listening to said event type,
+    // use resumeEventReception(t)
+    bool isEventReceptionPaused(Type t);
+    
+    // Resume listening to event type t
+    void resumeEventReception(Type t);
+
+    // Pause listening to event type t
+    void pauseEventReception(Type t);
+
+    // Higher values are treated as a lower priority; zero is the highest
+    // possible priority
+    int eventReceiverPriority() const {return -priority_;}
+
+    // Higher values are treated as a lower priority; zero is the highest
+    // possible priority
+    void setEventReceiverPriority(unsigned int value){priority_ = -value;}
 };
 
 } // End of namespace Event

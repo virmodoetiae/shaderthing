@@ -26,38 +26,38 @@ private:
             InternalFramebuffer,
             InternalFramebufferAndWindow
         };
-               Target                target         = Target::InternalFramebufferAndWindow;
-               vir::Quad*            quad           = nullptr;
-               vir::Framebuffer*     framebufferA   = nullptr;
-               vir::Framebuffer*     framebufferB   = nullptr;
-               vir::Framebuffer*     framebuffer    = nullptr;
-               vir::Shader*          shader         = nullptr;
+               Target            target         = Target::InternalFramebufferAndWindow;
+               vir::Quad*        quad           = nullptr;
+               vir::Framebuffer* framebufferA   = nullptr;
+               vir::Framebuffer* framebufferB   = nullptr;
+               vir::Framebuffer* framebuffer    = nullptr;
+               vir::Shader*      shader         = nullptr;
     };
     struct GUI
     {
-               std::string           name;
-               std::string           newName;
-               std::string           sourceHeader;
-               std::string           headerErrors;
-               TextEditor            sourceEditor;
-        static TextEditor            sharedSourceEditor;
+               std::string       name;
+               std::string       newName;
+               std::string       sourceHeader;
+               std::string       headerErrors;
+               TextEditor        sourceEditor;
+        static TextEditor        sharedSourceEditor;
     };
     struct Flags
     {
-               bool                  rename               = false;
-               bool                  uncompiledChanges    = false;
+               bool              rename               = false;
+               bool              uncompiledChanges    = false;
     };
 
-    const uint32_t                   id_;
-          glm::ivec2                 resolution_;
-          glm::vec2                  resolutionRatio_;
-          float                      aspectRatio_;
-          float                      depth_;
-          std::vector<Uniform*>      uniforms_;
-          std::vector<Uniform*>      uncompiledUniforms_;
-          Rendering                  rendering_;
-          GUI                        gui_;
-          Flags                      flags_;
+    const uint32_t               id_;
+          glm::ivec2             resolution_;
+          glm::vec2              resolutionRatio_;
+          float                  aspectRatio_;
+          float                  depth_;
+          std::vector<Uniform*>  uniforms_;
+          std::vector<Uniform*>  uncompiledUniforms_;
+          Rendering              rendering_;
+          GUI                    gui_;
+          Flags                  flags_;
 
     //------------------------------------------------------------------------//
 
@@ -116,9 +116,12 @@ public:
     static void renderLayersTabBarGUI
     (
         std::vector<Layer*>& layers,
-        const SharedUniforms& sharedUnifoms
+        SharedUniforms& sharedUnifoms
     );
-    void renderTabBarGUI();
+    void renderTabBarGUI
+    (
+        SharedUniforms& sharedUnifoms
+    );
 
     bool operator==(const Layer& layer){return id_ == layer.id_;}
     bool operator!=(const Layer& layer){return !(*this == layer);}

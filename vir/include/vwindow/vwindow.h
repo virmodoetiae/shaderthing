@@ -1,7 +1,7 @@
 #ifndef V_WINDOW_H
 #define V_WINDOW_H
 
-#include "veventsystem/vreceiver.h"
+#include "veventsystem/vevent.h"
 #include "vgraphics/vcore/vgraphicscontext.h"
 #include "vglobalptr.h"
 

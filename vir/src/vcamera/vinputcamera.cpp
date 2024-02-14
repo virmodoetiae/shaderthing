@@ -6,17 +6,9 @@ namespace vir
 
 InputCamera::InputCamera()
 {
-    this->tuneIn();
+    tuneIntoEventBroadcaster(VIR_CAMERA_PRIORITY);
     updated_ = false;
     update();
-}
-
-void InputCamera::onReceive(Event::KeyPressEvent& event)
-{
-    if (!modifiable_)
-        return;
-    //if (event.keyCode() == VIR_KEY_P && event.repeatCount() == 0)
-    //    switchProjectionType();
 }
 
 void InputCamera::onReceive(Event::MouseMotionEvent& event)
@@ -76,7 +68,7 @@ void InputCamera::update()
     bool E = inputState->keyState(VIR_KEY_E).isPressedOrHeld();
     bool RSHFT = inputState->keyState(VIR_KEY_LEFT_SHIFT).isPressedOrHeld();
     bool SPACE = inputState->keyState(VIR_KEY_SPACE).isPressedOrHeld();
-    bool keyPressEnabled = canCurrentlyReceive(vir::Event::Type::KeyPress);
+    bool keyPressEnabled = !isEventReceptionPaused(vir::Event::Type::KeyPress);
     if 
     (
         (W || A || S || D || Q || E || RSHFT || SPACE) && 

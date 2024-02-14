@@ -64,7 +64,7 @@ sharedUniforms_(0)
     );
 
     // Register the app with the event broadcaster
-    tuneIn();
+    tuneIntoEventBroadcaster();
     
     // Initialize components
     screenCamera_ = vir::Camera::create<vir::Camera>();
@@ -116,9 +116,9 @@ void ShaderThingApp::setShaderCameraPositionInputsEnabled(bool status)
     static auto* iShaderCamera((vir::InputCamera*)shaderCamera_);
     stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED] = status;
     if (status)
-        iShaderCamera->enableCurrentlyReceiving(vir::Event::KeyPress);
+        iShaderCamera->resumeEventReception(vir::Event::KeyPress);
     else
-        iShaderCamera->disableCurrentlyReceiving(vir::Event::KeyPress);
+        iShaderCamera->pauseEventReception(vir::Event::KeyPress);
 }
 
 //----------------------------------------------------------------------------//
@@ -128,9 +128,9 @@ void ShaderThingApp::setShaderCameraDirectionInputsEnabled(bool status)
     static auto* iShaderCamera((vir::InputCamera*)shaderCamera_);
     stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED] = status;
     if (status)
-        iShaderCamera->enableCurrentlyReceiving(vir::Event::MouseMotion);
+        iShaderCamera->resumeEventReception(vir::Event::MouseMotion);
     else
-        iShaderCamera->disableCurrentlyReceiving(vir::Event::MouseMotion);
+        iShaderCamera->pauseEventReception(vir::Event::MouseMotion);
 }
 
 //----------------------------------------------------------------------------//
@@ -140,15 +140,15 @@ void ShaderThingApp::setMouseInputsEnabled(bool status)
     stateFlags_[ST_IS_MOUSE_INPUT_ENABLED] = status;
     if (status)
     {
-        this->enableCurrentlyReceiving(vir::Event::MouseButtonPress);
-        this->enableCurrentlyReceiving(vir::Event::MouseMotion);
-        this->enableCurrentlyReceiving(vir::Event::MouseButtonRelease);
+        this->resumeEventReception(vir::Event::MouseButtonPress);
+        this->resumeEventReception(vir::Event::MouseMotion);
+        this->resumeEventReception(vir::Event::MouseButtonRelease);
     }
     else
     {
-        this->disableCurrentlyReceiving(vir::Event::MouseButtonPress);
-        this->disableCurrentlyReceiving(vir::Event::MouseMotion);
-        this->disableCurrentlyReceiving(vir::Event::MouseButtonRelease);
+        this->pauseEventReception(vir::Event::MouseButtonPress);
+        this->pauseEventReception(vir::Event::MouseMotion);
+        this->pauseEventReception(vir::Event::MouseButtonRelease);
     }
 }
 

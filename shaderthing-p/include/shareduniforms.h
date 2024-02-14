@@ -14,8 +14,13 @@ namespace vir
 namespace ShaderThing
 {
 
+class Uniform;
+
 class SharedUniforms : vir::Event::Receiver
 {
+
+friend Uniform;
+
 private:
 
     struct Flags
@@ -29,7 +34,7 @@ private:
     // A properly aligned layout-std140 compilant C++ representation of the
     // ShaderThing shared uniform block. Grouped by update frequency for 
     // convenience of passing only certain ranges of it to the GPU UniformBlock
-    // at a time
+    // at a time. Somewhat wasteful because of the extensive usage of vec3s
     struct Block
     {
         struct alignas(16) ivec3A16
@@ -56,35 +61,35 @@ private:
             bool      operator!=(const glm::vec3& v) const {return !operator==(v);}
             glm::vec3 packed()                       const {return{x,y,z};}
         };
-                                                             // Range (bytes)
-        // High update frequency (data range I)              // 
-                     float      iTime        = 0.f;          // 0  -  4
-                     int        iFrame       = 0;            // 4  -  8
-                     int        iRenderPass  = 0;            // 8  - 12
+                                                            // Range (bytes) | Size (bytes)
+        // High update frequency (data range I)
+                    float      iTime        = 0.f;          // 0  -  4       | 4
+                    int        iFrame       = 0;            // 4  -  8       | 4
+                    int        iRenderPass  = 0;            // 8  - 12       | 4
         // Medium update frequency (data range II)
-                     int        iUserAction  = false;        // 12 - 16
-                     vec3A16    iWASD        = {0,0,-1};     // 16 - 32
-                     vec3A16    iLook        = {0,0,1};      // 32 - 64
-                     glm::vec4  iMouse       = {0,0,0,0};    // 64 - 80
+                    bool       iUserAction  = false;        // 12 - 16       | 4
+                    vec3A16    iWASD        = {0,0,-1};     // 16 - 32       | 16
+                    vec3A16    iLook        = {0,0,1};      // 32 - 48       | 16
+                    glm::vec4  iMouse       = {0,0,0,0};    // 48 - 64       | 16
         // Low update frequency (data range III)
-                     glm::mat4  iMVP         = glm::mat4(0); // 80 -144
-        alignas(8)   float      iAspectRatio = 1.f;          // 144-152
-                     glm::ivec2 iResolution  = {512,512};    // 152-160
+                    glm::mat4  iMVP         = glm::mat4(0); // 64 -128       | 64
+                    float      iAspectRatio = 1.f;          // 128-132       | 4
+        // Using alignas(8) to force iResolution to start 
+        // at byte 136 instead of 132
+        alignas(8)  glm::ivec2 iResolution  = {512,512};    // 136-144       | 8
 
-        // Whole array never updated all at once, only one array element at a
-        // time, medium update frequency 
-                     ivec3A16   iKeyboard[256] {};           // 160-4256
+        // Whole array never updated all at once, only one 
+        // array element at a time, medium update frequency
+                    ivec3A16   iKeyboard[256] {};           // 144-4240      | 16*256 = 4096
 
         static const uint32_t dataRangeICumulativeSize()   {return 12;}
-        
-        static const uint32_t dataRangeIICumulativeSize()  {return 80;}
-        
-        static const uint32_t dataRangeIIICumulativeSize() {return 160;}
-        
-        static const uint32_t iKeyboardKeyOffset(int iKey) {return 160+iKey*16;}
+        static const uint32_t dataRangeIICumulativeSize()  {return 64;}
+        static const uint32_t dataRangeIIICumulativeSize() {return 144;}
+        static const uint32_t iKeyboardKeyOffset(int iKey) {return 144+iKey*16;}
         static const uint32_t iKeyboardKeySize()           {return 16;}
-        static const uint32_t size()                       {return 4256;}
+        static const uint32_t size()                       {return 4240;}
 
+        static constexpr unsigned int nUniforms = 9;
         
         static constexpr const char* glslName = "SharedBlock";
         // The order of the uniforms within the block source must be the same as the
@@ -93,17 +98,17 @@ private:
         // consistency
         static constexpr const char* glslSource =
 R"(layout(std140) uniform SharedBlock {
-    float iTime;
-    int   iFrame;
-    int   iRenderPass;
-    int   iUserAction;
-    vec3  iWASD;
-    vec3  iLook;
-    vec4  iMouse;
-    mat4  iMVP;
-    float iWindowAspectRatio;
-    ivec2 iWindowResolution;
-    ivec3 iKeyboard[256];};
+float iTime;
+int iFrame;
+int iRenderPass;
+bool iUserAction;
+vec3 iWASD;
+vec3 iLook;
+vec4 iMouse;
+mat4 iMVP;
+float iWindowAspectRatio;
+ivec2 iWindowResolution;
+ivec3 iKeyboard[256];};
 )";
     };
     
@@ -121,6 +126,7 @@ R"(layout(std140) uniform SharedBlock {
           vir::Camera*   shaderCamera_   = nullptr;
 
     void setResolution(glm::ivec2& resolution, bool windowFrameManuallyDragged);
+    void setUserAction(bool flag);
 
 public:
 
@@ -150,7 +156,6 @@ public:
     void update();
     
     void renderWindowResolutionMenuGUI();
-    void renderRowsGUI();
 };
 
 }

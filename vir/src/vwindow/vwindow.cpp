@@ -11,10 +11,7 @@ viewportWidth_(w),
 viewportHeight_(w),
 aspectRatio_(float(w)/float(h)),
 resizable_(r)
-{
-    // Set a very high priority for the window
-    this->receiverPriority() = 1389;
-}
+{}
 
 Window::~Window()
 {

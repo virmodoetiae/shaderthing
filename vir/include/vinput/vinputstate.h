@@ -3,15 +3,15 @@
 
 #include "vglobalptr.h"
 #include "vinput/vinputcodes.h"
-#include "veventsystem/vreceiver.h"
+#include "veventsystem/vevent.h"
 
 namespace vir
 {
 
 struct MousePosition
 {
-    float x;
-    float y;
+    float x = 0;
+    float y = 0;
 };
 
 class InputState : public Event::Receiver
@@ -23,7 +23,7 @@ public :
     friend InputState;
     private:
         bool pressed_ = false;
-        bool held_ = false;
+        bool held_    = false;
         bool toggled_ = false;
         void setPressed(bool flag){pressed_=flag; held_=false;}
         void setHeld(bool flag){held_=flag; pressed_=false;}
@@ -61,16 +61,17 @@ protected:
     KeyState keyState_[VIR_N_KEYS];
     MouseButtonState mouseButtonState_[VIR_N_MOUSE_BUTTONS];
     MousePosition mousePosition_;
+
     InputState() = default;
 
 public:
 
     static InputState* initialize()
     {
-        return GlobalPtr<InputState>::instance(new InputState());
+        auto inputState = GlobalPtr<InputState>::instance(new InputState());
+        inputState->tuneIntoEventBroadcaster(VIR_INPUT_PRIORITY);
+        return inputState;
     }
-
-    virtual ~InputState(){};
 
     DECLARE_RECEIVABLE_EVENTS
     (

@@ -14,7 +14,6 @@
 #include "vcamera/vcamera.h"
 #include "vcamera/vinputcamera.h"
 #include "veventsystem/vevent.h"
-#include "veventsystem/vreceiver.h"
 #include "veventsystem/vbroadcaster.h"
 #include "vgraphics/vcore/vbuffers.h"
 #include "vgraphics/vcore/vgraphicscontext.h"

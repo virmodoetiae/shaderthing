@@ -84,8 +84,7 @@ R"(void main()
     );
 
     // Register with event broadcaster
-    this->tuneIn();
-    this->receiverPriority() = -id_;
+    this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY+id_);
 }
 
 //----------------------------------------------------------------------------//
@@ -243,6 +242,9 @@ void Layer::setResolution
         rendering_.framebuffer->colorBufferInternalFormat(),
         resolution_
     );
+    rendering_.shader->bind();
+    rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
+    rendering_.shader->setUniformFloat2("iResolution", (glm::vec2)resolution_);
 }
 
 //----------------------------------------------------------------------------//
@@ -565,7 +567,7 @@ void Layer::renderSettingsMenuGUI()
 void Layer::renderLayersTabBarGUI // Static
 (
     std::vector<Layer*>& layers,
-    const SharedUniforms& sharedUnifoms
+    SharedUniforms& sharedUnifoms
 )
 {
     static bool compilationErrors(false);
@@ -674,6 +676,7 @@ void Layer::renderLayersTabBarGUI // Static
     if (errorColorPushed)
         ImGui::PopStyleColor();
 
+    // Actual layers tab bar ---------------------------------------------------
     static bool reorderable(true);
     if 
     (
@@ -697,7 +700,7 @@ void Layer::renderLayersTabBarGUI // Static
             auto layer = layers[i];
             if(ImGui::BeginTabItem(layer->gui_.name.c_str(), &open))
             {
-                layer->renderTabBarGUI();
+                layer->renderTabBarGUI(sharedUnifoms);
                 ImGui::EndTabItem();
             }
             if (!open) // I.e., if 'x' is pressed to delete the tab
@@ -758,7 +761,7 @@ void Layer::renderLayersTabBarGUI // Static
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderTabBarGUI()
+void Layer::renderTabBarGUI(SharedUniforms& sharedUnifoms)
 {
     if (ImGui::BeginTabBar("##layerTabBar"))
     {
@@ -769,14 +772,6 @@ void Layer::renderTabBarGUI()
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
             
             bool headerErrors(gui_.headerErrors.size() > 0);
-            //app_.findReplaceTextToolRef().renderGui();
-            //flags_.uncompiledChanges =
-            //    app_.findReplaceTextToolRef().findReplaceTextInEditor
-            //    (
-            //        fragmentSourceEditor_
-            //    ) || hasUncompiledChanges_;
-            //if (app_.findReplaceTextToolRef().isGuiOpen())
-            //    ImGui::Separator();
             bool madeReplacements = 
                 gui_.sourceEditor.renderFindReplaceTool();
             flags_.uncompiledChanges = 
@@ -823,10 +818,23 @@ void Layer::renderTabBarGUI()
         }
         if (ImGui::BeginTabItem("Uniforms"))
         {
+            if 
+            (
+                Uniform::renderUniformsGUI
+                (
+                    sharedUnifoms, 
+                    uniforms_, 
+                    uncompiledUniforms_,
+                    *rendering_.shader
+                )
+            )
+                flags_.uncompiledChanges = true;
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
     }
+
+    
 }
 
 }

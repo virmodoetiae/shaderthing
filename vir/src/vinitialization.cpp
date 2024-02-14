@@ -48,10 +48,9 @@ void initialize
         throw std::runtime_error("Window uninitialized");
         return;
     }
-    window->tuneIn();
-    InputState::initialize()->tuneIn();
-    auto renderer = Renderer::initialize();
-    renderer->setDepthTesting(true);
+    window->tuneIntoEventBroadcaster(VIR_WINDOW_PRIORITY);
+    InputState::initialize();
+    Renderer::initialize()->setDepthTesting(true);
     if (initializeImGuiRenderer)
         vir::ImGuiRenderer::initialize();
 }

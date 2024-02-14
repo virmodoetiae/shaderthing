@@ -9,11 +9,7 @@ namespace vir
 bool ImGuiRenderer::initialized_ = false;
 
 ImGuiRenderer::ImGuiRenderer()
-{
-    // Register with event broadcaster with very high priority
-    this->receiverPriority() = 100000;
-    this->tuneIn();
-    
+{   
     // Actual ImGui initialization stuff and settings
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -110,6 +106,7 @@ ImGuiRenderer* ImGuiRenderer::initialize()
     if (instance != nullptr)
     {
         initialized_ = true;
+        instance->tuneIntoEventBroadcaster(VIR_IMGUI_PRIORITY);
         return instance;
     }
     return nullptr;

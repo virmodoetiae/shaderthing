@@ -2,7 +2,7 @@
 #define V_IMGUI_RENDERER_H
 
 #include "thirdparty/imgui/imgui.h"
-#include "veventsystem/vreceiver.h"
+#include "veventsystem/vevent.h"
 
 namespace vir
 {
