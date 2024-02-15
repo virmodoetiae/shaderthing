@@ -165,13 +165,22 @@ void GLFWOpenGLWindow::onReceive(Event::WindowResizeEvent& e)
 void GLFWOpenGLWindow::onReceive(Event::WindowFocusEvent& e)
 {
     (void)e;
-    //std::cout << "Window focus = " << e.gainedFocus() << std::endl;
+    iconified_ = false;
+}
+
+void GLFWOpenGLWindow::onReceive(Event::WindowIconificationEvent& e)
+{
+    iconified_ = e.iconified;
+}
+
+void GLFWOpenGLWindow::onReceive(Event::WindowMaximizationEvent& e)
+{
+    iconified_ = e.maximized;
 }
 
 void GLFWOpenGLWindow::onReceive(Event::WindowCloseEvent& e)
 {
     (void)e;
-    //std::cout << "Window closing " << std::endl;
 }
 
 }

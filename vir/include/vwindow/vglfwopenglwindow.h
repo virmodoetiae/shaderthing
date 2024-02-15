@@ -60,10 +60,14 @@ public :
     (
         Event::Type::WindowResize *
         Event::Type::WindowFocus *
+        Event::Type::WindowIconification *
+        Event::Type::WindowMaximization *
         Event::Type::WindowClose
     )
     void onReceive(Event::WindowResizeEvent& e) override;
     void onReceive(Event::WindowFocusEvent& e) override;
+    void onReceive(Event::WindowIconificationEvent& e) override;
+    void onReceive(Event::WindowMaximizationEvent& e) override;
     void onReceive(Event::WindowCloseEvent& e) override;
 };
 

@@ -266,7 +266,7 @@ private:
     // List of mutable event types the derived Receiver object is currently
     // actively listening to (if and only if said event Type is present in
     // receivableEvents_)
-    std::unordered_map<Type, bool> currentlyReceivableEvents_ =
+    std::map<Type, bool> currentlyReceivableEvents_ =
     {
         {KeyPress, true},
         {KeyRelease, true},

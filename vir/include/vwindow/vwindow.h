@@ -28,6 +28,7 @@ protected :
     uint32_t viewportWidth_;
     uint32_t viewportHeight_;
     float aspectRatio_;
+    bool iconified_;
     bool resizable_;
     bool VSync_;
 
@@ -108,7 +109,7 @@ public:
     // Retrieve window color data
     virtual void data(unsigned char*) = 0;
 
-    // True as long as the window is open
+    // True as long as the window is open (or iconified)
     virtual bool isOpen() = 0;
 
     // Window update
@@ -123,7 +124,8 @@ public:
     uint32_t viewportWidth() const {return viewportWidth_;}
     uint32_t viewportHeight() const {return viewportHeight_;}
     const float& aspectRatio() const {return aspectRatio_;}
-    bool resizable() const {return resizable_;}
+    const bool& iconified() const {return iconified_;}
+    const bool& resizable() const {return resizable_;}
     const bool& VSync(){return VSync_;}
     
 };

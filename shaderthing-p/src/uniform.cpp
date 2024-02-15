@@ -1,5 +1,6 @@
 #include "shaderthing-p/include/uniform.h"
 #include "shaderthing-p/include/shareduniforms.h"
+#include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/helpers.h"
 
 #include "thirdparty/imgui/imgui.h"
@@ -21,7 +22,8 @@ bool Uniform::renderUniformsGUI
     int row = 0; 
     #define START_ROW                                                       \
         ImGui::PushID(row);                                                 \
-        ImGui::TableNextRow(0, 1.6*fontSize);               
+        ImGui::TableNextRow(0, 1.6*fontSize);                               \
+        column = 0;
     #define END_ROW                                                         \
         ImGui::PopID();                                                     \
         ++row;
@@ -31,18 +33,449 @@ bool Uniform::renderUniformsGUI
     #define END_COLUMN                                                      \
         ++column;                                                           \
         ImGui::PopItemWidth();
+    #define NEXT_COLUMN                                                     \
+        ImGui::TableSetColumnIndex(column++);
 
-
-    // -------------------------------------------------------------------------
-    auto renderSharedUniformsGUI = 
-    [&fontSize](SharedUniforms& sharedUniforms, int& row)
+    //--------------------------------------------------------------------------
+    auto renderUniformBoundsButtonGUI =
+    [&fontSize](Type type, glm::vec2* bounds)
     {
-        int column = 0;
+        if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
+            ImGui::OpenPopup("##uniformBounds");
+        if (ImGui::BeginPopup("##uniformBounds"))
+        {
+            glm::vec2 bounds0(*bounds);
+            if (type == vir::Shader::Variable::Type::UInt)
+                bounds->x = std::max(bounds->x, 0.0f);
+            float* minValue = &(glm::value_ptr(*bounds)[0]);
+            float* maxValue = &(glm::value_ptr(*bounds)[1]);
+            ImGui::Text("Minimum value ");
+            ImGui::SameLine();
+            float inputWidth = 6*fontSize;
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::InputFloat
+            (
+                "##minValueInput", 
+                minValue, 0.f, 0.f,
+                Helpers::getFormat(bounds0.x).c_str()
+            );
+            ImGui::PopItemWidth();
+            ImGui::Text("Maximum value ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::InputFloat
+            (
+                "##maxValueInput", 
+                maxValue, 0.f, 0.f,
+                Helpers::getFormat(bounds0.y).c_str()
+            );
+            ImGui::PopItemWidth();
+            ImGui::EndPopup();
+            return (*bounds != bounds0);
+        }
+        return false;
+    }; // End of renderUniformBoundsButtonGUI lambda
+
+    //--------------------------------------------------------------------------
+    auto renderSharedUniformsGUI = 
+    [&fontSize, &renderUniformBoundsButtonGUI]
+    (SharedUniforms& sharedUniforms, int& row)
+    {
+        int column;
+        float halfButtonSize(1.7*fontSize);
+
+        // iFrame --------------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        if (ImGui::Button(ICON_FA_UNDO, ImVec2(halfButtonSize, 0)))
+        {
+            sharedUniforms.flags_.restartRendering = true;
+            Layer::Flags::restartRendering = true;
+        }
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            static ImVec4 ctrlRColor = 
+                ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
+            ImGui::Text("Restart rendering");
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Text, ctrlRColor);
+            ImGui::Text("Ctrl+R");
+            ImGui::PopStyleColor();
+            ImGui::EndTooltip();
+        }
+        ImGui::SameLine();
+        // Pause/resume rendering, which also affects iTime (but the
+        // opposite is not true)
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isRenderingPaused ? 
+                ICON_FA_PLAY : 
+                ICON_FA_PAUSE, 
+                ImVec2(-1, 0)
+            )
+        )
+        {
+            sharedUniforms.flags_.isRenderingPaused = 
+                !sharedUniforms.flags_.isRenderingPaused;
+            sharedUniforms.flags_.isTimePaused = 
+                !sharedUniforms.flags_.isTimePaused;
+        }
+        NEXT_COLUMN
+        ImGui::Text("iFrame");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::UInt].c_str());
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        ImGui::Text("%d", sharedUniforms.cpuBlock_.iFrame);
+        END_ROW
+        
+        // iRenderPass --------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        // No actions
+        NEXT_COLUMN
+        ImGui::Text("iRenderPass");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::UInt].c_str());
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        ImGui::Text
+        (
+            std::to_string(sharedUniforms.cpuBlock_.iRenderPass).c_str()
+        );
+        END_ROW
+
+        // iTime --------------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isTimeLooped ? 
+                ICON_FA_MINUS : 
+                ICON_FA_CIRCLE_NOTCH, 
+                ImVec2(halfButtonSize, 0)
+            )
+        )
+            sharedUniforms.flags_.isTimeLooped = 
+                !sharedUniforms.flags_.isTimeLooped;
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            ImGui::Text
+            (
+                sharedUniforms.flags_.isTimeLooped ? 
+                "Disable loop" : 
+                "Enable loop"
+            );
+            ImGui::EndTooltip();
+        }
+        ImGui::SameLine();
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isTimePaused ? 
+                ICON_FA_PLAY : 
+                ICON_FA_PAUSE, 
+                ImVec2(-1, 0)
+            )
+        )
+            sharedUniforms.flags_.isTimePaused = 
+                !sharedUniforms.flags_.isTimePaused;
+        NEXT_COLUMN
+        ImGui::Text("iTime");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+        NEXT_COLUMN
+        glm::vec2* bounds = &sharedUniforms.bounds_[SpecialType::Time];
+        bool boundsChanged = renderUniformBoundsButtonGUI
+        (
+            Type::Float, 
+            bounds
+        );
+        NEXT_COLUMN
+        auto iTimePtr = &sharedUniforms.cpuBlock_.iTime;
+        if (!boundsChanged)
+        {
+            bounds->x = std::min(*iTimePtr, bounds->x);
+            bounds->y = std::max(*iTimePtr, bounds->y);
+        }
+        ImGui::PushItemWidth(-1);
+        if 
+        (
+            ImGui::SliderFloat
+            (
+                "##iTimeSlider", 
+                iTimePtr, 
+                bounds->x,
+                bounds->y,
+                "%.3f"
+            ) || boundsChanged
+        )
+        {
+            if (boundsChanged)
+            {
+                *iTimePtr = std::max(*iTimePtr, bounds->x);
+                *iTimePtr = std::min(*iTimePtr, bounds->y);
+            }
+            sharedUniforms.setUserAction(true);
+        }
+        ImGui::PopItemWidth();
+        END_ROW
+
+        // iWindowAspectRatio --------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        // No actions
+        NEXT_COLUMN
+        ImGui::Text("iWindowAspectRatio");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        ImGui::Text
+        (
+            "%.3f", sharedUniforms.cpuBlock_.iAspectRatio
+        );
+        END_ROW
+
+        // iWindowResolution ---------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        // No actions
+        NEXT_COLUMN
+        ImGui::Text("iWindowResolution");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Int2].c_str());
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        ImGui::Text
+        (
+            "%d x %d", 
+            sharedUniforms.cpuBlock_.iResolution.x, 
+            sharedUniforms.cpuBlock_.iResolution.y
+        );
+        END_ROW
+
+        
+        // iKeyboard -----------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isKeyboardInputEnabled ? 
+                ICON_FA_PAUSE : 
+                ICON_FA_PLAY, 
+                ImVec2(-1, 0)
+            )
+        )
+            sharedUniforms.toggleKeyboardInputs();
+        NEXT_COLUMN
+        ImGui::Text("iKeyboard");
+        NEXT_COLUMN
+        ImGui::Text("vec3[]");
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        std::string pressed = "Pressed:";
+        std::string held    = "Held:   ";
+        std::string toggled = "Toggled:";
+        for (int key=0; key<255; key++)
+        {
+            auto& keyData(sharedUniforms.cpuBlock_.iKeyboard[key]);
+            if (keyData.x > 0)
+                pressed += " "+vir::keyCodeToName[key];
+            else if (keyData.y > 0)
+                held += " "+vir::keyCodeToName[key];
+            if (keyData.z > 0)
+                toggled += " "+vir::keyCodeToName[key];
+        }
+        ImGui::Text(pressed.c_str());
+        ImGui::Dummy({0, 0.1f*fontSize});
+        ImGui::Text(held.c_str());
+        ImGui::Dummy({0, 0.1f*fontSize});
+        ImGui::Text(toggled.c_str());
+        ImGui::Dummy({0, 0.1f*fontSize});
+        END_ROW
+        
+        
+        // iMouse --------------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isMouseInputEnabled ? 
+                ICON_FA_PAUSE : 
+                ICON_FA_PLAY, 
+                ImVec2(-1, 0)
+            )
+        )
+            sharedUniforms.toggleMouseInputs();
+        NEXT_COLUMN
+        ImGui::Text("iMouse");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float4].c_str());
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        ImGui::Text
+        (
+            "%d, %d, %d, %d", 
+            (int)sharedUniforms.cpuBlock_.iMouse.x, 
+            (int)sharedUniforms.cpuBlock_.iMouse.y, 
+            (int)sharedUniforms.cpuBlock_.iMouse.z, 
+            (int)sharedUniforms.cpuBlock_.iMouse.w
+        );
+        END_ROW
+        
+        
+        // iWASD ---------------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+            ImGui::OpenPopup("##iWASDSettings");
+        if (ImGui::BeginPopup("##iWASDSettings"))
+        {
+            bool enabled = sharedUniforms.flags_.isCameraKeyboardInputEnabled;
+            std::string text = enabled ? "Disable" : "Enable";
+            if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+                sharedUniforms.toggleCameraKeyboardInputs();
+            ImGui::Text("Keyboard sensitivity ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-1);
+            ImGui::SliderFloat
+            (
+                "##iWASDSensitivity", 
+                &sharedUniforms.shaderCamera_->keySensitivityRef(),
+                1e-1,
+                50
+            );
+            ImGui::PopItemWidth();
+            ImGui::EndPopup();
+        }
+        NEXT_COLUMN
+        ImGui::Text("iWASD");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
+        NEXT_COLUMN
+        bounds = &sharedUniforms.bounds_[SpecialType::CameraPosition];
+        boundsChanged = renderUniformBoundsButtonGUI
+        (
+            Type::Float3, 
+            bounds
+        );
+        NEXT_COLUMN
+        {
+            glm::vec3 value = sharedUniforms.cpuBlock_.iWASD.packed();
+            if (!boundsChanged)
+            {
+                bounds->x = std::min(value.x, bounds->x);
+                bounds->x = std::min(value.y, bounds->x);
+                bounds->x = std::min(value.z, bounds->x);
+                bounds->y = std::max(value.x, bounds->y);
+                bounds->y = std::max(value.y, bounds->y);
+                bounds->y = std::max(value.z, bounds->y);
+            }
+            ImGui::PushItemWidth(-1);
+            if 
+            (
+                ImGui::SliderFloat3
+                (
+                    "##iWASDSlider", 
+                    glm::value_ptr(value), 
+                    bounds->x,
+                    bounds->y,
+                    Helpers::getFormat(value).c_str()
+                ) || boundsChanged
+            )
+            {
+                if (boundsChanged)
+                {
+                    value.x = std::max(value.x, bounds->x);
+                    value.x = std::min(value.x, bounds->y);
+                    value.y = std::max(value.y, bounds->x);
+                    value.y = std::min(value.y, bounds->y);
+                    value.z = std::max(value.z, bounds->x);
+                    value.z = std::min(value.z, bounds->y);
+                }
+                sharedUniforms.cpuBlock_.iWASD = value;
+                sharedUniforms.shaderCamera_->setPosition(value);
+                sharedUniforms.setUserAction(true);
+            }
+            ImGui::PopItemWidth();
+        }
+        END_ROW
+
+        // iLook ---------------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+            ImGui::OpenPopup("##iLookSettings");
+        if (ImGui::BeginPopup("##iLookSettings"))
+        {
+            bool enabled = sharedUniforms.flags_.isCameraMouseInputEnabled;
+            std::string text = enabled ? "Disable" : "Enable";
+            if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+                sharedUniforms.toggleCameraMouseInputs();
+            ImGui::Text("Mouse sensitivity ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-1);
+            ImGui::SliderFloat
+            (
+                "##iLookSensitivity", 
+                &sharedUniforms.shaderCamera_->mouseSensitivityRef(),
+                1e-3,
+                1
+            );
+            ImGui::PopItemWidth();
+            ImGui::EndPopup();
+        }
+        NEXT_COLUMN
+        ImGui::Text("iLook");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
+        NEXT_COLUMN
+        // All cmpts always bounds in [-1, 1]
+        NEXT_COLUMN
+        {
+            glm::vec3 value = sharedUniforms.cpuBlock_.iLook.packed();
+            ImGui::PushItemWidth(-1);
+            if 
+            (
+                ImGui::SliderFloat3
+                (
+                    "##iLookSlider", 
+                    glm::value_ptr(value), 
+                    -1,
+                    1,
+                    Helpers::getFormat(value).c_str()
+                )
+            )
+            {
+                value = glm::normalize(value);
+                sharedUniforms.cpuBlock_.iLook = value;
+                sharedUniforms.shaderCamera_->setDirection(value);
+                sharedUniforms.setUserAction(true);
+            }
+            ImGui::PopItemWidth();
+        }
+        END_ROW
     }; // End of renderSharedUniformsGUI lambda
 
     // -------------------------------------------------------------------------
     static std::string supportedUniformTypeNames[11]
-    ({
+    {
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Bool],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int2],
@@ -54,9 +487,9 @@ bool Uniform::renderUniformsGUI
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float4],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Sampler2D],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube]
-    });
+    };
     auto renderUniformGUI = 
-    [&fontSize]
+    [&fontSize, &renderUniformBoundsButtonGUI]
     (
         SharedUniforms& sharedUniforms,
         Uniform* uniform,
@@ -65,7 +498,7 @@ bool Uniform::renderUniformsGUI
         int& row
     )
     {
-        int column = 0;
+        int column;
         bool managed
         (
             uniform->specialType == SpecialType::LayerAspectRatio ||
@@ -138,39 +571,11 @@ bool Uniform::renderUniformsGUI
         bool boundsChanged(false);
         if (uniform->gui.showBounds)
         {
-            if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
-                ImGui::OpenPopup("##uniformBounds");
-            if (ImGui::BeginPopup("##uniformBounds"))
-            {
-                glm::vec2 bounds0(bounds);
-                if (uniform->type == vir::Shader::Variable::Type::UInt)
-                    bounds.x = std::max(bounds.x, 0.0f);
-                float* minValue = &(glm::value_ptr(bounds)[0]);
-                float* maxValue = &(glm::value_ptr(bounds)[1]);
-                ImGui::Text("Minimum value ");
-                ImGui::SameLine();
-                float inputWidth = 6*fontSize;
-                ImGui::PushItemWidth(inputWidth);
-                ImGui::InputFloat
-                (
-                    "##minValueInput", 
-                    minValue, 0.f, 0.f,
-                    Helpers::getFormat(bounds0.x).c_str()
-                );
-                ImGui::PopItemWidth();
-                ImGui::Text("Maximum value ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(inputWidth);
-                ImGui::InputFloat
-                (
-                    "##maxValueInput", 
-                    maxValue, 0.f, 0.f,
-                    Helpers::getFormat(bounds0.y).c_str()
-                );
-                ImGui::PopItemWidth();
-                boundsChanged = (bounds != bounds0);
-                ImGui::EndPopup();
-            }
+            boundsChanged = renderUniformBoundsButtonGUI
+            (
+                uniform->type, 
+                &uniform->gui.bounds
+            );
         }
         END_COLUMN
 
@@ -773,7 +1178,7 @@ bool Uniform::renderUniformsGUI
         int& row
     )
     {
-        int column = 0;
+        int column;
         START_ROW
         START_COLUMN
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))

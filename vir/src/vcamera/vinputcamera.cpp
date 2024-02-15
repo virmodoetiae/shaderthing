@@ -11,6 +11,11 @@ InputCamera::InputCamera()
     update();
 }
 
+void InputCamera::onReceive(Event::KeyPressEvent& event)
+{
+    (void)event;
+}
+
 void InputCamera::onReceive(Event::MouseMotionEvent& event)
 {
     if (!modifiable_)

@@ -1,4 +1,6 @@
 #include "shaderthing-p/include/shareduniforms.h"
+#include "shaderthing-p/include/uniform.h"
+#include "shaderthing-p/include/macros.h"
 #include "vir/include/vir.h"
 
 namespace ShaderThing
@@ -6,23 +8,17 @@ namespace ShaderThing
 
 //----------------------------------------------------------------------------//
 
-#define DELETE_IF_NULLPTR(ptr) if (ptr != nullptr) delete ptr;
-
-//----------------------------------------------------------------------------//
-
 SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
     gpuBindingPoint_(bindingPoint)
 {
-    // Init CPU block dataW
+    // Init CPU block data
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
     cpuBlock_.iResolution = 
         glm::ivec2{window->width(), window->height()};
     cpuBlock_.iAspectRatio = 
         float(window->width())/float(window->height());
     for (int i=0; i<256; i++)
-    {
         cpuBlock_.iKeyboard[i] = glm::ivec3({0,0,0});
-    }
 
     // Init cameras
     if (screenCamera_ == nullptr)
@@ -39,16 +35,9 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
     );
     screenCamera_->setPosition({0, 0, 1});
     screenCamera_->setPlanes(.01f, 100.f);
-
     shaderCamera_->setZPlusIsLookDirection(true);
-    shaderCamera_->setDirection
-    (
-        cpuBlock_.iLook.packed()
-    );
-    shaderCamera_->setPosition
-    (
-        cpuBlock_.iWASD.packed()
-    );
+    shaderCamera_->setDirection(cpuBlock_.iLook.packed());
+    shaderCamera_->setPosition(cpuBlock_.iWASD.packed());
     screenCamera_->update();
     shaderCamera_->update();
     cpuBlock_.iMVP = 
@@ -66,7 +55,11 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
         0
     );
 
-    // Finally, register the class iteself with the vir event broadcaster
+    // Init bounds
+    bounds_.insert({Uniform::SpecialType::Time, {0, 1}});
+    bounds_.insert({Uniform::SpecialType::CameraPosition, {0, 1}});
+
+    // Register the class iteself with the vir event broadcaster
     this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY-1);
 }
 
@@ -74,9 +67,9 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
 
 SharedUniforms::~SharedUniforms()
 {
-    DELETE_IF_NULLPTR(gpuBlock_)
-    DELETE_IF_NULLPTR(screenCamera_)
-    DELETE_IF_NULLPTR(shaderCamera_)
+    DELETE_IF_NOT_NULLPTR(gpuBlock_)
+    DELETE_IF_NOT_NULLPTR(screenCamera_)
+    DELETE_IF_NOT_NULLPTR(shaderCamera_)
 }
 
 //----------------------------------------------------------------------------//
@@ -125,6 +118,66 @@ void SharedUniforms::setUserAction(bool flag)
 {
     cpuBlock_.iUserAction = int(flag);
     flags_.updateDataRangeII;
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::toggleMouseInputs()
+{
+    flags_.isMouseInputEnabled = !flags_.isMouseInputEnabled;
+    if (flags_.isMouseInputEnabled)
+    {
+        resumeEventReception(vir::Event::Type::MouseButtonPress);
+        resumeEventReception(vir::Event::Type::MouseMotion);
+        resumeEventReception(vir::Event::Type::MouseButtonRelease);
+    }
+    else
+    {
+        pauseEventReception(vir::Event::Type::MouseButtonPress);
+        pauseEventReception(vir::Event::Type::MouseMotion);
+        pauseEventReception(vir::Event::Type::MouseButtonRelease);
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::toggleKeyboardInputs()
+{
+    flags_.isKeyboardInputEnabled = !flags_.isKeyboardInputEnabled;
+    if (flags_.isKeyboardInputEnabled)
+    {
+        resumeEventReception(vir::Event::Type::KeyPress);
+        resumeEventReception(vir::Event::Type::KeyRelease);
+    }
+    else
+    {
+        pauseEventReception(vir::Event::Type::KeyPress);
+        pauseEventReception(vir::Event::Type::KeyRelease);
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::toggleCameraKeyboardInputs()
+{
+    auto camera = (vir::InputCamera*)shaderCamera_;
+    flags_.isCameraKeyboardInputEnabled = !flags_.isCameraKeyboardInputEnabled;
+    if (flags_.isCameraKeyboardInputEnabled)
+        camera->resumeEventReception(vir::Event::Type::KeyPress);
+    else
+        camera->pauseEventReception(vir::Event::Type::KeyPress);
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::toggleCameraMouseInputs()
+{
+    auto camera = (vir::InputCamera*)shaderCamera_;
+    flags_.isCameraMouseInputEnabled = !flags_.isCameraMouseInputEnabled;
+    if (flags_.isCameraMouseInputEnabled)
+        camera->resumeEventReception(vir::Event::Type::MouseMotion);
+    else
+        camera->pauseEventReception(vir::Event::Type::MouseMotion);
 }
 
 //----------------------------------------------------------------------------//
@@ -220,14 +273,6 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
         Block::iKeyboardKeySize(), 
         offset
     );
-    std::cout 
-        << event.keyCode << " " 
-        << vir::inputKeyCodeVirToShaderToy(event.keyCode) << " " 
-        << offset << " " 
-        << data.x << " " 
-        << data.y << " " 
-        << data.z << " " 
-        << std::endl;
 }
 
 //----------------------------------------------------------------------------//
@@ -272,8 +317,29 @@ void SharedUniforms::update()
 {
     //
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
-    cpuBlock_.iTime += window->time()->outerTimestep();
-    cpuBlock_.iFrame += 1;
+    if (!flags_.isTimePaused)
+        cpuBlock_.iTime += window->time()->outerTimestep();
+
+    const glm::vec2& timeLoopBounds(bounds_[Uniform::SpecialType::Time]);
+    if (flags_.isTimeLooped && cpuBlock_.iTime >= timeLoopBounds.y)
+    {
+        auto duration = timeLoopBounds.y-timeLoopBounds.x;
+        auto fraction = 
+            (cpuBlock_.iTime-timeLoopBounds.y)/std::max(duration, 1e-6f);
+        fraction -= (int)fraction;
+        cpuBlock_.iTime = timeLoopBounds.x + duration*fraction;
+    }
+    
+    if (!flags_.isRenderingPaused)
+        ++cpuBlock_.iFrame;
+    
+    if (flags_.restartRendering)
+    {
+        cpuBlock_.iFrame = 0;
+        if (flags_.isTimeResetOnRenderingRestart)
+            cpuBlock_.iTime = 0;
+        flags_.restartRendering = false;
+    }
 
     // The shaderCamera has its own event listeners, but all of its updates are
     // deferred (just like here nothing is processed/sent to the GPU in the

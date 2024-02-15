@@ -180,6 +180,8 @@ void Camera::updatePositionAroundPiovot()
 void Camera::updateProjectionMatrix()
 {
     float ar = this->aspectRatio();
+    if (!(ar > 0))
+        return;
     switch (projectionType_)
     {
         case (ProjectionType::Perspective) :
@@ -215,6 +217,13 @@ void Camera::update()
 {
     if (updated_)
         return;
+
+    Window* window;
+    if (GlobalPtr<Window>::valid(window))
+    {
+        if (window->iconified())
+            return;
+    }
     
     updatePositionAroundPiovot();
     

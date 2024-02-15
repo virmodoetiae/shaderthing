@@ -2,6 +2,8 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include "shaderthing-p/include/uniform.h"
 #include "vir/include/vir.h"
 #include "thirdparty/glm/glm.hpp"
 
@@ -13,8 +15,6 @@ namespace vir
 
 namespace ShaderThing
 {
-
-class Uniform;
 
 class SharedUniforms : vir::Event::Receiver
 {
@@ -28,7 +28,15 @@ private:
         const bool updateDataRangeI              = true;
               bool updateDataRangeII             = false;
               bool updateDataRangeIII            = false;
+              bool restartRendering              = false;
+              bool isRenderingPaused             = false;
+              bool isTimePaused                  = false;
+              bool isTimeLooped                  = false;
               bool isTimeResetOnRenderingRestart = true;
+              bool isKeyboardInputEnabled        = true; // iKeyboard
+              bool isMouseInputEnabled           = true; // iMouse
+              bool isCameraKeyboardInputEnabled  = true; // iWASD
+              bool isCameraMouseInputEnabled     = true; // iLook
     };
 
     // A properly aligned layout-std140 compilant C++ representation of the
@@ -123,10 +131,17 @@ ivec3 iKeyboard[256];};
 
           // Movable camera which responds to keyboard and mouse controls and is
           // used to provide values to cpuBlock.iWASD, cpuBlock.iLook
-          vir::Camera*   shaderCamera_   = nullptr;
+          vir::Camera*        shaderCamera_   = nullptr;
 
-    void setResolution(glm::ivec2& resolution, bool windowFrameManuallyDragged);
+          std::unordered_map<Uniform::SpecialType, glm::vec2> 
+                              bounds_         = {};
+
     void setUserAction(bool flag);
+    void setResolution(glm::ivec2& resolution, bool windowFrameManuallyDragged);
+    void toggleMouseInputs();
+    void toggleKeyboardInputs();
+    void toggleCameraKeyboardInputs();
+    void toggleCameraMouseInputs();
 
 public:
 

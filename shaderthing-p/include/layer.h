@@ -17,7 +17,7 @@ class SharedUniforms;
 
 class Layer : vir::Event::Receiver
 {
-private:
+public:
     struct Rendering
     {
         enum struct Target
@@ -46,8 +46,9 @@ private:
     {
                bool              rename               = false;
                bool              uncompiledChanges    = false;
+        static bool              restartRendering;
     };
-
+private:
     const uint32_t               id_;
           glm::ivec2             resolution_;
           glm::vec2              resolutionRatio_;

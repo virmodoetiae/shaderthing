@@ -13,6 +13,7 @@ namespace ShaderThing
 {
 
 TextEditor Layer::GUI::sharedSourceEditor = TextEditor();
+bool       Layer::Flags::restartRendering = false;
 
 //----------------------------------------------------------------------------//
 
@@ -756,6 +757,20 @@ void Layer::renderLayersTabBarGUI // Static
             swap = {0, 0};
         }
         ImGui::EndTabBar();
+    }
+
+    // Check if layers framebuffers should be cleared as a consequence of
+    // a rendering restart. This flag is set in the lambda
+    // Uniform::renderUniformsGUI::renderSharedUniformsGUI eventually called by
+    // renderTabBarGUI
+    if (Layer::Flags::restartRendering)
+    {
+        for (auto layer : layers)
+        {
+            layer->rendering_.framebufferA->clearColorBuffer();
+            layer->rendering_.framebufferB->clearColorBuffer();
+        }
+        Layer::Flags::restartRendering = false;
     }
 }
 

@@ -439,36 +439,6 @@ locked to that of the main window)"
             ImGui::EndCombo();
         }
         ImGui::PopItemWidth();
-
-        /* Checkpoint
-        ImGui::SeparatorText("Post-processing effects");
-        static const char* item_names[] = { "Item One", "Item Two", "Item Three", "Item Four", "Item Five" };
-        static int iActive = -1;
-        for (int n = 0; n < IM_ARRAYSIZE(item_names); n++)
-        {
-            const char* item = item_names[n];
-            ImGui::PushID(n);
-            if (ImGui::BeginMenu(std::string(std::to_string(n+1)+" - "+std::string(item)).c_str()))
-            {
-                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-                {
-                    if (iActive == -1)
-                        iActive = n;
-                    else if (iActive != n)
-                    {
-                        item_names[n] = item_names[iActive];
-                        item_names[iActive] = item;
-                        iActive = -1;
-                    }
-                }
-                else
-                    iActive = -1;
-                ImGui::Text("Hey!");
-                ImGui::EndMenu();
-            }
-            ImGui::PopID();
-        }
-        */
     }
 }
 
