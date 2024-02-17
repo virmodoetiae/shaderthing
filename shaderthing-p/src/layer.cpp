@@ -788,7 +788,7 @@ void Layer::renderTabBarGUI(SharedUniforms& sharedUnifoms)
             
             bool headerErrors(gui_.headerErrors.size() > 0);
             bool madeReplacements = 
-                gui_.sourceEditor.renderFindReplaceTool();
+                gui_.sourceEditor.renderFindReplaceToolGUI();
             flags_.uncompiledChanges = 
                 flags_.uncompiledChanges || madeReplacements;
             if (ImGui::TreeNode("Header"))
@@ -819,16 +819,16 @@ void Layer::renderTabBarGUI(SharedUniforms& sharedUnifoms)
                 ImGui::Unindent(indent);
                 ImGui::Indent(); // Re-add indent from Header TreeNode
             }
-            gui_.sourceEditor.render("##sourceEditor");
+            gui_.sourceEditor.renderGUI("##sourceEditor");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Shared source"))
         {
             bool madeReplacements = 
-                gui_.sharedSourceEditor.renderFindReplaceTool();
+                gui_.sharedSourceEditor.renderFindReplaceToolGUI();
             flags_.uncompiledChanges = 
                 flags_.uncompiledChanges || madeReplacements;
-            gui_.sharedSourceEditor.render("##sharedSourceEditor");
+            gui_.sharedSourceEditor.renderGUI("##sharedSourceEditor");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Uniforms"))

@@ -164,6 +164,8 @@ public:
     void onReceive(vir::Event::KeyPressEvent& e) override;
     void onReceive(vir::Event::KeyReleaseEvent& e) override;
 
+    const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
+
     const char* glslBlockSource() const {return cpuBlock_.glslSource;}
 
     void bindShader(vir::Shader* shader) const;

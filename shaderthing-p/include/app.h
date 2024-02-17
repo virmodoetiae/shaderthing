@@ -9,6 +9,7 @@ namespace ShaderThing
 
 class SharedUniforms;
 class Layer;
+class Resource;
 
 class App
 {
@@ -28,7 +29,8 @@ private:
 
     SharedUniforms* sharedUniforms_;
     std::vector<Layer*> layers_ = {};
-
+    std::vector<Resource*> resources_ = {};
+    
     Layer* createLayer();
     void deleteLayer(Layer* layer);
 

@@ -2,7 +2,10 @@
 #include "shaderthing-p/include/app.h"
 #include "shaderthing-p/include/bytedata.h"
 #include "shaderthing-p/include/layer.h"
+#include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/shareduniforms.h"
+
+#include <charconv>
 
 namespace ShaderThing
 {
@@ -23,17 +26,13 @@ App::App()
 
     // Main loop
     auto window = vir::GlobalPtr<vir::Window>::instance();
-    window->run([this]()
+    while(window->isOpen())
     {
-        // Render GUI
-        vir::ImGuiRenderer::run([this]()
-        {
-            this->renderGUI();
-        });
-        // Render layer shaders
+        vir::ImGuiRenderer::run([this](){this->renderGUI();});
         Layer::renderShaders(layers_, nullptr, *sharedUniforms_);
-        this->update();
-    });
+        update();
+        window->update(!sharedUniforms_->isRenderingPaused());
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -52,6 +51,24 @@ App::~App()
 void App::update()
 {
     sharedUniforms_->update();
+
+    // Compute FPS and set in window title
+    static auto* window(vir::GlobalPtr<vir::Window>::instance());
+    static float fps(60.0f);
+    static int elapsedFrames(0);
+    static float elapsedTime(0);
+    elapsedFrames++;
+    elapsedTime += window->time()->outerTimestep();
+    if (elapsedFrames >= int(fps/2.0f)) // Update every ~1/2 second
+    {
+        fps = elapsedFrames/elapsedTime;
+        static char bfps[8];
+        *(std::to_chars(bfps,bfps+8,fps,std::chars_format::fixed,1)).ptr = '\0';
+        std::string sfps(bfps);
+        window->setTitle("ShaderThing ("+sfps+" FPS)");
+        elapsedFrames = 0;
+        elapsedTime = 0;
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -144,7 +161,6 @@ void App::renderGUI()
     Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_);
 
     ImGui::End();
-    ImGui::ShowDemoWindow();
 }
 
 //----------------------------------------------------------------------------//
@@ -246,17 +262,17 @@ resetting the iFrame uniform (Ctrl+R))"
             */
             ImGui::EndMenu();
         }
-        /*
         if (ImGui::BeginMenu("Resources"))
         {
-            OZ_MENU_ENTRY(resourceManager_, "Resource manager")
+            Resource::renderResourcesMenuItemGUI(resources_);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
         {
-            findReplaceTextTool_->renderGuiMenu();
+            TextEditor::renderFindReplaceToolMenuGUI();
             ImGui::EndMenu();
         }
+        /*
         if (ImGui::BeginMenu("Help"))
         {
             IN_MENU_ENTRY(codeRepository_, "Code repository")
@@ -284,6 +300,8 @@ resetting the iFrame uniform (Ctrl+R))"
         */
         ImGui::EndMenuBar();
     }
+    if (Resource::isGuiDetachedFromMenu)
+        Resource::renderResourcesGUI(resources_);
 }
 
 //----------------------------------------------------------------------------//

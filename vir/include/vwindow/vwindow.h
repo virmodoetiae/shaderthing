@@ -52,27 +52,26 @@ public:
 
     virtual ~Window();
 
-    // Runs the provided function with the provided arguments
-    // on every window frame while the window is open
+    // Runs the provided function with the provided arguments on every window
+    // frame while the window is open
     template<typename Function, typename... Args>
-    void run(Function&& func, Args&&... args)
+    void run(Function&& func, Args&&... args, const bool& swapBuffers)
     {
         while(this->isOpen())
         {
             func(std::forward<Args>(args)...);
-            this->update();
+            this->update(swapBuffers);
         }
     }
 
-    // Runs the provided function
-    // on every window frame while the window is open
+    // Runs the provided function on every window frame while the window is open
     template<typename Function>
-    void run(Function&& func)
+    void run(Function&& func, const bool& swapBuffers=true)
     {
         while(this->isOpen())
         {
             func();
-            this->update();
+            this->update(swapBuffers);
         }
     }
 

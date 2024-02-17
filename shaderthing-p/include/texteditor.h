@@ -230,13 +230,13 @@ public:
         bool checkShortcuts();
 
         // Render menu bar with toggleable Find / Find & replace entries
-        void renderMenu();
+        void renderMenuGUI();
         
         void reset();
 
         // Runs open/close check logic, GUI render, and find/replace logic if
         // required
-        bool render(TextEditor& editor);
+        bool renderGUI(TextEditor& editor);
     };
 
     TextEditor();
@@ -258,13 +258,14 @@ public:
     
     void setBreakpoints(const Breakpoints& aMarkers) {breakpoints_ = aMarkers;}
 
-    void render
+    void renderGUI
     (
         const char* aTitle, 
         const ImVec2& aSize = ImVec2(), 
         bool aBorder = false
     );
-    bool renderFindReplaceTool(){return findReplaceTool_.render(*this);}
+    bool renderFindReplaceToolGUI(){return findReplaceTool_.renderGUI(*this);}
+    static void renderFindReplaceToolMenuGUI();
 
     void setText(const std::string& aText);
     std::string getText() const;
@@ -450,7 +451,7 @@ private:
     
     void handleKeyboardInputs();
     void handleMouseInputs();
-    void render();
+    void renderGUI();
 
     bool                   checkComments_         = true;
     bool                   colorizerEnabled_      = true;

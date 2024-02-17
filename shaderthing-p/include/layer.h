@@ -100,12 +100,14 @@ public:
     void onReceive(vir::Event::WindowResizeEvent& event) override;
     
     bool compileShader(const SharedUniforms& sharedUniforms);
+    
     void renderShader
     (
         vir::Framebuffer* target, 
         const bool clearTarget, 
         const SharedUniforms& sharedUniforms
     );
+    
     static void renderShaders
     (
         const std::vector<Layer*>& layers,
@@ -114,11 +116,13 @@ public:
     );
 
     void renderSettingsMenuGUI();
+    
     static void renderLayersTabBarGUI
     (
         std::vector<Layer*>& layers,
         SharedUniforms& sharedUnifoms
     );
+    
     void renderTabBarGUI
     (
         SharedUniforms& sharedUnifoms
