@@ -290,6 +290,7 @@ public:
         uint32_t height,
         InternalFormat internalFormat
     );
+    static bool validFaces(const TextureBuffer2D* faces[6]);
 };
 
 //----------------------------------------------------------------------------//

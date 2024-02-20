@@ -367,6 +367,27 @@ CubeMapBuffer* CubeMapBuffer::create
     return nullptr;
 }
 
+bool CubeMapBuffer::validFaces(const TextureBuffer2D* faces[6])
+{
+    int width, height;
+    auto isPowerOfTwo = [](int x)->bool{return(x!=0)&&((x&(x-1))==0);};
+    for (int i=0; i<6; i++)
+    {
+        if (i==0)
+        {
+            width = faces[i]->width();
+            height = faces[i]->height();
+            if (width != height)
+                return false;
+        }
+        else if (faces[i]->width() != width || faces[i]->height() != height)
+            return false;
+        if (!isPowerOfTwo(width) || !isPowerOfTwo(height))
+            return false;
+    }
+    return true;
+}
+
 // Framebuffer ---------------------------------------------------------------//
 
 Framebuffer* Framebuffer::activeOne_ = nullptr;

@@ -1,6 +1,10 @@
 #include <algorithm>
+#include <cctype>
+
 #include "shaderthing-p/include/helpers.h"
+
 #include "vir/include/vir.h"
+
 #include "thirdparty/imgui/imgui.h"
 
 namespace ShaderThing
@@ -37,6 +41,47 @@ glm::vec2 normalizedWindowResolution()
         windowAspectRatio > 1.f ? 1.f : windowAspectRatio,
         windowAspectRatio < 1.f ? 1.0 : 1.0/windowAspectRatio
     };
+}
+
+std::string fileExtension(const std::string& filepath, bool toLowerCase)
+{
+    std::string fileExtension = "";
+    bool foundDot(false);
+    for (int i=filepath.size()-1; i>=0; i--)
+    {
+        const char& c(filepath[i]);
+        if (!foundDot)
+        {
+            foundDot = (c == '.');
+            fileExtension = c + fileExtension;
+        }
+        else break;
+    }
+    if (toLowerCase)
+        std::transform
+        (
+            fileExtension.begin(), 
+            fileExtension.end(), 
+            fileExtension.begin(), 
+            ::tolower
+        );
+    return foundDot ? fileExtension : "";
+}
+
+unsigned char* readFileContents
+(
+    const std::string& filepath,
+    unsigned int& size
+)
+{
+    std::ifstream dataStream(filepath, std::ios::binary | std::ios::in);
+    dataStream.seekg(0, std::ios::end);
+    size = dataStream.tellg();
+    dataStream.seekg(0, std::ios::beg);
+    unsigned char* data = new unsigned char[size];
+    dataStream.read((char*)data, size);
+    dataStream.close();
+    return data;
 }
 
 #define RETURN_SCALAR_FORMAT                                            \

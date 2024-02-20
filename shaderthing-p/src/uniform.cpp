@@ -37,7 +37,7 @@ bool Uniform::renderUniformsGUI
         ImGui::TableSetColumnIndex(column++);
 
     //--------------------------------------------------------------------------
-    auto renderUniformBoundsButtonGUI =
+    auto renderEditUniformBoundsButtonGUI =
     [&fontSize](Type type, glm::vec2* bounds)
     {
         if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
@@ -78,7 +78,7 @@ bool Uniform::renderUniformsGUI
 
     //--------------------------------------------------------------------------
     auto renderSharedUniformsGUI = 
-    [&fontSize, &renderUniformBoundsButtonGUI]
+    [&fontSize, &renderEditUniformBoundsButtonGUI]
     (SharedUniforms& sharedUniforms, int& row)
     {
         int column;
@@ -193,7 +193,7 @@ bool Uniform::renderUniformsGUI
         ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
         NEXT_COLUMN
         glm::vec2* bounds = &sharedUniforms.bounds_[SpecialType::Time];
-        bool boundsChanged = renderUniformBoundsButtonGUI
+        bool boundsChanged = renderEditUniformBoundsButtonGUI
         (
             Type::Float, 
             bounds
@@ -370,7 +370,7 @@ bool Uniform::renderUniformsGUI
         ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
         NEXT_COLUMN
         bounds = &sharedUniforms.bounds_[SpecialType::CameraPosition];
-        boundsChanged = renderUniformBoundsButtonGUI
+        boundsChanged = renderEditUniformBoundsButtonGUI
         (
             Type::Float3, 
             bounds
@@ -489,7 +489,7 @@ bool Uniform::renderUniformsGUI
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube]
     };
     auto renderUniformGUI = 
-    [&fontSize, &renderUniformBoundsButtonGUI]
+    [&fontSize, &renderEditUniformBoundsButtonGUI]
     (
         SharedUniforms& sharedUniforms,
         Uniform* uniform,
@@ -571,7 +571,7 @@ bool Uniform::renderUniformsGUI
         bool boundsChanged(false);
         if (uniform->gui.showBounds)
         {
-            boundsChanged = renderUniformBoundsButtonGUI
+            boundsChanged = renderEditUniformBoundsButtonGUI
             (
                 uniform->type, 
                 &uniform->gui.bounds

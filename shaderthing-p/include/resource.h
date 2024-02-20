@@ -1,304 +1,161 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_map>
-
 #include "vir/include/vir.h"
+#include "shaderthing-p/include/macros.h"
 
 namespace ShaderThing
 {
 
+typedef vir::TextureBuffer::WrapMode WrapMode;
+typedef vir::TextureBuffer::FilterMode FilterMode;
+
+class Texture2DResource;
+class AnimatedTexture2DResource;
+class CubemapResource;
+class FramebufferResource;
+
 class Resource
 {
 public:
-
-    // Resource types tied to the undelying vir:: graphics buffers
     enum class Type
     {
-        Uninitialized,
         Texture2D,
         AnimatedTexture2D,
-        FramebufferColorAttachment,
-        Cubemap
+        Cubemap,
+        Framebuffer
     };
+protected:
+    Type                       type_;
+    bool                       isNameManaged_ = true;
+    std::string*               namePtr_       = nullptr;
+    int                        unit_          = -1;
 
-    // Static mappings for convenience
-    static std::unordered_map<Resource::Type, std::string> typeToName;
-    static std::unordered_map<std::string, Resource::Type> nameToType;
-
-    //
-    struct SettingsCache
-    {
-        Type type = Type::Uninitialized;
-        vir::TextureBuffer::WrapMode wrapModes[2];
-        vir::TextureBuffer::FilterMode filterModes[2];
-        bool isAnimationPaused;
-        bool isAnimationBoundToGlobalTime;
-    };
-
-    // Checks if the provided resource would be a valid face for a cubemap.
-    // The key aspects are: 1) being of Texture2D type; 2) having a square
-    // aspect ratio; 3) having a resolution which is a multiple of 2 along
-    // both axes
-    static bool validCubemapFace(Resource* face);
-
-    // Checks if the provided array of resources would be a valid set of
-    // faces for a new cubemap resource
-    static bool validCubemapFaces(Resource* faces[6]);
-
-private:
-
-    // Resource type
-    Type type_;
-
-    // void pointer to native underlying vir:: graphics buffer, i.e., the
-    // internally-managed resource
-    void* nativeResource_;
-
-    // List of resources consisting of: 1) resources acting as cubemap faces
-    // when this resource is of Cubemap type; OR 2) resources acting as 
-    // animation frames when this resource is of AnimatedTexture2D type. Please
-    // note that in both cases the pointed resources will be of Texture2D type
-    // (not dynamic resources, e.g., buffer, supported for now)
-    std::vector<Resource*> referencedResources_;
-
-    // Name of this resource as a pointer
-    std::string* namePtr_;
-
-    // File extensions of the original file used for loading the nativeResource_
-    // of this resource (e.g., .png, .gif, etc.). This is empty for internally
-    // generated resources (e.g., Cubemap)
-    std::string originalFileExtension_;
-
-    // Size of the raw data used for loading the nativeResource_ (0 for 
-    // internally managed resources)
-    int rawDataSize_;
-
-    // Actual raw data used for loading the nativeResource_ (nullptr for
-    // internally managed resources). The point of storing raw data instead
-    // of discarding it after nativeResource_ loading is to be able to
-    // re-save the raw data within a ShaderThing project file (.stf) to
-    // enable re-loading the resource on project loading
-    unsigned char* rawData_;
-
-    // Form an OpenGL perspective, this is the OpenGL texture unit to which
-    // this resource was bound last. Nonetheless, the concept of texture
-    // units is not specific to OpenGL, so there is no loss of generaly if
-    // e.g., the vir:: back-end were to now support and use Vulkan (which, in 
-    // all honestly, it will probably never do, although I tried to structure it
-    // it in a sensible way)
-    int lastBoundUnit_ = -1;
-
-    // Specifically for AnimatedTexture2Ds
-    // True if this resource represents an AnimatedTexture2D and its internal
-    // animation time is paused
-    bool isAnimationPaused_;
-    // True if this resource represents an AnimatedTexture2D and its internal
-    // time is bound to be always equal to the global all iTime
-    bool isAnimationBoundToGlobalTime_;
-
-    //
-    SettingsCache settingsCache_;
-
-    // Direct access to internally managed resource
-    void* nativeResource() {return nativeResource_;}
-
+    Resource(Type type):type_(type){};
+    DELETE_COPY_MOVE(Resource)
 public:
-
-    // Constructor/destructor
-    Resource();
-    //Resource(const ObjectIO& reader, const std::vector<Resource*>& resources);
-    ~Resource();
-    Resource& operator=(const Resource&) = delete;
-
-    // Reset all resource members and delete the native resource
-    void reset();
-
-    // If this resource is of AnimatedTexture2D type, this will advance the 
-    // animation in time according to the provided global time OR time step
-    // depending on the animation settings
-    void update(float globalTime, float timeStep);
-
-    // True if this resource is actually managing a nativeResource of any kind
-    bool valid() const 
-    {
-        return nativeResource_ != nullptr || type_ == Type::Uninitialized;
-    }
-
-    // Bind the managed resource to a provided graphics card texture unit
-    void bind(int unit);
-
-    // Unbind the managed resource
-    void unbind(int unit=-1);
-
-    // Serialize the state of this Resource to the provided ObjectIO writer
-    // (a JSON-like data structure for disk I/O operations)
-    //void saveState(ObjectIO& writer);
-
-    // Internal time play/pause toggle if this resource is an AnimatedTexture2D,
-    // no effect otherwise
-    void toggleAnimationPaused();
-
-    //
-    void toggleAnimationBoundToGlobalTime();
-
-    // Steps the animation to the next frame, regardless of whether the internal
-    // animation time is paused or not. Has an effect only if this resource is
-    // an AnimatedTexture2D
-    void stepAnimationForwards();
-
-    // Steps the animation to the previous frame, regardless of whether the 
-    // internal animation time is paused or not. Has an effect only if this 
-    // resource is an AnimatedTexture2D
-    void stepAnimationBackwards();
-
-    // Accessors -------------------------------------------------------------//
-
-    // Resource type
-    Type type() const {return type_;}
-
-    // Resource name
-    std::string name() const {return *namePtr_;}
-
-    // Modifiable pointer to resource name
-    std::string* namePtr() {return namePtr_;}
-
-    // Unmodifiable pointer to resource name
-    const std::string* nameCPtr() const {return namePtr_;}
-
-    // Original file extension
-    std::string originalFileExtension() const {return originalFileExtension_;}
-
-    // Id of the internally managed resource. If contentId is true and this
-    // resource is of AnimatedTexture2D type, it will return the id of the
-    // current frame managed by the internally managed resource
-    int id(bool contentId=true) const;
-
-    // Width of the internally managed resource. If this resource
-    // is a Cubemap, it returns the width of any of its faces, while if it is
-    // an AnimatedTexture2D, it returns the width of any of its frames
-    int width() const;
-
-    // Height of the internally managed resource. If this resource
-    // is a Cubemap, it returns the height of any of its faces, while if it is
-    // an AnimatedTexture2D, it returns the height of any of its frames
-    int height() const;
-
-    // Size of the raw data which was used for loading the internally-managed
-    // resource, if any
-    int rawDataSize() const {return rawDataSize_;}
-
-    // Unmodified pointer to the raw data which was used for loading the
-    // internally-managed resource, if any
-    const unsigned char* rawData() const {return rawData_;}
-
-    //
-    void cacheSettings();
-    void applyCachedSettings();
-
-    // Wrap mode of the internally-managed resource along direction the 'width'
-    // direction (if index == 0) or 'height' direction (if index == 1)
-    vir::TextureBuffer::WrapMode wrapMode(int index);
-
-    // Interpolation mode of the internally-managed resource when magnified
-    vir::TextureBuffer::FilterMode magFilterMode();
-
-    // Interpolation mode of the internally-managed resource when minimized
-    vir::TextureBuffer::FilterMode minFilterMode();
-
-    // Ref to referenced resources, if any. Can consist of either a list of
-    // other resources used as Cubemap faces if this resource is a Cubemap, or
-    // a list of other resources used animation frames if this resource is an
-    // AnimatedTexture2D
-    const std::vector<Resource*>& referencedResourcesCRef() const 
-    {
-        return referencedResources_;
-    }
-
-    bool areAnimationFramesResources() const;
-
-    // True if this resource is an AnimatedTexture2D and the internal animation
-    // time is paused
-    bool isAnimationPaused() const;
-
-    // True if this resource is an AnimatedTexture2D and its internal animation
-    // time is bound to the global iTime uniform
-    bool isAnimationBoundToGlobalTime() const;
-
-    // Animation speed in frames per second if this resource is an 
-    // AnimatedTexture2D, returns 0 otherwise
-    float animationFps() const;
-
-    // Total duration of the animation in seconds
-    float animationDuration() const;
-
-    // The current animation frame index
-    unsigned int animationFrameIndex() const;
-
-    // Returns the total number of frames in the animation
-    unsigned int nAnimationFrames() const;
+    virtual ~Resource();
+    static Resource*           create(const std::string& filepath);
+    static Resource*           create(unsigned char* rawData, unsigned int size, bool gif);
+    static Resource*           create(const std::vector<Texture2DResource*>& frames);
+    static Resource*           create(const Texture2DResource* faces[6]);
+    static Resource*           create(vir::Framebuffer* framebuffer);
     
-    // Setters ---------------------------------------------------------------//
+    virtual void               bind(unsigned int unit) = 0;
+    virtual void               unbind() = 0;
+    virtual const unsigned int id() const = 0;
+    virtual const unsigned int width() const = 0;
+    virtual const unsigned int height() const = 0;
+    virtual const WrapMode     wrapMode(int index) const = 0;
+    virtual const FilterMode   magFilterMode() const = 0;
+    virtual const FilterMode   minFilterMode() const = 0;
+
+    void                       setName(const std::string& name);
+    void                       setNamePtr(std::string* namePtr);
+
+    static bool                isGuiOpen;
+    static bool                isGuiDetachedFromMenu;
+    static void                renderResourcesGUI(std::vector<Resource*>& resources);
+    static void                renderResourcesMenuItemGUI(std::vector<Resource*>& resources);
+};
+
+class Texture2DResource : public Resource
+{
+    friend                  Resource;
+    friend AnimatedTexture2DResource;
+    friend           CubemapResource;
     
-    // Initialize the internally-managed resource depending on the nature of the
-    // passed data
-    template<typename T> bool set(T nativeResource);
-
-    // Initialize the internally-managed resource from the provided raw data and
-    // its size. The gif flag is used to specify whether the resource to be
-    // set is AnimatedTexture2D starting from unpacked gif image data or not
-    bool set(const unsigned char* data, unsigned int size, bool gif=false);
-
-    // Set the name pointer to the provided one (ownership is transferred to 
-    // this resource)
-    void setNamePtr(std::string*);
-
-    // Set the original filename extension
-    void setOriginalFileExtension(std::string ofe) {originalFileExtension_=ofe;}
-
-    // Set the raw data
-    void setRawData(unsigned char* rawData, int rawDataSize);
-
-    // Set the wrap mode of the internally-managed resource to the provided one
-    // in the given direction index (horizontal if 0, vertical if 1)
-    void setWrapMode(int index, vir::TextureBuffer::WrapMode mode);
-
-    // Set the interpolation mode of the internally-managed resource on 
-    // magnification to the provided one
-    void setMagFilterMode(vir::TextureBuffer::FilterMode mode);
-
-    // Set the interpolation mode of the internally-managed resource on 
-    // minimization to the provided one
-    void setMinFilterMode(vir::TextureBuffer::FilterMode mode);
-
-    // Set the pause/play status of the animation
-    void setAnimationPaused(bool flag);
-
-    // Set if the animation internal time is bound to the global app time
-    void setAnimationBoundToGlobalTime(bool flag);
-
-    // Set the animation speed in frames per second. Has an effect only if this
-    // resource is an AnimatedTexture2D
-    void setAnimationFps(float fps);
-
-    // Set the animation duration by adjusting its speed
-    void setAnimationDuration(float t);
-
-    //
-    void setAnimationFrameIndex(unsigned int frameIndex);
-
-    // Operators -------------------------------------------------------------//
-
-    bool operator==(const Resource& rhs) {return id(false) == rhs.id(false);}
+    vir::TextureBuffer2D* native_      = nullptr;
+    unsigned char*        rawData_     = nullptr;
+    unsigned int          rawDataSize_ = 0;
+    std::string           originalFileExtension_;
     
-    //------------------------------------------------------------------------//
+    Texture2DResource():Resource(Type::Texture2D){}
+    DELETE_COPY_MOVE(Texture2DResource)
+public:
+    ~Texture2DResource();
+    bool               set(const std::string& filepath);
+    bool               set(unsigned char* rawData, unsigned int size);
+    
+    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}
+    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};
+    const unsigned int id() const override {return native_->id();}
+    const unsigned int width() const override {return native_->width();}
+    const unsigned int height() const override{return native_->height();}
+    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}
+    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}
+    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}
+};
 
-    static bool isGuiOpen;
-    static bool isGuiDetachedFromMenu;
-    static void renderResourcesGUI(std::vector<Resource*>& resources);
-    static void renderResourcesMenuItemGUI(std::vector<Resource*>& resources);
+class AnimatedTexture2DResource : public Resource
+{
+    friend Resource;
+    
+    vir::AnimatedTextureBuffer2D*   native_ = nullptr;
+    unsigned char*                  rawData_ = nullptr;
+    unsigned int                    rawDataSize_ = 0;
+    std::string                     originalFileExtension_;
+    std::vector<Texture2DResource*> unmanagedFrames_;
+    
+    AnimatedTexture2DResource():Resource(Type::AnimatedTexture2D){}
+    DELETE_COPY_MOVE(AnimatedTexture2DResource)
+public:
+    ~AnimatedTexture2DResource();
+    bool               set(const std::string& filepath);
+    bool               set(unsigned char* rawData, unsigned int size);
+    bool               set(const std::vector<Texture2DResource*>& animationFrames);
+    
+    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}
+    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};
+    const unsigned int id() const override {return native_->id();}
+    const unsigned int width() const override {return native_->width();}
+    const unsigned int height() const override{return native_->height();}
+    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}
+    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}
+    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}
+};
 
+class CubemapResource : public Resource
+{
+    friend Resource;
+    
+    vir::CubeMapBuffer*      native_ = nullptr;
+    const Texture2DResource* unmanagedFaces_[6];
+    
+    CubemapResource():Resource(Type::Cubemap){}
+    DELETE_COPY_MOVE(CubemapResource)
+public:
+    ~CubemapResource();
+    bool               set(const Texture2DResource* faces[6]);
+    
+    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}
+    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};
+    const unsigned int id() const override {return native_->id();}
+    const unsigned int width() const override {return native_->width();}
+    const unsigned int height() const override{return native_->height();}
+    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}
+    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}
+    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}
+};
+
+class FramebufferResource : public Resource
+{
+    friend Resource;    
+    vir::Framebuffer** native_ = nullptr;
+    FramebufferResource():Resource(Type::Framebuffer){isNameManaged_=false;}
+    
+    DELETE_COPY_MOVE(FramebufferResource)
+public:
+    ~FramebufferResource();
+    bool               set(vir::Framebuffer* framebuffer);
+    
+    virtual void       bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit);unit_ = unit;}
+    virtual void       unbind() override {(*native_)->unbind(); unit_ = -1;};
+    const unsigned int id() const override {return (*native_)->id();}
+    const unsigned int width() const override {return (*native_)->width();}
+    const unsigned int height() const override{return (*native_)->height();}
+    const WrapMode     wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
+    const FilterMode   magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
+    const FilterMode   minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
 };
 
 }

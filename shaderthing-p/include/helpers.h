@@ -15,6 +15,17 @@ bool isCtrlShiftKeyPressed(ImGuiKey key);
 
 glm::vec2 normalizedWindowResolution();
 
+std::string fileExtension(const std::string& filepath, bool toLowerCase=true);
+
+// Returns the raw data of file at filepath and the overall data size. It is
+// your responsibility to de-allocate the returned data, once used, with 
+// delete[]
+unsigned char* readFileContents
+(
+    const std::string& filepath,
+    unsigned int& size
+);
+
 // Get the format string of a numeric value type such that:
 // 1) if value < lowExpThreshold or value > highExpThreshold, the format will
 //    consists of expDigits digits in exponential notation;

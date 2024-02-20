@@ -1,471 +1,342 @@
 #include "shaderthing-p/include/resource.h"
+#include "shaderthing-p/include/layer.h"
+#include "shaderthing-p/include/helpers.h"
 
+#include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
+#include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
+#include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/stb/stb_image.h"
-
-#include <ctime>
-#include <iostream>
 
 namespace ShaderThing
 {
 
-// Static members ------------------------------------------------------------//
-
-std::unordered_map<Resource::Type, std::string> Resource::typeToName = 
-{
-    {Resource::Type::Uninitialized, "Uninitialized"},
-    {Resource::Type::Texture2D, "Texture-2D"},
-    {Resource::Type::AnimatedTexture2D, "Animation-2D"},
-    {Resource::Type::FramebufferColorAttachment, "Layer"},
-    {Resource::Type::Cubemap, "Cubemap"}
-};
-
-std::unordered_map<std::string, Resource::Type> Resource::nameToType = 
-{
-    {"Uninitialized", Resource::Type::Uninitialized},
-    {"Texture-2D", Resource::Type::Texture2D},
-    {"Animation-2D", Resource::Type::AnimatedTexture2D},
-    {"Layer", Resource::Type::FramebufferColorAttachment},
-    {"Cubemap", Resource::Type::Cubemap}
-};
-
-bool Resource::validCubemapFace(Resource* face)
-{
-    int width(face->width());
-    int height(face->height());
-    if (width != height)
-        return false;
-    auto isPowerOfTwo = [](int x)->bool{return(x!=0)&&((x&(x-1))==0);};
-    if (!isPowerOfTwo(width) || !isPowerOfTwo(height))
-        return false;
-    return true;
-}
-
-bool Resource::validCubemapFaces(Resource* faces[6])
-{
-    int width, height;
-    auto isPowerOfTwo = [](int x)->bool{return(x!=0)&&((x&(x-1))==0);};
-    for (int i=0; i<6; i++)
-    {
-        if (faces[i]->rawDataSize() == 0)
-            return false;
-        if (i==0)
-        {
-            width = faces[i]->width();
-            height = faces[i]->height();
-            if (width != height)
-                return false;
-        }
-        else if (faces[i]->width() != width || faces[i]->height() != height)
-            return false;
-        if (!isPowerOfTwo(width) || !isPowerOfTwo(height))
-            return false;
-    }
-    return true;
-}
-
-// Macros --------------------------------------------------------------------//
-
-#define NATIVE_RESOURCE(nativeType) static_cast<nativeType*>(nativeResource_)
-
-#define SET_NATIVE_RESOURCE(resourceType)                                   \
-    if (nativeResource == nullptr) return false;                            \
-    if(valid())reset();                                                     \
-    type_ = resourceType;                                                   \
-    nativeResource_ = (void*)nativeResource;
-
-#define DELETE_NATIVE_RESOUCE(nativeType) {                                 \
-    auto resource = NATIVE_RESOURCE(nativeType);                            \
-    if (lastBoundUnit_ != -1) resource->unbind(lastBoundUnit_);             \
-    delete resource;                                                        \
-    break;}
-
-#define CALL_NATIVE_RESOURCE_FUNC_HOMO(func) {                              \
-    switch (type_) {                                                        \
-        case Type::FramebufferColorAttachment :                             \
-            return (*NATIVE_RESOURCE(vir::Framebuffer*))->func;             \
-        case Type::AnimatedTexture2D :                                      \
-            return NATIVE_RESOURCE(vir::AnimatedTextureBuffer2D)->func;     \
-        case Type::Texture2D :                                              \
-            return NATIVE_RESOURCE(vir::TextureBuffer2D)->func;             \
-        case Type::Cubemap :                                                \
-            return NATIVE_RESOURCE(vir::CubeMapBuffer)->func;               \
-    }}
-
-#define CALL_NATIVE_RESOURCE_FUNC_HETERO2(func0, func1) {                   \
-    switch (type_) {                                                        \
-        case Type::FramebufferColorAttachment :                             \
-            return (*NATIVE_RESOURCE(vir::Framebuffer*))->func0;            \
-        case Type::Texture2D :                                              \
-            return NATIVE_RESOURCE(vir::TextureBuffer2D)->func1;            \
-        case Type::AnimatedTexture2D :                                      \
-            return NATIVE_RESOURCE(vir::AnimatedTextureBuffer2D)->func1;    \
-        case Type::Cubemap :                                                \
-            return NATIVE_RESOURCE(vir::CubeMapBuffer)->func1;              \
-    }}
-
-#define CALL_NATIVE_RESOURCE_FUNC_HETERO3(func0, func1, func2) {            \
-    switch (type_) {                                                        \
-        case Type::FramebufferColorAttachment :                             \
-            return (*NATIVE_RESOURCE(vir::Framebuffer*))->func0;            \
-        case Type::Texture2D :                                              \
-            return NATIVE_RESOURCE(vir::TextureBuffer2D)->func1;            \
-        case Type::AnimatedTexture2D :                                      \
-            return NATIVE_RESOURCE(vir::AnimatedTextureBuffer2D)->func2;    \
-        case Type::Cubemap :                                                \
-            return NATIVE_RESOURCE(vir::CubeMapBuffer)->func1;              \
-    }}
-
-// Public functions ----------------------------------------------------------//
-
-Resource::Resource() :
-type_(Resource::Type::Uninitialized),
-nativeResource_(nullptr),
-referencedResources_(0),
-namePtr_(new std::string()),
-originalFileExtension_(""),
-rawDataSize_(0),
-rawData_(nullptr),
-lastBoundUnit_(-1),
-isAnimationPaused_(false),
-isAnimationBoundToGlobalTime_(false)
-{}
-
 Resource::~Resource()
 {
-    reset();
-    if 
-    (
-        namePtr_ != nullptr 
-        && type_!=Resource::Type::FramebufferColorAttachment
-    )
+    if (namePtr_ != nullptr && isNameManaged_)
         delete namePtr_;
-    namePtr_ = nullptr;
 }
 
-void Resource::reset()
+Resource* Resource::create(const std::string& filepath)
 {
-    if (rawData_ != nullptr) delete[] rawData_;
-    rawData_ = nullptr;
-    if (!valid()) return;
-    switch (type_)
+    std::string fileExtension = Helpers::fileExtension(filepath);
+    if (fileExtension != ".gif")
     {
-        case Type::FramebufferColorAttachment : break;
-        case Type::Texture2D : DELETE_NATIVE_RESOUCE(vir::TextureBuffer2D)
-        case Type::AnimatedTexture2D : DELETE_NATIVE_RESOUCE(
-            vir::AnimatedTextureBuffer2D)
-        case Type::Cubemap : DELETE_NATIVE_RESOUCE(vir::CubeMapBuffer)
+        auto resource = new Texture2DResource();
+        if (resource->set(filepath))
+            return resource;
+        delete resource;
     }
-    nativeResource_ = nullptr;
-    referencedResources_.resize(0);
-    isAnimationPaused_ = false;
-    isAnimationBoundToGlobalTime_ = false;
-}
-
-void Resource::update(float globalTime, float timeStep)
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    auto animation = (vir::AnimatedTextureBuffer2D*)nativeResource_;
-    if (isAnimationBoundToGlobalTime_)
-        animation->setTime(globalTime);
-    else if (!isAnimationPaused_)
-        animation->advanceTime(timeStep);
-}
-
-void Resource::bind(int unit)
-{
-    if (!valid()) return;
-    lastBoundUnit_ = unit;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO2(bindColorBuffer(unit), bind(unit))
-}
-
-void Resource::unbind(int unit)
-{
-    if (!valid()) return;
-    if (unit == -1)
-    {
-        if (lastBoundUnit_ == -1) return;
-        else unit = lastBoundUnit_;
-    }
-    CALL_NATIVE_RESOURCE_FUNC_HETERO2(unbind(), unbind(unit))
-}
-
-int Resource::id(bool contentId) const
-{
-    if (!valid()) return -1;
-    if (!contentId)
-        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferId(), id())
     else
-        CALL_NATIVE_RESOURCE_FUNC_HETERO3(colorBufferId(), id(), 
-            frameId())
-    return -1;
+    {
+        auto resource = new AnimatedTexture2DResource();
+        if (resource->set(filepath))
+            return resource;
+        delete resource;
+    }
+    return nullptr;
 }
 
-int Resource::width() const
+Resource* Resource::create(unsigned char* rawData, unsigned int size, bool gif)
 {
-    if (valid()) 
-        CALL_NATIVE_RESOURCE_FUNC_HOMO(width())
-    return 0;
+    if (!gif)
+    {
+        auto resource = new Texture2DResource();
+        if (resource->set(rawData, size))
+            return resource;
+        delete resource;
+    }
+    else
+    {
+        auto resource = new AnimatedTexture2DResource();
+        if (resource->set(rawData, size))
+            return resource;
+        delete resource;
+    }
+    return nullptr;
 }
 
-int Resource::height() const
+Resource* Resource::create(const std::vector<Texture2DResource*>& frames)
 {
-    if (valid())
-        CALL_NATIVE_RESOURCE_FUNC_HOMO(height())
-    return 0;
+    auto resource = new AnimatedTexture2DResource();
+    if (resource->set(frames))
+        return resource;
+    delete resource;
+    return nullptr;
 }
 
-void Resource::cacheSettings()
+Resource* Resource::create(const Texture2DResource* faces[6])
 {
-    if (!valid())
-        return;
-    settingsCache_.type = type_;
-    settingsCache_.filterModes[0] = magFilterMode();
-    settingsCache_.filterModes[1] = minFilterMode();
-    settingsCache_.wrapModes[0] = wrapMode(0);
-    settingsCache_.wrapModes[1] = wrapMode(1);
-    settingsCache_.isAnimationPaused = isAnimationPaused_;
-    settingsCache_.isAnimationBoundToGlobalTime = isAnimationBoundToGlobalTime_;
+    auto resource = new CubemapResource();
+    if (resource->set(faces))
+        return resource;
+    delete resource;
+    return nullptr;
 }
 
-void Resource::applyCachedSettings()
+Resource* Resource::create(vir::Framebuffer* framebuffer)
 {
-    if (!valid() || settingsCache_.type != type_)
-        return;
-    setMagFilterMode(settingsCache_.filterModes[0]);
-    setMinFilterMode(settingsCache_.filterModes[1]);
-    setWrapMode(0, settingsCache_.wrapModes[0]);
-    setWrapMode(1, settingsCache_.wrapModes[1]);
-    isAnimationPaused_ = settingsCache_.isAnimationPaused;
-    isAnimationBoundToGlobalTime_ = settingsCache_.isAnimationBoundToGlobalTime;
+    auto resource = new FramebufferResource();
+    if (resource->set(framebuffer))
+        return resource;
+    delete resource;
+    return nullptr;
 }
 
-vir::TextureBuffer::WrapMode Resource::wrapMode(int i)
+void Resource::setName(const std::string& name)
 {
-    if (valid()) 
-        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferWrapMode(i), 
-            wrapMode(i))
-    return vir::TextureBuffer::WrapMode::ClampToBorder;
+    if (namePtr_ != nullptr && isNameManaged_)
+        delete namePtr_;
+    namePtr_ = new std::string(name);
 }
 
-vir::TextureBuffer::FilterMode Resource::magFilterMode()
+void Resource::setNamePtr(std::string* namePtr)
 {
-    if (valid()) 
-        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferMagFilterMode(), 
-            magFilterMode())
-    return vir::TextureBuffer::FilterMode::Nearest;
+    if (namePtr_ != nullptr && isNameManaged_)
+        delete namePtr_;
+    namePtr_ = namePtr;
 }
 
-vir::TextureBuffer::FilterMode Resource::minFilterMode()
+//----------------------------------------------------------------------------//
+
+#define SET_NATIVE_AND_RAW_AND_RETURN(data, size)                           \
+    if (native_ != nullptr) delete native_;                                 \
+    native_ = native;                                                       \
+    if (rawData_ != nullptr) delete[] rawData_;                             \
+    rawData_ = data;                                                        \
+    rawDataSize_ = size;
+
+bool Texture2DResource::set(const std::string& filepath)
 {
-    if (valid())
-        CALL_NATIVE_RESOURCE_FUNC_HETERO2(colorBufferMinFilterMode(), 
-            minFilterMode())
-    return vir::TextureBuffer::FilterMode::Nearest;
+    unsigned int rawDataSize;
+    unsigned char* rawData = Helpers::readFileContents(filepath, rawDataSize);
+    vir::TextureBuffer2D* native = nullptr;
+    try
+    {
+        native = vir::TextureBuffer2D::create
+        (
+            filepath, 
+            vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+        );
+        if (native == nullptr)
+        {
+            if (rawData != nullptr) delete[] rawData;
+            return false;
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::cout 
+            << "Texture2DResource::set(const std::string& filepath): "
+            << e.what() << std::endl;
+        if (rawData != nullptr) delete[] rawData;
+        return false;
+    }
+    SET_NATIVE_AND_RAW_AND_RETURN(rawData, rawDataSize)
 }
 
-void Resource::toggleAnimationPaused()
+bool Texture2DResource::set(unsigned char* rawData, unsigned int size)
 {
-    if (type_ != Type::AnimatedTexture2D)
-        return;
-    isAnimationPaused_ = !isAnimationPaused_;
+    int width, height, nChannels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load_from_memory
+    (
+        rawData, 
+        size, 
+        &width, 
+        &height, 
+        &nChannels,
+        4 // Force all textures to be treated as 4-component
+    );
+    nChannels = 4; // Force all textures to be treated as 4-component
+    vir::TextureBuffer2D* native = nullptr;
+    try
+    {
+        native = vir::TextureBuffer2D::create
+        (
+            data, 
+            width,
+            height,
+            vir::TextureBuffer::defaultInternalFormat(nChannels)
+        );
+        if (native == nullptr)
+        {
+            stbi_image_free(data);
+            return false;
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::cout 
+            << "Texture2DResource::set(const unsigned char* rawData, unsigned int size): "
+            << e.what() << std::endl;
+        stbi_image_free(data);
+        return false;
+    }
+    stbi_image_free(data);
+    SET_NATIVE_AND_RAW_AND_RETURN(rawData, size)
 }
 
-void Resource::toggleAnimationBoundToGlobalTime()
+Texture2DResource::~Texture2DResource()
 {
-     if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    isAnimationBoundToGlobalTime_ = !isAnimationBoundToGlobalTime_;
+    if (native_ != nullptr)
+    {
+        this->unbind();
+        delete native_;
+    }
+    if (rawData_ != nullptr) 
+        delete[] rawData_;
 }
 
-void Resource::stepAnimationForwards()
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->nextFrame();
-}
+//----------------------------------------------------------------------------//
 
-void Resource::stepAnimationBackwards()
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->previousFrame();
-}
-
-float Resource::animationDuration() const
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return 0.f;
-    return ((vir::AnimatedTextureBuffer2D*)nativeResource_)->duration();
-}
-
-unsigned int Resource::animationFrameIndex() const
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return 0;
-    return ((vir::AnimatedTextureBuffer2D*)nativeResource_)->frameIndex();
-}
-
-unsigned int Resource::nAnimationFrames() const
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return 0;
-    return ((vir::AnimatedTextureBuffer2D*)nativeResource_)->nFrames();
-}
-
-template<>
-bool Resource::set(vir::Framebuffer** nativeResource)
-{
-    SET_NATIVE_RESOURCE(Type::FramebufferColorAttachment)
-    return true;
-}
-
-template<>
-bool Resource::set(vir::TextureBuffer2D* nativeResource)
-{
-    SET_NATIVE_RESOURCE(Type::Texture2D)
-    return true;
-}
-
-template<>
-bool Resource::set(vir::AnimatedTextureBuffer2D* nativeResource)
-{
-    SET_NATIVE_RESOURCE(Type::AnimatedTexture2D)
-    return true;
-}
-
-template<>
-bool Resource::set(vir::CubeMapBuffer* nativeResource)
-{
-    SET_NATIVE_RESOURCE(Type::Cubemap)
-    return true;
-}
-
-// This is specifically for creating a Texture2D or AnimatedTexture2D from an
-// image file (.jpg/.png/.bmp for the former and .gif for the latter)
-template<>
-bool Resource::set(std::string filepath)
+bool AnimatedTexture2DResource::set(const std::string& filepath)
 {
     // Load image data
-    std::ifstream rawDataStream
-    (
-        filepath, std::ios::binary | std::ios::in
-    );
-    rawDataStream.seekg(0, std::ios::end);
-    size_t rawDataSize = rawDataStream.tellg();
-    rawDataStream.seekg(0, std::ios::beg);
-    unsigned char* rawData = new unsigned char[rawDataSize];
-    rawDataStream.read((char*)rawData, rawDataSize);
-    rawDataStream.close();
+    unsigned int rawDataSize;
+    unsigned char* rawData = Helpers::readFileContents(filepath, rawDataSize);
 
-    // Read file extension to check if GIF
-    std::string fileExtension = "";
-    bool foundDot(false);
-    for (int i=filepath.size()-1; i>=0; i--)
+    // Create native resource from raw data
+    vir::AnimatedTextureBuffer2D* native = nullptr;
+    try
     {
-        char& c(filepath[i]);
-        if (!foundDot)
+        native = vir::AnimatedTextureBuffer2D::create
+        (
+            filepath, 
+            vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+        );
+        if (native == nullptr)
         {
-            foundDot = (c == '.');
-            fileExtension = c + fileExtension;
-        }
-        else break;
-    }
-
-    if (fileExtension != ".gif") // If not gif, regular Texture2D
-    {
-        try
-        {
-            set
-            (
-                vir::TextureBuffer2D::create
-                (
-                    filepath, 
-                    vir::TextureBuffer::InternalFormat::RGBA_UNI_8
-                )
-            );
-        }
-        catch(const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
             delete[] rawData;
             return false;
         }
     }
-    else // If gif, AnimatedTexture2D
+    catch(const std::exception& e)
     {
-        try
-        {
-            set
-            (
-                vir::AnimatedTextureBuffer2D::create
-                (
-                    filepath, 
-                    vir::TextureBuffer::InternalFormat::RGBA_UNI_8
-                )
-            );
-        }
-        catch(const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
-            delete[] rawData;
-            return false;
-        }
+        std::cout 
+            << "AnimatedTexture2DResource::set(const std::string& filepath): "
+            << e.what() << std::endl;
+        delete[] rawData;
+        return false;
     }
 
     // Set original file extension and raw data if all went well
-    originalFileExtension_ = fileExtension;
-    setRawData(rawData, rawDataSize);
-
-    return true;
+    originalFileExtension_ = Helpers::fileExtension(filepath);
+    SET_NATIVE_AND_RAW_AND_RETURN(rawData, rawDataSize)
 }
 
-// This is specifically for generating and setting AnimatedTexture2Ds from a
-// list of existing resources
-template<>
-bool Resource::set(std::vector<Resource*>* resources)
+bool AnimatedTexture2DResource::set(unsigned char* rawData, unsigned int size)
 {
-    std::vector<vir::TextureBuffer2D*> frames(0);
-    for(auto* r : *resources)
-    {
-        if (!r->valid() || r->type() != Type::Texture2D)
-            continue;
-        frames.emplace_back((vir::TextureBuffer2D*)r->nativeResource());
-    }
-    auto animation = vir::AnimatedTextureBuffer2D::create
+    int width, height, nFrames, nChannels;
+    int* frameDuration;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load_gif_from_memory
     (
-        frames,
-        false
+        rawData, 
+        size, 
+        &frameDuration,
+        &width, 
+        &height, 
+        &nFrames,
+        &nChannels,
+        4 // Force all textures to be treated as 4-component
     );
-    bool status = set(animation);
-    if (status)
+    nChannels = 4; // Force all textures to be treated as 4-component
+    vir::AnimatedTextureBuffer2D* native = nullptr;
+    try
     {
-        referencedResources_.resize(0);
-        for(auto* r : *resources)
+        auto native = vir::AnimatedTextureBuffer2D::create
+        (
+            data, 
+            width, 
+            height, 
+            nFrames,
+            vir::TextureBuffer::defaultInternalFormat(nChannels)
+        );
+        if (native == nullptr)
         {
-            if (!r->valid() || r->type() != Type::Texture2D)
-                continue;
-            referencedResources_.emplace_back(r);
+            stbi_image_free(frameDuration);
+            stbi_image_free(data);
+            return false;
         }
     }
-    return status;
+    catch(const std::exception& e)
+    {
+        std::cout 
+            << "AnimatedTexture2DResource::set(unsigned char* rawData, unsigned int size): "
+            << e.what() << std::endl;
+        stbi_image_free(frameDuration);
+        stbi_image_free(data);
+        return false;
+    }
+    float duration = 0.f;
+    for (int i=0; i<nFrames; i++)
+        duration += frameDuration[i];
+    native->setFrameDuration(duration/nFrames);
+    stbi_image_free(frameDuration);
+    stbi_image_free(data);
+    SET_NATIVE_AND_RAW_AND_RETURN(rawData, size)
 }
 
-// This is specifically for generating and setting cubemaps
-template<>
-bool Resource::set(Resource* faces[6])
+bool AnimatedTexture2DResource::set(const std::vector<Texture2DResource*>& frames)
 {
-    // Check validity of provided faces
-    if (!Resource::validCubemapFaces(faces)) return false;
+    std::vector<vir::TextureBuffer2D*> nativeFrames(frames.size());
+    for(int i=0; i<frames.size(); i++)
+        nativeFrames[i] = frames[i]->native_;
+    vir::AnimatedTextureBuffer2D* native = nullptr;
+    try
+    {
+        native = vir::AnimatedTextureBuffer2D::create
+        (
+            nativeFrames,
+            false
+        );
+        if (native == nullptr)
+            return false;
+    }
+    catch(const std::exception& e)
+    {
+        std::cout 
+            << "AnimatedTexture2DResource::set(const std::vector<Texture2DResource*>& frames): "
+            << e.what() << std::endl;
+        return false;
+    }
+    unmanagedFrames_.clear();
+    unmanagedFrames_.resize(frames.size());
+    for(int i=0; i<frames.size(); i++)
+        unmanagedFrames_[i] = frames[i];
+    SET_NATIVE_AND_RAW_AND_RETURN(nullptr, 0)
+}
 
+AnimatedTexture2DResource::~AnimatedTexture2DResource()
+{
+    if (native_ != nullptr)
+    {
+        this->unbind();
+        delete native_;
+    }
+    if (rawData_ != nullptr) 
+        delete[] rawData_;
+}
+
+//----------------------------------------------------------------------------//
+
+bool CubemapResource::set(const Texture2DResource* faces[6])
+{
+    const vir::TextureBuffer2D* nativeFaces[6];
+    for (int i=0; i<6; i++)
+        nativeFaces[i] = (faces[i])->native_;
+    if (!vir::CubeMapBuffer::validFaces(nativeFaces))
+        return false;
+    
     // Read face data
     const unsigned char* faceData[6];
     stbi_set_flip_vertically_on_load(false);
     int width, height, nChannels;
     for (int i=0; i<6; i++)
     {
-        const unsigned char* rawData = faces[i]->rawData();
-        int rawDataSize = faces[i]->rawDataSize();
+        const unsigned char* rawData = faces[i]->rawData_;
+        int rawDataSize = faces[i]->rawDataSize_;
         faceData[i] = stbi_load_from_memory
         (
             rawData, 
@@ -473,213 +344,73 @@ bool Resource::set(Resource* faces[6])
             &width, 
             &height, 
             &nChannels,
-            4   // Force all textures to be treated as 4-component
+            4 // Force all textures to be treated as 4-component
         );
     }
-    // Build cubemap
+    vir::CubeMapBuffer* native;
     try
     {
-        set
+        native = vir::CubeMapBuffer::create
         (
-            vir::CubeMapBuffer::create
-            (
-                faceData, 
-                width, 
-                height, 
-                vir::TextureBuffer::InternalFormat::RGBA_UNI_8
-            )
+            faceData, 
+            width, 
+            height, 
+            vir::TextureBuffer::InternalFormat::RGBA_UNI_8
         );
-        for (int i=0; i<6; i++) // Free buffer memory used for loading
-            stbi_image_free((void*)faceData[i]);
+        if (native == nullptr)
+        {
+            for (int i=0; i<6; i++)
+                stbi_image_free((void*)faceData[i]);
+            return false;
+        }
     }
     catch(const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+        std::cout 
+            << "CubemapResource::set(const Texture2DResource* faces[6]): "
+            << e.what() << std::endl;
         for (int i=0; i<6; i++)
             stbi_image_free((void*)faceData[i]);
         return false;
     }
 
-    // Finalize and store refs to faces
-    referencedResources_.resize(0);
+    if (native_ != nullptr) delete native_;
+    native_ = native;
     for (int i=0; i<6; i++)
-        referencedResources_.emplace_back(faces[i]);
+    {
+        unmanagedFaces_[i] = faces[i];
+        stbi_image_free((void*)faceData[i]);
+    }
     return true;
 }
 
-// Set Texture2D or AnimatedTexture2D from raw file data and size
-bool Resource::set(const unsigned char* rawData, unsigned int size, bool gif)
+CubemapResource::~CubemapResource()
 {
-    if (gif)
+    if (native_ != nullptr)
     {
-        int w, h, nf, nc;
-        int* fd;
-        stbi_set_flip_vertically_on_load(true);
-        unsigned char* data = stbi_load_gif_from_memory
-        (
-            rawData, 
-            size, 
-            &fd,
-            &w, 
-            &h, 
-            &nf,
-            &nc,
-            4   // Force all textures to be treated as 4-component
-        );
-        nc = 4; // Force all textures to be treated as 4-component
-        auto animation = vir::AnimatedTextureBuffer2D::create
-        (
-            data, 
-            w, 
-            h, 
-            nf,
-            vir::TextureBuffer::defaultInternalFormat(nc)
-        );
-        float dt = 0.f;
-        for (int i=0;i<nf;i++)
-            dt += fd[i];
-        animation->setFrameDuration(dt/nf);
-        stbi_image_free(fd);
-        stbi_image_free(data);
-        return this->set(animation);
-    }
-    else
-    {
-        int w, h, nc;
-        stbi_set_flip_vertically_on_load(true);
-        unsigned char* data = stbi_load_from_memory
-        (
-            rawData, 
-            size, 
-            &w, 
-            &h, 
-            &nc,
-            4   // Force all textures to be treated as 4-component
-        );
-        nc = 4; // Force all textures to be treated as 4-component
-        auto texture = vir::TextureBuffer2D::create
-        (
-            data, 
-            w,
-            h,
-            vir::TextureBuffer::defaultInternalFormat(nc)
-        ); 
-        stbi_image_free(data);
-        return this->set(texture);
+        this->unbind();
+        delete native_;
     }
 }
 
-void Resource::setNamePtr(std::string* namePtr)
-{
-    if (namePtr_ != nullptr) delete namePtr_;
-    namePtr_ = namePtr;
-}
+//----------------------------------------------------------------------------//
 
-void Resource::setRawData(unsigned char* rawData, int rawDataSize)
+bool FramebufferResource::set(vir::Framebuffer* framebuffer)
 {
-    if (rawData_ != nullptr) delete[] rawData_;
-    rawData_ = rawData;
-    rawDataSize_ = rawDataSize;
-}
-
-void Resource::setWrapMode(int index, vir::TextureBuffer::WrapMode mode)
-{
-    if (!valid()) return;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO2
-    (
-        setColorBufferWrapMode(index, mode), 
-        setWrapMode(index, mode)
-    )
-}
-
-void Resource::setMagFilterMode(vir::TextureBuffer::FilterMode mode)
-{
-    if (!valid()) return;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO2
-    (
-        setColorBufferMagFilterMode(mode), 
-        setMagFilterMode(mode)
-    )
-}
-
-void Resource::setMinFilterMode(vir::TextureBuffer::FilterMode mode)
-{
-    if (!valid()) return;
-    CALL_NATIVE_RESOURCE_FUNC_HETERO2
-    (
-        setColorBufferMinFilterMode(mode), 
-        setMinFilterMode(mode)
-    )
-}
-
-bool Resource::areAnimationFramesResources() const
-{
-    return 
-    (
-        type_ == Type::AnimatedTexture2D &&
-        rawData_ == nullptr &&
-        rawDataSize_ == 0 &&
-        originalFileExtension_.size() == 0
-    );
-}
-
-bool Resource::isAnimationPaused() const
-{
-     if (!valid() || type_!=Type::AnimatedTexture2D)
+    if (framebuffer == nullptr)
         return false;
-    return isAnimationPaused_;
+    native_ = &framebuffer;
+    return true;
 }
 
-bool Resource::isAnimationBoundToGlobalTime() const
+FramebufferResource::~FramebufferResource()
 {
-     if (!valid() || type_!=Type::AnimatedTexture2D)
-        return false;
-    return isAnimationBoundToGlobalTime_;
+    if (native_ != nullptr)
+        this->unbind();
 }
 
-float Resource::animationFps() const
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return 0.f;
-    return 
-        ((vir::AnimatedTextureBuffer2D*)nativeResource_)->fps();
-}
-
-void Resource::setAnimationPaused(bool flag)
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    isAnimationPaused_=flag;
-}
-
-void Resource::setAnimationBoundToGlobalTime(bool flag)
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    isAnimationBoundToGlobalTime_=flag;
-}
-
-void Resource::setAnimationFps(float fps)
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setFps(fps);
-}
-
-void Resource::setAnimationDuration(float t)
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setDuration(t);
-}
-
-void Resource::setAnimationFrameIndex(unsigned int frameIndex)
-{
-    if (!valid() || type_!=Type::AnimatedTexture2D)
-        return;
-    ((vir::AnimatedTextureBuffer2D*)nativeResource_)->setDuration(frameIndex);
-}
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
 bool Resource::isGuiOpen = false;
@@ -696,17 +427,261 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         ImGui::Begin("Resource manager", &Resource::isGuiOpen, windowFlags);
     }
 
-    float fontSize(ImGui::GetFontSize());
+    const float fontSize = ImGui::GetFontSize();
+    const float buttonWidth(10*fontSize);
+    const float cursorPosY0 = ImGui::GetCursorPosY();
+    int row = 0; 
+    #define START_ROW                                                       \
+        ImGui::PushID(row);                                                 \
+        ImGui::TableNextRow(0, 1.6*fontSize);                               \
+        column = 0;
+    #define END_ROW                                                         \
+        ImGui::PopID();                                                     \
+        ++row;
+    #define START_COLUMN                                                    \
+        ImGui::TableSetColumnIndex(column);                                 \
+        ImGui::PushItemWidth(-1);
+    #define END_COLUMN                                                      \
+        ++column;                                                           \
+        ImGui::PopItemWidth();
+    #define NEXT_COLUMN                                                     \
+        ImGui::TableSetColumnIndex(column++);
+
+    //--------------------------------------------------------------------------
+    auto loadOrReplaceTextureOrAnimationButtonGUI = 
+    []
+    (
+        std::vector<Resource*>& resources,
+        const int row,
+        const float width,
+        const bool animation,
+        const bool disabled = false
+    )
+    {
+        static int sIndex;
+        bool validSelection(false);
+        static std::string lastOpenedPath(".");
+        std::string buttonName = (row == -1) ? 
+            (animation ? "Load animation" : "Load texture") : "Replace";
+        static std::string dialogKey("##loadOrReplaceTextureOrAnimationDialog");
+        ImGui::BeginDisabled(disabled);
+        auto fileDialog(ImGuiFileDialog::Instance());
+        if (ImGui::Button(buttonName.c_str(), ImVec2(width, 0)))
+        {
+            ImGui::SetNextWindowSize(ImVec2(900, 350), ImGuiCond_FirstUseEver);
+            sIndex = row;
+            fileDialog->OpenDialog
+            (
+                dialogKey.c_str(), 
+                ICON_FA_IMAGE " Select an image", 
+                animation ? 
+                ".gif" : 
+                "Image files (*.png *.jpg *.jpeg *.bmp){.png,.jpg,.jpeg,.bmp}",
+                lastOpenedPath
+            );
+        }
+        ImGui::EndDisabled();
+        if (fileDialog->Display(dialogKey))
+        {
+            if (fileDialog->IsOk())
+            {
+                lastOpenedPath = fileDialog->GetCurrentPath()+"/";
+                auto resource = Resource::create(fileDialog->GetFilePathName());
+                if (resource != nullptr)
+                {
+                    if (sIndex == -1)
+                        resources.emplace_back(resource);
+                    else
+                    {
+                        delete resources[sIndex];
+                        resources[sIndex] = resource;
+                    }
+                    resource->setName(fileDialog->GetCurrentFileName());
+                    validSelection = true;
+                }
+            }
+            fileDialog->Close();
+        }
+        return validSelection;
+    }; // End of loadOrReplaceTextureOrAnimationButtonGUI lambda
+
+    //--------------------------------------------------------------------------
+    auto renderResourceGUI = 
+    [
+        &fontSize, 
+        &buttonWidth,
+        &loadOrReplaceTextureOrAnimationButtonGUI
+    ]
+    (
+        std::vector<Resource*>& resources,
+        int& row
+    )
+    {
+        Resource*& resource = resources[row];
+        int column = 0;
+        START_ROW
+        START_COLUMN // Actions column -----------------------------------------
+        switch(resource->type_)
+        {
+            case Type::Texture2D :
+                loadOrReplaceTextureOrAnimationButtonGUI
+                (
+                    resources, 
+                    row, 
+                    -1, 
+                    false
+                );
+                break;
+            case Type::AnimatedTexture2D :
+                loadOrReplaceTextureOrAnimationButtonGUI
+                (
+                    resources, 
+                    row, 
+                    -1, 
+                    true
+                );
+                break;
+        }
+        END_COLUMN
+        START_COLUMN // Type column --------------------------------------------
+        ImGui::Text("Type");
+        END_COLUMN
+        START_COLUMN // Preview column -----------------------------------------
+        float x = resource->width();
+        float y = resource->height();
+        float aspectRatio = x/y;
+        auto previewTexture2D = 
+        [&aspectRatio]
+        (
+            Resource* resource, 
+            float sideSize, 
+            float offset
+        )->void
+        {
+            ImVec2 previewSize;
+            ImVec2 hoverSize{256,256};
+            if (aspectRatio > 1.0)
+            {
+                previewSize = ImVec2(sideSize, sideSize/aspectRatio);
+                hoverSize.y /= aspectRatio;
+            }
+            else
+            { 
+                previewSize = ImVec2(sideSize*aspectRatio, sideSize);
+                hoverSize.x *= aspectRatio;
+            }
+            float startx = ImGui::GetCursorPosX();
+            ImGui::SetCursorPosX(startx + offset);
+            ImVec2 uv0{0,1};
+            ImVec2 uv1{1,0};
+            ImGui::Image
+            (
+                (void*)(uintptr_t)(resource->id()), 
+                previewSize, 
+                uv0, 
+                uv1
+            );
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Image
+                (
+                    (void*)(uintptr_t)(resource->id()), 
+                    hoverSize, 
+                    uv0, 
+                    uv1
+                );
+                ImGui::EndTooltip();
+            }
+        };
+        if 
+        (
+            resource->type_ == Resource::Type::Texture2D ||
+            resource->type_ == Resource::Type::AnimatedTexture2D ||
+            resource->type_ == Resource::Type::Framebuffer
+        )
+        {
+            previewTexture2D(resource, 1.4*fontSize, 1.3*fontSize);
+        }
+        /*
+        else if (resource->type() == Resource::Type::Cubemap)
+        {
+            int i = 0;
+            for (auto face : resource->referencedResourcesCRef())
+            {
+                float offset = (i == 0 || i == 3) ? 0.75*fontSize : 0.0;
+                previewTexture2D(face, 0.5*fontSize, offset);
+                if ((i+1)%3 != 0)
+                    ImGui::SameLine();
+                i++;
+            }
+        }*/
+        END_COLUMN
+        START_COLUMN // Name column --------------------------------------------
+        ImGui::InputText("##resourceName", resource->namePtr_);
+        END_COLUMN
+        START_COLUMN // Resolution column --------------------------------------
+        ImGui::Text("%d x %d", (int)x, (int)y);
+        END_COLUMN
+        START_COLUMN // Aspect ratio column ------------------------------------
+        ImGui::Text("%.3f", aspectRatio);
+        END_COLUMN
+        END_ROW
+    }; // End of renderResourceGUI lambda
+
+    //--------------------------------------------------------------------------
+    auto renderAddResourceButtonGUI = 
+    [
+        &fontSize, 
+        &buttonWidth, 
+        &cursorPosY0,
+        &loadOrReplaceTextureOrAnimationButtonGUI
+    ]
+    (
+        std::vector<Resource*>& resources,
+        int& row,
+        float& tableHeight
+    )
+    {
+        int column = 0;
+        START_ROW
+        START_COLUMN
+        if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1,0)))
+            ImGui::OpenPopup("##addResourcePopup");
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            ImGui::Text("Add new resource");
+            ImGui::EndTooltip();
+        }
+        if (ImGui::BeginPopup("##addResourcePopup"))
+        {
+            loadOrReplaceTextureOrAnimationButtonGUI
+            (
+                resources,
+                -1,
+                buttonWidth,
+                false
+            );
+            loadOrReplaceTextureOrAnimationButtonGUI
+            (
+                resources,
+                -1,
+                buttonWidth,
+                true
+            );
+            ImGui::EndPopup();
+        }
+        tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
+        END_COLUMN
+        END_ROW
+    }; // End of renderAddResourceButtonGUI lambda
     
-    auto renderResourceGUI = [](){};
-    
+    //--------------------------------------------------------------------------
     static float tableHeight = 0;
     ImGuiTableFlags flags = 
         ImGuiTableFlags_BordersV | 
         ImGuiTableFlags_BordersOuterH |
         ImGuiTableFlags_SizingFixedFit;
     Resource* toBeDeleted = nullptr;
-    float y0 = ImGui::GetCursorPosY();
     if (ImGui::BeginTable("##resourceTable", 6, flags, ImVec2(0.0, tableHeight)))
     {
         // Declare columns
@@ -724,6 +699,12 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
             ImGui::GetContentRegionAvail().x : 8.0*fontSize
         );
         ImGui::TableHeadersRow();
+
+        for (auto _ : resources)
+        {
+            renderResourceGUI(resources, row);
+        }
+        renderAddResourceButtonGUI(resources, row, tableHeight);
 
         ImGui::EndTable();
     }
