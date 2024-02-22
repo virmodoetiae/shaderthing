@@ -313,12 +313,12 @@ void SharedUniforms::bindShader(vir::Shader* shader) const
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::update()
+void SharedUniforms::update(const UpdateArgs& args)
 {
     //
-    static const auto window = vir::GlobalPtr<vir::Window>::instance();
+    //static const auto window = vir::GlobalPtr<vir::Window>::instance();
     if (!flags_.isTimePaused)
-        cpuBlock_.iTime += window->time()->outerTimestep();
+        cpuBlock_.iTime += args.timeStep;//window->time()->outerTimestep();
 
     const glm::vec2& timeLoopBounds(bounds_[Uniform::SpecialType::Time]);
     if (flags_.isTimeLooped && cpuBlock_.iTime >= timeLoopBounds.y)

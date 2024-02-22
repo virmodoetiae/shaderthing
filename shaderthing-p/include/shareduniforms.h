@@ -21,6 +21,13 @@ class SharedUniforms : vir::Event::Receiver
 
 friend Uniform;
 
+public :
+
+    struct UpdateArgs
+    {
+        const float timeStep;
+    };
+
 private:
 
     struct Flags
@@ -165,12 +172,13 @@ public:
     void onReceive(vir::Event::KeyReleaseEvent& e) override;
 
     const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
+    const float& iTime() const {return cpuBlock_.iTime;}
 
     const char* glslBlockSource() const {return cpuBlock_.glslSource;}
 
     void bindShader(vir::Shader* shader) const;
 
-    void update();
+    void update(const UpdateArgs& args);
     
     void renderWindowResolutionMenuGUI();
 };

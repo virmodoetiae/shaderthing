@@ -23,7 +23,7 @@ static GLint OpenGLType(TextureBuffer::InternalFormat internalFormat);
 class OpenGLTextureBuffer2D : public TextureBuffer2D
 {
 private:
-    void initialize
+    bool initialize
     (
         const unsigned char* data, 
         uint32_t width,
@@ -61,7 +61,7 @@ private:
     static uint32_t nextFreeId_; // Global Id counter since id of animation
                                  // container not tied to any TextureBuffer2D 
                                  // instance
-    void initialize
+    bool initialize
     (
         const unsigned char* data, 
         uint32_t width,
@@ -103,7 +103,7 @@ public:
 class OpenGLCubeMapBuffer : public CubeMapBuffer
 {
 private:
-    void initialize
+    bool initialize
     (
         const unsigned char* faceData[6], 
         uint32_t width,

@@ -6,7 +6,7 @@
 namespace ShaderThing
 {
 
-typedef vir::TextureBuffer::WrapMode WrapMode;
+typedef vir::TextureBuffer::WrapMode   WrapMode;
 typedef vir::TextureBuffer::FilterMode FilterMode;
 
 class Texture2DResource;
@@ -23,6 +23,11 @@ public:
         AnimatedTexture2D,
         Cubemap,
         Framebuffer
+    };
+    struct UpdateArgs
+    {
+        const float time;
+        const float timeStep;
     };
 protected:
     Type                       type_;
@@ -48,6 +53,10 @@ public:
     virtual const WrapMode     wrapMode(int index) const = 0;
     virtual const FilterMode   magFilterMode() const = 0;
     virtual const FilterMode   minFilterMode() const = 0;
+    virtual void               setWrapMode(int index, WrapMode mode) = 0;
+    virtual void               setMagFilterMode(FilterMode mode) = 0;
+    virtual void               setMinFilterMode(FilterMode mode) = 0;
+    virtual void               update(const UpdateArgs& args){};
 
     void                       setName(const std::string& name);
     void                       setNamePtr(std::string* namePtr);
@@ -56,7 +65,48 @@ public:
     static bool                isGuiDetachedFromMenu;
     static void                renderResourcesGUI(std::vector<Resource*>& resources);
     static void                renderResourcesMenuItemGUI(std::vector<Resource*>& resources);
+private:
+    static bool loadOrReplaceTextureOrAnimationButtonGUI
+    (
+        Resource*& resource,
+        const ImVec2 size=ImVec2(0,0),
+        const bool animation=false,
+        const bool disabled=false
+    );
+    static bool createOrEditAnimationButtonGUI
+    (
+        Resource*& resource,
+        const std::vector<Resource*>& resources,
+        const ImVec2 size=ImVec2(0,0)
+    );
+    static bool createOrEditCubemapButtonGUI
+    (
+        Resource*& resource,
+        const ImVec2 size=ImVec2(0,0)
+    );
+    static bool exportTextureOrAnimationButtonGUI
+    (
+        const Resource* resource,
+        const ImVec2 size=ImVec2(0,0)
+    );
+    static void renderResourceActionsGUI
+    (
+        Resource*& resource
+    );
 };
+
+#define DECLARE_OVERRIDE_VIRTUALS                                                                           \
+    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}                \
+    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};                                \
+    const unsigned int id() const override {return native_->id();}                                          \
+    const unsigned int width() const override {return native_->width();}                                    \
+    const unsigned int height() const override{return native_->height();}                                   \
+    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}                \
+    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}                    \
+    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}                    \
+    virtual void       setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
+    virtual void       setMagFilterMode(FilterMode mode) override {native_->setMagFilterMode(mode);}        \
+    virtual void       setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}
 
 class Texture2DResource : public Resource
 {
@@ -73,45 +123,33 @@ class Texture2DResource : public Resource
     DELETE_COPY_MOVE(Texture2DResource)
 public:
     ~Texture2DResource();
-    bool               set(const std::string& filepath);
-    bool               set(unsigned char* rawData, unsigned int size);
-    
-    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}
-    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};
-    const unsigned int id() const override {return native_->id();}
-    const unsigned int width() const override {return native_->width();}
-    const unsigned int height() const override{return native_->height();}
-    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}
-    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}
-    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}
+    bool set(const std::string& filepath);
+    bool set(unsigned char* rawData, unsigned int size);
+    DECLARE_OVERRIDE_VIRTUALS
 };
 
 class AnimatedTexture2DResource : public Resource
 {
     friend Resource;
     
-    vir::AnimatedTextureBuffer2D*   native_ = nullptr;
-    unsigned char*                  rawData_ = nullptr;
-    unsigned int                    rawDataSize_ = 0;
+    vir::AnimatedTextureBuffer2D*   native_                       = nullptr;
+    unsigned char*                  rawData_                      = nullptr;
+    unsigned int                    rawDataSize_                  = 0;
     std::string                     originalFileExtension_;
     std::vector<Texture2DResource*> unmanagedFrames_;
+    bool                            isAnimationPaused_            = false;
+    bool                            isAnimationBoundToGlobalTime_ = false;
     
     AnimatedTexture2DResource():Resource(Type::AnimatedTexture2D){}
     DELETE_COPY_MOVE(AnimatedTexture2DResource)
 public:
     ~AnimatedTexture2DResource();
-    bool               set(const std::string& filepath);
-    bool               set(unsigned char* rawData, unsigned int size);
-    bool               set(const std::vector<Texture2DResource*>& animationFrames);
-    
-    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}
-    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};
-    const unsigned int id() const override {return native_->id();}
-    const unsigned int width() const override {return native_->width();}
-    const unsigned int height() const override{return native_->height();}
-    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}
-    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}
-    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}
+    bool set(const std::string& filepath);
+    bool set(unsigned char* rawData, unsigned int size);
+    bool set(const std::vector<Texture2DResource*>& animationFrames);
+    const unsigned int frameId() const {return native_->frameId();}
+    void update(const UpdateArgs& args) override;
+    DECLARE_OVERRIDE_VIRTUALS
 };
 
 class CubemapResource : public Resource
@@ -125,16 +163,8 @@ class CubemapResource : public Resource
     DELETE_COPY_MOVE(CubemapResource)
 public:
     ~CubemapResource();
-    bool               set(const Texture2DResource* faces[6]);
-    
-    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}
-    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};
-    const unsigned int id() const override {return native_->id();}
-    const unsigned int width() const override {return native_->width();}
-    const unsigned int height() const override{return native_->height();}
-    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}
-    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}
-    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}
+    bool set(const Texture2DResource* faces[6]);
+    DECLARE_OVERRIDE_VIRTUALS
 };
 
 class FramebufferResource : public Resource
@@ -156,6 +186,9 @@ public:
     const WrapMode     wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
     const FilterMode   magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
     const FilterMode   minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
+    virtual void       setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
+    virtual void       setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
+    virtual void       setMinFilterMode(FilterMode mode) override{(*native_)->setColorBufferMinFilterMode(mode);}
 };
 
 }

@@ -55,12 +55,18 @@ TextureBuffer2D* TextureBuffer2D::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
+    OpenGLTextureBuffer2D* buffer = nullptr;
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLTextureBuffer2D(filepath, internalFormat);
+            buffer = new OpenGLTextureBuffer2D(filepath, internalFormat);
+            break;
     }
-    return nullptr;
+    if (buffer == nullptr)
+        return nullptr;
+    else if (!buffer->valid())
+        return nullptr;
+    return buffer;
 }
 
 TextureBuffer2D* TextureBuffer2D::create
@@ -187,12 +193,18 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
+    OpenGLAnimatedTextureBuffer2D* buffer = nullptr;
     switch(window->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLAnimatedTextureBuffer2D(filepath, internalFormat);
+            buffer = new OpenGLAnimatedTextureBuffer2D(filepath, internalFormat);
+            break;
     }
-    return nullptr;
+    if (buffer == nullptr)
+        return nullptr;
+    else if (!buffer->valid())
+        return nullptr;
+    return buffer;
 }
 
 AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create

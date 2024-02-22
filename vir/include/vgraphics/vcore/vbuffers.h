@@ -139,8 +139,8 @@ public:
 class TextureBuffer2D : public TextureBuffer
 {
 protected:
-    uint32_t width_;
-    uint32_t height_;
+    uint32_t width_  = 0;
+    uint32_t height_ = 0;
     
     TextureBuffer2D(){nDimensions_=2;}
     TextureBuffer2D
@@ -167,6 +167,7 @@ public:
         uint32_t height,
         InternalFormat internalFormat
     );
+    bool valid() const {return width_*height_;}
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
 };

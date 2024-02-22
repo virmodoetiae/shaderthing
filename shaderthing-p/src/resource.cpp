@@ -104,7 +104,8 @@ void Resource::setNamePtr(std::string* namePtr)
     native_ = native;                                                       \
     if (rawData_ != nullptr) delete[] rawData_;                             \
     rawData_ = data;                                                        \
-    rawDataSize_ = size;
+    rawDataSize_ = size;                                                    \
+    return true;
 
 bool Texture2DResource::set(const std::string& filepath)
 {
@@ -315,8 +316,16 @@ AnimatedTexture2DResource::~AnimatedTexture2DResource()
         this->unbind();
         delete native_;
     }
-    if (rawData_ != nullptr) 
+    if (rawData_ != nullptr)
         delete[] rawData_;
+}
+
+void AnimatedTexture2DResource::update(const UpdateArgs& args)
+{
+    if (isAnimationBoundToGlobalTime_)
+        native_->setTime(args.time);
+    else if (!isAnimationPaused_)
+        native_->advanceTime(args.timeStep);
 }
 
 //----------------------------------------------------------------------------//
@@ -430,14 +439,12 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
     const float fontSize = ImGui::GetFontSize();
     const float buttonWidth(10*fontSize);
     const float cursorPosY0 = ImGui::GetCursorPosY();
-    int row = 0; 
     #define START_ROW                                                       \
         ImGui::PushID(row);                                                 \
         ImGui::TableNextRow(0, 1.6*fontSize);                               \
         column = 0;
     #define END_ROW                                                         \
-        ImGui::PopID();                                                     \
-        ++row;
+        ImGui::PopID();
     #define START_COLUMN                                                    \
         ImGui::TableSetColumnIndex(column);                                 \
         ImGui::PushItemWidth(-1);
@@ -448,103 +455,51 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         ImGui::TableSetColumnIndex(column++);
 
     //--------------------------------------------------------------------------
-    auto loadOrReplaceTextureOrAnimationButtonGUI = 
-    []
-    (
-        std::vector<Resource*>& resources,
-        const int row,
-        const float width,
-        const bool animation,
-        const bool disabled = false
-    )
-    {
-        static int sIndex;
-        bool validSelection(false);
-        static std::string lastOpenedPath(".");
-        std::string buttonName = (row == -1) ? 
-            (animation ? "Load animation" : "Load texture") : "Replace";
-        static std::string dialogKey("##loadOrReplaceTextureOrAnimationDialog");
-        ImGui::BeginDisabled(disabled);
-        auto fileDialog(ImGuiFileDialog::Instance());
-        if (ImGui::Button(buttonName.c_str(), ImVec2(width, 0)))
-        {
-            ImGui::SetNextWindowSize(ImVec2(900, 350), ImGuiCond_FirstUseEver);
-            sIndex = row;
-            fileDialog->OpenDialog
-            (
-                dialogKey.c_str(), 
-                ICON_FA_IMAGE " Select an image", 
-                animation ? 
-                ".gif" : 
-                "Image files (*.png *.jpg *.jpeg *.bmp){.png,.jpg,.jpeg,.bmp}",
-                lastOpenedPath
-            );
-        }
-        ImGui::EndDisabled();
-        if (fileDialog->Display(dialogKey))
-        {
-            if (fileDialog->IsOk())
-            {
-                lastOpenedPath = fileDialog->GetCurrentPath()+"/";
-                auto resource = Resource::create(fileDialog->GetFilePathName());
-                if (resource != nullptr)
-                {
-                    if (sIndex == -1)
-                        resources.emplace_back(resource);
-                    else
-                    {
-                        delete resources[sIndex];
-                        resources[sIndex] = resource;
-                    }
-                    resource->setName(fileDialog->GetCurrentFileName());
-                    validSelection = true;
-                }
-            }
-            fileDialog->Close();
-        }
-        return validSelection;
-    }; // End of loadOrReplaceTextureOrAnimationButtonGUI lambda
-
-    //--------------------------------------------------------------------------
     auto renderResourceGUI = 
     [
         &fontSize, 
-        &buttonWidth,
-        &loadOrReplaceTextureOrAnimationButtonGUI
+        &buttonWidth
     ]
     (
         std::vector<Resource*>& resources,
-        int& row
+        const int row
     )
     {
-        Resource*& resource = resources[row];
+        Resource* resource = resources[row];
         int column = 0;
         START_ROW
         START_COLUMN // Actions column -----------------------------------------
-        switch(resource->type_)
+        /*switch(resource->type_)
         {
             case Type::Texture2D :
-                loadOrReplaceTextureOrAnimationButtonGUI
+                Resource::loadOrReplaceTextureOrAnimationButtonGUI
                 (
-                    resources, 
-                    row, 
-                    -1, 
+                    resource,
+                    ImVec2(-1, 0), 
                     false
                 );
                 break;
             case Type::AnimatedTexture2D :
-                loadOrReplaceTextureOrAnimationButtonGUI
+                Resource::loadOrReplaceTextureOrAnimationButtonGUI
                 (
-                    resources, 
-                    row, 
-                    -1, 
+                    resource,
+                    ImVec2(-1, 0), 
                     true
                 );
                 break;
         }
+        resources[row] = resource;*/
+        renderResourceActionsGUI(resource);
         END_COLUMN
         START_COLUMN // Type column --------------------------------------------
-        ImGui::Text("Type");
+        static std::map<Resource::Type, const char*> typeToName
+        {
+            {Resource::Type::Texture2D,         "Texture-2D"},
+            {Resource::Type::AnimatedTexture2D, "Animation-2D"},
+            {Resource::Type::Cubemap,           "Cubemap"},
+            {Resource::Type::Framebuffer,       "Layer"}
+        };
+        ImGui::Text(typeToName.at(resource->type_));
         END_COLUMN
         START_COLUMN // Preview column -----------------------------------------
         float x = resource->width();
@@ -553,7 +508,7 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         auto previewTexture2D = 
         [&aspectRatio]
         (
-            Resource* resource, 
+            const Resource* resource, 
             float sideSize, 
             float offset
         )->void
@@ -572,24 +527,23 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
             }
             float startx = ImGui::GetCursorPosX();
             ImGui::SetCursorPosX(startx + offset);
-            ImVec2 uv0{0,1};
-            ImVec2 uv1{1,0};
-            ImGui::Image
-            (
-                (void*)(uintptr_t)(resource->id()), 
-                previewSize, 
-                uv0, 
-                uv1
-            );
+#define SHOW_IMAGE(size)                                                    \
+    ImGui::Image                                                            \
+    (                                                                       \
+        (void*)(uintptr_t)                                                  \
+        (                                                                   \
+            resource->type_ != Resource::Type::AnimatedTexture2D ?          \
+            resource->id() :                                                \
+            ((AnimatedTexture2DResource*)resource)->frameId()               \
+        ),                                                                  \
+        size,                                                               \
+        {0,1},                                                              \
+        {1,0}                                                               \
+    );
+            SHOW_IMAGE(previewSize)
             if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
             {
-                ImGui::Image
-                (
-                    (void*)(uintptr_t)(resource->id()), 
-                    hoverSize, 
-                    uv0, 
-                    uv1
-                );
+                SHOW_IMAGE(hoverSize)
                 ImGui::EndTooltip();
             }
         };
@@ -602,19 +556,22 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         {
             previewTexture2D(resource, 1.4*fontSize, 1.3*fontSize);
         }
-        /*
-        else if (resource->type() == Resource::Type::Cubemap)
+        else if (resource->type_ == Resource::Type::Cubemap)
         {
-            int i = 0;
-            for (auto face : resource->referencedResourcesCRef())
+            auto cubemap = (CubemapResource*)resource;
+            for (int i=0; i<6; i++)
             {
                 float offset = (i == 0 || i == 3) ? 0.75*fontSize : 0.0;
-                previewTexture2D(face, 0.5*fontSize, offset);
+                previewTexture2D
+                (
+                    cubemap->unmanagedFaces_[i], 
+                    0.5*fontSize, 
+                    offset
+                );
                 if ((i+1)%3 != 0)
                     ImGui::SameLine();
-                i++;
             }
-        }*/
+        }
         END_COLUMN
         START_COLUMN // Name column --------------------------------------------
         ImGui::InputText("##resourceName", resource->namePtr_);
@@ -633,12 +590,11 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
     [
         &fontSize, 
         &buttonWidth, 
-        &cursorPosY0,
-        &loadOrReplaceTextureOrAnimationButtonGUI
+        &cursorPosY0
     ]
     (
         std::vector<Resource*>& resources,
-        int& row,
+        const int row,
         float& tableHeight
     )
     {
@@ -654,20 +610,27 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         }
         if (ImGui::BeginPopup("##addResourcePopup"))
         {
-            loadOrReplaceTextureOrAnimationButtonGUI
+            Resource* resource = nullptr;
+            Resource::loadOrReplaceTextureOrAnimationButtonGUI
             (
-                resources,
-                -1,
-                buttonWidth,
+                resource,
+                ImVec2(buttonWidth, 0),
                 false
             );
-            loadOrReplaceTextureOrAnimationButtonGUI
+            Resource::loadOrReplaceTextureOrAnimationButtonGUI
             (
-                resources,
-                -1,
-                buttonWidth,
+                resource,
+                ImVec2(buttonWidth, 0),
                 true
             );
+            Resource::createOrEditAnimationButtonGUI
+            (
+                resource,
+                resources,
+                ImVec2(buttonWidth, 0)
+            );
+            if (resource != nullptr)
+                resources.emplace_back(resource);
             ImGui::EndPopup();
         }
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
@@ -700,11 +663,10 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         );
         ImGui::TableHeadersRow();
 
-        for (auto _ : resources)
-        {
+        const int nRows = resources.size();
+        for (int row=0; row<nRows; row++)
             renderResourceGUI(resources, row);
-        }
-        renderAddResourceButtonGUI(resources, row, tableHeight);
+        renderAddResourceButtonGUI(resources, nRows, tableHeight);
 
         ImGui::EndTable();
     }
@@ -712,6 +674,8 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
     if (Resource::isGuiDetachedFromMenu)
         ImGui::End();
 }
+
+//----------------------------------------------------------------------------//
 
 void Resource::renderResourcesMenuItemGUI(std::vector<Resource*>& resources)
 {
@@ -731,6 +695,289 @@ void Resource::renderResourcesMenuItemGUI(std::vector<Resource*>& resources)
         return;
     }
     ImGui::MenuItem("Resource manager", NULL, &Resource::isGuiOpen);
+}
+
+//----------------------------------------------------------------------------//
+
+bool Resource::loadOrReplaceTextureOrAnimationButtonGUI
+(
+    Resource*& resource,
+    const ImVec2 size,
+    const bool animation,
+    const bool disabled
+)
+{
+    static std::string lastOpenedPath(".");
+    bool validSelection = false;
+    std::string dialogKey;
+    if (resource == nullptr)
+        dialogKey = animation ? "##loadAnimationDialog" : "##loadTextureDialog";
+    else
+    {
+        dialogKey = 
+            animation ? 
+            "##replaceAnimationDialog"+std::to_string(resource->id()) : 
+            "##replaceTextureDialog"+std::to_string(resource->id());
+    }
+    if (disabled)
+        ImGui::BeginDisabled();
+    auto fileDialog(ImGuiFileDialog::Instance());
+    if 
+    (
+        ImGui::Button
+        (
+            resource == nullptr ? 
+            (animation ? "Load animation" : "Load texture") : 
+            "Replace",
+            size
+        )
+    )
+    {
+        ImGui::SetNextWindowSize(ImVec2(900, 350), ImGuiCond_FirstUseEver);
+        fileDialog->OpenDialog
+        (
+            dialogKey.c_str(), 
+            ICON_FA_IMAGE " Select an image", 
+            animation ? 
+            ".gif" : 
+            "Image files (*.png *.jpg *.jpeg *.bmp){.png,.jpg,.jpeg,.bmp}",
+            lastOpenedPath
+        );
+    }
+    if (disabled)
+        ImGui::EndDisabled();
+    if (fileDialog->Display(dialogKey))
+    {
+        if (fileDialog->IsOk())
+        {
+            lastOpenedPath = fileDialog->GetCurrentPath()+"/";
+            auto newResource = Resource::create(fileDialog->GetFilePathName());
+            if (newResource != nullptr)
+            {
+                if (resource != nullptr)
+                    delete resource;
+                resource = newResource;
+                resource->setName(fileDialog->GetCurrentFileName());
+                validSelection = true;
+            }
+        }
+        fileDialog->Close();
+    }
+    return validSelection;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Resource::createOrEditAnimationButtonGUI
+(
+    Resource*& resource,
+    const std::vector<Resource*>& resources,
+    const ImVec2 size
+)
+{
+    bool valid = false;
+    static int width(0);
+    static int height(0);
+    static std::vector<Texture2DResource*> frames(0);
+    static std::vector<std::string> orderedFrameNames(0);
+    if 
+    (
+        ImGui::Button
+        (
+            resource == nullptr ? 
+            "Create animation" : 
+            "Replace",
+            size
+        )
+    )
+    {
+        ImGui::OpenPopup("##createOrEditAnimationPopup");
+        width = 0;
+        height = 0;
+        if (resource != nullptr)
+        {
+            auto animation = (AnimatedTexture2DResource*)resource;
+            frames = std::vector<Texture2DResource*>
+            (
+                animation->unmanagedFrames_
+            );
+            int n(animation->unmanagedFrames_.size());
+            orderedFrameNames.resize(n);
+            for (int i=0; i<n; i++)
+                orderedFrameNames[i] = std::to_string(i+1) + " - " +
+                    *(animation->unmanagedFrames_[i]->namePtr_);
+        }
+    }
+    if (ImGui::BeginPopup("##createOrEditAnimationPopup"))
+    {
+        ImGui::SeparatorText("Animation frames");
+        int nFrames = frames.size();
+        if (width == 0 && height == 0 && nFrames == 1)
+        {
+            width = frames[0]->width();
+            height = frames[0]->height();
+        }
+        static bool reordered(false);
+        int iFrameToBeDeleted = -1;
+        ImGui::BeginChild
+        (
+            "##framesChild", 
+            ImVec2
+            (
+                ImGui::GetContentRegionAvail().x, 
+                std::min
+                (
+                    (float)std::max(nFrames, 1), 
+                    15.f
+                )*
+                ImGui::GetTextLineHeightWithSpacing()
+            ), 
+            false
+        );
+        for (int i=0; i<nFrames; i++)
+        {
+            auto* frame = frames[i];
+            auto name = orderedFrameNames[i];
+            ImGui::PushID(i); 
+            if (ImGui::SmallButton(ICON_FA_TRASH))
+                iFrameToBeDeleted=i;
+            ImGui::PopID();
+            ImGui::SameLine();
+            ImGui::Selectable
+            (
+                name.c_str(), 
+                false, 
+                ImGuiSelectableFlags_DontClosePopups
+            );
+            if (ImGui::IsItemActive() && !ImGui::IsItemHovered())
+            {
+                int j = i + (ImGui::GetMouseDragDelta(0).y<0.f?-1:1);
+                if (j >= 0 && j < nFrames)
+                {
+                    reordered = true;
+                    orderedFrameNames[i] = orderedFrameNames[j];
+                    orderedFrameNames[j] = name;
+                    frames[i] = frames[j];
+                    frames[j] = frame;
+                    ImGui::ResetMouseDragDelta();
+                }
+            }
+        }
+        // As previously said, only re-order if the mouse button is no 
+        // longer pressed
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) && reordered)
+        {
+            for (int i=0; i<nFrames; i++)
+                orderedFrameNames[i] = 
+                    std::to_string(i+1)+" - "+
+                    std::string(*(frames[i]->namePtr_));
+            reordered = false;
+        }
+        ImGui::EndChild();
+        if (iFrameToBeDeleted != -1)
+        {
+            frames.erase(frames.begin()+iFrameToBeDeleted);
+            orderedFrameNames.erase
+            (
+                orderedFrameNames.begin()+iFrameToBeDeleted
+            );
+        }
+        if
+        (
+            ImGui::BeginCombo
+            (
+                "##addAnimationFrameCombo",
+                "Select frame to add"
+            )
+        )
+        {
+            for (auto* r : resources)
+            {
+                if 
+                (
+                    r->type_ != Resource::Type::Texture2D ||
+                    (
+                        width*height > 0 && 
+                        (
+                            r->width() != width ||
+                            r->height() != height
+                        )
+                    )
+                )
+                    continue;
+                if (ImGui::Selectable(r->namePtr_->c_str()))
+                {
+                    frames.emplace_back((Texture2DResource*)r);
+                    orderedFrameNames.emplace_back
+                    (
+                        std::to_string(frames.size()) +
+                        " - " + *(r->namePtr_)
+                    );
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if (nFrames == 0)
+            ImGui::BeginDisabled();
+        if 
+        (
+            ImGui::Button
+            (
+                resource == nullptr ? "Create animation" : "Edit animation", 
+                ImVec2(-1,0)
+            )
+        )
+        {
+            auto newResource = Resource::create(frames);
+            if (newResource != nullptr)
+            {
+                if (resource != nullptr)
+                    delete resource;
+                resource = newResource;
+                resource->setName("newAnimation");
+                valid = true;
+            }
+            else
+                valid = false;
+            frames.clear();
+            orderedFrameNames.clear();
+        }
+        if (nFrames == 0)
+            ImGui::EndDisabled();
+        ImGui::EndPopup();
+    }
+    return valid;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Resource::createOrEditCubemapButtonGUI
+(
+    Resource*& resource,
+    const ImVec2 size
+)
+{
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Resource::exportTextureOrAnimationButtonGUI
+(
+    const Resource* resource,
+    const ImVec2 size
+)
+{
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+
+void Resource::renderResourceActionsGUI
+(
+    Resource*& resource
+)
+{
 }
 
 }

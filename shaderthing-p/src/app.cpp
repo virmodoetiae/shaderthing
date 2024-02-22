@@ -50,10 +50,15 @@ App::~App()
 
 void App::update()
 {
-    sharedUniforms_->update();
+    static auto* window(vir::GlobalPtr<vir::Window>::instance());
+    float timeStep = window->time()->outerTimestep();
+    
+    sharedUniforms_->update({timeStep});
+
+    for (auto resource : resources_)
+        resource->update({sharedUniforms_->iTime(), timeStep});
 
     // Compute FPS and set in window title
-    static auto* window(vir::GlobalPtr<vir::Window>::instance());
     static float fps(60.0f);
     static int elapsedFrames(0);
     static float elapsedTime(0);
@@ -160,6 +165,7 @@ void App::renderGUI()
 
     Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_);
 
+    ImGui::ShowDemoWindow();
     ImGui::End();
 }
 

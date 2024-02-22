@@ -106,7 +106,7 @@ const std::unordered_map<TextureBuffer::FilterMode, GLint> filterModeToGLint_ =
 // Texture2D buffer ----------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void OpenGLTextureBuffer2D::initialize
+bool OpenGLTextureBuffer2D::initialize
 (
     const unsigned char* data, 
     uint32_t width,
@@ -114,13 +114,8 @@ void OpenGLTextureBuffer2D::initialize
     InternalFormat internalFormat
 )
 {
-    if (internalFormat == InternalFormat::Undefined)
-        throw std::runtime_error
-        (
-R"(vopenglbuffers.cpp - OpenGLTextureBuffer2D::initialize(const unsigned char*,
-uint32_t, uint32_t, InternalFormat) - Cannot create a texture from the provided
-data if the internal format is undefined)"
-        );
+    if (internalFormat == InternalFormat::Undefined || width*height == 0)
+        return false;
     glGenTextures(1, &id_);
     glBindTexture(GL_TEXTURE_2D, id_);
     float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -180,6 +175,7 @@ data if the internal format is undefined)"
     height_ = height;
     internalFormat_ = internalFormat;
     nChannels_ = TextureBuffer::nChannels(internalFormat);
+    return true;
 }
 
 OpenGLTextureBuffer2D::OpenGLTextureBuffer2D
@@ -316,7 +312,7 @@ void OpenGLTextureBuffer2D::unbind(uint32_t unit)
 
 uint32_t OpenGLAnimatedTextureBuffer2D::nextFreeId_ = 0;
 
-void OpenGLAnimatedTextureBuffer2D::initialize
+bool OpenGLAnimatedTextureBuffer2D::initialize
 (
     const unsigned char* data, 
     uint32_t width,
@@ -325,13 +321,12 @@ void OpenGLAnimatedTextureBuffer2D::initialize
     InternalFormat internalFormat
 )
 {
-    if (internalFormat == InternalFormat::Undefined)
-        throw std::runtime_error
-        (
-R"(vopenglbuffers.cpp - OpenGLAnimatedTextureBuffer2D::initialize(const unsigned char*,
-uint32_t, uint32_t, uint32_t, InternalFormat) - Cannot create a texture from the provided
-data if the internal format is undefined)"
-        );
+    if 
+    (
+        internalFormat == InternalFormat::Undefined || 
+        width*height*nFrames == 0
+    )
+        return false;
     id_ = OpenGLAnimatedTextureBuffer2D::nextFreeId_++;
     width_ = width;
     height_ = height;
@@ -357,6 +352,7 @@ data if the internal format is undefined)"
     }
     frameIndex_ = 0;
     frame_ = frames_[frameIndex_];
+    return true;
 }
 
 OpenGLAnimatedTextureBuffer2D::OpenGLAnimatedTextureBuffer2D
@@ -412,26 +408,31 @@ OpenGLAnimatedTextureBuffer2D::OpenGLAnimatedTextureBuffer2D
         &nChannels,
         requestedNChannels
     );
-
-    // Create OpenGLTexture2D frames out of raw frame data
-    initialize
+    
+    if 
     (
-        gifData,
-        width,
-        height,
-        nFrames,
-        internalFormat
-    );
-
-    // Compute average frame duration
-    frameDuration_ = 0.f;
-    for (int i=0; i<nFrames ;i++)
-        frameDuration_ += std::max(float(delays[i]/1000.0f), 0.01f);
-    frameDuration_/=nFrames;
+        initialize
+        (
+            gifData,
+            width,
+            height,
+            nFrames,
+            internalFormat
+        )
+    )
+    {
+        // Compute average frame duration
+        frameDuration_ = 0.f;
+        for (int i=0; i<nFrames ;i++)
+            frameDuration_ += std::max(float(delays[i]/1000.0f), 0.01f);
+        frameDuration_/=nFrames;
+    }
 
     // Clear unpacked gif data
-    stbi_image_free((void*)gifData);
-    stbi_image_free(delays);
+    if (gifData != nullptr)
+        stbi_image_free((void*)gifData);
+    if (delays != nullptr)
+        stbi_image_free(delays);
 
     // Clear raw data
     delete[] rawData;
@@ -494,7 +495,7 @@ void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
 // CubeMap buffer ------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void OpenGLCubeMapBuffer::initialize
+bool OpenGLCubeMapBuffer::initialize
 (
     const unsigned char* faceData[6], 
     uint32_t width,
@@ -502,13 +503,8 @@ void OpenGLCubeMapBuffer::initialize
     InternalFormat internalFormat
 )
 {
-    if (internalFormat == InternalFormat::Undefined)
-        throw std::runtime_error
-        (
-R"(vopenglbuffers.cpp - OpenGLCubeMapBuffer(const unsigned char**, uint32_t, 
-uint32_t, InternalFormat) - cannot create a cubemap from the provided data if
-the internal format is undefined)"
-        );
+    if (internalFormat == InternalFormat::Undefined || width*height == 0)
+        return false;
     glGenTextures(1, &id_);
     glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
     GLint glFormat = OpenGLFormat(internalFormat);
@@ -554,6 +550,7 @@ the internal format is undefined)"
     width_ = width;
     height_ = height;
     nChannels_ = TextureBuffer::nChannels(internalFormat);
+    return true;
 }
 
 OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
