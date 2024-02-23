@@ -574,7 +574,18 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         }
         END_COLUMN
         START_COLUMN // Name column --------------------------------------------
-        ImGui::InputText("##resourceName", resource->namePtr_);
+        if (resource->type_ != Type::Framebuffer)
+        {
+            if (ImGui::InputText("##resourceName", resource->namePtr_))
+                Helpers::enforceUniqueName
+                (
+                    *(resource->namePtr_),
+                    resources,
+                    resource
+                );
+        }
+        else
+            ImGui::Text(resource->name().c_str());
         END_COLUMN
         START_COLUMN // Resolution column --------------------------------------
         ImGui::Text("%d x %d", (int)x, (int)y);
@@ -629,8 +640,24 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
                 resources,
                 ImVec2(buttonWidth, 0)
             );
+            Resource::createOrEditCubemapButtonGUI
+            (
+                resource,
+                resources,
+                ImVec2(buttonWidth, 0)
+            );
             if (resource != nullptr)
+            {
                 resources.emplace_back(resource);
+                if (resource->name().size() == 0)
+                    resource->setName(Helpers::randomString(6));
+                Helpers::enforceUniqueName
+                (
+                    *(resource->namePtr_), 
+                    resources, 
+                    resource
+                );
+            }
             ImGui::EndPopup();
         }
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
@@ -805,7 +832,7 @@ bool Resource::createOrEditAnimationButtonGUI
             orderedFrameNames.resize(n);
             for (int i=0; i<n; i++)
                 orderedFrameNames[i] = std::to_string(i+1) + " - " +
-                    *(animation->unmanagedFrames_[i]->namePtr_);
+                    animation->unmanagedFrames_[i]->name();
         }
     }
     if (ImGui::BeginPopup("##createOrEditAnimationPopup"))
@@ -870,7 +897,7 @@ bool Resource::createOrEditAnimationButtonGUI
             for (int i=0; i<nFrames; i++)
                 orderedFrameNames[i] = 
                     std::to_string(i+1)+" - "+
-                    std::string(*(frames[i]->namePtr_));
+                    std::string(frames[i]->name());
             reordered = false;
         }
         ImGui::EndChild();
@@ -905,13 +932,13 @@ bool Resource::createOrEditAnimationButtonGUI
                     )
                 )
                     continue;
-                if (ImGui::Selectable(r->namePtr_->c_str()))
+                if (ImGui::Selectable(r->name().c_str()))
                 {
                     frames.emplace_back((Texture2DResource*)r);
                     orderedFrameNames.emplace_back
                     (
                         std::to_string(frames.size()) +
-                        " - " + *(r->namePtr_)
+                        " - " + r->name()
                     );
                 }
             }
@@ -934,7 +961,6 @@ bool Resource::createOrEditAnimationButtonGUI
                 if (resource != nullptr)
                     delete resource;
                 resource = newResource;
-                resource->setName("newAnimation");
                 valid = true;
             }
             else
@@ -954,10 +980,167 @@ bool Resource::createOrEditAnimationButtonGUI
 bool Resource::createOrEditCubemapButtonGUI
 (
     Resource*& resource,
+    const std::vector<Resource*>& resources,
     const ImVec2 size
 )
 {
-    return false;
+    bool validSelection = false;
+    static const Texture2DResource* selectedTextureResources[6]
+    {
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
+    };
+    static int width = 0;
+    static int height = 0;
+    if 
+    (
+        ImGui::Button
+        (
+            resource == nullptr ? "Create cubemap" : "Replace", 
+            size
+        )
+    )
+    {
+        ImGui::OpenPopup("##createOrReplaceCubeMapPopup");
+        width = 0;
+        height = 0;
+        if (resource == nullptr)
+        {
+            for (int i=0;i<6;i++)
+                selectedTextureResources[i] = nullptr;
+        }
+        else
+        {
+            auto cubemap = (CubemapResource*)resource;
+            for (int i=0;i<6;i++)
+                selectedTextureResources[i] = 
+                    cubemap->unmanagedFaces_[i];
+        }
+    }   
+    if (ImGui::BeginPopup("##createOrReplaceCubeMapPopup"))
+    {
+        static std::string labels[6] = 
+        {
+            "X+  ", "X-  ", "Y+  ", "Y-  ", "Z+  ", "Z-  "
+        };
+        int textureResourcei(0);
+        int nSelectedTextureResources(0);
+        for (int i=0; i<6; i++)
+        {
+            if (selectedTextureResources[i] != nullptr)
+            {
+                nSelectedTextureResources++;
+                textureResourcei = i;
+            }
+        }
+        
+        bool validFaces = true;
+        for (int i=0; i<6; i++)
+        {
+            ImGui::Text(labels[i].c_str());
+            ImGui::SameLine();
+            std::string selectedTextureResourceName = 
+                selectedTextureResources[i] != nullptr ?
+                selectedTextureResources[i]->name() : "";
+            ImGui::PushItemWidth(-1);
+            std::string comboi = 
+                "##cubeMapFaceResourceSelector"+std::to_string(i);
+            if 
+            (
+                ImGui::BeginCombo
+                (
+                    comboi.c_str(), 
+                    selectedTextureResourceName.c_str()
+                )
+            )
+            {
+                for(int j=0; j<resources.size()+1 ;j++)
+                {
+                    if (j==0)
+                    {
+                        if (ImGui::Selectable("None"))
+                        {
+                            selectedTextureResources[i] = nullptr;
+                            if (nSelectedTextureResources == 1)
+                            {
+                                width=0;
+                                height=0;
+                            }
+                        }
+                        continue;
+                    }
+                    else if (resources[j-1]->type_ != Resource::Type::Texture2D)
+                        continue;
+                    auto r = (const Texture2DResource*)resources[j-1];
+                    if 
+                    (
+                        !vir::CubeMapBuffer::validFace(r->native_)
+                    )
+                        continue;
+                    if 
+                    (
+                        width != 0 && 
+                        height != 0 && 
+                        (
+                            r->width() != width || 
+                            r->height() != height
+                        ) &&
+                        !(
+                            nSelectedTextureResources == 1 && 
+                            i == textureResourcei
+                        )
+                    )
+                        continue;
+                    if (ImGui::Selectable(r->name().c_str()))
+                    {
+                        selectedTextureResources[i] = r;
+                        width = r->width();
+                        height = r->height();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopItemWidth();
+            if (selectedTextureResources[i] == nullptr)
+                validFaces = false;
+        }
+        float buttonSize(ImGui::GetFontSize()*15.0);
+        if (!validFaces)
+        {
+            ImGui::BeginDisabled();
+            ImGui::Button("Create cubemap", ImVec2(buttonSize, 0));
+            ImGui::EndDisabled();
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && 
+                ImGui::BeginTooltip()
+            )
+            {
+                ImGui::Text(
+R"(To generate a cube map, select a texture from the 
+loaded Texture2D resources for each of the 6 faces 
+of the cubemap. Said resources need to: 
+    1) have a square aspect ratio; 
+    2) have the same resolution; 
+    3) have a resoluton which is a power of 2. 
+The available textures are automatically filtered 
+among those loaded in the resource manager.)");
+                ImGui::EndTooltip();
+            }
+        }
+        else if (ImGui::Button("Create cubemap", ImVec2(buttonSize, 0)))
+        {
+            auto newResource = Resource::create(selectedTextureResources);
+            if (newResource != nullptr)
+            {
+                if (resource != nullptr)
+                    delete resource;
+                resource = newResource;
+                validSelection = true;
+            }
+        }
+        ImGui::EndPopup();
+    }
+    return validSelection;
 }
 
 //----------------------------------------------------------------------------//
@@ -968,7 +1151,60 @@ bool Resource::exportTextureOrAnimationButtonGUI
     const ImVec2 size
 )
 {
-    return false;
+    bool validExport = false;
+    if (resource == nullptr)
+        return validExport;
+    if 
+    (
+        resource->type_ != Resource::Type::Texture2D &&
+        resource->type_ != Resource::Type::AnimatedTexture2D
+    )
+        return validExport;
+    static std::string lastOpenedPath(".");
+    if (ImGui::Button("Export", size))
+    {
+        std::string originalFileExtension = 
+            resource->type_ == Resource::Type::Texture2D ?
+            ((const Texture2DResource*)resource)->originalFileExtension_ :
+            ((const AnimatedTexture2DResource*)resource)->originalFileExtension_;
+        ImGui::SetNextWindowSize(ImVec2(800,400), ImGuiCond_FirstUseEver);
+        ImGuiFileDialog::Instance()->OpenDialog
+        (
+            "##exportTextureDialog", 
+            ICON_FA_IMAGE " Provide export filepath", 
+            originalFileExtension.c_str(), 
+            lastOpenedPath
+        );
+    }
+    if (ImGuiFileDialog::Instance()->Display("##exportTextureDialog")) 
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::string filename = 
+                ImGuiFileDialog::Instance()->GetCurrentFileName();
+            std::string filepath = 
+                ImGuiFileDialog::Instance()->GetFilePathName();
+            lastOpenedPath = 
+                ImGuiFileDialog::Instance()->GetCurrentPath()+"/";
+            const unsigned char* rawData = 
+                resource->type_ == Resource::Type::Texture2D ?
+                ((const Texture2DResource*)resource)->rawData_ :
+                ((const AnimatedTexture2DResource*)resource)->rawData_;
+            unsigned int rawDataSize = 
+                resource->type_ == Resource::Type::Texture2D ?
+                ((const Texture2DResource*)resource)->rawDataSize_ :
+                ((const AnimatedTexture2DResource*)resource)->rawDataSize_;
+            std::ofstream file;
+            file.open(filepath, std::ios_base::out|std::ios_base::binary);
+            if(!file.is_open())
+                return false;
+            file.write((const char*)rawData, rawDataSize);
+            file.close();
+            validExport = true;
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+    return validExport;
 }
 
 //----------------------------------------------------------------------------//

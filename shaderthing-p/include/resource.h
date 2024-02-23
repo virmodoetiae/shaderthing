@@ -58,6 +58,7 @@ public:
     virtual void               setMinFilterMode(FilterMode mode) = 0;
     virtual void               update(const UpdateArgs& args){};
 
+    std::string                name() const {return namePtr_ == nullptr? "" : *namePtr_;}
     void                       setName(const std::string& name);
     void                       setNamePtr(std::string* namePtr);
 
@@ -82,6 +83,7 @@ private:
     static bool createOrEditCubemapButtonGUI
     (
         Resource*& resource,
+        const std::vector<Resource*>& resources,
         const ImVec2 size=ImVec2(0,0)
     );
     static bool exportTextureOrAnimationButtonGUI

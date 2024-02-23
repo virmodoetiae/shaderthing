@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cctype>
+#include <ctime>
 
 #include "shaderthing-p/include/helpers.h"
 
@@ -66,6 +67,20 @@ std::string fileExtension(const std::string& filepath, bool toLowerCase)
             ::tolower
         );
     return foundDot ? fileExtension : "";
+}
+
+std::string randomString(const unsigned int size)
+{
+    srand((unsigned)time(NULL));
+    static const char alphanum[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+    auto tmp = std::string();
+    tmp.reserve(size);
+    for (int i = 0; i < size; ++i)
+        tmp += alphanum[rand() % (sizeof(alphanum) - 1)];
+    return tmp;
 }
 
 unsigned char* readFileContents
