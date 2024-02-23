@@ -1,6 +1,7 @@
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/uniform.h"
+#include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/helpers.h"
 #include "shaderthing-p/include/macros.h"
 
@@ -351,7 +352,36 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
             uncompiledUniforms_.end()
         );
         flags_.uncompiledChanges = false;
+        // Re-set uniforms
         sharedUniforms.bindShader(rendering_.shader);
+        rendering_.shader->bind();
+        #define CASE(ST, T, F)                                              \
+        case Uniform::Type::ST :                                            \
+        {                                                                   \
+            T value = u->getValue<T>();                                     \
+            u->setValue(value);                                             \
+            if (named)                                                      \
+                rendering_.shader->F(u->name, value);                       \
+            break;                                                          \
+        }   
+        for (auto u : uniforms_)
+        {
+            bool named(u->name.size() > 0);
+            switch(u->type)
+            {
+                CASE(Bool, bool, setUniformBool)
+                CASE(Int, int, setUniformInt)
+                CASE(Int2, glm::ivec2, setUniformInt2)
+                CASE(Int3, glm::ivec3, setUniformInt3)
+                CASE(Int4, glm::ivec4, setUniformInt4)
+                CASE(Float, float, setUniformFloat)
+                CASE(Float2, glm::vec2, setUniformFloat2)
+                CASE(Float3, glm::vec3, setUniformFloat3)
+                CASE(Float4, glm::vec4, setUniformFloat4)
+                default:
+                    continue;
+            }
+        }
         return true;
     }
     // Else if shader not valid
@@ -396,6 +426,58 @@ void Layer::renderShader
     const SharedUniforms& sharedUniforms
 )
 {
+    // Set sampler-type uniforms
+    uint32_t unit = 0; 
+    for (auto u : uniforms_)
+    {
+        bool named(u->name.size() > 0);
+        if 
+        (
+            !named || 
+            (
+                u->type != vir::Shader::Variable::Type::Sampler2D &&
+                u->type != vir::Shader::Variable::Type::SamplerCube
+            )
+        )
+            continue;
+        
+        // Sampler case
+        auto resource = u->getValuePtr<Resource>();
+        if (resource == nullptr)
+            continue;
+
+        // These two lines are required when returning writeOnlyFramebuffer_
+        // in readOnlyFramebuffer() to avoid visual artifacts. Depending on
+        // the outcome of my experiments, I might keep this approach
+        if (resource->name() == gui_.name)
+        {
+            // Buffers are flipped afterwards, so rendering_.framebuffer
+            // is guaranteed to contain the read-only framebuffer pointer
+            vir::Framebuffer* sourceFramebuffer = rendering_.framebuffer;
+            /*for (auto* postProcess : postProcesses_)
+            {
+                if 
+                (
+                    postProcess->isActive() && 
+                    postProcess->outputFramebuffer() != nullptr
+                )
+                    sourceFramebuffer = postProcess->outputFramebuffer();
+            }*/
+            sourceFramebuffer->bindColorBuffer(unit);
+        }
+        else
+            resource->bind(unit);
+        rendering_.shader->setUniformInt(u->name, unit);
+        unit++;
+        // Set the (automatically managed) sampler2D resolution uniform value
+        if (u->type == vir::Shader::Variable::Type::Sampler2D)
+            rendering_.shader->setUniformFloat2
+            (
+                u->name+"Resolution", 
+                {resource->width(), resource->height()}
+            );
+    }
+
     // Flip buffers
     rendering_.framebuffer = 
         rendering_.framebuffer == rendering_.framebufferB ? 
@@ -473,6 +555,29 @@ void main(){fragColor = texture(self, tc);})",
         target0,
         clearTarget
     );
+}
+
+//----------------------------------------------------------------------------//
+
+bool Layer::removeResourceFromUniforms(const Resource* resource)
+{
+    for (int i=0; i<uniforms_.size(); i++)
+    {
+        auto uniform = uniforms_[i];
+        if 
+        (
+            uniform->type != Uniform::Type::Sampler2D &&
+            uniform->type != Uniform::Type::SamplerCube
+        )
+            continue;
+        auto uResource = uniform->getValuePtr<const Resource>();
+        if (resource->id() == uResource->id())
+        {
+            uniforms_.erase(uniforms_.begin()+i);
+            return true;
+        }
+    }
+    return false;
 }
 
 //----------------------------------------------------------------------------//
@@ -568,7 +673,8 @@ void Layer::renderSettingsMenuGUI()
 void Layer::renderLayersTabBarGUI // Static
 (
     std::vector<Layer*>& layers,
-    SharedUniforms& sharedUnifoms
+    SharedUniforms& sharedUnifoms,
+    std::vector<Resource*> resources
 )
 {
     static bool compilationErrors(false);
@@ -701,7 +807,7 @@ void Layer::renderLayersTabBarGUI // Static
             auto layer = layers[i];
             if(ImGui::BeginTabItem(layer->gui_.name.c_str(), &open))
             {
-                layer->renderTabBarGUI(sharedUnifoms);
+                layer->renderTabBarGUI(sharedUnifoms, resources);
                 ImGui::EndTabItem();
             }
             if (!open) // I.e., if 'x' is pressed to delete the tab
@@ -776,7 +882,11 @@ void Layer::renderLayersTabBarGUI // Static
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderTabBarGUI(SharedUniforms& sharedUnifoms)
+void Layer::renderTabBarGUI
+(
+    SharedUniforms& sharedUnifoms,
+    std::vector<Resource*> resources
+)
 {
     if (ImGui::BeginTabBar("##layerTabBar"))
     {
@@ -840,7 +950,8 @@ void Layer::renderTabBarGUI(SharedUniforms& sharedUnifoms)
                     sharedUnifoms, 
                     uniforms_, 
                     uncompiledUniforms_,
-                    *rendering_.shader
+                    *rendering_.shader,
+                    resources
                 )
             )
                 flags_.uncompiledChanges = true;

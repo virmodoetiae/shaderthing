@@ -426,7 +426,11 @@ FramebufferResource::~FramebufferResource()
 bool Resource::isGuiOpen = false;
 bool Resource::isGuiDetachedFromMenu = false;
 
-void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
+void Resource::renderResourcesGUI
+(
+    std::vector<Resource*>& resources,
+    const std::vector<Layer*>& layers
+)
 {
     if (!Resource::isGuiOpen)
         return;
@@ -683,7 +687,13 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
         renderAddResourceButtonGUI(resources, nRows);
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
         if (deleteRow != -1)
+        {
+            auto resource = resources[deleteRow];
+            for (auto layer : layers)
+                layer->removeResourceFromUniforms(resource);
             resources.erase(resources.begin()+deleteRow);
+            delete resource;
+        }
         ImGui::EndTable();
     }
 
@@ -693,7 +703,11 @@ void Resource::renderResourcesGUI(std::vector<Resource*>& resources)
 
 //----------------------------------------------------------------------------//
 
-void Resource::renderResourcesMenuItemGUI(std::vector<Resource*>& resources)
+void Resource::renderResourcesMenuItemGUI
+(
+    std::vector<Resource*>& resources,
+    const std::vector<Layer*>& layers
+)
 {
     if(ImGui::SmallButton(isGuiDetachedFromMenu ? "Z" : "O" ))
         isGuiDetachedFromMenu = !isGuiDetachedFromMenu;
@@ -703,7 +717,7 @@ void Resource::renderResourcesMenuItemGUI(std::vector<Resource*>& resources)
         if (ImGui::BeginMenu("Resource manager"))
         {
             isGuiOpen = true;
-            Resource::renderResourcesGUI(resources);
+            Resource::renderResourcesGUI(resources, layers);
             ImGui::EndMenu();
         }
         else

@@ -8,6 +8,7 @@ namespace ShaderThing
 {
 
 class SharedUniforms;
+class Resource;
 
 struct Uniform : public vir::Shader::Uniform
 {
@@ -66,7 +67,8 @@ struct Uniform : public vir::Shader::Uniform
         SharedUniforms& sharedUniforms,
         std::vector<Uniform*>& uniforms,
         std::vector<Uniform*>& uncompiledUniforms,
-        vir::Shader& shader
+        vir::Shader& shader,
+        const std::vector<Resource*>& resources
     );
 };
 

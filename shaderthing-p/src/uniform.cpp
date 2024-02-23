@@ -1,6 +1,7 @@
 #include "shaderthing-p/include/uniform.h"
 #include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/layer.h"
+#include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/helpers.h"
 
 #include "thirdparty/imgui/imgui.h"
@@ -15,7 +16,8 @@ bool Uniform::renderUniformsGUI
     SharedUniforms& sharedUniforms,
     std::vector<Uniform*>& uniforms,
     std::vector<Uniform*>& uncompiledUniforms,
-    vir::Shader& shader
+    vir::Shader& shader,
+    const std::vector<Resource*>& resources
 )
 {
     const float fontSize = ImGui::GetFontSize();
@@ -495,6 +497,7 @@ bool Uniform::renderUniformsGUI
         Uniform* uniform,
         std::vector<Uniform*>& uncompiledUniforms,
         vir::Shader& shader,
+        const std::vector<Resource*>& resources,
         int& row
     )
     {
@@ -1148,6 +1151,59 @@ bool Uniform::renderUniformsGUI
                 // Missing Sampler2D/Cubemap, will be added once I implement 
                 // the Resource class
             }
+            case vir::Shader::Variable::Type::Sampler2D :
+            {
+                auto resource = 
+                    uniform->getValuePtr<Resource>();
+                std::string name
+                (
+                    (resource != nullptr) ? resource->name() : ""
+                );
+                if (ImGui::BeginCombo("##txSelector", name.c_str()))
+                {
+                    for(auto r : resources)
+                    {
+                        if 
+                        (
+                            r->type() != Resource::Type::Texture2D &&
+                            r->type() != Resource::Type::AnimatedTexture2D &&
+                            r->type() != Resource::Type::Framebuffer
+                        )
+                            continue;
+                        if (ImGui::Selectable(r->name().c_str()))
+                        {
+                            uniform->setValuePtr<const Resource>(r);
+                            sharedUniforms.setUserAction(true);
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                break;
+            }
+            case vir::Shader::Variable::Type::SamplerCube :
+            {
+                auto resource = 
+                    uniform->getValuePtr<Resource>();
+                std::string name
+                (
+                    (resource != nullptr) ? resource->name() : ""
+                );
+                if (ImGui::BeginCombo("##cmSelector", name.c_str()))
+                {
+                    for(auto r : resources)
+                    {
+                        if (r->type() != Resource::Type::Cubemap)
+                            continue;
+                        if (ImGui::Selectable(r->name().c_str()))
+                        {
+                            uniform->setValuePtr<const Resource>(r);
+                            sharedUniforms.setUserAction(true);
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                break;
+            }
         }
         END_COLUMN
         
@@ -1236,6 +1292,7 @@ bool Uniform::renderUniformsGUI
                 uniform,
                 uncompiledUniforms,
                 shader,
+                resources,
                 row
             );
             if (uniform->gui.markedForDeletion)

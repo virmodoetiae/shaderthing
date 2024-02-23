@@ -91,7 +91,7 @@ private:
                     float      iAspectRatio = 1.f;          // 128-132       | 4
         // Using alignas(8) to force iResolution to start 
         // at byte 136 instead of 132
-        alignas(8)  glm::ivec2 iResolution  = {512,512};    // 136-144       | 8
+        alignas(8)  glm::vec2 iResolution  = {512,512};    // 136-144       | 8
 
         // Whole array never updated all at once, only one 
         // array element at a time, medium update frequency
@@ -113,17 +113,17 @@ private:
         // consistency
         static constexpr const char* glslSource =
 R"(layout(std140) uniform SharedBlock {
-float iTime;
-int iFrame;
-int iRenderPass;
-bool iUserAction;
-vec3 iWASD;
-vec3 iLook;
-vec4 iMouse;
-mat4 iMVP;
-float iWindowAspectRatio;
-ivec2 iWindowResolution;
-ivec3 iKeyboard[256];};
+        float iTime;
+        int iFrame;
+        int iRenderPass;
+        bool iUserAction;
+        vec3 iWASD;
+        vec3 iLook;
+        vec4 iMouse;
+        mat4 iMVP;
+        float iWindowAspectRatio;
+        vec2 iWindowResolution;
+        ivec3 iKeyboard[256];};
 )";
     };
     

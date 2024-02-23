@@ -163,7 +163,7 @@ void App::renderGUI()
     ImGui::Begin("Control panel", NULL, flags);
     
     renderMenuBarGUI();
-    Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_);
+    Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_, resources_);
 
     ImGui::End();
     vir::ImGuiRenderer::render();
@@ -220,7 +220,7 @@ void App::renderMenuBarGUI()
                 ImGui::Separator();
                 if (ImGui::BeginMenu("Load character sets"))
                 {
-                    static bool alwaysBuiltSet(true);
+                    bool alwaysBuiltSet(true);
                     
                     ImGui::Text("Latin    ");
                     ImGui::SameLine();
@@ -270,7 +270,7 @@ resetting the iFrame uniform (Ctrl+R))"
         }
         if (ImGui::BeginMenu("Resources"))
         {
-            Resource::renderResourcesMenuItemGUI(resources_);
+            Resource::renderResourcesMenuItemGUI(resources_, layers_);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
@@ -307,7 +307,7 @@ resetting the iFrame uniform (Ctrl+R))"
         ImGui::EndMenuBar();
     }
     if (Resource::isGuiDetachedFromMenu)
-        Resource::renderResourcesGUI(resources_);
+        Resource::renderResourcesGUI(resources_, layers_);
 }
 
 //----------------------------------------------------------------------------//

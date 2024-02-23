@@ -9,6 +9,8 @@ namespace ShaderThing
 typedef vir::TextureBuffer::WrapMode   WrapMode;
 typedef vir::TextureBuffer::FilterMode FilterMode;
 
+class Layer;
+
 class Texture2DResource;
 class AnimatedTexture2DResource;
 class CubemapResource;
@@ -45,6 +47,7 @@ public:
     static Resource*           create(const Texture2DResource* faces[6]);
     static Resource*           create(vir::Framebuffer* framebuffer);
     
+    Type                       type() const {return type_;}
     virtual void               bind(unsigned int unit) = 0;
     virtual void               unbind() = 0;
     virtual const unsigned int id() const = 0;
@@ -64,8 +67,16 @@ public:
 
     static bool                isGuiOpen;
     static bool                isGuiDetachedFromMenu;
-    static void                renderResourcesGUI(std::vector<Resource*>& resources);
-    static void                renderResourcesMenuItemGUI(std::vector<Resource*>& resources);
+    static void                renderResourcesGUI
+                                (
+                                    std::vector<Resource*>& resources, 
+                                    const std::vector<Layer*>& layers
+                                );
+    static void                renderResourcesMenuItemGUI
+                                (
+                                    std::vector<Resource*>& resources,
+                                    const std::vector<Layer*>& layers
+                                );
 private:
     static bool loadOrReplaceTextureOrAnimationButtonGUI
     (

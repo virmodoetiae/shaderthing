@@ -13,6 +13,7 @@ namespace ShaderThing
 {
 
 struct Uniform;
+class Resource;
 class SharedUniforms;
 
 class Layer : vir::Event::Receiver
@@ -98,34 +99,34 @@ public:
 
     DECLARE_RECEIVABLE_EVENTS(vir::Event::Type::WindowResize)
     void onReceive(vir::Event::WindowResizeEvent& event) override;
+
+    bool removeResourceFromUniforms(const Resource* resource);
     
     bool compileShader(const SharedUniforms& sharedUniforms);
-    
     void renderShader
     (
         vir::Framebuffer* target, 
         const bool clearTarget, 
         const SharedUniforms& sharedUniforms
     );
-    
+    void renderTabBarGUI
+    (
+        SharedUniforms& sharedUnifoms,
+        std::vector<Resource*> resources
+    );
+    void renderSettingsMenuGUI();
+
     static void renderShaders
     (
         const std::vector<Layer*>& layers,
         vir::Framebuffer* target, 
         const SharedUniforms& sharedUniforms
     );
-
-    void renderSettingsMenuGUI();
-    
     static void renderLayersTabBarGUI
     (
         std::vector<Layer*>& layers,
-        SharedUniforms& sharedUnifoms
-    );
-    
-    void renderTabBarGUI
-    (
-        SharedUniforms& sharedUnifoms
+        SharedUniforms& sharedUnifoms,
+        std::vector<Resource*> resources
     );
 
     bool operator==(const Layer& layer){return id_ == layer.id_;}
