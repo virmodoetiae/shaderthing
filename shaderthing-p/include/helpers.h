@@ -48,7 +48,7 @@ template<typename T>
 void enforceUniqueName
 (
     std::string& name, 
-    std::vector<T*>& items, 
+    const std::vector<T*>& items, 
     const T* skipItem=nullptr
 )
 {

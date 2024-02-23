@@ -27,8 +27,8 @@ App::App()
     // Main loop
     auto window = vir::GlobalPtr<vir::Window>::instance();
     while(window->isOpen())
-    {
-        vir::ImGuiRenderer::run([this](){this->renderGUI();});
+    {   
+        renderGUI();
         Layer::renderShaders(layers_, nullptr, *sharedUniforms_);
         update();
         window->update(!sharedUniforms_->isRenderingPaused());
@@ -81,7 +81,7 @@ void App::update()
 void App::initializeGUI()
 {
     // Disable reading/writing from/to imgui.ini
-    static ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = NULL;
     io.ConfigDockingTransparentPayload = true;
     
@@ -154,19 +154,19 @@ void App::initializeGUI()
 
 void App::renderGUI()
 {
+    vir::ImGuiRenderer::newFrame();
     ImGui::SetNextWindowSize(ImVec2(750,900), ImGuiCond_FirstUseEver);
     static ImGuiWindowFlags flags
     (
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
     );
     ImGui::Begin("Control panel", NULL, flags);
-
+    
     renderMenuBarGUI();
-
     Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_);
 
-    ImGui::ShowDemoWindow();
     ImGui::End();
+    vir::ImGuiRenderer::render();
 }
 
 //----------------------------------------------------------------------------//

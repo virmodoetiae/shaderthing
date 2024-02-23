@@ -91,9 +91,12 @@ private:
         const Resource* resource,
         const ImVec2 size=ImVec2(0,0)
     );
-    static void renderResourceActionsGUI
+    static void renderResourceActionsButtonGUI
     (
-        Resource*& resource
+        Resource*& resource,
+        bool& deleteResource,
+        const std::vector<Resource*>& resources,
+        const ImVec2 size=ImVec2(0,0)
     );
 };
 
