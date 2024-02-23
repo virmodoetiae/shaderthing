@@ -4,6 +4,7 @@
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/shareduniforms.h"
+#include "shaderthing-p/include/coderepository.h"
 
 #include <charconv>
 
@@ -278,11 +279,18 @@ resetting the iFrame uniform (Ctrl+R))"
             TextEditor::renderFindReplaceToolMenuGUI();
             ImGui::EndMenu();
         }
-        /*
         if (ImGui::BeginMenu("Help"))
         {
-            IN_MENU_ENTRY(codeRepository_, "Code repository")
-            IN_MENU_ENTRY(about_, "About ShaderThing")
+            if (ImGui::BeginMenu("Code repository"))
+            {
+                CodeRepository::renderGUI();
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("About ShaderThing"))
+            {
+                //
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("System info"))
             {
                 ImGui::Text("Graphics card in use:");
@@ -303,7 +311,6 @@ resetting the iFrame uniform (Ctrl+R))"
             }
             ImGui::EndMenu();
         }
-        */
         ImGui::EndMenuBar();
     }
     if (Resource::isGuiDetachedFromMenu)
