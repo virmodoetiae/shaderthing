@@ -12,6 +12,9 @@
 namespace ShaderThing
 {
 
+typedef vir::TextureBuffer::WrapMode   WrapMode;
+typedef vir::TextureBuffer::FilterMode FilterMode;
+
 struct Uniform;
 class Resource;
 class SharedUniforms;
@@ -21,13 +24,26 @@ class Layer : vir::Event::Receiver
 public:
     struct Rendering
     {
-        enum struct Target
+        enum class Target
         {
             Window,
             InternalFramebuffer,
             InternalFramebufferAndWindow
         };
-               Target            target         = Target::InternalFramebufferAndWindow;
+        enum class FramebufferClearPolicy
+        {
+            // The framebuffers are never cleared
+            None, 
+            // The framebuffers are cleared only once, when the export starts
+            ClearOnFirstFrameExport,
+            // The framebuffers are cleared at the beginning of every frame, but
+            // not on sub-frame render passes (i.e., the framebuffers are 
+            // cleared at the beginning of the first sub-frame render pass of
+            // each frame)
+            ClearOnEveryFrameExport
+        };
+               Target            target         = Target::Window;
+          FramebufferClearPolicy clearPolicy    = FramebufferClearPolicy::None;
                vir::Quad*        quad           = nullptr;
                vir::Framebuffer* framebufferA   = nullptr;
                vir::Framebuffer* framebufferB   = nullptr;
@@ -45,8 +61,9 @@ public:
     };
     struct Flags
     {
-               bool              rename               = false;
-               bool              uncompiledChanges    = false;
+               bool              rename                 = false;
+               bool              uncompiledChanges      = false;
+               bool              windowBoundAspectRatio = true;
         static bool              restartRendering;
     };
 private:
@@ -77,9 +94,13 @@ private:
     void setResolution
     (
         glm::ivec2& resolution,
-        const bool windowFrameManuallyDragged
+        const bool windowFrameManuallyDragged,
+        const bool tryEnfoceWindowAspectRatio=false
     );
     void setDepth(const float depth);
+    void setFramebufferWrapMode(int index, WrapMode mode);
+    void setFramebufferMagFilterMode(FilterMode mode);
+    void setFramebufferMinFilterMode(FilterMode mode);
     void rebuildFramebuffers
     (
         const vir::TextureBuffer::InternalFormat& internalFormat, 
@@ -112,9 +133,9 @@ public:
     void renderTabBarGUI
     (
         SharedUniforms& sharedUnifoms,
-        std::vector<Resource*> resources
+        std::vector<Resource*>& resources
     );
-    void renderSettingsMenuGUI();
+    void renderSettingsMenuGUI(std::vector<Resource*>& resources);
 
     static void renderShaders
     (
@@ -126,7 +147,7 @@ public:
     (
         std::vector<Layer*>& layers,
         SharedUniforms& sharedUnifoms,
-        std::vector<Resource*> resources
+        std::vector<Resource*>& resources
     );
 
     bool operator==(const Layer& layer){return id_ == layer.id_;}

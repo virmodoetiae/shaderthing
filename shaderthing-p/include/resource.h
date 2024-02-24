@@ -45,7 +45,7 @@ public:
     static Resource*           create(unsigned char* rawData, unsigned int size, bool gif);
     static Resource*           create(const std::vector<Texture2DResource*>& frames);
     static Resource*           create(const Texture2DResource* faces[6]);
-    static Resource*           create(vir::Framebuffer* framebuffer);
+    static Resource*           create(vir::Framebuffer** framebuffer);
     
     Type                       type() const {return type_;}
     virtual void               bind(unsigned int unit) = 0;
@@ -65,18 +65,29 @@ public:
     void                       setName(const std::string& name);
     void                       setNamePtr(std::string* namePtr);
 
-    static bool                isGuiOpen;
-    static bool                isGuiDetachedFromMenu;
-    static void                renderResourcesGUI
-                                (
-                                    std::vector<Resource*>& resources, 
-                                    const std::vector<Layer*>& layers
-                                );
-    static void                renderResourcesMenuItemGUI
-                                (
-                                    std::vector<Resource*>& resources,
-                                    const std::vector<Layer*>& layers
-                                );
+    static bool isGuiOpen;
+    static bool isGuiDetachedFromMenu;
+    static void renderResourcesGUI
+    (
+        std::vector<Resource*>& resources, 
+        const std::vector<Layer*>& layers
+    );
+    static void renderResourcesMenuItemGUI
+    (
+        std::vector<Resource*>& resources,
+        const std::vector<Layer*>& layers
+    );
+    static bool insertFramebufferInResources
+    (
+        std::string* name,
+        vir::Framebuffer** framebuffer, 
+        std::vector<Resource*>& resources
+    );
+    static bool removeFramebufferFromResources
+    (
+        vir::Framebuffer** framebuffer, 
+        std::vector<Resource*>& resources
+    );
 private:
     static bool loadOrReplaceTextureOrAnimationButtonGUI
     (
@@ -192,7 +203,7 @@ class FramebufferResource : public Resource
     DELETE_COPY_MOVE(FramebufferResource)
 public:
     ~FramebufferResource();
-    bool               set(vir::Framebuffer* framebuffer);
+    bool               set(vir::Framebuffer** framebuffer);
     
     virtual void       bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit);unit_ = unit;}
     virtual void       unbind() override {(*native_)->unbind(); unit_ = -1;};

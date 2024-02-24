@@ -201,7 +201,7 @@ void App::renderMenuBarGUI()
         {
             sharedUniforms_->renderWindowResolutionMenuGUI();
             for (auto layer : layers_)
-                layer->renderSettingsMenuGUI();
+                layer->renderSettingsMenuGUI(resources_);
             ImGui::Separator();
             if (ImGui::BeginMenu("Font"))
             {

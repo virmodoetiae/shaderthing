@@ -74,7 +74,7 @@ Resource* Resource::create(const Texture2DResource* faces[6])
     return nullptr;
 }
 
-Resource* Resource::create(vir::Framebuffer* framebuffer)
+Resource* Resource::create(vir::Framebuffer** framebuffer)
 {
     auto resource = new FramebufferResource();
     if (resource->set(framebuffer))
@@ -405,11 +405,11 @@ CubemapResource::~CubemapResource()
 
 //----------------------------------------------------------------------------//
 
-bool FramebufferResource::set(vir::Framebuffer* framebuffer)
+bool FramebufferResource::set(vir::Framebuffer** framebuffer)
 {
     if (framebuffer == nullptr)
         return false;
-    native_ = &framebuffer;
+    native_ = framebuffer;
     return true;
 }
 
@@ -725,6 +725,45 @@ void Resource::renderResourcesMenuItemGUI
         return;
     }
     ImGui::MenuItem("Resource manager", NULL, &Resource::isGuiOpen);
+}
+
+bool Resource::insertFramebufferInResources
+(
+    std::string* name,
+    vir::Framebuffer** framebuffer, 
+    std::vector<Resource*>& resources
+)
+{
+    for (int i=0; i<resources.size(); i++)
+    {
+        auto resource = resources[i];
+        if (resource->type_ != Type::Framebuffer)
+            continue;
+        if (resource->id() == (*framebuffer)->id())
+            return false;
+    }
+    resources.emplace_back(Resource::create(framebuffer))->setNamePtr(name);
+    return true;
+}
+
+bool Resource::removeFramebufferFromResources
+(
+    vir::Framebuffer** framebuffer, 
+    std::vector<Resource*>& resources
+)
+{
+    for (int i=0; i<resources.size(); i++)
+    {
+        auto resource = resources[i];
+        if (resource->type_ != Type::Framebuffer)
+            continue;
+        if (resource->id() == (*framebuffer)->id())
+        {
+            resources.erase(resources.begin()+i);
+            return true;
+        }
+    }
+    return false;
 }
 
 //----------------------------------------------------------------------------//
