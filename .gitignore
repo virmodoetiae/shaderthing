@@ -1,8 +1,9 @@
-*build/
+*private/*
+*/build/*
 *.o
 *.d
 *.gch
-*opencv/
-*private/
 *.vscode
 *.VS*
+
+!*nativefiledialog/build/*
