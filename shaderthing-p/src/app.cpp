@@ -1,13 +1,13 @@
-#include "vir/include/vir.h"
+#include <charconv>
+
 #include "shaderthing-p/include/app.h"
 #include "shaderthing-p/include/bytedata.h"
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/coderepository.h"
-#include "shaderthing-p/include/filedialog.h"
 
-#include <charconv>
+#include "vir/include/vir.h"
 
 namespace ShaderThing
 {
@@ -26,15 +26,10 @@ App::App()
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     initializeGUI();
 
-    auto fileDialog = FileDialog();
-    fileDialog.open("png,jpg,jpeg");
-
     // Main loop
     auto window = vir::GlobalPtr<vir::Window>::instance();
     while(window->isOpen())
     {   
-        if (fileDialog.validSelection())
-            std::cout << fileDialog.filepath() << std::endl;
         renderGUI();
         Layer::renderShaders(layers_, nullptr, *sharedUniforms_);
         update();

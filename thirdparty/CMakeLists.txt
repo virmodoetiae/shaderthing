@@ -21,7 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/imguifiledialog)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/imguitexteditor)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stb)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/rapidjson)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/nativefiledialog/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/portable-file-dialogs)
 
 #add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD)
 #add_compile_definitions(IMGUI_DEFINE_MATH_OPERATORS)
@@ -39,10 +39,9 @@ add_library(thirdparty
 			imgui/misc/cpp/imgui_stdlib.cpp
 			imguifiledialog/ImGuiFileDialog.cpp 
 			imguitexteditor/imguitexteditor.cpp
-			stb.cpp)
+			stb/stb.cpp
+			portable-file-dialogs/pfd_impl.cpp)
 
-add_subdirectory(nativefiledialog)
-
-target_link_libraries(thirdparty PUBLIC glfw nativefiledialog)
+target_link_libraries(thirdparty PUBLIC glfw)
 
 set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE_0}")
