@@ -6,7 +6,7 @@
 |  \ \  \|__|\  \_|   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \|__|\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2023 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2023-2024 Stefan Radman
 |  Ↄ|C    \|__|\|__|  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|

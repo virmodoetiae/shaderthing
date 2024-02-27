@@ -66,7 +66,7 @@ public:
     virtual void               setWrapMode(int index, WrapMode mode) = 0;
     virtual void               setMagFilterMode(FilterMode mode) = 0;
     virtual void               setMinFilterMode(FilterMode mode) = 0;
-    virtual void               update(const UpdateArgs& args){};
+    
 
     std::string                name() const {return namePtr_ == nullptr? "" : *namePtr_;}
     void                       setName(const std::string& name);
@@ -95,10 +95,15 @@ public:
         vir::Framebuffer** framebuffer, 
         std::vector<Resource*>& resources
     );
-
-    static void update(std::vector<Resource*>& resources);
+    static void update
+    (
+        std::vector<Resource*>& resources,
+        const UpdateArgs& args
+    );
 
 private:
+    
+    virtual void update(const UpdateArgs& args){};
     
     static bool loadOrReplaceTextureOrAnimationButtonGUI
     (

@@ -91,7 +91,7 @@ private:
                     float      iAspectRatio = 1.f;          // 128-132       | 4
         // Using alignas(8) to force iResolution to start 
         // at byte 136 instead of 132
-        alignas(8)  glm::vec2 iResolution  = {512,512};    // 136-144       | 8
+        alignas(8)  glm::vec2  iResolution  = {512,512};    // 136-144       | 8
 
         // Whole array never updated all at once, only one 
         // array element at a time, medium update frequency

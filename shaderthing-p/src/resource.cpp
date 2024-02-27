@@ -16,8 +16,10 @@ FileDialog      Resource::fileDialog_;
 const Resource* Resource::resourceToBeExported_ = nullptr;
 Resource**      Resource::resourceToBeReplaced_ = nullptr;
 
-void Resource::update(std::vector<Resource*>& resources)
+void Resource::update(std::vector<Resource*>& resources, const UpdateArgs& args)
 {
+    for (auto* resource : resources)
+        resource->update(args);
     if (!Resource::fileDialog_.validSelection())
         return;
     if (resourceToBeExported_ != nullptr) // Export
@@ -40,11 +42,10 @@ void Resource::update(std::vector<Resource*>& resources)
             file.close();
         }
         Resource::resourceToBeExported_ = nullptr;
-        return;
     }
-    if (Resource::resourceToBeReplaced_ != nullptr) // Replace
+    else if (Resource::resourceToBeReplaced_ != nullptr)
     {
-        Resource* resource = *Resource::resourceToBeReplaced_;
+        Resource*& resource = *Resource::resourceToBeReplaced_;
         auto name = resource->name();
         auto filepath = fileDialog_.selection().front();
         auto newResource = Resource::create(filepath);
@@ -52,21 +53,21 @@ void Resource::update(std::vector<Resource*>& resources)
         {
             if (resource != nullptr)
                 delete resource;
-            *Resource::resourceToBeReplaced_ = newResource;
-            (*Resource::resourceToBeReplaced_)->setName(Helpers::filename(filepath));
+            resource = newResource;
+            resource->setName(Helpers::filename(filepath));
         }
         Resource::resourceToBeReplaced_ = nullptr;
-        return;
     }
-    for (auto filepath : fileDialog_.selection()) // Load new
-    {
-        auto newResource = Resource::create(filepath);
-        if (newResource != nullptr)
+    else
+        for (auto filepath : fileDialog_.selection()) // Load new
         {
-            newResource->setName(Helpers::filename(filepath));
-            resources.emplace_back(newResource);
+            auto newResource = Resource::create(filepath);
+            if (newResource != nullptr)
+            {
+                newResource->setName(Helpers::filename(filepath));
+                resources.emplace_back(newResource);
+            }
         }
-    }
     fileDialog_.clearSelection();
 }
 
@@ -1578,17 +1579,17 @@ affect any cubemaps or animations using this texture)");
                         
                         ((AnimatedTexture2DResource*)resource)->
                         unmanagedFrames_.size() == 0 ? 
-                        createOrEditAnimationButtonGUI
-                        (
-                            resource,
-                            resources,
-                            size
-                        ) :
                         loadOrReplaceTextureOrAnimationButtonGUI
                         (
                             resource,
                             size, 
                             true
+                        ) :
+                        createOrEditAnimationButtonGUI
+                        (
+                            resource,
+                            resources,
+                            size
                         );
                         break;
                     case Resource::Type::Cubemap:
@@ -1637,13 +1638,7 @@ affect any cubemaps or animations using this texture)");
                 resource->type_ == Resource::Type::Texture2D ||
                 resource->type_ == Resource::Type::AnimatedTexture2D
             )
-            {
-                exportTextureOrAnimationButtonGUI
-                (
-                    resource,
-                    size
-                );
-            }
+                exportTextureOrAnimationButtonGUI(resource,size);
             //------------------------------------------------------------------
             if (inUseBy.size() == 0)
             {

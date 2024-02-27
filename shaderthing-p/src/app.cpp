@@ -56,9 +56,7 @@ void App::update()
     float timeStep = window->time()->outerTimestep();
     
     sharedUniforms_->update({timeStep});
-    Resource::update(resources_);
-    for (auto resource : resources_)
-        resource->update({sharedUniforms_->iTime(), timeStep});
+    Resource::update(resources_, {sharedUniforms_->iTime(), timeStep});
 
     // Compute FPS and set in window title
     static float fps(60.0f);
@@ -66,7 +64,7 @@ void App::update()
     static float elapsedTime(0);
     elapsedFrames++;
     elapsedTime += window->time()->outerTimestep();
-    if (elapsedFrames >= int(fps/2.0f)) // Update every ~1/2 second
+    if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
     {
         fps = elapsedFrames/elapsedTime;
         static char bfps[8];
