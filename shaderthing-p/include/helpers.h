@@ -18,6 +18,8 @@ glm::vec2 normalizedWindowResolution();
 
 std::string fileExtension(const std::string& filepath, bool toLowerCase=true);
 
+std::string filename(const std::string& filepath);
+
 std::string randomString(const unsigned int size);
 
 // Returns the raw data of file at filepath and the overall data size. It is

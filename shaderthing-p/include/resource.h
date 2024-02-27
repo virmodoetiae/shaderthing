@@ -2,6 +2,7 @@
 
 #include "vir/include/vir.h"
 #include "shaderthing-p/include/macros.h"
+#include "shaderthing-p/include/filedialog.h"
 
 namespace ShaderThing
 {
@@ -32,14 +33,20 @@ public:
         const float timeStep;
     };
 protected:
-    Type                       type_;
-    bool                       isNameManaged_ = true;
-    std::string*               namePtr_       = nullptr;
-    int                        unit_          = -1;
-
+    Type                          type_;
+    bool                          isNameManaged_ = true;
+    std::string*                  namePtr_       = nullptr;
+    int                           unit_          = -1;
+    
+    static FileDialog             fileDialog_;
+    static const Resource*        resourceToBeExported_;
+    static Resource**             resourceToBeReplaced_;
+    
     Resource(Type type):type_(type){};
     DELETE_COPY_MOVE(Resource)
+
 public:
+    
     virtual ~Resource();
     static Resource*           create(const std::string& filepath);
     static Resource*           create(unsigned char* rawData, unsigned int size, bool gif);
@@ -88,7 +95,11 @@ public:
         vir::Framebuffer** framebuffer, 
         std::vector<Resource*>& resources
     );
+
+    static void update(std::vector<Resource*>& resources);
+
 private:
+    
     static bool loadOrReplaceTextureOrAnimationButtonGUI
     (
         Resource*& resource,

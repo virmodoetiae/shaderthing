@@ -1,6 +1,7 @@
 #include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/helpers.h"
+#include "shaderthing-p/include/filedialog.h"
 
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
@@ -10,6 +11,64 @@
 
 namespace ShaderThing
 {
+
+FileDialog      Resource::fileDialog_;
+const Resource* Resource::resourceToBeExported_ = nullptr;
+Resource**      Resource::resourceToBeReplaced_ = nullptr;
+
+void Resource::update(std::vector<Resource*>& resources)
+{
+    if (!Resource::fileDialog_.validSelection())
+        return;
+    if (resourceToBeExported_ != nullptr) // Export
+    {
+        auto resource = Resource::resourceToBeExported_;
+        auto filepath = fileDialog_.selection().front();
+        const unsigned char* rawData = 
+            resource->type_ == Resource::Type::Texture2D ?
+            ((const Texture2DResource*)resource)->rawData_ :
+            ((const AnimatedTexture2DResource*)resource)->rawData_;
+        unsigned int rawDataSize = 
+            resource->type_ == Resource::Type::Texture2D ?
+            ((const Texture2DResource*)resource)->rawDataSize_ :
+            ((const AnimatedTexture2DResource*)resource)->rawDataSize_;
+        std::ofstream file;
+        file.open(filepath, std::ios_base::out|std::ios_base::binary);
+        if(file.is_open())
+        {
+            file.write((const char*)rawData, rawDataSize);
+            file.close();
+        }
+        Resource::resourceToBeExported_ = nullptr;
+        return;
+    }
+    if (Resource::resourceToBeReplaced_ != nullptr) // Replace
+    {
+        Resource* resource = *Resource::resourceToBeReplaced_;
+        auto name = resource->name();
+        auto filepath = fileDialog_.selection().front();
+        auto newResource = Resource::create(filepath);
+        if (newResource != nullptr)
+        {
+            if (resource != nullptr)
+                delete resource;
+            *Resource::resourceToBeReplaced_ = newResource;
+            (*Resource::resourceToBeReplaced_)->setName(Helpers::filename(filepath));
+        }
+        Resource::resourceToBeReplaced_ = nullptr;
+        return;
+    }
+    for (auto filepath : fileDialog_.selection()) // Load new
+    {
+        auto newResource = Resource::create(filepath);
+        if (newResource != nullptr)
+        {
+            newResource->setName(Helpers::filename(filepath));
+            resources.emplace_back(newResource);
+        }
+    }
+    fileDialog_.clearSelection();
+}
 
 Resource::~Resource()
 {
@@ -472,18 +531,17 @@ void Resource::renderResourcesGUI
         const int row
     )
     {
-        Resource* resource = resources[row];
         int column = 0;
         START_ROW
         START_COLUMN // Actions column -----------------------------------------
         renderResourceActionsButtonGUI
         (
-            resource, 
+            resources[row], 
             deleteResource, 
             resources, 
             ImVec2(buttonWidth, 0)
         );
-        resources[row] = resource;
+        Resource* resource = resources[row];
         END_COLUMN
         START_COLUMN // Type column --------------------------------------------
         static std::map<Resource::Type, const char*> typeToName
@@ -636,15 +694,14 @@ void Resource::renderResourcesGUI
             );
             if (resource != nullptr)
             {
-                resources.emplace_back(resource);
                 if (resource->name().size() == 0)
                     resource->setName(Helpers::randomString(6));
                 Helpers::enforceUniqueName
                 (
-                    *(resource->namePtr_), 
-                    resources, 
-                    resource
+                    *(resource->namePtr_),
+                    resources
                 );
+                resources.emplace_back(resource);
             }
             ImGui::EndPopup();
         }
@@ -682,7 +739,10 @@ void Resource::renderResourcesGUI
         {
             renderResourceGUI(deleteResource, resources, row);
             if (deleteResource)
+            {
                 deleteRow = row;
+                deleteResource = false;
+            }
         }
         renderAddResourceButtonGUI(resources, nRows);
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
@@ -776,21 +836,8 @@ bool Resource::loadOrReplaceTextureOrAnimationButtonGUI
     const bool disabled
 )
 {
-    static std::string lastOpenedPath(".");
-    bool validSelection = false;
-    std::string dialogKey;
-    if (resource == nullptr)
-        dialogKey = animation ? "##loadAnimationDialog" : "##loadTextureDialog";
-    else
-    {
-        dialogKey = 
-            animation ? 
-            "##replaceAnimationDialog"+std::to_string(resource->id()) : 
-            "##replaceTextureDialog"+std::to_string(resource->id());
-    }
     if (disabled)
         ImGui::BeginDisabled();
-    auto fileDialog(ImGuiFileDialog::Instance());
     if 
     (
         ImGui::Button
@@ -802,37 +849,28 @@ bool Resource::loadOrReplaceTextureOrAnimationButtonGUI
         )
     )
     {
-        ImGui::SetNextWindowSize(ImVec2(900, 350), ImGuiCond_FirstUseEver);
-        fileDialog->OpenDialog
+        animation ?
+        Resource::fileDialog_.runOpenFileDialog
         (
-            dialogKey.c_str(), 
-            ICON_FA_IMAGE " Select an image", 
-            animation ? 
-            ".gif" : 
-            "Image files (*.png *.jpg *.jpeg *.bmp){.png,.jpg,.jpeg,.bmp}",
-            lastOpenedPath
+            "Select a GIF", {"GIFs (.gif)", "*.gif"}, ".", (resource == nullptr)
+        ) :
+        Resource::fileDialog_.runOpenFileDialog
+        (
+            "Select an image",
+            {
+                "Image files (.png,.jpg,.jpeg,.bmp)", 
+                "*.png *.jpg *.jpeg *.bmp"
+            },
+            ".",
+            (resource == nullptr)
         );
+        if (resource != nullptr)
+            Resource::resourceToBeReplaced_ = &resource;
+        return true;
     }
     if (disabled)
         ImGui::EndDisabled();
-    if (fileDialog->Display(dialogKey))
-    {
-        if (fileDialog->IsOk())
-        {
-            lastOpenedPath = fileDialog->GetCurrentPath()+"/";
-            auto newResource = Resource::create(fileDialog->GetFilePathName());
-            if (newResource != nullptr)
-            {
-                if (resource != nullptr)
-                    delete resource;
-                resource = newResource;
-                resource->setName(fileDialog->GetCurrentFileName());
-                validSelection = true;
-            }
-        }
-        fileDialog->Close();
-    }
-    return validSelection;
+    return false;
 }
 
 //----------------------------------------------------------------------------//
@@ -1193,16 +1231,15 @@ bool Resource::exportTextureOrAnimationButtonGUI
     const ImVec2 size
 )
 {
-    bool validExport = false;
-    if (resource == nullptr)
-        return validExport;
     if 
     (
-        resource->type_ != Resource::Type::Texture2D &&
-        resource->type_ != Resource::Type::AnimatedTexture2D
+        resource == nullptr || 
+        (
+            resource->type_ != Resource::Type::Texture2D &&
+            resource->type_ != Resource::Type::AnimatedTexture2D
+        )
     )
-        return validExport;
-    static std::string lastOpenedPath(".");
+        return false;
     if (ImGui::Button("Export", size))
     {
         std::string originalFileExtension = 
@@ -1216,44 +1253,17 @@ bool Resource::exportTextureOrAnimationButtonGUI
             else
                 originalFileExtension = ".gif";
         }
-        ImGui::SetNextWindowSize(ImVec2(800,400), ImGuiCond_FirstUseEver);
-        ImGuiFileDialog::Instance()->OpenDialog
+        originalFileExtension = "*"+originalFileExtension;
+        Resource::fileDialog_.runSaveFileDialog
         (
-            "##exportTextureDialog", 
-            ICON_FA_IMAGE " Provide export filepath", 
-            originalFileExtension.c_str(), 
-            lastOpenedPath
+            "Re-export resource",
+            {originalFileExtension, originalFileExtension},
+            resource->name()
         );
+        Resource::resourceToBeExported_ = resource;
+        return true;
     }
-    if (ImGuiFileDialog::Instance()->Display("##exportTextureDialog")) 
-    {
-        if (ImGuiFileDialog::Instance()->IsOk())
-        {
-            std::string filename = 
-                ImGuiFileDialog::Instance()->GetCurrentFileName();
-            std::string filepath = 
-                ImGuiFileDialog::Instance()->GetFilePathName();
-            lastOpenedPath = 
-                ImGuiFileDialog::Instance()->GetCurrentPath()+"/";
-            const unsigned char* rawData = 
-                resource->type_ == Resource::Type::Texture2D ?
-                ((const Texture2DResource*)resource)->rawData_ :
-                ((const AnimatedTexture2DResource*)resource)->rawData_;
-            unsigned int rawDataSize = 
-                resource->type_ == Resource::Type::Texture2D ?
-                ((const Texture2DResource*)resource)->rawDataSize_ :
-                ((const AnimatedTexture2DResource*)resource)->rawDataSize_;
-            std::ofstream file;
-            file.open(filepath, std::ios_base::out|std::ios_base::binary);
-            if(!file.is_open())
-                return false;
-            file.write((const char*)rawData, rawDataSize);
-            file.close();
-            validExport = true;
-        }
-        ImGuiFileDialog::Instance()->Close();
-    }
-    return validExport;
+    return false;
 }
 
 //----------------------------------------------------------------------------//
@@ -1268,7 +1278,6 @@ void Resource::renderResourceActionsButtonGUI
 {
     if (resource->type_ != Resource::Type::Framebuffer)
     {
-        bool replacedResource(false);
         if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1,0)))
             ImGui::OpenPopup("##textureManagerSettings");
         if (ImGui::BeginPopup("##textureManagerSettings"))
@@ -1665,8 +1674,6 @@ affect any cubemaps or animations using this texture)");
                     ImGui::EndTooltip();
                 }
             }
-            if (replacedResource)
-                ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
     }

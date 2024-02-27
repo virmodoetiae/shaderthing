@@ -56,7 +56,7 @@ void App::update()
     float timeStep = window->time()->outerTimestep();
     
     sharedUniforms_->update({timeStep});
-
+    Resource::update(resources_);
     for (auto resource : resources_)
         resource->update({sharedUniforms_->iTime(), timeStep});
 

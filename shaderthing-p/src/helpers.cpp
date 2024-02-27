@@ -69,6 +69,21 @@ std::string fileExtension(const std::string& filepath, bool toLowerCase)
     return foundDot ? fileExtension : "";
 }
 
+std::string filename(const std::string& filepath)
+{
+    std::string filename = "";
+    bool foundSlash(false);
+    for (int i=filepath.size()-1; i>=0; i--)
+    {
+        const char& c(filepath[i]);
+        foundSlash = (c == '\\' || c == '/');
+        if (!foundSlash)
+            filename = c + filename;
+        else break;
+    }
+    return foundSlash ? filename : "";
+}
+
 std::string randomString(const unsigned int size)
 {
     srand((unsigned)time(NULL));
