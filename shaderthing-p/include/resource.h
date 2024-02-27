@@ -11,6 +11,7 @@ typedef vir::TextureBuffer::WrapMode   WrapMode;
 typedef vir::TextureBuffer::FilterMode FilterMode;
 
 class Layer;
+class ObjectIO;
 
 class Texture2DResource;
 class AnimatedTexture2DResource;
@@ -37,10 +38,11 @@ protected:
     bool                          isNameManaged_ = true;
     std::string*                  namePtr_       = nullptr;
     int                           unit_          = -1;
-    
-    static FileDialog             fileDialog_;
-    static const Resource*        resourceToBeExported_;
-    static Resource**             resourceToBeReplaced_;
+
+    static std::map<Resource::Type, const char*> typeToName_;
+    static FileDialog                            fileDialog_;
+    static const Resource*                       resourceToBeExported_;
+    static Resource**                            resourceToBeReplaced_;
     
     Resource(Type type):type_(type){};
     DELETE_COPY_MOVE(Resource)
@@ -66,7 +68,6 @@ public:
     virtual void               setWrapMode(int index, WrapMode mode) = 0;
     virtual void               setMagFilterMode(FilterMode mode) = 0;
     virtual void               setMinFilterMode(FilterMode mode) = 0;
-    
 
     std::string                name() const {return namePtr_ == nullptr? "" : *namePtr_;}
     void                       setName(const std::string& name);
@@ -100,10 +101,16 @@ public:
         std::vector<Resource*>& resources,
         const UpdateArgs& args
     );
+    static void save
+    (
+        const std::vector<Resource*>& resources,
+        ObjectIO& io
+    );
 
 private:
     
     virtual void update(const UpdateArgs& args){};
+    virtual void save(ObjectIO& io) = 0;
     
     static bool loadOrReplaceTextureOrAnimationButtonGUI
     (
@@ -164,6 +171,8 @@ class Texture2DResource : public Resource
     
     Texture2DResource():Resource(Type::Texture2D){}
     DELETE_COPY_MOVE(Texture2DResource)
+
+    virtual void save(ObjectIO& io);
 public:
     ~Texture2DResource();
     bool set(const std::string& filepath);
@@ -185,6 +194,8 @@ class AnimatedTexture2DResource : public Resource
     
     AnimatedTexture2DResource():Resource(Type::AnimatedTexture2D){}
     DELETE_COPY_MOVE(AnimatedTexture2DResource)
+
+    virtual void save(ObjectIO& io);
 public:
     ~AnimatedTexture2DResource();
     bool set(const std::string& filepath);
@@ -204,6 +215,8 @@ class CubemapResource : public Resource
     
     CubemapResource():Resource(Type::Cubemap){}
     DELETE_COPY_MOVE(CubemapResource)
+
+    virtual void save(ObjectIO& io);
 public:
     ~CubemapResource();
     bool set(const Texture2DResource* faces[6]);
@@ -217,6 +230,8 @@ class FramebufferResource : public Resource
     FramebufferResource():Resource(Type::Framebuffer){isNameManaged_=false;}
     
     DELETE_COPY_MOVE(FramebufferResource)
+
+    virtual void save(ObjectIO& io){}
 public:
     ~FramebufferResource();
     bool               set(vir::Framebuffer** framebuffer);

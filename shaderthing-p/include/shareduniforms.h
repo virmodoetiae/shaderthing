@@ -16,6 +16,8 @@ namespace vir
 namespace ShaderThing
 {
 
+class ObjectIO;
+
 class SharedUniforms : vir::Event::Receiver
 {
 
@@ -179,6 +181,8 @@ public:
     void bindShader(vir::Shader* shader) const;
 
     void update(const UpdateArgs& args);
+
+    void save(ObjectIO& io) const;
     
     void renderWindowResolutionMenuGUI();
 };

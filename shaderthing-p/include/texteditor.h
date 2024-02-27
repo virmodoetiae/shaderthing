@@ -240,6 +240,7 @@ public:
     };
 
     TextEditor();
+    TextEditor(const std::string& initialText);
 
     void setLanguageDefinition(const LanguageDefinition& aLanguageDef);
     const LanguageDefinition& getLanguageDefinition() const 

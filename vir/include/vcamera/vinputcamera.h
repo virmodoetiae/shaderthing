@@ -17,6 +17,7 @@ protected:
 public:
 
     InputCamera();
+    virtual ~InputCamera(){}
 
     DECLARE_RECEIVABLE_EVENTS
     (

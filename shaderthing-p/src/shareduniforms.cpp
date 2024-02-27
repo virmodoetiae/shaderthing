@@ -1,6 +1,7 @@
 #include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/uniform.h"
 #include "shaderthing-p/include/macros.h"
+#include "shaderthing-p/include/objectio.h"
 #include "vir/include/vir.h"
 
 namespace ShaderThing
@@ -378,6 +379,26 @@ void SharedUniforms::update(const UpdateArgs& args)
         flags_.updateDataRangeII = true;
         cpuBlock_.iUserAction = false;
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::save(ObjectIO& io) const
+{
+    io.writeObjectStart("sharedUniforms");
+    io.write("windowResolution", cpuBlock_.iResolution);
+    io.write("time", cpuBlock_.iTime);
+    io.write("timePaused", flags_.isTimePaused);
+    io.write("timeLooped", flags_.isTimeLooped);
+    io.write("iWASD", shaderCamera_->position());
+    io.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
+    io.write("iWASDInputEnabled", flags_.isCameraKeyboardInputEnabled);
+    io.write("iLook", shaderCamera_->z());
+    io.write("iLookSensitivity",shaderCamera_->mouseSensitivityRef());
+    io.write("iLookInputEnabled",flags_.isCameraMouseInputEnabled);
+    io.write("iMouseInputEnabled", flags_.isMouseInputEnabled);
+    io.write("resetTimeOnRenderRestart",flags_.isTimeResetOnRenderingRestart);
+    io.writeObjectEnd();
 }
 
 //----------------------------------------------------------------------------//

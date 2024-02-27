@@ -18,6 +18,7 @@ typedef vir::TextureBuffer::FilterMode FilterMode;
 struct Uniform;
 class Resource;
 class SharedUniforms;
+class ObjectIO;
 
 class Layer : vir::Event::Receiver
 {
@@ -57,7 +58,9 @@ public:
                std::string       sourceHeader;
                std::string       headerErrors;
                TextEditor        sourceEditor;
+        static std::string       defaultSharedSource;
         static TextEditor        sharedSourceEditor;
+        
     };
     struct Flags
     {
@@ -106,6 +109,7 @@ private:
         const vir::TextureBuffer::InternalFormat& internalFormat, 
         const glm::ivec2& resolution
     );
+    void save(ObjectIO& io) const;
 
 public:
 
@@ -117,6 +121,8 @@ public:
         const SharedUniforms& sharedUniforms
     );
     ~Layer();
+    
+    static void save(const std::vector<Layer*>& layers, ObjectIO& io);
 
     DECLARE_RECEIVABLE_EVENTS(vir::Event::Type::WindowResize)
     void onReceive(vir::Event::WindowResizeEvent& event) override;

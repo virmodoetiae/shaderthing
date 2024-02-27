@@ -38,6 +38,21 @@ TextEditor::TextEditor() :
     lines_.push_back(Line());
 }
 
+TextEditor::TextEditor(const std::string& initialText) : 
+    startTime_
+    (
+        std::chrono::duration_cast<std::chrono::milliseconds>
+        (
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count()
+    )
+{
+    setPalette(getDarkPalette());
+    setLanguageDefinition(LanguageDefinition::GLSL());
+    setText(initialText);
+    resetTextChanged();
+}
+
 void TextEditor::setLanguageDefinition(const LanguageDefinition & aLanguageDef)
 {
     languageDefinition_ = aLanguageDef;

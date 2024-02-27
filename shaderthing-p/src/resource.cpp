@@ -2,6 +2,7 @@
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/helpers.h"
 #include "shaderthing-p/include/filedialog.h"
+#include "shaderthing-p/include/objectio.h"
 
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
@@ -15,6 +16,22 @@ namespace ShaderThing
 FileDialog      Resource::fileDialog_;
 const Resource* Resource::resourceToBeExported_ = nullptr;
 Resource**      Resource::resourceToBeReplaced_ = nullptr;
+
+std::map<Resource::Type, const char*> Resource::typeToName_ =
+{
+    {Resource::Type::Texture2D,         "Texture-2D"},
+    {Resource::Type::AnimatedTexture2D, "Animation-2D"},
+    {Resource::Type::Cubemap,           "Cubemap"},
+    {Resource::Type::Framebuffer,       "Layer"}
+};
+
+void Resource::save(const std::vector<Resource*>& resources, ObjectIO& io)
+{
+    io.writeObjectStart("resources");
+    for (auto* resource : resources)
+        resource->save(io);
+    io.writeObjectEnd();
+}
 
 void Resource::update(std::vector<Resource*>& resources, const UpdateArgs& args)
 {
@@ -250,6 +267,18 @@ Texture2DResource::~Texture2DResource()
         delete[] rawData_;
 }
 
+void Texture2DResource::save(ObjectIO& io)
+{
+    io.writeObjectStart(namePtr_->c_str());
+    io.write("type", Resource::typeToName_[type_]);
+    io.write("magnificationFilterMode", (int)magFilterMode());
+    io.write("minimizationFilterMode", (int)minFilterMode());
+    io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
+    io.write("originalFileExtension", originalFileExtension_.c_str());
+    io.write("data", (const char*)rawData_, rawDataSize_, true);
+    io.writeObjectEnd();
+}
+
 //----------------------------------------------------------------------------//
 
 bool AnimatedTexture2DResource::set(const std::string& filepath)
@@ -381,6 +410,37 @@ AnimatedTexture2DResource::~AnimatedTexture2DResource()
         delete[] rawData_;
 }
 
+void AnimatedTexture2DResource::save(ObjectIO& io)
+{
+    io.writeObjectStart(namePtr_->c_str());
+    io.write("type", Resource::typeToName_[type_]);
+    io.write("magnificationFilterMode", (int)magFilterMode());
+    io.write("minimizationFilterMode", (int)minFilterMode());
+    io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
+    io.write("animationFps", native_->fps());
+    io.write("animationFrameIndex", native_->frameIndex());
+    io.write("animationPaused", isAnimationPaused_);
+    io.write("animationBoundToGlobalTime", isAnimationBoundToGlobalTime_);
+    if // it is a .gif
+    (
+        originalFileExtension_.size() > 0 && 
+        rawData_ != nullptr &&
+        rawDataSize_ > 0
+    )
+    {
+        io.write("originalFileExtension", originalFileExtension_.c_str());
+        io.write("data", (const char*)rawData_, rawDataSize_, true);
+    }
+    else // if it is an animation constructed from other resources
+    {
+        std::vector<std::string> frameNames(unmanagedFrames_.size());
+        for (int i=0; i<frameNames.size(); i++)
+            frameNames[i] = unmanagedFrames_[i]->name();
+        io.write("frames", frameNames);
+    }
+    io.writeObjectEnd();
+}
+
 void AnimatedTexture2DResource::update(const UpdateArgs& args)
 {
     if (isAnimationBoundToGlobalTime_)
@@ -461,6 +521,19 @@ CubemapResource::~CubemapResource()
         this->unbind();
         delete native_;
     }
+}
+
+void CubemapResource::save(ObjectIO& io)
+{
+    io.writeObjectStart(namePtr_->c_str());
+    io.write("type", Resource::typeToName_[type_]);
+    io.write("magnificationFilterMode", (int)magFilterMode());
+    io.write("minimizationFilterMode", (int)minFilterMode());
+    std::vector<std::string> faceNames(6);
+    for (int i=0; i<6; i++)
+        faceNames[i] = unmanagedFaces_[i]->name();
+    io.write("faces", faceNames);
+    io.writeObjectEnd();
 }
 
 //----------------------------------------------------------------------------//

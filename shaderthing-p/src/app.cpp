@@ -6,11 +6,14 @@
 #include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/coderepository.h"
+#include "shaderthing-p/include/objectio.h"
 
 #include "vir/include/vir.h"
 
 namespace ShaderThing
 {
+
+FileDialog App::fileDialog_ = FileDialog();
 
 App::App()
 {
@@ -74,6 +77,80 @@ void App::update()
         elapsedFrames = 0;
         elapsedTime = 0;
     }
+
+    //
+    if (!fileDialog_.validSelection())
+        return;
+    if (flags_.save)
+    {
+        saveProject(fileDialog_.selection().front());
+        flags_.save = false;
+    }
+    fileDialog_.clearSelection();
+}
+
+//----------------------------------------------------------------------------//
+
+void App::saveProject(const std::string& filepath) const
+{
+    auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Write);
+    project.write("UIScale", *gui_.fontScale);
+    
+    sharedUniforms_->save(            project);
+    Layer::          save(layers_,    project);
+    Resource::       save(resources_, project);
+    
+    /*
+    project.writeObjectStart("shared");
+    project.write("windowResolution", resolution_);
+    project.write("time", time_);
+    project.write("timePaused", stateFlags_[ST_IS_TIME_PAUSED]);
+    project.write("timeLooped", stateFlags_[ST_IS_TIME_LOOPED]);
+    project.write("iWASD", shaderCamera_->position());
+    project.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
+    project.write
+    (
+        "iWASDInputEnabled", 
+        stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED]
+    );
+    project.write("iLook", shaderCamera_->z());
+    project.write("iLookSensitivity",shaderCamera_->mouseSensitivityRef());
+    project.write
+    (
+        "iLookInputEnabled",
+        stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED]
+    );
+    project.write
+    (
+        "iMouseInputEnabled", 
+        stateFlags_[ST_IS_MOUSE_INPUT_ENABLED]
+    );
+    project.write
+    (
+        "resetTimeOnRenderRestart",
+        stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]
+    );
+    project.write("UIScale", *fontScale_);
+    if (Layer::sharedSourceIsNotDefault())
+    {
+        auto sharedSource = Layer::sharedSource();
+        project.write("sharedFragmentSource", sharedSource.c_str(), 
+            sharedSource.size(), true);
+    };
+    project.writeObjectEnd();
+
+    resourceManager_->saveState(project);
+    layerManager_->saveState(project);
+    //quantizationTool_->saveState(project);
+    exportTool_->saveState(project);
+    */
+}
+
+//----------------------------------------------------------------------------//
+    
+void openProject(const std::string& filepath)
+{
+
 }
 
 //----------------------------------------------------------------------------//
@@ -186,6 +263,13 @@ void App::renderMenuBarGUI()
             }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
             {
+                fileDialog_.runSaveFileDialog
+                (
+                    "Save project",
+                    {"ShaderThing file (*.stf)", "*.stf"},
+                    "new_project.stf"
+                );
+                flags_.save = true;
             }
             if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
             {

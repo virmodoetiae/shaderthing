@@ -95,6 +95,7 @@ protected:
 public:
 
     Camera();
+    virtual ~Camera(){}
 
     template<class CameraType = Camera>
     static Camera* create()
