@@ -174,6 +174,66 @@ void Resource::setNamePtr(std::string* namePtr)
     namePtr_ = namePtr;
 }
 
+void Resource::loadAll
+(
+    const ObjectIO& io,
+    std::vector<Resource*>& resources
+)
+{
+    for (auto resource : resources)
+    {
+        if (resource->type_ == Type::Framebuffer)
+            continue;
+        DELETE_IF_NOT_NULLPTR(resource)
+    }
+    resources.clear();
+    auto ioType = [](const ObjectIO& io)
+    {
+        auto typeName = io.read("type", false);
+        for (auto entry : typeToName_)
+        {
+            if (std::string(typeName) != std::string(entry.second))
+                continue;
+            return entry.first;
+        }
+        return Type();
+    };
+    auto ioResources = io.readObject("resources");
+
+    // First, load all resources of type Texture2D as these might be referenced
+    // by AnimatedTexture2D or Cubemap resources
+    for (auto ioResourceName : ioResources.members())
+    {
+        auto ioResource = ioResources.readObject(ioResourceName);
+        auto type = ioType(ioResource);
+        if (type != Type::Texture2D)
+            continue;
+        auto resource = Texture2DResource::load(ioResource);
+        if (resource != nullptr)
+            resources.emplace_back(resource);
+    }
+    // Then load all the remaining resources
+    for (auto ioResourceName : ioResources.members())
+    {
+        auto ioResource = ioResources.readObject(ioResourceName);
+        auto type = ioType(ioResource);
+        Resource* resource = nullptr;
+        switch (type)
+        {
+            case Type::Texture2D :
+                continue;
+            case Type::AnimatedTexture2D :
+                resource = AnimatedTexture2DResource::load(ioResource, resources);
+                break;
+            case Type::Cubemap :
+                resource = CubemapResource::load(ioResource, resources);
+                break;
+        }
+        if (resource != nullptr)
+            resources.emplace_back(resource);
+    }
+}
+
 //----------------------------------------------------------------------------//
 
 #define SET_NATIVE_AND_RAW_AND_RETURN(data, size)                           \
@@ -271,12 +331,28 @@ void Texture2DResource::save(ObjectIO& io)
 {
     io.writeObjectStart(namePtr_->c_str());
     io.write("type", Resource::typeToName_[type_]);
-    io.write("magnificationFilterMode", (int)magFilterMode());
-    io.write("minimizationFilterMode", (int)minFilterMode());
+    io.write("magFilterMode", (int)magFilterMode());
+    io.write("minFilterMode", (int)minFilterMode());
     io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
     io.write("originalFileExtension", originalFileExtension_.c_str());
     io.write("data", (const char*)rawData_, rawDataSize_, true);
     io.writeObjectEnd();
+}
+
+Texture2DResource* Texture2DResource::load(const ObjectIO& io)
+{
+    auto resource = new Texture2DResource();
+    unsigned int rawDataSize;
+    const char* rawData = io.read("data", true, &rawDataSize);
+    resource->set((unsigned char*)rawData, rawDataSize);
+    resource->setName(io.name());
+    resource->originalFileExtension_ = io.read("originalFileExtension", false);
+    resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
+    resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
+    auto wrapModes = io.read<glm::ivec2>("wrapModes");
+    resource->setWrapMode(0, (WrapMode)wrapModes[0]);
+    resource->setWrapMode(1, (WrapMode)wrapModes[1]);
+    return resource;
 }
 
 //----------------------------------------------------------------------------//
@@ -414,8 +490,8 @@ void AnimatedTexture2DResource::save(ObjectIO& io)
 {
     io.writeObjectStart(namePtr_->c_str());
     io.write("type", Resource::typeToName_[type_]);
-    io.write("magnificationFilterMode", (int)magFilterMode());
-    io.write("minimizationFilterMode", (int)minFilterMode());
+    io.write("magFilterMode", (int)magFilterMode());
+    io.write("minFilterMode", (int)minFilterMode());
     io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
     io.write("animationFps", native_->fps());
     io.write("animationFrameIndex", native_->frameIndex());
@@ -447,6 +523,55 @@ void AnimatedTexture2DResource::update(const UpdateArgs& args)
         native_->setTime(args.time);
     else if (!isAnimationPaused_)
         native_->advanceTime(args.timeStep);
+}
+
+AnimatedTexture2DResource* AnimatedTexture2DResource::load
+(
+    const ObjectIO& io, 
+    const std::vector<Resource*>& resources
+)
+{
+    auto resource = new AnimatedTexture2DResource();
+    if (io.hasMember("data"))
+    {
+        unsigned int rawDataSize;
+        const char* rawData = io.read("data", true, &rawDataSize);
+        resource->set((unsigned char*)rawData, rawDataSize);
+    }
+    else
+    {
+        auto frameNames = io.read<std::vector<std::string>>("frames");
+        std::vector<Texture2DResource*> referencedResources(frameNames.size());
+        int i = 0;
+        for (auto& frameName : frameNames)
+        {
+            for (auto r : resources)
+            {
+                if 
+                (
+                    r->name() == frameName && 
+                    r->type() == Resource::Type::Texture2D
+                )
+                    referencedResources[i] = (Texture2DResource*)r;
+            }
+            ++i;
+        }
+        resource->set(referencedResources);
+    }
+    
+    resource->native_->setFps(io.read<float>("animationFps"));
+    resource->native_->setFrameIndex(io.read<int>("animationFrameIndex"));
+    resource->isAnimationPaused_ = io.read<bool>("animationPaused");
+    resource->isAnimationBoundToGlobalTime_ = 
+        io.read<bool>("animationBoundToGlobalTime");
+
+    resource->setName(io.name());
+    resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
+    resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
+    auto wrapModes = io.read<glm::ivec2>("wrapModes");
+    resource->setWrapMode(0, (WrapMode)wrapModes[0]);
+    resource->setWrapMode(1, (WrapMode)wrapModes[1]);
+    return resource;
 }
 
 //----------------------------------------------------------------------------//
@@ -527,13 +652,44 @@ void CubemapResource::save(ObjectIO& io)
 {
     io.writeObjectStart(namePtr_->c_str());
     io.write("type", Resource::typeToName_[type_]);
-    io.write("magnificationFilterMode", (int)magFilterMode());
-    io.write("minimizationFilterMode", (int)minFilterMode());
+    io.write("magFilterMode", (int)magFilterMode());
+    io.write("minFilterMode", (int)minFilterMode());
     std::vector<std::string> faceNames(6);
     for (int i=0; i<6; i++)
         faceNames[i] = unmanagedFaces_[i]->name();
     io.write("faces", faceNames);
     io.writeObjectEnd();
+}
+
+CubemapResource* CubemapResource::load
+(
+    const ObjectIO& io,
+    const std::vector<Resource*>& resources
+)
+{
+    auto resource = new CubemapResource();
+    auto faceNames = io.read<std::vector<std::string>>("faces");
+    const Texture2DResource* referencedResources[6];
+    int i = 0;
+    for (auto& faceName : faceNames)
+    {
+        for (auto r : resources)
+        {
+            if 
+            (
+                r->name() == faceName && 
+                r->type() == Resource::Type::Texture2D
+            )
+                referencedResources[i] = (Texture2DResource*)r;
+        }
+        ++i;
+    }
+    resource->set(referencedResources);
+
+    resource->setName(io.name());
+    resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
+    resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
+    return resource;
 }
 
 //----------------------------------------------------------------------------//
@@ -1597,8 +1753,8 @@ affect any cubemaps or animations using this texture)");
                 {
                     for (auto e : vir::TextureBuffer::filterModeToName)
                     {
-                        // Mipmap filters are for minimization only,
-                        // no effect on magnification, hence they 
+                        // Mipmap filters are for min only,
+                        // no effect on mag, hence they 
                         // are skipped here
                         if
                         (

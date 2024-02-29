@@ -106,11 +106,21 @@ public:
         const std::vector<Resource*>& resources,
         ObjectIO& io
     );
+    static void loadAll
+    (
+        const ObjectIO& io,
+        std::vector<Resource*>& resources
+    );
 
 private:
     
     virtual void update(const UpdateArgs& args){};
     virtual void save(ObjectIO& io) = 0;
+    static Resource* load
+    (
+        const ObjectIO& io, 
+        const std::vector<Resource*>& resources
+    );
     
     static bool loadOrReplaceTextureOrAnimationButtonGUI
     (
@@ -172,7 +182,8 @@ class Texture2DResource : public Resource
     Texture2DResource():Resource(Type::Texture2D){}
     DELETE_COPY_MOVE(Texture2DResource)
 
-    virtual void save(ObjectIO& io);
+    virtual void save(ObjectIO& io) override;
+    static Texture2DResource* load(const ObjectIO& io);
 public:
     ~Texture2DResource();
     bool set(const std::string& filepath);
@@ -196,6 +207,11 @@ class AnimatedTexture2DResource : public Resource
     DELETE_COPY_MOVE(AnimatedTexture2DResource)
 
     virtual void save(ObjectIO& io);
+    static AnimatedTexture2DResource* load
+    (
+        const ObjectIO& io,
+        const std::vector<Resource*>& resources
+    );
 public:
     ~AnimatedTexture2DResource();
     bool set(const std::string& filepath);
@@ -217,6 +233,11 @@ class CubemapResource : public Resource
     DELETE_COPY_MOVE(CubemapResource)
 
     virtual void save(ObjectIO& io);
+    static CubemapResource* load
+    (
+        const ObjectIO& io,
+        const std::vector<Resource*>& resources
+    );
 public:
     ~CubemapResource();
     bool set(const Texture2DResource* faces[6]);

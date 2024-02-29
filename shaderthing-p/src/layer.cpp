@@ -201,6 +201,7 @@ void Layer::save(ObjectIO& io) const
     io.write("renderTarget", (int)rendering_.target);
     io.write("resolution", resolution_);
     io.write("resolutionRatio", resolutionRatio_);
+    io.write("isAspectRatioBoundToWindow", flags_.isAspectRatioBoundToWindow);
     io.write("depth", depth_);
 
     io.writeObjectStart("internalFramebuffer");
@@ -217,12 +218,12 @@ void Layer::save(ObjectIO& io) const
     );
     io.write
     (
-        "magnificationFilterMode", 
+        "magFilterMode", 
         (int)framebuffer->colorBufferMagFilterMode()
     );
     io.write
     (
-        "minimizationFilterMode",
+        "minFilterMode",
         (int)framebuffer->colorBufferMinFilterMode()
     );
     io.write("exportClearPolicy", (int)rendering_.clearPolicy);
@@ -243,7 +244,11 @@ void Layer::save(ObjectIO& io) const
     {
         float& min(u->gui.bounds.x);
         float& max(u->gui.bounds.y);
-        if (u->name.size() == 0)
+        if 
+        (
+            u->name.size() == 0 || 
+            u->specialType != Uniform::SpecialType::None
+        )
             continue;
         io.writeObjectStart(u->name.c_str());
         io.write("type", vir::Shader::uniformTypeToName[u->type].c_str());
@@ -339,7 +344,6 @@ void Layer::save(ObjectIO& io) const
 
 void Layer::save(const std::vector<Layer*>& layers, ObjectIO& io)
 {
-    io.writeObjectStart("layers");
     auto sharedSource = Layer::GUI::sharedSourceEditor.getText();
     if (Layer::GUI::defaultSharedSource != sharedSource)
         io.write
@@ -349,9 +353,251 @@ void Layer::save(const std::vector<Layer*>& layers, ObjectIO& io)
             sharedSource.size(), 
             true
         );
+    io.writeObjectStart("layers");
     for (auto layer : layers)
         layer->save(io);
     io.writeObjectEnd();
+}
+
+//----------------------------------------------------------------------------//
+
+Layer* Layer::load
+(
+    const ObjectIO& io,
+    const std::vector<Layer*>& layers,
+    const SharedUniforms& sharedUniforms,
+    std::vector<Resource*>& resources
+)
+{
+    auto layer = new Layer(layers, sharedUniforms);
+
+    layer->gui_.name = io.name();
+    layer->rendering_.target = (Rendering::Target)io.read<int>("renderTarget");
+    layer->resolution_ = io.read<glm::ivec2>("resolution");
+    layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
+    layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
+    layer->flags_.isAspectRatioBoundToWindow = 
+        io.read<bool>("isAspectRatioBoundToWindow");
+    layer->setDepth(io.read<float>("depth"));
+
+    auto shaderData = io.readObject("shader");
+    auto fragmentSource = shaderData.read("fragmentSource", false);
+    auto uniformsData = shaderData.readObject("uniforms");
+    for(auto uniformName : uniformsData.members())
+    {
+        auto uniformData = uniformsData.readObject(uniformName);
+        auto uniform = new Uniform();
+        uniform->type = vir::Shader::uniformNameToType[
+            uniformData.read<std::string>("type")];
+        layer->uniforms_.emplace_back(uniform);
+        float min, max, x, y, z, w;
+
+#define SET_UNIFORM(type)                   \
+    uniform->setValue<type>(uniformData.read<type>("value"));
+#define READ_MIN_MAX                        \
+    min = uniformData.read<float>("min");   \
+    max = uniformData.read<float>("max");
+
+        switch (uniform->type)
+        {
+            case vir::Shader::Variable::Type::Bool :
+            {
+                SET_UNIFORM(bool)
+                uniform->gui.showBounds = false;
+                break;
+            }
+            case vir::Shader::Variable::Type::Int :
+            {
+                SET_UNIFORM(int)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int2 :
+            {
+                SET_UNIFORM(glm::ivec2)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int3 :
+            {
+                SET_UNIFORM(glm::ivec3)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int4 :
+            {
+                SET_UNIFORM(glm::ivec4)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float :
+            {
+                SET_UNIFORM(float)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float2 :
+            {
+                SET_UNIFORM(glm::vec2)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float3 :
+            {
+                SET_UNIFORM(glm::vec3)
+                READ_MIN_MAX
+                uniform->gui.usesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
+                break;
+            }
+            case vir::Shader::Variable::Type::Float4 :
+            {
+                SET_UNIFORM(glm::vec4)
+                READ_MIN_MAX
+                uniform->gui.usesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
+                break;
+            }
+            case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::SamplerCube :
+            {
+                std::string resourceName = uniformData.read("value", false);
+                uniform->gui.showBounds = false;
+                bool found = false;
+                for (auto resource : resources)
+                {
+                    if (resource->name() == resourceName)
+                    {
+                        uniform->setValuePtr<Resource>(resource);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    layer->cache_.uninitializedResourceFramebuffers.insert
+                    (
+                        {uniform, resourceName}
+                    );
+                break;
+            }
+        }
+        uniform->gui.bounds = {min, max};
+        uniform->name = uniformName;
+    }
+    
+    layer->gui_.sourceEditor.setText(fragmentSource);
+    layer->gui_.sourceEditor.resetTextChanged();
+
+    // If the project was saved in a state such that the shader has compilation
+    // errors, then initialize the shader with the blank shader source (back-end
+    // -only, the user will still see the source of the saved shader with the 
+    // usual list of compilation errors and markers)
+    if (!layer->compileShader(sharedUniforms))
+    {
+        layer->rendering_.shader = 
+            vir::Shader::create
+                (
+                    vertexShaderSource(sharedUniforms),
+                    glslVersionSource()+
+R"(out vec4 fragColor;
+in     vec2 qc;
+in     vec2 tc;
+void main(){fragColor = vec4(0, 0, 0, .5);})",
+                    vir::Shader::ConstructFrom::SourceCode
+                );
+    }
+
+    auto framebufferData = io.readObject("internalFramebuffer");
+    auto internalFormat = 
+        (vir::TextureBuffer::InternalFormat)framebufferData.read<int>("format");
+    
+    layer->rebuildFramebuffers(internalFormat, layer->resolution_);
+
+    // Set framebuffer color attachment wrapping and filtering settings
+    auto magFilter = framebufferData.read<int>("magFilterMode");
+    auto minFilter = framebufferData.read<int>("minFilterMode");
+    auto wrapModes = framebufferData.read<glm::ivec2>("wrapModes");
+    layer->setFramebufferMagFilterMode((FilterMode)magFilter);
+    layer->setFramebufferMinFilterMode((FilterMode)minFilter);
+    layer->setFramebufferWrapMode(0, (WrapMode)wrapModes[0]);
+    layer->setFramebufferWrapMode(1, (WrapMode)wrapModes[1]);
+
+    // Initialize post-processing effects, if any were saved 
+    /*if (io.hasMember("postProcesses"))
+    {
+        auto postProcessData = io.readObject("postProcesses");
+        for (auto name : postProcessData.members())
+        {
+            ObjectIO data(postProcessData.readObject(name));
+            postProcesses_.emplace_back
+            (
+                PostProcess::create(app_, this, data)
+            );
+        }
+    }*/
+
+    //
+    if (layer->rendering_.target != Rendering::Target::Window)
+        Resource::insertFramebufferInResources
+        (
+            &layer->gui_.name, 
+            &layer->rendering_.framebuffer,
+            resources
+        );
+    return layer;
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::loadAll
+(
+    const ObjectIO& io,
+    std::vector<Layer*>& layers, 
+    const SharedUniforms& sharedUniforms,
+    std::vector<Resource*>& resources
+)
+{
+    // Clear state
+    for (auto layer : layers)
+        delete layer;
+    layers.clear();
+    
+    if (io.hasMember("sharedFragmentSource"))
+    {
+        Layer::GUI::sharedSourceEditor.setText
+        (
+            io.read("sharedFragmentSource", false)
+        );
+        Layer::GUI::sharedSourceEditor.resetTextChanged();
+    }
+    
+    auto ioLayers = io.readObject("layers");
+    for (auto ioLayerName : ioLayers.members())
+    {   
+        auto ioLayer = ioLayers.readObject(ioLayerName);
+        auto layer = Layer::load(ioLayer, layers, sharedUniforms, resources);
+        layers.emplace_back(layer);
+    };
+
+    // Re-establish dependencies between Layers (i.e., when a layer is
+    // being used as a sampler2D uniform by another layer)
+    for (auto* layer : layers)
+    {
+        for (auto& entry : layer->cache_.uninitializedResourceFramebuffers)
+        {
+            auto* uniform = entry.first;
+            auto& layerName = entry.second;
+            for (auto resource : resources)
+            {
+                if (resource->name() != layerName)
+                    continue;
+                uniform->setValuePtr<Resource>(resource);
+            }
+        }
+        layer->cache_.uninitializedResourceFramebuffers.clear();
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -495,7 +741,7 @@ void Layer::setResolution
     if (resolution == resolution_)
         return;
     
-    if (tryEnfoceWindowAspectRatio && flags_.windowBoundAspectRatio)
+    if (tryEnfoceWindowAspectRatio && flags_.isAspectRatioBoundToWindow)
     {
         float windowAspectRatio = window->aspectRatio();
         if (resolution.x == resolution_.x)
@@ -642,15 +888,15 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
         gui_.headerErrors.clear();
         gui_.sourceEditor.setErrorMarkers({});
         gui_.sharedSourceEditor.setErrorMarkers({});
-        uncompiledUniforms_.erase
+        cache_.uncompiledUniforms.erase
         (
             std::remove_if
             (
-                uncompiledUniforms_.begin(),
-                uncompiledUniforms_.end(),
+                cache_.uncompiledUniforms.begin(),
+                cache_.uncompiledUniforms.end(),
                 [](Uniform* u){return u->name.size()>0;}
             ),
-            uncompiledUniforms_.end()
+            cache_.uncompiledUniforms.end()
         );
         flags_.uncompiledChanges = false;
         // Re-set uniforms
@@ -813,7 +1059,7 @@ void Layer::renderShader
     // Re-enable blending before either leaving or redirecting the rendered 
     // texture to the main window
     if (!blendingEnabled)
-        vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
+        renderer->setBlending(true);
 
     // Apply post-processing effects, if any
     // for (auto postProcess : postProcesses_)
@@ -1016,11 +1262,11 @@ void Layer::renderSettingsMenuGUI(std::vector<Resource*>& resources)
             ImGui::Checkbox
             (
                 label.get(), 
-                &flags_.windowBoundAspectRatio
+                &flags_.isAspectRatioBoundToWindow
             )
         )
         {
-            if (flags_.windowBoundAspectRatio)
+            if (flags_.isAspectRatioBoundToWindow)
             {
                 auto window = vir::GlobalPtr<vir::Window>::instance();
                 glm::ivec2 resolution = {window->width(), window->height()};
@@ -1660,7 +1906,7 @@ void Layer::renderTabBarGUI
                 (
                     sharedUnifoms, 
                     uniforms_, 
-                    uncompiledUniforms_,
+                    cache_.uncompiledUniforms,
                     *rendering_.shader,
                     resources
                 )

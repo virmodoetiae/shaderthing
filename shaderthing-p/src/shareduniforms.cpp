@@ -397,8 +397,41 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("iLookSensitivity",shaderCamera_->mouseSensitivityRef());
     io.write("iLookInputEnabled",flags_.isCameraMouseInputEnabled);
     io.write("iMouseInputEnabled", flags_.isMouseInputEnabled);
+    io.write("iKeyboardInputEnabled", flags_.isKeyboardInputEnabled);
     io.write("resetTimeOnRenderRestart",flags_.isTimeResetOnRenderingRestart);
     io.writeObjectEnd();
+}
+
+void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
+{
+    if (su != nullptr)
+        delete su;
+    su = new SharedUniforms();
+    auto ioSu = io.readObject("sharedUniforms");
+    auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
+    su->setResolution(resolution, false);
+    su->cpuBlock_.iTime = ioSu.read<float>("time");
+    su->cpuBlock_.iWASD = ioSu.read<glm::vec3>("iWASD");
+    su->cpuBlock_.iLook = ioSu.read<glm::vec3>("iLook");
+    su->flags_.isTimePaused = ioSu.read<bool>("timePaused");
+    su->flags_.isTimeLooped = ioSu.read<bool>("timeLooped");
+    su->flags_.isTimeResetOnRenderingRestart = 
+        ioSu.read<bool>("resetTimeOnRenderRestart");
+    su->shaderCamera_->setDirection(su->cpuBlock_.iLook.packed());
+    su->shaderCamera_->setPosition(su->cpuBlock_.iWASD.packed());
+    su->shaderCamera_->setKeySensitivity(ioSu.read<float>("iWASDSensitivity"));
+    su->shaderCamera_->setMouseSensitivity(ioSu.read<float>("iLookSensitivity"));
+    su->shaderCamera_->update();
+    if (!ioSu.read<bool>("iWASDInputEnabled"))
+        su->toggleCameraKeyboardInputs();
+    if (!ioSu.read<bool>("iLookInputEnabled"))
+        su->toggleCameraKeyboardInputs();
+    if (!ioSu.read<bool>("iMouseInputEnabled"))
+        su->toggleMouseInputs();
+    if (!ioSu.read<bool>("iKeyboardInputEnabled"))
+        su->toggleKeyboardInputs();
+    su->flags_.updateDataRangeII = true;
+    su->flags_.updateDataRangeIII = true;
 }
 
 //----------------------------------------------------------------------------//

@@ -488,7 +488,7 @@ void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
     // Unfortunately (and also due to my unwillingless to use smart ptrs), there
     // is no way around this for now, but whatever, unbiding ain't vital 
     // anyways...
-    try{frame_->unbind(unit);}catch(...){return;}
+     //try{frame_->unbind(unit);}catch(...){return;}
 }
 
 //----------------------------------------------------------------------------//

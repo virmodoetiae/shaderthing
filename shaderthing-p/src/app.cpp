@@ -25,6 +25,7 @@ App::App()
         512,
         "ShaderThing"
     );
+    vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
     sharedUniforms_ = new SharedUniforms();
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     initializeGUI();
@@ -86,6 +87,11 @@ void App::update()
         saveProject(fileDialog_.selection().front());
         flags_.save = false;
     }
+    if (flags_.load)
+    {
+        loadProject(fileDialog_.selection().front());
+        flags_.load = false;
+    }
     fileDialog_.clearSelection();
 }
 
@@ -99,58 +105,17 @@ void App::saveProject(const std::string& filepath) const
     sharedUniforms_->save(            project);
     Layer::          save(layers_,    project);
     Resource::       save(resources_, project);
-    
-    /*
-    project.writeObjectStart("shared");
-    project.write("windowResolution", resolution_);
-    project.write("time", time_);
-    project.write("timePaused", stateFlags_[ST_IS_TIME_PAUSED]);
-    project.write("timeLooped", stateFlags_[ST_IS_TIME_LOOPED]);
-    project.write("iWASD", shaderCamera_->position());
-    project.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
-    project.write
-    (
-        "iWASDInputEnabled", 
-        stateFlags_[ST_IS_CAMERA_POSITION_INPUT_ENABLED]
-    );
-    project.write("iLook", shaderCamera_->z());
-    project.write("iLookSensitivity",shaderCamera_->mouseSensitivityRef());
-    project.write
-    (
-        "iLookInputEnabled",
-        stateFlags_[ST_IS_CAMERA_DIRECTION_INPUT_ENABLED]
-    );
-    project.write
-    (
-        "iMouseInputEnabled", 
-        stateFlags_[ST_IS_MOUSE_INPUT_ENABLED]
-    );
-    project.write
-    (
-        "resetTimeOnRenderRestart",
-        stateFlags_[ST_IS_TIME_RESET_ON_RENDER_RESTART]
-    );
-    project.write("UIScale", *fontScale_);
-    if (Layer::sharedSourceIsNotDefault())
-    {
-        auto sharedSource = Layer::sharedSource();
-        project.write("sharedFragmentSource", sharedSource.c_str(), 
-            sharedSource.size(), true);
-    };
-    project.writeObjectEnd();
-
-    resourceManager_->saveState(project);
-    layerManager_->saveState(project);
-    //quantizationTool_->saveState(project);
-    exportTool_->saveState(project);
-    */
 }
 
 //----------------------------------------------------------------------------//
     
-void openProject(const std::string& filepath)
+void App::loadProject(const std::string& filepath)
 {
-
+    auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
+    *gui_.fontScale = project.read<float>("UIScale");
+    SharedUniforms::load(   project,           sharedUniforms_);
+    Resource::      loadAll(project,                            resources_);
+    Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
 }
 
 //----------------------------------------------------------------------------//
@@ -260,6 +225,14 @@ void App::renderMenuBarGUI()
             }
             if (ImGui::MenuItem("Load", "Ctrl+O"))
             {
+                fileDialog_.runOpenFileDialog
+                (
+                    "Open project",
+                    {"ShaderThing file (*.stf)", "*.stf"},
+                    ".",
+                    false
+                );
+                flags_.load = true;
             }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
             {

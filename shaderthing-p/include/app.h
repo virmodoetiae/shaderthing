@@ -38,7 +38,7 @@ private:
     static FileDialog fileDialog_;
     
     void saveProject(const std::string& filepath) const;
-    void openProject(const std::string& filepath);
+    void loadProject(const std::string& filepath);
 
     void update();
     void initializeGUI();

@@ -157,6 +157,9 @@ public:
     SharedUniforms(const unsigned int bindingPoint = 0);
     ~SharedUniforms();
 
+    void save(ObjectIO& io) const;
+    static void load(const ObjectIO& io, SharedUniforms*& SharedUniforms);
+
     DECLARE_RECEIVABLE_EVENTS
     (
         vir::Event::Type::WindowResize *
@@ -181,8 +184,6 @@ public:
     void bindShader(vir::Shader* shader) const;
 
     void update(const UpdateArgs& args);
-
-    void save(ObjectIO& io) const;
     
     void renderWindowResolutionMenuGUI();
 };

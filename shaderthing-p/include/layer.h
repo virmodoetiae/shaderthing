@@ -66,8 +66,15 @@ public:
     {
                bool              rename                 = false;
                bool              uncompiledChanges      = false;
-               bool              windowBoundAspectRatio = true;
+               bool              isAspectRatioBoundToWindow = true;
         static bool              restartRendering;
+    };
+    struct Cache
+    {
+        std::vector<Uniform*>    uncompiledUniforms;
+        std::map<
+            Uniform*, 
+            std::string>         uninitializedResourceFramebuffers;
     };
 private:
     const uint32_t               id_;
@@ -76,10 +83,10 @@ private:
           float                  aspectRatio_;
           float                  depth_;
           std::vector<Uniform*>  uniforms_;
-          std::vector<Uniform*>  uncompiledUniforms_;
           Rendering              rendering_;
           GUI                    gui_;
           Flags                  flags_;
+          Cache                  cache_;
 
     //------------------------------------------------------------------------//
 
@@ -110,6 +117,13 @@ private:
         const glm::ivec2& resolution
     );
     void save(ObjectIO& io) const;
+    static Layer* load
+    (
+        const ObjectIO& io,
+        const std::vector<Layer*>& layers,
+        const SharedUniforms& sharedUniforms,
+        std::vector<Resource*>& resources
+    );
 
 public:
 
@@ -123,6 +137,13 @@ public:
     ~Layer();
     
     static void save(const std::vector<Layer*>& layers, ObjectIO& io);
+    static void loadAll
+    (
+        const ObjectIO& io,
+        std::vector<Layer*>& layers,
+        const SharedUniforms& sharedUniforms,
+        std::vector<Resource*>& resources
+    );
 
     DECLARE_RECEIVABLE_EVENTS(vir::Event::Type::WindowResize)
     void onReceive(vir::Event::WindowResizeEvent& event) override;
