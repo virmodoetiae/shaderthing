@@ -14,19 +14,25 @@ enum class PlatformType
 
 extern PlatformType platform;
 
-// Initialized the global Window, Event::Broadcaster, InputState and Renderer
-// objects based on the provided platform type (only one currently supported,
-// i.e., GLFWOpenGL). Note that Window is internally responsible for 
-// initializing the global Time and GraphicsContext objects.
-void initialize
-(
-    PlatformType p,
-    uint32_t width=1200, 
-    uint32_t height=600, 
-    std::string windowName="Vir.exe",
-    bool windowResizable=true,
-    bool initializeImGuiRenderer=true
-);
+// Initial settings for the initialization of the vir backend via
+// vir::initialize(Settings&). Please note that the plaftorm type and the window
+// resizable flag cannot be changed after initialization
+struct Settings
+{
+    const PlatformType platform                = PlatformType::GLFWOpenGL;
+    const bool         enableWindowResizing    = true;
+    
+          unsigned int width                   = 512;
+          unsigned int height                  = 512;
+          std::string  windowName              = "main.exe";
+          bool         initializeImGuiRenderer = true;
+          bool         enableBlending          = true;
+          bool         enableDepthTesting      = true;
+          bool         enableFaceCulling       = true;
+};
+
+// Initialize the vir back-end with the provided settings
+void initialize(const Settings& settings);
 
 }
 

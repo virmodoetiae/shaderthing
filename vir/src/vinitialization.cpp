@@ -8,17 +8,9 @@ namespace vir
     
 PlatformType platform = PlatformType::None;
 
-void initialize
-(
-    PlatformType platformType, 
-    uint32_t width, 
-    uint32_t height,
-    std::string windowName,
-    bool windowResizable,
-    bool initializeImGuiRenderer
-)
+void initialize(const Settings& settings)
 {
-    platform = platformType;
+    platform = settings.platform;
     Window* window = nullptr;
     switch(platform)
     {
@@ -26,10 +18,10 @@ void initialize
         {
             window = Window::initialize<GLFWOpenGLWindow>
             (
-                width, 
-                height, 
-                windowName,
-                windowResizable
+                settings.width, 
+                settings.height, 
+                settings.windowName,
+                settings.enableWindowResizing
             );
             Event::Broadcaster::initialize<Event::GLFWBroadcaster>();
             break;
@@ -50,8 +42,11 @@ void initialize
     }
     window->tuneIntoEventBroadcaster(VIR_WINDOW_PRIORITY);
     InputState::initialize();
-    Renderer::initialize()->setDepthTesting(true);
-    if (initializeImGuiRenderer)
+    auto renderer = Renderer::initialize();
+    renderer->setDepthTesting(settings.enableDepthTesting);
+    renderer->setBlending(settings.enableBlending);
+    renderer->setFaceCulling(settings.enableFaceCulling);
+    if (settings.initializeImGuiRenderer)
         vir::ImGuiRenderer::initialize();
 }
 

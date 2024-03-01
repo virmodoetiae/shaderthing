@@ -46,13 +46,10 @@ ShaderThingApp::ShaderThingApp() :
 sharedUniforms_(0)
 {
     // Initialize vir lib
-    vir::initialize
-    (
-        vir::PlatformType::GLFWOpenGL,
-        resolution_.x,
-        resolution_.y,
-        "ShaderThing"
-    );
+    vir::Settings settings = {};
+    settings.windowName = "ShaderThing";
+    settings.enableFaceCulling = false;
+    vir::initialize(settings);
 
     // Set window icon
     auto window = vir::GlobalPtr<vir::Window>::instance();

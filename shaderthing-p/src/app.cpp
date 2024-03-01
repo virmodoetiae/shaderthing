@@ -18,14 +18,11 @@ FileDialog App::fileDialog_ = FileDialog();
 App::App()
 {
     // Initialize vir lib
-    vir::initialize
-    (
-        vir::PlatformType::GLFWOpenGL,
-        512,
-        512,
-        "ShaderThing"
-    );
-    vir::GlobalPtr<vir::Renderer>::instance()->setBlending(true);
+    vir::Settings settings = {};
+    settings.windowName = "ShaderThing";
+    settings.enableFaceCulling = false;
+    vir::initialize(settings);
+    
     sharedUniforms_ = new SharedUniforms();
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     initializeGUI();
