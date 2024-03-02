@@ -412,7 +412,7 @@ bool AnimatedTexture2DResource::set(unsigned char* rawData, unsigned int size)
     vir::AnimatedTextureBuffer2D* native = nullptr;
     try
     {
-        auto native = vir::AnimatedTextureBuffer2D::create
+        native = vir::AnimatedTextureBuffer2D::create
         (
             data, 
             width, 

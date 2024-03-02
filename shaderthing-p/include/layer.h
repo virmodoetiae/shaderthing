@@ -107,6 +107,7 @@ private:
         const bool windowFrameManuallyDragged,
         const bool tryEnfoceWindowAspectRatio=false
     );
+    void setName(const std::string& name);
     void setDepth(const float depth);
     void setFramebufferWrapMode(int index, WrapMode mode);
     void setFramebufferMagFilterMode(FilterMode mode);

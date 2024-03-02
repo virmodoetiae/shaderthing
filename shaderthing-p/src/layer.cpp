@@ -147,9 +147,7 @@ Layer::Layer
         uniforms_.emplace_back(u);
     };
 
-    // Set name
-    gui_.name = "Layer "+std::to_string(id_);
-    gui_.newName = gui_.name;
+    setName("Layer "+std::to_string(id_));
 
     // Set default fragment source in editor
     gui_.sourceEditor.setText
@@ -371,7 +369,9 @@ Layer* Layer::load
 {
     auto layer = new Layer(layers, sharedUniforms);
 
-    layer->gui_.name = io.name();
+    layer->setName(io.name());
+    layer->flags_.rename = true; // <- hack to prevent layer tab bar re-ordering
+                                 // on first renderGUI after loading
     layer->rendering_.target = (Rendering::Target)io.read<int>("renderTarget");
     layer->resolution_ = io.read<glm::ivec2>("resolution");
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
@@ -770,6 +770,15 @@ void Layer::setResolution
     rendering_.shader->bind();
     rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
     rendering_.shader->setUniformFloat2("iResolution", (glm::vec2)resolution_);
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::setName(const std::string& name)
+{
+    gui_.name = name;
+    gui_.newName = gui_.name;
+    flags_.rename = false;
 }
 
 //----------------------------------------------------------------------------//
@@ -1795,8 +1804,7 @@ void Layer::renderLayersTabBarGUI // Static
             )
             {
                 reorderable = false;
-                layer->gui_.name = layer->gui_.newName;
-                layer->flags_.rename = false;
+                layer->setName(layer->gui_.newName);
                 continue;
             }
             int order = std::min
