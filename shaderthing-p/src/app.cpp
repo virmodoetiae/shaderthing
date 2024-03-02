@@ -1,6 +1,7 @@
 #include <charconv>
 
 #include "shaderthing-p/include/app.h"
+#include "shaderthing-p/include/helpers.h"
 #include "shaderthing-p/include/bytedata.h"
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/resource.h"
@@ -23,9 +24,10 @@ App::App()
     settings.enableFaceCulling = false;
     vir::initialize(settings);
     
-    sharedUniforms_ = new SharedUniforms();
-    layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
+    // Setup ImGui
     initializeGUI();
+
+    newProject();
 
     // Main loop
     auto window = vir::GlobalPtr<vir::Window>::instance();
@@ -76,20 +78,38 @@ void App::update()
         elapsedTime = 0;
     }
 
-    //
-    if (!fileDialog_.validSelection())
-        return;
-    if (flags_.save)
+    // Process project actions
+    switch (project_.action)
     {
-        saveProject(fileDialog_.selection().front());
-        flags_.save = false;
+        case Project::Action::None :
+            return;
+        case Project::Action::New :
+            newProject();
+            project_.action = Project::Action::None;
+            break;
+        case Project::Action::Save :
+            saveProject(project_.filepath);
+            project_.action = Project::Action::None;
+            break;
+        case Project::Action::Load :
+            if (!fileDialog_.validSelection())
+                break;
+            project_.filepath = fileDialog_.selection().front();
+            project_.forceSaveAs = true;
+            loadProject(project_.filepath);
+            fileDialog_.clearSelection();
+            project_.action = Project::Action::None;
+            break;
+        case Project::Action::SaveAs :
+            if (!fileDialog_.validSelection())
+                break;
+            project_.filepath = fileDialog_.selection().front();
+            project_.forceSaveAs = false;
+            saveProject(project_.filepath);
+            fileDialog_.clearSelection();
+            project_.action = Project::Action::None;
+            break;
     }
-    if (flags_.load)
-    {
-        loadProject(fileDialog_.selection().front());
-        flags_.load = false;
-    }
-    fileDialog_.clearSelection();
 }
 
 //----------------------------------------------------------------------------//
@@ -113,6 +133,30 @@ void App::loadProject(const std::string& filepath)
     SharedUniforms::load(   project,           sharedUniforms_);
     Resource::      loadAll(project,                            resources_);
     Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
+}
+
+//----------------------------------------------------------------------------//
+
+void App::newProject()
+{
+    project_ = {};
+    *gui_.fontScale = .6;
+    
+    DELETE_IF_NOT_NULLPTR(sharedUniforms_);
+    sharedUniforms_ = new SharedUniforms();
+    
+    for (auto resource : resources_)
+    {
+        DELETE_IF_NOT_NULLPTR(resource)
+    }
+    resources_.clear();
+
+    for (auto layer : layers_)
+    {
+        DELETE_IF_NOT_NULLPTR(layer)
+    }
+    layers_.clear();
+    layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
 }
 
 //----------------------------------------------------------------------------//
@@ -213,37 +257,71 @@ void App::renderGUI()
 void App::renderMenuBarGUI()
 {
     float fontSize = ImGui::GetFontSize();
-    if (ImGui::BeginMenuBar())
+
+    auto setProjectAction = []
+    (
+        const Project::Action& action, 
+        Project& project, 
+        FileDialog& fileDialog
+    )
     {
-        if (ImGui::BeginMenu("Project"))
+        switch(action)
         {
-            if (ImGui::MenuItem("New", "Ctrl+N"))
-            {
-            }
-            if (ImGui::MenuItem("Load", "Ctrl+O"))
-            {
-                fileDialog_.runOpenFileDialog
+            case Project::Action::New :
+                project.action = Project::Action::New;
+                break;
+            case Project::Action::Load :
+                fileDialog.runOpenFileDialog
                 (
                     "Open project",
                     {"ShaderThing file (*.stf)", "*.stf"},
                     ".",
                     false
                 );
-                flags_.load = true;
-            }
-            if (ImGui::MenuItem("Save", "Ctrl+S"))
-            {
+                project.action = Project::Action::Load;
+                break;
+            case Project::Action::Save :
+                if (project.filepath.size() == 0 || project.forceSaveAs)
+                {
+                    fileDialog.runSaveFileDialog
+                    (
+                        "Save project",
+                        {"ShaderThing file (*.stf)", "*.stf"},
+                        project.filepath.size() == 0 ? 
+                        "new_project.stf" :
+                        project.filepath.c_str()
+                    );
+                    project.action = Project::Action::SaveAs;
+                }
+                else
+                    project.action = Project::Action::Save;
+                break;
+            case Project::Action::SaveAs :
                 fileDialog_.runSaveFileDialog
                 (
                     "Save project",
                     {"ShaderThing file (*.stf)", "*.stf"},
-                    "new_project.stf"
+                    project.filepath
                 );
-                flags_.save = true;
-            }
+                project.action = Project::Action::SaveAs;
+                break;
+            default :
+                return;
+        }
+    };
+
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Project"))
+        {
+            if (ImGui::MenuItem("New", "Ctrl+N"))
+                setProjectAction(Project::Action::New, project_, fileDialog_);
+            if (ImGui::MenuItem("Load", "Ctrl+O"))
+                setProjectAction(Project::Action::Load, project_, fileDialog_);
+            if (ImGui::MenuItem("Save", "Ctrl+S"))
+                setProjectAction(Project::Action::Save, project_, fileDialog_);
             if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
-            {
-            }
+                setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
             ImGui::Separator();
             if (ImGui::MenuItem("Export"))
             {
@@ -368,6 +446,18 @@ resetting the iFrame uniform (Ctrl+R))"
     }
     if (Resource::isGuiDetachedFromMenu)
         Resource::renderResourcesGUI(resources_, layers_);
+    
+    if (project_.action == Project::Action::None)
+    {
+        if (Helpers::isCtrlKeyPressed(ImGuiKey_N))
+            setProjectAction(Project::Action::New, project_, fileDialog_);
+        else if (Helpers::isCtrlKeyPressed(ImGuiKey_O))
+            setProjectAction(Project::Action::Load, project_, fileDialog_);
+        else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
+            setProjectAction(Project::Action::Save, project_, fileDialog_);
+        else if (Helpers::isCtrlShiftKeyPressed(ImGuiKey_S))
+            setProjectAction(Project::Action::SaveAs, project_, fileDialog_);
+    }
 }
 
 //----------------------------------------------------------------------------//

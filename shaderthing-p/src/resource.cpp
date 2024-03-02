@@ -182,8 +182,6 @@ void Resource::loadAll
 {
     for (auto resource : resources)
     {
-        if (resource->type_ == Type::Framebuffer)
-            continue;
         DELETE_IF_NOT_NULLPTR(resource)
     }
     resources.clear();
@@ -537,6 +535,8 @@ AnimatedTexture2DResource* AnimatedTexture2DResource::load
         unsigned int rawDataSize;
         const char* rawData = io.read("data", true, &rawDataSize);
         resource->set((unsigned char*)rawData, rawDataSize);
+        resource->originalFileExtension_ = 
+            io.read("originalFileExtension", false);
     }
     else
     {

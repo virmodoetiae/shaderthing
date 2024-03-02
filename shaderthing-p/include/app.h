@@ -18,27 +18,37 @@ class App
 {
 private:
 
-    struct Flags
+    struct Project
     {
-        bool save = false;
-        bool load = false;
+        enum class Action
+        {
+            None,
+            New,
+            Load,
+            Save,
+            SaveAs
+        };
+        Action             action          = Action::None;
+        std::string        filepath        = "";
+        bool               forceSaveAs     = true;
     };
-    Flags flags_ = {};
+    Project                project_        = {};
 
     struct GUI
     {
-        float* fontScale;
+        float*             fontScale       = nullptr;
     };
-    GUI gui_ = {};
+    GUI                    gui_            = {};
 
-    SharedUniforms* sharedUniforms_;
-    std::vector<Layer*> layers_ = {};
-    std::vector<Resource*> resources_ = {};
+    SharedUniforms*        sharedUniforms_ = nullptr;
+    std::vector<Layer*>    layers_         = {};
+    std::vector<Resource*> resources_      = {};
 
-    static FileDialog fileDialog_;
+    static FileDialog      fileDialog_;
     
     void saveProject(const std::string& filepath) const;
     void loadProject(const std::string& filepath);
+    void newProject();
 
     void update();
     void initializeGUI();
