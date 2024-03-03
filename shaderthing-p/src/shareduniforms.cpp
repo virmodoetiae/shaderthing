@@ -60,7 +60,9 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
     bounds_.insert({Uniform::SpecialType::Time, {0, 1}});
     bounds_.insert({Uniform::SpecialType::CameraPosition, {0, 1}});
 
-    // Register the class iteself with the vir event broadcaster
+    // Register the class iteself with the vir event broadcaster with a 
+    // higher priority (lower value is higher priority) than all other
+    // ShaderThing event receivers
     this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY-1);
 }
 
@@ -185,6 +187,12 @@ void SharedUniforms::toggleCameraMouseInputs()
 
 void SharedUniforms::onReceive(vir::Event::WindowResizeEvent& event)
 {
+    auto window = vir::GlobalPtr<vir::Window>::instance();
+    if (window->iconified())
+    {
+        event.handled = true;
+        return;
+    }
     glm::ivec2 resolution{event.width, event.height};
     setResolution(resolution, true);
     event.width = resolution.x;

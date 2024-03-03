@@ -5,6 +5,7 @@
 #include "shaderthing-p/include/bytedata.h"
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/resource.h"
+#include "shaderthing-p/include/exporter.h"
 #include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/coderepository.h"
 #include "shaderthing-p/include/objectio.h"
@@ -13,8 +14,6 @@
 
 namespace ShaderThing
 {
-
-FileDialog App::fileDialog_ = FileDialog();
 
 App::App()
 {
@@ -44,7 +43,12 @@ App::App()
 
 App::~App()
 {
+    DELETE_IF_NOT_NULLPTR(exporter_)
     DELETE_IF_NOT_NULLPTR(sharedUniforms_)
+    for (auto resource : resources_)
+    {
+        DELETE_IF_NOT_NULLPTR(resource)
+    }
     for (auto layer : layers_)
     {
         DELETE_IF_NOT_NULLPTR(layer)
@@ -141,6 +145,9 @@ void App::newProject()
 {
     project_ = {};
     *gui_.fontScale = .6;
+
+    DELETE_IF_NOT_NULLPTR(exporter_);
+    exporter_ = new Exporter();
     
     DELETE_IF_NOT_NULLPTR(sharedUniforms_);
     sharedUniforms_ = new SharedUniforms();
@@ -297,7 +304,7 @@ void App::renderMenuBarGUI()
                     project.action = Project::Action::Save;
                 break;
             case Project::Action::SaveAs :
-                fileDialog_.runSaveFileDialog
+                fileDialog.runSaveFileDialog
                 (
                     "Save project",
                     {"ShaderThing file (*.stf)", "*.stf"},
@@ -323,8 +330,10 @@ void App::renderMenuBarGUI()
             if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
                 setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
             ImGui::Separator();
-            if (ImGui::MenuItem("Export"))
+            if (ImGui::BeginMenu("Export"))
             {
+                exporter_->renderGUI(layers_);
+                ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }

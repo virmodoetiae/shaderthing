@@ -76,7 +76,16 @@ public:
             Uniform*, 
             std::string>         uninitializedResourceFramebuffers;
     };
+    struct ExportData
+    {
+        glm::ivec2               resolution;
+        float                    windowResolutionScale = 1.f;
+        float                    resolutionScale  = 1.f;
+        bool                     resolutionLocked = false;
+    };
+
 private:
+
     const uint32_t               id_;
           glm::ivec2             resolution_;
           glm::vec2              resolutionRatio_;
@@ -87,6 +96,7 @@ private:
           GUI                    gui_;
           Flags                  flags_;
           Cache                  cache_;
+          ExportData             exportData_;
 
     //------------------------------------------------------------------------//
 
@@ -103,7 +113,7 @@ private:
         ) const;
     void setResolution
     (
-        glm::ivec2& resolution,
+        const glm::ivec2& resolution,
         const bool windowFrameManuallyDragged,
         const bool tryEnfoceWindowAspectRatio=false
     );
@@ -177,6 +187,13 @@ public:
         SharedUniforms& sharedUnifoms,
         std::vector<Resource*>& resources
     );
+
+    const std::string& name() const {return gui_.name;}
+    const glm::ivec2& resolution() const {return resolution_;}
+    float aspectRatio() const {return aspectRatio_;}
+    bool isAspectRatioBoundToWindow() const {return flags_.isAspectRatioBoundToWindow;}
+    Rendering::Target renderingTarget() const {return rendering_.target;}
+    ExportData& exportData() {return exportData_;}
 
     bool operator==(const Layer& layer){return id_ == layer.id_;}
     bool operator!=(const Layer& layer){return !(*this == layer);}

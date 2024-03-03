@@ -121,9 +121,10 @@ Layer::Layer
 {
     // Set layer resolution from current app window resolution
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
-    resolution_ = {window->width(), window->height()};
-    resolutionRatio_ = {1,1};
-    aspectRatio_ = ((float)resolution_.x)/resolution_.y;
+    setResolution({window->width(), window->height()}, false);
+    //resolution_ = {window->width(), window->height()};
+    //resolutionRatio_ = {1,1};
+    //aspectRatio_ = ((float)resolution_.x)/resolution_.y;
 
     // Add default uniforms
     {
@@ -171,11 +172,11 @@ R"(void main()
     setDepth((float)layers.size()/Layer::nMaxLayers);
 
     // Init framebuffers
-    rebuildFramebuffers
+    /*rebuildFramebuffers
     (
         vir::TextureBuffer2D::InternalFormat::RGBA_SF_32,
         resolution_
-    );
+    );*/
 
     // Register with event broadcaster
     this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY+id_);
@@ -721,11 +722,12 @@ Layer::fragmentShaderHeaderSourceAndLineCount
 
 void Layer::setResolution
 (
-    glm::ivec2& resolution,
+    const glm::ivec2& iResolution,
     const bool windowFrameManuallyDragged,
     const bool tryEnfoceWindowAspectRatio
 )
 {
+    glm::ivec2 resolution = iResolution;
     static const auto* window(vir::GlobalPtr<vir::Window>::instance());
     glm::vec2 windowResolution(window->width(), window->height());
     if (windowFrameManuallyDragged)
@@ -754,19 +756,26 @@ void Layer::setResolution
             resolution_.y = resolution.x/windowAspectRatio+.5f;
             resolution_.x = resolution.x;
         }
-        resolutionRatio_ = (glm::vec2)resolution_/windowResolution;
-        //if (windowFrameManuallyDragged)
-        //    resolution = 
-        //        glm::max(resolutionRatio_*(glm::vec2)resolution+.5f, {1,1});
+        resolutionRatio_ = (glm::vec2)resolution_/windowResolution;        
     }
     else
         resolution_ = resolution;
     aspectRatio_ = ((float)resolution_.x)/resolution_.y;
+    
+    exportData_.resolution = 
+        (glm::vec2)resolution_*
+        exportData_.resolutionScale*
+        exportData_.windowResolutionScale + .5f;
+    
     rebuildFramebuffers
     (
+        rendering_.framebuffer == nullptr ?
+        vir::TextureBuffer::InternalFormat::RGBA_SF_32 :
         rendering_.framebuffer->colorBufferInternalFormat(),
         resolution_
     );
+    if (rendering_.shader == nullptr)
+        return;
     rendering_.shader->bind();
     rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
     rendering_.shader->setUniformFloat2("iResolution", (glm::vec2)resolution_);

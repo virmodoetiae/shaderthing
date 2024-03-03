@@ -259,7 +259,7 @@ public:
     
     virtual void       bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit);unit_ = unit;}
     virtual void       unbind() override {(*native_)->unbind(); unit_ = -1;};
-    const unsigned int id() const override {return (*native_)->id();}
+    const unsigned int id() const override {return (*native_)->colorBufferId();}
     const unsigned int width() const override {return (*native_)->width();}
     const unsigned int height() const override{return (*native_)->height();}
     const WrapMode     wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}

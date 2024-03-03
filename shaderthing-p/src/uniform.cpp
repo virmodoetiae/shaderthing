@@ -261,8 +261,8 @@ bool Uniform::renderUniformsGUI
         ImGui::Text
         (
             "%d x %d", 
-            sharedUniforms.cpuBlock_.iResolution.x, 
-            sharedUniforms.cpuBlock_.iResolution.y
+            (int)sharedUniforms.cpuBlock_.iResolution.x, 
+            (int)sharedUniforms.cpuBlock_.iResolution.y
         );
         END_ROW
 

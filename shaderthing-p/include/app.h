@@ -11,6 +11,7 @@ namespace ShaderThing
 class SharedUniforms;
 class Layer;
 class Resource;
+class Exporter;
 class FileDialog;
 class ObjectIO;
 
@@ -43,8 +44,9 @@ private:
     SharedUniforms*        sharedUniforms_ = nullptr;
     std::vector<Layer*>    layers_         = {};
     std::vector<Resource*> resources_      = {};
+    Exporter*              exporter_       = nullptr;
 
-    static FileDialog      fileDialog_;
+    FileDialog             fileDialog_;
     
     void saveProject(const std::string& filepath) const;
     void loadProject(const std::string& filepath);
