@@ -1028,7 +1028,7 @@ void Resource::renderResourcesMenuItemGUI
     ImGui::MenuItem("Resource manager", NULL, &Resource::isGuiOpen);
 }
 
-bool Resource::insertFramebufferInResources
+bool Resource::insertLayerInResources
 (
     std::string* name,
     vir::Framebuffer** framebuffer, 
@@ -1040,16 +1040,16 @@ bool Resource::insertFramebufferInResources
         auto resource = resources[i];
         if (resource->type_ != Type::Framebuffer)
             continue;
-        if (*(resource->namePtr_) == *(name))
+        if (resource->name() == *name)
             return false;
     }
     resources.emplace_back(Resource::create(framebuffer))->setNamePtr(name);
     return true;
 }
 
-bool Resource::removeFramebufferFromResources
+bool Resource::removeLayerFromResources
 (
-    vir::Framebuffer** framebuffer, 
+    const std::string* name, 
     std::vector<Resource*>& resources
 )
 {
@@ -1058,7 +1058,7 @@ bool Resource::removeFramebufferFromResources
         auto resource = resources[i];
         if (resource->type_ != Type::Framebuffer)
             continue;
-        if (resource->id() == (*framebuffer)->id())
+        if (resource->name() == *name)
         {
             resources.erase(resources.begin()+i);
             return true;

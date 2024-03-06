@@ -85,15 +85,15 @@ public:
         std::vector<Resource*>& resources,
         const std::vector<Layer*>& layers
     );
-    static bool insertFramebufferInResources
+    static bool insertLayerInResources
     (
         std::string* name,
         vir::Framebuffer** framebuffer, 
         std::vector<Resource*>& resources
     );
-    static bool removeFramebufferFromResources
+    static bool removeLayerFromResources
     (
-        vir::Framebuffer** framebuffer, 
+        const std::string* name,
         std::vector<Resource*>& resources
     );
     static void update

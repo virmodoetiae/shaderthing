@@ -53,10 +53,9 @@ public:
         const std::string&              defaultPath = ".",
         const bool                      blocking = false
     );
+    bool isOpen() const {return isOpen_;}
     bool validSelection();
     void clearSelection() {selection_.clear();}
-
-    bool isOpen() const {return isOpen_;}
     const std::vector<std::string>& selection() const {return selection_;}
 };
     

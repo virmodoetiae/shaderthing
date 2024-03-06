@@ -581,7 +581,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
 
     //
     if (layer->rendering_.target != Rendering::Target::Window)
-        Resource::insertFramebufferInResources
+        Resource::insertLayerInResources
         (
             &layer->gui_.name, 
             &layer->rendering_.framebuffer,
@@ -1343,13 +1343,13 @@ void Layer::renderSettingsMenuGUI(std::vector<Resource*>& resources)
                 {
                     rendering_.target = target;
                     if (rendering_.target == Rendering::Target::Window)
-                        Resource::removeFramebufferFromResources
+                        Resource::removeLayerFromResources
                         (
-                            &(rendering_.framebuffer),
+                            &(gui_.name),
                             resources
                         );
                     else
-                        Resource::insertFramebufferInResources
+                        Resource::insertLayerInResources
                         (
                             &(gui_.name),
                             &(rendering_.framebuffer),
@@ -1868,7 +1868,15 @@ void Layer::renderLayersTabBarGUI // Static
         {
             bool open = true;
             auto layer = layers[i];
-            if(ImGui::BeginTabItem(layer->gui_.name.c_str(), &open))
+            if
+            (
+                ImGui::BeginTabItem
+                (
+                    layer->gui_.name.c_str(), 
+                    &open, 
+                    layers.size() == 1 ? ImGuiTabItemFlags_NoCloseButton : 0
+                )
+            )
             {
                 layer->renderTabBarGUI(sharedUnifoms, resources);
                 ImGui::EndTabItem();
@@ -1885,9 +1893,9 @@ void Layer::renderLayersTabBarGUI // Static
                     ), 
                     layers.end()
                 );
-                Resource::removeFramebufferFromResources
+                Resource::removeLayerFromResources
                 (
-                    &(layer->rendering_.framebuffer),
+                    &(layer->gui_.name),
                     resources
                 );
                 delete layer;
