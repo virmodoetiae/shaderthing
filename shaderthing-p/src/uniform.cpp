@@ -1,12 +1,28 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include "shaderthing-p/include/uniform.h"
-#include "shaderthing-p/include/shareduniforms.h"
+
+#include "shaderthing-p/include/helpers.h"
 #include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/resource.h"
-#include "shaderthing-p/include/helpers.h"
+#include "shaderthing-p/include/shareduniforms.h"
 
+#include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
-#include "thirdparty/icons/IconsFontAwesome5.h"
 
 namespace ShaderThing
 {
@@ -91,7 +107,7 @@ bool Uniform::renderUniformsGUI
         NEXT_COLUMN
         if (ImGui::Button(ICON_FA_UNDO, ImVec2(halfButtonSize, 0)))
         {
-            sharedUniforms.flags_.restartRendering = true;
+            sharedUniforms.resetFrameCounter();
             Layer::Flags::restartRendering = true;
         }
         if (ImGui::IsItemHovered() && ImGui::BeginTooltip())

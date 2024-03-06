@@ -1,8 +1,26 @@
-#include "shaderthing-p/include/filedialog.h"
-#include "shaderthing-p/include/helpers.h"
-#include "thirdparty/portable-file-dialogs/pfd.h"
-#include "algorithm"
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
+#include <algorithm>
 #include <chrono>
+
+#include "shaderthing-p/include/filedialog.h"
+
+#include "shaderthing-p/include/helpers.h"
+
+#include "thirdparty/portable-file-dialogs/pfd.h"
 
 namespace ShaderThing
 {

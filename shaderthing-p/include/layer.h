@@ -78,10 +78,11 @@ public:
     };
     struct ExportData
     {
+        glm::ivec2               originalResolution;
         glm::ivec2               resolution;
-        float                    windowResolutionScale = 1.f;
         float                    resolutionScale  = 1.f;
-        bool                     resolutionLocked = false;
+        float                    windowResolutionScale = 1.f;
+        bool                     rescaleWithOutput = true;
     };
 
 private:
@@ -115,7 +116,8 @@ private:
     (
         const glm::ivec2& resolution,
         const bool windowFrameManuallyDragged,
-        const bool tryEnfoceWindowAspectRatio=false
+        const bool tryEnfoceWindowAspectRatio=false,
+        const bool setExportResolution=true
     );
     void setName(const std::string& name);
     void setDepth(const float depth);
@@ -127,6 +129,7 @@ private:
         const vir::TextureBuffer::InternalFormat& internalFormat, 
         const glm::ivec2& resolution
     );
+    void clearFramebuffers();
     void save(ObjectIO& io) const;
     static Layer* load
     (
@@ -159,6 +162,8 @@ public:
     DECLARE_RECEIVABLE_EVENTS(vir::Event::Type::WindowResize)
     void onReceive(vir::Event::WindowResizeEvent& event) override;
 
+    void prepareForExport();
+    void resetAfterExport();
     bool removeResourceFromUniforms(const Resource* resource);
     
     bool compileShader(const SharedUniforms& sharedUniforms);
@@ -168,18 +173,19 @@ public:
         const bool clearTarget, 
         const SharedUniforms& sharedUniforms
     );
-    void renderTabBarGUI
-    (
-        SharedUniforms& sharedUnifoms,
-        std::vector<Resource*>& resources
-    );
-    void renderSettingsMenuGUI(std::vector<Resource*>& resources);
-
     static void renderShaders
     (
         const std::vector<Layer*>& layers,
         vir::Framebuffer* target, 
-        const SharedUniforms& sharedUniforms
+        SharedUniforms& sharedUniforms,
+        const unsigned int nRenderPasses = 1
+    );
+
+    void renderSettingsMenuGUI(std::vector<Resource*>& resources);
+    void renderTabBarGUI
+    (
+        SharedUniforms& sharedUnifoms,
+        std::vector<Resource*>& resources
     );
     static void renderLayersTabBarGUI
     (

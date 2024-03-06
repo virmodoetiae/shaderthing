@@ -1,13 +1,29 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include "shaderthing-p/include/resource.h"
-#include "shaderthing-p/include/layer.h"
-#include "shaderthing-p/include/helpers.h"
+
 #include "shaderthing-p/include/filedialog.h"
+#include "shaderthing-p/include/helpers.h"
+#include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/objectio.h"
 
+#include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 #include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
-#include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/stb/stb_image.h"
 
 namespace ShaderThing
@@ -890,11 +906,6 @@ void Resource::renderResourcesGUI
         NEXT_COLUMN
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1,0)))
             ImGui::OpenPopup("##addResourcePopup");
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-        {
-            ImGui::Text("Add new resource");
-            ImGui::EndTooltip();
-        }
         if (ImGui::BeginPopup("##addResourcePopup"))
         {
             Resource* resource = nullptr;
@@ -1029,7 +1040,7 @@ bool Resource::insertFramebufferInResources
         auto resource = resources[i];
         if (resource->type_ != Type::Framebuffer)
             continue;
-        if (resource->id() == (*framebuffer)->id())
+        if (*(resource->namePtr_) == *(name))
             return false;
     }
     resources.emplace_back(Resource::create(framebuffer))->setNamePtr(name);

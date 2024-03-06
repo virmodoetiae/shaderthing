@@ -10,7 +10,7 @@
 namespace ShaderThing
 {
 
-class ShaderThingApp;
+class SharedUniforms;
 class Layer;
 class ObjectIO;
 
@@ -27,12 +27,16 @@ public:
         VideoFrames
     };
 
+    struct UpdateArgs
+    {
+        float& timeStep;
+    };
+
 private:
 
     struct Settings
     {
-        glm::ivec2    outputResolution;
-        float         outputResolutionScale           = 1.f;
+        std::string   outputFilepath;
         bool          outputResolutionChanged         = false;
         unsigned int  nRenderPasses                   = 1;
         bool          areRenderPassesOnFirstFrameOnly = false;
@@ -46,15 +50,22 @@ private:
     };
     Settings          settings_                       = {};
 
+    struct Cache
+    {
+        std::string   outputFilepathExtended;
+    };
+    Cache             cache_                          = {};
+
     ExportType        exportType_                     = ExportType::Image;
     vir::Framebuffer* framebuffer_                    = nullptr;
+    unsigned char*    framebufferData_                = nullptr;
     vir::GifEncoder*  gifEncoder_                     = nullptr;
     FileDialog        fileDialog_;
 
     bool              isRunning_                      = false;
     unsigned int      frame_                          = 0;
     unsigned int      nFrames_                        = 0;
-    unsigned int      renderPass_                     = 0;
+    double            timeStep_                       = 0.f;
 
     void exportButtonGUI();
 
@@ -69,11 +80,21 @@ public:
     );
     virtual void onReceive(vir::Event::WindowResizeEvent& event) override;
 
-    void update();
+    void update
+    (
+        SharedUniforms& sharedUniforms,
+        const std::vector<Layer*>& layers,
+        const UpdateArgs& args
+    );
 
-    void renderGUI(const std::vector<Layer*>& layers);
+    void renderGUI
+    (
+        SharedUniforms& sharedUniforms, 
+        const std::vector<Layer*>& layers
+    );
 
     bool isRunning() const {return isRunning_;}
+    unsigned int nRenderPasses() const {return settings_.nRenderPasses;}
     vir::Framebuffer* framebuffer() const {return framebuffer_;}
 };
 

@@ -193,13 +193,13 @@ void GifEncoder::encodeIndexedFrame
 
 // Public functions ----------------------------------------------------------//
 
-GifEncoder::GifEncoder(Quantizer::Settings::IndexMode indexMode):
+GifEncoder::GifEncoder():
     file_(nullptr),
     firstFrame_(false),
     width_(0),
     height_(0),
     paletteSize_(0),
-    indexMode_(indexMode)
+    indexMode_(IndexMode::Default)
 {
     quantizer_ = Quantizer::create();
 }
@@ -214,7 +214,8 @@ bool GifEncoder::openFile
     const std::string& filepath, 
     uint32_t width, 
     uint32_t height, 
-    uint32_t paletteBitDepth
+    uint32_t paletteBitDepth,
+    IndexMode indexMode
 )
 {
     if (paletteBitDepth < 2 || width*height == 0)
@@ -229,6 +230,7 @@ bool GifEncoder::openFile
     // I need to reserve one color as the 'transparent' color for delta or alpha
     // encoding only if my paletteSize is already at max capacity, i.e. 256 (due 
     // to the GIF format limitations)
+    indexMode_ = indexMode;
     if (indexMode_ != Quantizer::Settings::IndexMode::Default)
     {
         paletteBitDepth_ = std::min(paletteBitDepth_+1, 8u);
@@ -367,6 +369,10 @@ bool GifEncoder::closeFile()
     fclose(file_);
     file_ = nullptr;
     firstFrame_ = false;
+    width_ = 0;
+    height_ = 0;
+    paletteSize_ = 0;
+    indexMode_ = IndexMode::Default;
     delete[] indexedTexture_;
     delete[] palette_;
     return true;

@@ -1,13 +1,13 @@
 /*
  _____________________
 |                     |  This file is part of ShaderThing - A GUI-based live
-|   ___  _________    |  shader editor by Stefan Radman (a.k.a, virmodoetiae).
-|  |\  \|\__    __\   |  For more information, visit:
-|  \ \  \|__|\  \_|   |
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
-|    \|__|\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2023-2024 Stefan Radman
-|  Ↄ|C    \|__|\|__|  |                             sradman@protonmail.com
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
 
@@ -17,7 +17,6 @@
 #include <windows.h>
 #endif
 
-#include "vir/include/vir.h"
 #include "shaderthing-p/include/app.h"
 
 int main()
@@ -25,7 +24,7 @@ int main()
     // Hide console if running on Windows
 #if (defined(__WIN32__)||defined(WIN32)||defined(_WIN32)||defined(__WIN32)) \
     && NDEBUG
-    FreeConsole();
+    //FreeConsole();
 #endif
     ShaderThing::App();
     return 0;

@@ -1,14 +1,30 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include <charconv>
 
 #include "shaderthing-p/include/app.h"
-#include "shaderthing-p/include/helpers.h"
+
 #include "shaderthing-p/include/bytedata.h"
-#include "shaderthing-p/include/layer.h"
-#include "shaderthing-p/include/resource.h"
-#include "shaderthing-p/include/exporter.h"
-#include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/coderepository.h"
+#include "shaderthing-p/include/exporter.h"
+#include "shaderthing-p/include/helpers.h"
+#include "shaderthing-p/include/layer.h"
 #include "shaderthing-p/include/objectio.h"
+#include "shaderthing-p/include/resource.h"
+#include "shaderthing-p/include/shareduniforms.h"
 
 #include "vir/include/vir.h"
 
@@ -33,7 +49,13 @@ App::App()
     while(window->isOpen())
     {   
         renderGUI();
-        Layer::renderShaders(layers_, nullptr, *sharedUniforms_);
+        Layer::renderShaders
+        (
+            layers_, 
+            exporter_->isRunning() ? exporter_->framebuffer() : nullptr, 
+            *sharedUniforms_,
+            exporter_->isRunning() ? exporter_->nRenderPasses() : 1
+        );
         update();
         window->update(!sharedUniforms_->isRenderingPaused());
     }
@@ -62,8 +84,12 @@ void App::update()
     static auto* window(vir::GlobalPtr<vir::Window>::instance());
     float timeStep = window->time()->outerTimestep();
     
-    sharedUniforms_->update({timeStep});
-    Resource::update(resources_, {sharedUniforms_->iTime(), timeStep});
+    // If exporting, this update will set timeStep to the requested export
+    // timeStep (i.e., inverse of export fps if exporting an animation (gif or
+    // video frames), left unmodified otherwise)
+    exporter_->      update(*sharedUniforms_, layers_,             {timeStep});
+    sharedUniforms_->update(                                       {timeStep});
+    Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
 
     // Compute FPS and set in window title
     static float fps(60.0f);
@@ -74,10 +100,10 @@ void App::update()
     if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
     {
         fps = elapsedFrames/elapsedTime;
-        static char bfps[8];
-        *(std::to_chars(bfps,bfps+8,fps,std::chars_format::fixed,1)).ptr = '\0';
-        std::string sfps(bfps);
-        window->setTitle("ShaderThing ("+sfps+" FPS)");
+        //static char bfps[8];
+        //*(std::to_chars(bfps,bfps+8,fps,std::chars_format::fixed,1)).ptr='\0';
+        //std::string sfps(bfps);
+        window->setTitle("ShaderThing ("+Helpers::format(fps, 1)+" FPS)");
         elapsedFrames = 0;
         elapsedTime = 0;
     }
@@ -97,7 +123,11 @@ void App::update()
             break;
         case Project::Action::Load :
             if (!fileDialog_.validSelection())
+            {
+                if (!fileDialog_.isOpen())
+                    project_.action = Project::Action::None;
                 break;
+            }
             project_.filepath = fileDialog_.selection().front();
             project_.forceSaveAs = true;
             loadProject(project_.filepath);
@@ -106,7 +136,11 @@ void App::update()
             break;
         case Project::Action::SaveAs :
             if (!fileDialog_.validSelection())
+            {
+                if (!fileDialog_.isOpen())
+                    project_.action = Project::Action::None;
                 break;
+            }
             project_.filepath = fileDialog_.selection().front();
             project_.forceSaveAs = false;
             saveProject(project_.filepath);
@@ -114,6 +148,7 @@ void App::update()
             project_.action = Project::Action::None;
             break;
     }
+
 }
 
 //----------------------------------------------------------------------------//
@@ -332,7 +367,7 @@ void App::renderMenuBarGUI()
             ImGui::Separator();
             if (ImGui::BeginMenu("Export"))
             {
-                exporter_->renderGUI(layers_);
+                exporter_->renderGUI(*sharedUniforms_, layers_);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();

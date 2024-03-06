@@ -277,18 +277,16 @@ void ExportTool::exportFrame()
             static vir::GifEncoder* gifEncoder(nullptr);
             if (setup)
             {
-                gifEncoder = new vir::GifEncoder
-                (
-                    gifAlphaCutoff_ > 0 ?
-                    vir::Quantizer::Settings::IndexMode::Alpha :
-                    vir::Quantizer::Settings::IndexMode::Default
-                );
+                gifEncoder = new vir::GifEncoder();
                 gifEncoder->openFile
                 ( 
                     exportFilename.c_str(), 
                     exportResolution_.x, 
                     exportResolution_.y, 
-                    gifPaletteBitDepth_
+                    gifPaletteBitDepth_,
+                    gifAlphaCutoff_ > 0 ?
+                        vir::Quantizer::Settings::IndexMode::Alpha :
+                        vir::Quantizer::Settings::IndexMode::Default
                 );
                 setup = false;
             }

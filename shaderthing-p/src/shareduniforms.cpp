@@ -1,7 +1,24 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include "shaderthing-p/include/shareduniforms.h"
-#include "shaderthing-p/include/uniform.h"
+
 #include "shaderthing-p/include/macros.h"
 #include "shaderthing-p/include/objectio.h"
+#include "shaderthing-p/include/uniform.h"
+
 #include "vir/include/vir.h"
 
 namespace ShaderThing
@@ -60,6 +77,8 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
     bounds_.insert({Uniform::SpecialType::Time, {0, 1}});
     bounds_.insert({Uniform::SpecialType::CameraPosition, {0, 1}});
 
+    exportData_.resolution = cpuBlock_.iResolution;
+
     // Register the class iteself with the vir event broadcaster with a 
     // higher priority (lower value is higher priority) than all other
     // ShaderThing event receivers
@@ -80,22 +99,35 @@ SharedUniforms::~SharedUniforms()
 void SharedUniforms::setResolution
 (
     glm::ivec2& resolution, 
-    bool windowFrameManuallyDragged
+    bool windowFrameManuallyDragged,
+    bool prepareForExport
 )
 {
-    // Limit resolution
+    // Limit resolution if not about to export
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
-    auto monitorScale = window->contentScale();
-    glm::ivec2 minResolution = {120*monitorScale.x, 1};
-    glm::ivec2 maxResolution = window->primaryMonitorResolution();
-    resolution.x = 
-        std::max(std::min(resolution.x, maxResolution.x), minResolution.x);
-    resolution.y = 
-        std::max(std::min(resolution.y, maxResolution.y), minResolution.y);
-    
+    if (!prepareForExport)
+    {
+        auto monitorScale = window->contentScale();
+        glm::ivec2 minResolution = {120*monitorScale.x, 1};
+        glm::ivec2 maxResolution = window->primaryMonitorResolution();
+        resolution.x = 
+            std::max(std::min(resolution.x, maxResolution.x), minResolution.x);
+        resolution.y = 
+            std::max(std::min(resolution.y, maxResolution.y), minResolution.y);
+    }
+
     // Store in iResolution & update aspectRatio
     cpuBlock_.iResolution = resolution;
     cpuBlock_.iAspectRatio = ((float)resolution.x)/resolution.y;
+
+    // If not preparing for export, reset export resolution and its scale if
+    // the window is resized in any way (either manullay or via the GUI). Not
+    // necessary but I like this behavior better
+    if (!prepareForExport)
+    {
+        exportData_.resolution = cpuBlock_.iResolution;
+        exportData_.resolutionScale = 1.f;
+    }
 
     // Update screen camera
     screenCamera_->setViewportHeight
@@ -106,8 +138,9 @@ void SharedUniforms::setResolution
     cpuBlock_.iMVP = screenCamera_->projectionViewMatrix();
     flags_.updateDataRangeIII = true;
 
-    // Set the actual window resolution and propagate event
-    if (!windowFrameManuallyDragged)
+    // Set the actual window resolution and propagate event if not preparing
+    // for export
+    if (!prepareForExport && !windowFrameManuallyDragged)
         window->setSize
         (
             resolution.x,
@@ -339,13 +372,19 @@ void SharedUniforms::update(const UpdateArgs& args)
     
     if (!flags_.isRenderingPaused)
         ++cpuBlock_.iFrame;
-    
-    if (flags_.restartRendering)
+    cpuBlock_.iRenderPass = 0;
+
+    if (flags_.resetFrameCounterPreOrPostExport)
     {
         cpuBlock_.iFrame = 0;
-        if (flags_.isTimeResetOnRenderingRestart)
+        flags_.resetFrameCounterPreOrPostExport = false;
+    }
+    if (flags_.resetFrameCounter)
+    {
+        cpuBlock_.iFrame = 0;
+        if (flags_.isTimeResetOnFrameCounterReset)
             cpuBlock_.iTime = 0;
-        flags_.restartRendering = false;
+        flags_.resetFrameCounter = false;
     }
 
     // The shaderCamera has its own event listeners, but all of its updates are
@@ -391,13 +430,45 @@ void SharedUniforms::update(const UpdateArgs& args)
 
 //----------------------------------------------------------------------------//
 
+void SharedUniforms::nextRenderPass()
+{
+    ++cpuBlock_.iRenderPass;
+    gpuBlock_->setData(&cpuBlock_, Block::dataRangeICumulativeSize(), 0);
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::prepareForExport(float exportStartTime)
+{
+    flags_.resetFrameCounterPreOrPostExport = true;
+    exportData_.originalTime = cpuBlock_.iTime;
+    cpuBlock_.iTime = exportStartTime;
+    exportData_.originalResolution = cpuBlock_.iResolution;
+    setResolution(exportData_.resolution, false, true);
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::resetAfterExport()
+{
+    flags_.resetFrameCounterPreOrPostExport = true;
+    cpuBlock_.iTime = exportData_.originalTime;
+    ExportData cache = exportData_;
+    setResolution(exportData_.originalResolution, false, false);
+    exportData_ = cache;
+}
+
+//----------------------------------------------------------------------------//
+
 void SharedUniforms::save(ObjectIO& io) const
 {
     io.writeObjectStart("sharedUniforms");
     io.write("windowResolution", cpuBlock_.iResolution);
+    io.write("exportWindowResolutionScale", exportData_.resolutionScale);
     io.write("time", cpuBlock_.iTime);
     io.write("timePaused", flags_.isTimePaused);
     io.write("timeLooped", flags_.isTimeLooped);
+    io.write("timeBounds", bounds_.at(Uniform::SpecialType::Time));
     io.write("iWASD", shaderCamera_->position());
     io.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
     io.write("iWASDInputEnabled", flags_.isCameraKeyboardInputEnabled);
@@ -406,7 +477,7 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("iLookInputEnabled",flags_.isCameraMouseInputEnabled);
     io.write("iMouseInputEnabled", flags_.isMouseInputEnabled);
     io.write("iKeyboardInputEnabled", flags_.isKeyboardInputEnabled);
-    io.write("resetTimeOnRenderRestart",flags_.isTimeResetOnRenderingRestart);
+    io.write("resetTimeOnFrameCounterReset", flags_.isTimeResetOnFrameCounterReset);
     io.writeObjectEnd();
 }
 
@@ -419,12 +490,13 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
     auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
     su->setResolution(resolution, false);
     su->cpuBlock_.iTime = ioSu.read<float>("time");
+    su->bounds_[Uniform::SpecialType::Time] = ioSu.read<glm::vec2>("timeBounds");
     su->cpuBlock_.iWASD = ioSu.read<glm::vec3>("iWASD");
     su->cpuBlock_.iLook = ioSu.read<glm::vec3>("iLook");
     su->flags_.isTimePaused = ioSu.read<bool>("timePaused");
     su->flags_.isTimeLooped = ioSu.read<bool>("timeLooped");
-    su->flags_.isTimeResetOnRenderingRestart = 
-        ioSu.read<bool>("resetTimeOnRenderRestart");
+    su->flags_.isTimeResetOnFrameCounterReset = 
+        ioSu.read<bool>("resetTimeOnFrameCounterReset");
     su->shaderCamera_->setDirection(su->cpuBlock_.iLook.packed());
     su->shaderCamera_->setPosition(su->cpuBlock_.iWASD.packed());
     su->shaderCamera_->setKeySensitivity(ioSu.read<float>("iWASDSensitivity"));
@@ -438,6 +510,11 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
         su->toggleMouseInputs();
     if (!ioSu.read<bool>("iKeyboardInputEnabled"))
         su->toggleKeyboardInputs();
+    su->exportData_.resolutionScale = 
+        ioSu.read<float>("exportWindowResolutionScale");
+    su->exportData_.resolution = 
+        (glm::vec2)su->cpuBlock_.iResolution*
+        su->exportData_.resolutionScale + .5f;
     su->flags_.updateDataRangeII = true;
     su->flags_.updateDataRangeIII = true;
 }

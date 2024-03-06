@@ -1,10 +1,26 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include "shaderthing-p/include/layer.h"
-#include "shaderthing-p/include/shareduniforms.h"
-#include "shaderthing-p/include/uniform.h"
-#include "shaderthing-p/include/resource.h"
+
 #include "shaderthing-p/include/helpers.h"
 #include "shaderthing-p/include/macros.h"
 #include "shaderthing-p/include/objectio.h"
+#include "shaderthing-p/include/resource.h"
+#include "shaderthing-p/include/shareduniforms.h"
+#include "shaderthing-p/include/uniform.h"
 
 #include "vir/include/vir.h"
 
@@ -228,6 +244,12 @@ void Layer::save(ObjectIO& io) const
     io.write("exportClearPolicy", (int)rendering_.clearPolicy);
     io.writeObjectEnd(); // End of internalFramebuffer
 
+    io.writeObjectStart("exportData");
+    io.write("resolutionScale", exportData_.resolutionScale);
+    io.write("rescaleWithOutput", exportData_.rescaleWithOutput);
+    io.write("windowResolutionScale", exportData_.windowResolutionScale);
+    io.writeObjectEnd(); // End of exportData
+
     io.writeObjectStart("shader");
     auto fragmentSource = gui_.sourceEditor.getText();
     io.write
@@ -377,9 +399,23 @@ Layer* Layer::load
     layer->resolution_ = io.read<glm::ivec2>("resolution");
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
     layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
+    
+    layer->setDepth(io.read<float>("depth"));
+
+    auto exportData = io.readObject("exportData");
+    layer->exportData_.resolutionScale = 
+        exportData.read<float>("resolutionScale");
+    layer->exportData_.rescaleWithOutput = 
+        exportData.read<bool>("rescaleWithOutput");
+    layer->exportData_.windowResolutionScale = 
+        exportData.read<float>("windowResolutionScale");
+    layer->exportData_.resolution =
+        (glm::vec2)layer->resolution_ * 
+        layer->exportData_.resolutionScale *
+        layer->exportData_.windowResolutionScale +.5f;
+
     layer->flags_.isAspectRatioBoundToWindow = 
         io.read<bool>("isAspectRatioBoundToWindow");
-    layer->setDepth(io.read<float>("depth"));
 
     auto shaderData = io.readObject("shader");
     auto fragmentSource = shaderData.read("fragmentSource", false);
@@ -524,6 +560,10 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
     layer->setFramebufferMinFilterMode((FilterMode)minFilter);
     layer->setFramebufferWrapMode(0, (WrapMode)wrapModes[0]);
     layer->setFramebufferWrapMode(1, (WrapMode)wrapModes[1]);
+
+    layer->rendering_.clearPolicy = 
+        (Rendering::FramebufferClearPolicy)
+        framebufferData.read<int>("exportClearPolicy");
 
     // Initialize post-processing effects, if any were saved 
     /*if (io.hasMember("postProcesses"))
@@ -724,7 +764,8 @@ void Layer::setResolution
 (
     const glm::ivec2& iResolution,
     const bool windowFrameManuallyDragged,
-    const bool tryEnfoceWindowAspectRatio
+    const bool tryEnfoceWindowAspectRatio,
+    const bool setExportResolution
 )
 {
     glm::ivec2 resolution = iResolution;
@@ -762,10 +803,11 @@ void Layer::setResolution
         resolution_ = resolution;
     aspectRatio_ = ((float)resolution_.x)/resolution_.y;
     
-    exportData_.resolution = 
-        (glm::vec2)resolution_*
-        exportData_.resolutionScale*
-        exportData_.windowResolutionScale + .5f;
+    if (setExportResolution)
+        exportData_.resolution = 
+            (glm::vec2)resolution_*
+            exportData_.resolutionScale*
+            exportData_.windowResolutionScale + .5f;
     
     rebuildFramebuffers
     (
@@ -878,6 +920,14 @@ void Layer::rebuildFramebuffers
     rebuildFramebuffer(rendering_.framebufferA, internalFormat, resolution);
     rebuildFramebuffer(rendering_.framebufferB, internalFormat, resolution);
     rendering_.framebuffer = rendering_.framebufferA;
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::clearFramebuffers()
+{
+    rendering_.framebufferA->clearColorBuffer();
+    rendering_.framebufferB->clearColorBuffer();
 }
 
 //----------------------------------------------------------------------------//
@@ -995,10 +1045,11 @@ void Layer::renderShader
     uint32_t unit = 0; 
     for (auto u : uniforms_)
     {
-        bool named(u->name.size() > 0);
         if 
         (
-            !named || 
+
+            u->specialType != Uniform::SpecialType::None ||
+            u->name.size() == 0 || 
             (
                 u->type != vir::Shader::Variable::Type::Sampler2D &&
                 u->type != vir::Shader::Variable::Type::SamplerCube
@@ -1124,6 +1175,21 @@ void main(){fragColor = texture(self, tc);})",
 
 //----------------------------------------------------------------------------//
 
+void Layer::prepareForExport()
+{
+    exportData_.originalResolution = resolution_;
+    setResolution(exportData_.resolution, false, false, false);
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::resetAfterExport()
+{
+    setResolution(exportData_.originalResolution, false, false, false);
+}
+
+//----------------------------------------------------------------------------//
+
 bool Layer::removeResourceFromUniforms(const Resource* resource)
 {
     for (int i=0; i<uniforms_.size(); i++)
@@ -1151,56 +1217,83 @@ void Layer::renderShaders // Static
 (
     const std::vector<Layer*>& layers,
     vir::Framebuffer* target, 
-    const SharedUniforms& sharedUniforms
+    SharedUniforms& sharedUniforms,
+    const unsigned int nRenderPasses
 )
 {
-    bool clearTarget(true);
-    for (auto layer : layers)
+    if (target != nullptr) // I.e., if exporting
     {
-        layer->renderShader(target, clearTarget, sharedUniforms);
-        // At the end of this loop, the status of clearTarget will represent
-        // whether the main window has been cleared of its contents at least
-        // once (true if never cleared at least once)
-        if 
-        (
-            clearTarget &&
-            layer->rendering_.target != 
-                Layer::Rendering::Target::InternalFramebuffer
-        )
-            clearTarget = false;
+        for (auto layer : layers) // Apply clear policy
+        {
+            switch (layer->rendering_.clearPolicy)
+            {
+                case Rendering::FramebufferClearPolicy::None :
+                    continue;
+                case Rendering::FramebufferClearPolicy::ClearOnFirstFrameExport:
+                    if (sharedUniforms.iFrame() == 0)
+                        layer->clearFramebuffers();
+                    break;
+                case Rendering::FramebufferClearPolicy::ClearOnEveryFrameExport:
+                    if (sharedUniforms.iRenderPass() == 0)
+                        layer->clearFramebuffers();
+                    break;
+            }
+        }
     }
-    // If the window has not been cleared at least once, or if I am not
-    // rendering to the window at all (i.e., if target != nullptr, which is
-    // only true during exports), then render a dummy/void/blank window,
-    // simply to avoid visual artifacts when nothing is rendering to the
-    // main window. As for the internalFramebufferShader in Layer::renderShader,
-    // the lifetime of the shader (and quad) is managed statically within here
-    if (clearTarget || target != nullptr)
+    for (int renderPass = 0; renderPass < nRenderPasses; renderPass++)
     {
-        static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
-        auto viewport = Helpers::normalizedWindowResolution();
-        blankQuad->update(viewport.x, viewport.y, 0);
-        static auto blankShader
-        (
-            std::unique_ptr<vir::Shader>
+        if (renderPass > 0)
+            sharedUniforms.nextRenderPass(); // Advance iRenderPass in 
+                                             // sharedUniforms
+        bool clearTarget(true);
+        for (auto layer : layers)
+        {
+            layer->renderShader(target, clearTarget, sharedUniforms);
+            // At the end of this loop, the status of clearTarget will represent
+            // whether the main window has been cleared of its contents at least
+            // once (true if never cleared at least once)
+            if 
             (
-                vir::Shader::create
+                clearTarget &&
+                layer->rendering_.target != 
+                    Layer::Rendering::Target::InternalFramebuffer
+            )
+                clearTarget = false;
+        }
+        // If the window has not been cleared at least once, or if I am not
+        // rendering to the window at all (i.e., if target != nullptr, which is
+        // only true during exports), then render a dummy/void/blank window,
+        // simply to avoid visual artifacts when nothing is rendering to the
+        // main window. As for the internalFramebufferShader in 
+        // Layer::renderShader, the lifetime of the shader (and quad) is managed
+        // statically within here
+        if (clearTarget || target != nullptr)
+        {
+            static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
+            auto viewport = Helpers::normalizedWindowResolution();
+            blankQuad->update(viewport.x, viewport.y, 0);
+            static auto blankShader
+            (
+                std::unique_ptr<vir::Shader>
                 (
-                    vertexShaderSource(sharedUniforms),
-                    glslVersionSource()+
+                    vir::Shader::create
+                    (
+                        vertexShaderSource(sharedUniforms),
+                        glslVersionSource()+
 R"(out vec4 fragColor;
 in     vec2 qc;
 in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})",
-                    vir::Shader::ConstructFrom::SourceCode
+                        vir::Shader::ConstructFrom::SourceCode
+                    )
                 )
-            )
-        );
-        vir::GlobalPtr<vir::Renderer>::instance()->submit
-        (
-            *blankQuad.get(), 
-            blankShader.get()
-        );
+            );
+            vir::GlobalPtr<vir::Renderer>::instance()->submit
+            (
+                *blankQuad.get(), 
+                blankShader.get()
+            );
+        }
     }
 }
 

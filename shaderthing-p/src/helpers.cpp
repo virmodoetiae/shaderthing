@@ -1,5 +1,21 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2024 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <ctime>
 
 #include "shaderthing-p/include/helpers.h"
@@ -51,6 +67,8 @@ std::string fileExtension(const std::string& filepath, bool toLowerCase)
     for (int i=filepath.size()-1; i>=0; i--)
     {
         const char& c(filepath[i]);
+        if (c == '\\' || c == '/')
+            break;
         if (!foundDot)
         {
             foundDot = (c == '.');
@@ -84,6 +102,43 @@ std::string filename(const std::string& filepath)
     return foundSlash ? filename : "";
 }
 
+void splitFilepath
+(
+    const std::string& filepath,
+    std::string& filepathNoExtension,
+    std::string& fileExtension
+)
+{
+    filepathNoExtension.clear();
+    fileExtension.clear();
+    bool foundDot(false);
+    int i = 0;
+    for (i=filepath.size()-1; i>=0; i--)
+    {
+        const char& c(filepath[i]);
+        if (c == '\\' || c == '/')
+            break;
+        if (!foundDot)
+        {
+            foundDot = (c == '.');
+            fileExtension = c + fileExtension;
+        }
+        else break;
+    }
+    if (foundDot)
+        filepathNoExtension = filepath.substr(0, i);
+    else
+        filepathNoExtension = filepath;
+}
+
+std::string appendToFilename(const std::string& filepath, const std::string& s)
+{
+    std::string filepathNoExtension;
+    std::string fileExtension;
+    splitFilepath(filepath, filepathNoExtension, fileExtension);
+    return filepathNoExtension+s+fileExtension;
+}
+
 std::string randomString(const unsigned int size)
 {
     srand((unsigned)time(NULL));
@@ -112,6 +167,22 @@ unsigned char* readFileContents
     dataStream.read((char*)data, size);
     dataStream.close();
     return data;
+}
+
+std::string format(float value, unsigned int precision) 
+{
+    char buffer[8];
+    auto result = std::to_chars
+    (
+        buffer, 
+        buffer + sizeof(buffer), 
+        value, 
+        std::chars_format::fixed, 
+        precision
+    );
+    if (result.ec == std::errc())
+        return std::string(buffer, result.ptr - buffer);
+    return "";
 }
 
 #define RETURN_SCALAR_FORMAT                                            \

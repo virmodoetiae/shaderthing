@@ -20,6 +20,15 @@ std::string fileExtension(const std::string& filepath, bool toLowerCase=true);
 
 std::string filename(const std::string& filepath);
 
+void splitFilepath
+(
+    const std::string& filepath, 
+    std::string& filepathNoExtension, 
+    std::string& fileExtension
+);
+
+std::string appendToFilename(const std::string& filepath, const std::string& s);
+
 std::string randomString(const unsigned int size);
 
 // Returns the raw data of file at filepath and the overall data size. It is
@@ -30,6 +39,8 @@ unsigned char* readFileContents
     const std::string& filepath,
     unsigned int& size
 );
+
+std::string format(float value, unsigned int precision);
 
 // Get the format string of a numeric value type such that:
 // 1) if value < lowExpThreshold or value > highExpThreshold, the format will

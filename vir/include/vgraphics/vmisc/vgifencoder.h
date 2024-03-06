@@ -16,6 +16,9 @@ class GifEncoder
 {
 public:
 
+    typedef Quantizer::Settings::IndexMode IndexMode;
+    typedef Quantizer::Settings::DitherMode DitherMode;
+
     struct EncodingOptions
     {
         // Delay between frames in hundredths of a second
@@ -25,8 +28,7 @@ public:
         bool flipVertically = false;
 
         //
-        Quantizer::Settings::DitherMode ditherMode = 
-            Quantizer::Settings::DitherMode::None;
+        DitherMode ditherMode = DitherMode::None;
         
         // 
         float ditherThreshold = 0;
@@ -56,12 +58,12 @@ protected:
         uint8_t chunk[256];
     } GifBitStatus;
 
-    FILE* file_;
+    FILE* file_ = nullptr;
     bool firstFrame_;
     uint32_t width_, height_, paletteBitDepth_, paletteSize_;
     unsigned char* indexedTexture_;
     unsigned char* palette_;
-    Quantizer::Settings::IndexMode indexMode_;
+    IndexMode indexMode_;
 
     Quantizer* quantizer_;
     
@@ -69,13 +71,10 @@ protected:
 
 public:
 
-    GifEncoder
-    (
-        Quantizer::Settings::IndexMode indexMode =
-            Quantizer::Settings::IndexMode::Default
-    );
+    GifEncoder();
     ~GifEncoder();
 
+    bool isFileOpen() const {return file_ != nullptr;}
     bool canRunOnDeviceInUse() const {return quantizer_->canRunOnDeviceInUse();}
     const std::string& errorMessage() const {return quantizer_->errorMessage();}
 
@@ -84,7 +83,8 @@ public:
         const std::string& filepath, 
         uint32_t width, 
         uint32_t height, 
-        uint32_t paletteBitDepth=8
+        uint32_t paletteBitDepth=8,
+        IndexMode indexMode=IndexMode::Default
     );
     
     void encodeFrame

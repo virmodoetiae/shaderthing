@@ -34,18 +34,27 @@ private:
 
     struct Flags
     {
-        const bool updateDataRangeI              = true;
-              bool updateDataRangeII             = false;
-              bool updateDataRangeIII            = false;
-              bool restartRendering              = false;
-              bool isRenderingPaused             = false;
-              bool isTimePaused                  = false;
-              bool isTimeLooped                  = false;
-              bool isTimeResetOnRenderingRestart = true;
-              bool isKeyboardInputEnabled        = true; // iKeyboard
-              bool isMouseInputEnabled           = true; // iMouse
-              bool isCameraKeyboardInputEnabled  = true; // iWASD
-              bool isCameraMouseInputEnabled     = true; // iLook
+        const bool updateDataRangeI                 = true;
+              bool updateDataRangeII                = false;
+              bool updateDataRangeIII               = false;
+              bool resetFrameCounter                = false;
+              bool resetFrameCounterPreOrPostExport = false;
+              bool isRenderingPaused                = false;
+              bool isTimePaused                     = false;
+              bool isTimeLooped                     = false;
+              bool isTimeResetOnFrameCounterReset   = true;
+              bool isKeyboardInputEnabled           = true; // iKeyboard
+              bool isMouseInputEnabled              = true; // iMouse
+              bool isCameraKeyboardInputEnabled     = true; // iWASD
+              bool isCameraMouseInputEnabled        = true; // iLook
+    };
+
+    struct ExportData
+    {
+        float      originalTime;
+        glm::ivec2 originalResolution;
+        glm::ivec2 resolution;
+        float      resolutionScale               = 1.f;
     };
 
     // A properly aligned layout-std140 compilant C++ representation of the
@@ -145,8 +154,15 @@ R"(layout(std140) uniform SharedBlock {
           std::unordered_map<Uniform::SpecialType, glm::vec2> 
                               bounds_         = {};
 
+          ExportData          exportData_     = {};
+
     void setUserAction(bool flag);
-    void setResolution(glm::ivec2& resolution, bool windowFrameManuallyDragged);
+    void setResolution
+    (
+        glm::ivec2& resolution, 
+        bool windowFrameManuallyDragged, 
+        bool prepareForExport=false
+    );
     void toggleMouseInputs();
     void toggleKeyboardInputs();
     void toggleCameraKeyboardInputs();
@@ -176,16 +192,22 @@ public:
     void onReceive(vir::Event::KeyPressEvent& e) override;
     void onReceive(vir::Event::KeyReleaseEvent& e) override;
 
-    const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
-    const float& iTime() const {return cpuBlock_.iTime;}
-
-    const char* glslBlockSource() const {return cpuBlock_.glslSource;}
+    void resetFrameCounter() {flags_.resetFrameCounter = true;}
 
     void bindShader(vir::Shader* shader) const;
-
     void update(const UpdateArgs& args);
-    
+    void nextRenderPass();
+    void prepareForExport(float exportStartTime);
+    void resetAfterExport();
+
     void renderWindowResolutionMenuGUI();
+
+    const char* glslBlockSource() const {return cpuBlock_.glslSource;}
+    ExportData& exportData() {return exportData_;}
+    const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
+    const float& iTime() const {return cpuBlock_.iTime;}
+    const int& iFrame() const {return cpuBlock_.iFrame;}
+    const int& iRenderPass() const {return cpuBlock_.iRenderPass;}
 };
 
 }

@@ -55,6 +55,8 @@ public:
     );
     bool validSelection();
     void clearSelection() {selection_.clear();}
+
+    bool isOpen() const {return isOpen_;}
     const std::vector<std::string>& selection() const {return selection_;}
 };
     
