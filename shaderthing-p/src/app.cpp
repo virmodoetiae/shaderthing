@@ -291,6 +291,7 @@ void App::renderGUI()
     Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_, resources_);
 
     ImGui::End();
+    ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 

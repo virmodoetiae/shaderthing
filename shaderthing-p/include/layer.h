@@ -64,8 +64,9 @@ public:
     };
     struct Flags
     {
-               bool              rename                 = false;
-               bool              uncompiledChanges      = false;
+               bool              rename                     = false;
+               bool              pendingDeletion            = false;
+               bool              uncompiledChanges          = false;
                bool              isAspectRatioBoundToWindow = true;
         static bool              restartRendering;
     };

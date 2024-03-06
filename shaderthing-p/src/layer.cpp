@@ -1881,27 +1881,57 @@ void Layer::renderLayersTabBarGUI // Static
                 layer->renderTabBarGUI(sharedUnifoms, resources);
                 ImGui::EndTabItem();
             }
+            bool deleted(false);
             if (!open) // I.e., if 'x' is pressed to delete the tab
             {
-                layers.erase
-                (
-                    std::remove_if
-                    (
-                        layers.begin(), 
-                        layers.end(), 
-                        [&layer](const Layer* l) {return l==layer;}
-                    ), 
-                    layers.end()
-                );
-                Resource::removeLayerFromResources
-                (
-                    &(layer->gui_.name),
-                    resources
-                );
-                delete layer;
-                --i;
-                continue;
+                ImGui::OpenPopup("Layer deletion confirmation");
+                layer->flags_.pendingDeletion = true;
+                reorderable = false;
             }
+            if 
+            (
+                layer->flags_.pendingDeletion && 
+                ImGui::BeginPopupModal("Layer deletion confirmation")
+            )
+            {
+                ImGui::Text
+                (
+                    "Are you sure you want to delete '%s'?", 
+                    layer->gui_.name.c_str()
+                );
+                ImGui::Text("This action cannot be undone!");
+                if (ImGui::Button("Delete"))
+                {
+                    layers.erase
+                    (
+                        std::remove_if
+                        (
+                            layers.begin(), 
+                            layers.end(), 
+                            [&layer](const Layer* l) {return l==layer;}
+                        ), 
+                        layers.end()
+                    );
+                    Resource::removeLayerFromResources
+                    (
+                        &(layer->gui_.name),
+                        resources
+                    );
+                    delete layer;
+                    --i;
+                    deleted = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel"))
+                {
+                    layer->flags_.pendingDeletion = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+            if (deleted)
+                continue;
             auto tab = ImGui::TabBarFindTabByID
             (
                 tabBar, 
