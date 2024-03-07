@@ -291,7 +291,6 @@ void App::renderGUI()
     Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_, resources_);
 
     ImGui::End();
-    ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 
@@ -353,12 +352,13 @@ void App::renderMenuBarGUI()
         }
     };
 
+    bool newProjectConfirmation = false;
     if (ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("Project"))
         {
             if (ImGui::MenuItem("New", "Ctrl+N"))
-                setProjectAction(Project::Action::New, project_, fileDialog_);
+                newProjectConfirmation = true;
             if (ImGui::MenuItem("Load", "Ctrl+O"))
                 setProjectAction(Project::Action::Load, project_, fileDialog_);
             if (ImGui::MenuItem("Save", "Ctrl+S"))
@@ -495,13 +495,38 @@ resetting the iFrame uniform (Ctrl+R))"
     if (project_.action == Project::Action::None)
     {
         if (Helpers::isCtrlKeyPressed(ImGuiKey_N))
-            setProjectAction(Project::Action::New, project_, fileDialog_);
+            newProjectConfirmation = true;
         else if (Helpers::isCtrlKeyPressed(ImGuiKey_O))
             setProjectAction(Project::Action::Load, project_, fileDialog_);
         else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
             setProjectAction(Project::Action::Save, project_, fileDialog_);
         else if (Helpers::isCtrlShiftKeyPressed(ImGuiKey_S))
             setProjectAction(Project::Action::SaveAs, project_, fileDialog_);
+    }
+
+    if (newProjectConfirmation)
+        ImGui::OpenPopup("New project confirmation");
+    if 
+    (
+        ImGui::BeginPopupModal
+        (
+            "New project confirmation", 
+            nullptr, 
+            ImGuiWindowFlags_NoResize
+        )
+    )
+    {
+        ImGui::Text("Are you sure you want to start a new project?");
+        ImGui::Text("Any unsaved edits to the current project will be lost!");
+        if (ImGui::Button("Confirm"))
+        {
+            setProjectAction(Project::Action::New, project_, fileDialog_);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
     }
 }
 

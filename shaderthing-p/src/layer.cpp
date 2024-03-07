@@ -1891,7 +1891,12 @@ void Layer::renderLayersTabBarGUI // Static
             if 
             (
                 layer->flags_.pendingDeletion && 
-                ImGui::BeginPopupModal("Layer deletion confirmation")
+                ImGui::BeginPopupModal
+                (
+                    "Layer deletion confirmation",
+                    0,
+                    ImGuiWindowFlags_NoResize
+                )
             )
             {
                 ImGui::Text
