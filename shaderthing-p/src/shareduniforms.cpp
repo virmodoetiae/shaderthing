@@ -26,17 +26,16 @@ namespace ShaderThing
 
 //----------------------------------------------------------------------------//
 
-SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
-    gpuBindingPoint_(bindingPoint)
+SharedUniforms::SharedUniforms()
 {
     // Init CPU block data
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
-    cpuBlock_.iResolution = 
+    fBlock_.iResolution = 
         glm::ivec2{window->width(), window->height()};
-    cpuBlock_.iAspectRatio = 
+    fBlock_.iAspectRatio = 
         float(window->width())/float(window->height());
     for (int i=0; i<256; i++)
-        cpuBlock_.iKeyboard[i] = glm::ivec3({0,0,0});
+        fBlock_.iKeyboard[i] = glm::ivec3({0,0,0});
 
     // Init cameras
     if (screenCamera_ == nullptr)
@@ -49,35 +48,47 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
     );
     screenCamera_->setViewportHeight
     (
-        std::min(1.0f, 1.0f/cpuBlock_.iAspectRatio)
+        std::min(1.0f, 1.0f/fBlock_.iAspectRatio)
     );
     screenCamera_->setPosition({0, 0, 1});
     screenCamera_->setPlanes(.01f, 100.f);
     shaderCamera_->setZPlusIsLookDirection(true);
-    shaderCamera_->setDirection(cpuBlock_.iLook.packed());
-    shaderCamera_->setPosition(cpuBlock_.iWASD.packed());
+    shaderCamera_->setDirection(fBlock_.iLook.packed());
+    shaderCamera_->setPosition(fBlock_.iWASD.packed());
     screenCamera_->update();
     shaderCamera_->update();
-    cpuBlock_.iMVP = 
+    vBlock_.iMVP = 
         screenCamera_->projectionViewMatrix();
 
-    // Init GPU-side uniform block, bind and copy data from CPU
-    if (gpuBlock_ == nullptr);
-        gpuBlock_ = 
-            vir::UniformBuffer::create(SharedUniforms::Block::size());
-    gpuBlock_->bind(gpuBindingPoint_);
-    gpuBlock_->setData
+    // Init uniform buffers, bind to designated binding points and set
+    // initial data
+    if (vBuffer_ == nullptr);
+        vBuffer_ = 
+            vir::UniformBuffer::create(VertexBlock::size());
+    vBuffer_->setBindingPoint(vBindingPoint_);
+    vBuffer_->setData
     (
-        &(cpuBlock_),
-        SharedUniforms::Block::size(),
+        &(vBlock_),
+        VertexBlock::size(),
         0
     );
+    if (fBuffer_ == nullptr);
+        fBuffer_ = 
+            vir::UniformBuffer::create(FragmentBlock::size());
+    fBuffer_->setBindingPoint(fBindingPoint_);
+    fBuffer_->setData
+    (
+        &(fBlock_),
+        FragmentBlock::size(),
+        0
+    );
+    fBuffer_->bind();
 
     // Init bounds
     bounds_.insert({Uniform::SpecialType::Time, {0, 1}});
     bounds_.insert({Uniform::SpecialType::CameraPosition, {0, 1}});
 
-    exportData_.resolution = cpuBlock_.iResolution;
+    exportData_.resolution = fBlock_.iResolution;
 
     // Register the class iteself with the vir event broadcaster with a 
     // higher priority (lower value is higher priority) than all other
@@ -89,7 +100,8 @@ SharedUniforms::SharedUniforms(const unsigned int bindingPoint) :
 
 SharedUniforms::~SharedUniforms()
 {
-    DELETE_IF_NOT_NULLPTR(gpuBlock_)
+    DELETE_IF_NOT_NULLPTR(fBuffer_)
+    DELETE_IF_NOT_NULLPTR(vBuffer_)
     DELETE_IF_NOT_NULLPTR(screenCamera_)
     DELETE_IF_NOT_NULLPTR(shaderCamera_)
 }
@@ -117,25 +129,25 @@ void SharedUniforms::setResolution
     }
 
     // Store in iResolution & update aspectRatio
-    cpuBlock_.iResolution = resolution;
-    cpuBlock_.iAspectRatio = ((float)resolution.x)/resolution.y;
+    fBlock_.iResolution = resolution;
+    fBlock_.iAspectRatio = ((float)resolution.x)/resolution.y;
 
     // If not preparing for export, reset export resolution and its scale if
     // the window is resized in any way (either manullay or via the GUI). Not
     // necessary but I like this behavior better
     if (!prepareForExport)
     {
-        exportData_.resolution = cpuBlock_.iResolution;
+        exportData_.resolution = fBlock_.iResolution;
         exportData_.resolutionScale = 1.f;
     }
 
     // Update screen camera
     screenCamera_->setViewportHeight
     (
-        std::min(1.0f, 1.0f/cpuBlock_.iAspectRatio)
+        std::min(1.0f, 1.0f/fBlock_.iAspectRatio)
     );
     screenCamera_->update();
-    cpuBlock_.iMVP = screenCamera_->projectionViewMatrix();
+    vBlock_.iMVP = screenCamera_->projectionViewMatrix();
     flags_.updateDataRangeIII = true;
 
     // Set the actual window resolution and propagate event if not preparing
@@ -152,7 +164,7 @@ void SharedUniforms::setResolution
 
 void SharedUniforms::setUserAction(bool flag)
 {
-    cpuBlock_.iUserAction = int(flag);
+    fBlock_.iUserAction = int(flag);
     flags_.updateDataRangeII;
 }
 
@@ -239,14 +251,14 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonPressEvent& event)
     glm::vec4 mouse = 
     {
         event.x,
-        cpuBlock_.iResolution.y-event.y,
-        cpuBlock_.iMouse.x,
-        -cpuBlock_.iMouse.y
+        fBlock_.iResolution.y-event.y,
+        fBlock_.iMouse.x,
+        -fBlock_.iMouse.y
     };
-    if (cpuBlock_.iMouse == mouse)
+    if (fBlock_.iMouse == mouse)
         return;
-    cpuBlock_.iUserAction = true;
-    cpuBlock_.iMouse = mouse;
+    fBlock_.iUserAction = true;
+    fBlock_.iMouse = mouse;
     flags_.updateDataRangeII = true;
 }
 
@@ -263,14 +275,14 @@ void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
     glm::vec4 mouse = 
     {
         event.x,
-        cpuBlock_.iResolution.y-event.y,
-        cpuBlock_.iMouse.z,
-        cpuBlock_.iMouse.w
+        fBlock_.iResolution.y-event.y,
+        fBlock_.iMouse.z,
+        fBlock_.iMouse.w
     };
-    if (cpuBlock_.iMouse == mouse)
+    if (fBlock_.iMouse == mouse)
         return;
-    cpuBlock_.iUserAction = true;
-    cpuBlock_.iMouse = mouse;
+    fBlock_.iUserAction = true;
+    fBlock_.iMouse = mouse;
     flags_.updateDataRangeII = true;
 }
 
@@ -280,15 +292,15 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
 {
     glm::vec4 mouse = 
     {
-        cpuBlock_.iMouse.x,
-        cpuBlock_.iMouse.y,
-        cpuBlock_.iMouse.z*-1,
-        cpuBlock_.iMouse.w
+        fBlock_.iMouse.x,
+        fBlock_.iMouse.y,
+        fBlock_.iMouse.z*-1,
+        fBlock_.iMouse.w
     };
-    if (cpuBlock_.iMouse == mouse)
+    if (fBlock_.iMouse == mouse)
         return;
-    cpuBlock_.iUserAction = true;
-    cpuBlock_.iMouse.z = mouse.z;
+    fBlock_.iUserAction = true;
+    fBlock_.iMouse.z = mouse.z;
     flags_.updateDataRangeII = true;
 }
 
@@ -296,7 +308,7 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
 
 void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 {
-    Block::ivec3A16& data(cpuBlock_.iKeyboard[event.keyCode]);
+    FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
     auto& status = inputState->keyState(event.keyCode);
     data.x = (int)status.isPressed();
@@ -305,14 +317,14 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
     // Only exception where I set the data immediately in the event callback in
     // order to avoid having to update the whole 4kB of key memory all at once
     // at every SharedUniforms::update call
-    int offset = Block::iKeyboardKeyOffset
+    int offset = FragmentBlock::iKeyboardKeyOffset
     (
         vir::inputKeyCodeVirToShaderToy(event.keyCode)
     );
-    gpuBlock_->setData
+    fBuffer_->setData
     (
         (void*)&data, 
-        Block::iKeyboardKeySize(), 
+        FragmentBlock::iKeyboardKeySize(), 
         offset
     );
 }
@@ -321,7 +333,7 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 
 void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
 {
-    Block::ivec3A16& data(cpuBlock_.iKeyboard[event.keyCode]);
+    FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
     int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     data.x = 0;
@@ -330,11 +342,11 @@ void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
     // Only exception where I set the data immediately in the event callback in
     // order to avoid having to update the whole 4kB of key memory all at once
     // at every SharedUniforms::update call
-    gpuBlock_->setData
+    fBuffer_->setData
     (
         (void*)&data, 
-        Block::iKeyboardKeySize(), 
-        Block::iKeyboardKeyOffset
+        FragmentBlock::iKeyboardKeySize(), 
+        FragmentBlock::iKeyboardKeyOffset
         (
             vir::inputKeyCodeVirToShaderToy(event.keyCode)
         )
@@ -347,9 +359,13 @@ void SharedUniforms::bindShader(vir::Shader* shader) const
 {
     shader->bindUniformBlock
     (
-        Block::glslName,
-        *gpuBlock_,
-        gpuBindingPoint_
+        FragmentBlock::glslName,
+        fBindingPoint_
+    );
+    shader->bindUniformBlock
+    (
+        VertexBlock::glslName,
+        vBindingPoint_
     );
 }
 
@@ -358,32 +374,32 @@ void SharedUniforms::bindShader(vir::Shader* shader) const
 void SharedUniforms::update(const UpdateArgs& args)
 {
     if (!flags_.isTimePaused)
-        cpuBlock_.iTime += args.timeStep;
+        fBlock_.iTime += args.timeStep;
 
     const glm::vec2& timeLoopBounds(bounds_[Uniform::SpecialType::Time]);
-    if (flags_.isTimeLooped && cpuBlock_.iTime >= timeLoopBounds.y)
+    if (flags_.isTimeLooped && fBlock_.iTime >= timeLoopBounds.y)
     {
         auto duration = timeLoopBounds.y-timeLoopBounds.x;
         auto fraction = 
-            (cpuBlock_.iTime-timeLoopBounds.y)/std::max(duration, 1e-6f);
+            (fBlock_.iTime-timeLoopBounds.y)/std::max(duration, 1e-6f);
         fraction -= (int)fraction;
-        cpuBlock_.iTime = timeLoopBounds.x + duration*fraction;
+        fBlock_.iTime = timeLoopBounds.x + duration*fraction;
     }
     
     if (!flags_.isRenderingPaused)
-        ++cpuBlock_.iFrame;
-    cpuBlock_.iRenderPass = 0;
+        ++fBlock_.iFrame;
+    fBlock_.iRenderPass = 0;
 
     if (flags_.resetFrameCounterPreOrPostExport)
     {
-        cpuBlock_.iFrame = 0;
+        fBlock_.iFrame = 0;
         flags_.resetFrameCounterPreOrPostExport = false;
     }
     if (flags_.resetFrameCounter)
     {
-        cpuBlock_.iFrame = 0;
+        fBlock_.iFrame = 0;
         if (flags_.isTimeResetOnFrameCounterReset)
-            cpuBlock_.iTime = 0;
+            fBlock_.iTime = 0;
         flags_.resetFrameCounter = false;
     }
 
@@ -394,13 +410,13 @@ void SharedUniforms::update(const UpdateArgs& args)
     shaderCamera_->update();
     if 
     (
-        cpuBlock_.iWASD != shaderCamera_->position() ||
-        cpuBlock_.iLook != shaderCamera_->z()
+        fBlock_.iWASD != shaderCamera_->position() ||
+        fBlock_.iLook != shaderCamera_->z()
     )
     {
-        cpuBlock_.iWASD = shaderCamera_->position();
-        cpuBlock_.iLook = shaderCamera_->z();
-        cpuBlock_.iUserAction = true;
+        fBlock_.iWASD = shaderCamera_->position();
+        fBlock_.iLook = shaderCamera_->z();
+        fBlock_.iUserAction = true;
         flags_.updateDataRangeII = true;
     }
     
@@ -408,23 +424,27 @@ void SharedUniforms::update(const UpdateArgs& args)
     // setData calls, hence the weird branching
     if (!flags_.updateDataRangeIII)
     {
+        //fBuffer_->bind(gpuBindingPoint_+1);
         if (!flags_.updateDataRangeII)
-            gpuBlock_->setData(&cpuBlock_, Block::dataRangeICumulativeSize(), 0);
+            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeICumulativeSize(), 0);
         else
         {
-            gpuBlock_->setData(&cpuBlock_, Block::dataRangeIICumulativeSize(), 0);
+            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIICumulativeSize(), 0);
             flags_.updateDataRangeII = false;
         }
     }
     else
     {
-        gpuBlock_->setData(&cpuBlock_, Block::dataRangeIIICumulativeSize(), 0);
+        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIIICumulativeSize(), 0);
+        vBuffer_->bind();
+        vBuffer_->setData(&vBlock_, VertexBlock::size(), 0);
+        fBuffer_->bind();
         flags_.updateDataRangeIII = false;
     }
-    if (cpuBlock_.iUserAction) // Always reset
+    if (fBlock_.iUserAction) // Always reset
     {
         flags_.updateDataRangeII = true;
-        cpuBlock_.iUserAction = false;
+        fBlock_.iUserAction = false;
     }
 }
 
@@ -432,8 +452,8 @@ void SharedUniforms::update(const UpdateArgs& args)
 
 void SharedUniforms::nextRenderPass()
 {
-    ++cpuBlock_.iRenderPass;
-    gpuBlock_->setData(&cpuBlock_, Block::dataRangeICumulativeSize(), 0);
+    ++fBlock_.iRenderPass;
+    fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeICumulativeSize(), 0);
 }
 
 //----------------------------------------------------------------------------//
@@ -441,9 +461,9 @@ void SharedUniforms::nextRenderPass()
 void SharedUniforms::prepareForExport(float exportStartTime)
 {
     flags_.resetFrameCounterPreOrPostExport = true;
-    exportData_.originalTime = cpuBlock_.iTime;
-    cpuBlock_.iTime = exportStartTime;
-    exportData_.originalResolution = cpuBlock_.iResolution;
+    exportData_.originalTime = fBlock_.iTime;
+    fBlock_.iTime = exportStartTime;
+    exportData_.originalResolution = fBlock_.iResolution;
     setResolution(exportData_.resolution, false, true);
 }
 
@@ -452,7 +472,7 @@ void SharedUniforms::prepareForExport(float exportStartTime)
 void SharedUniforms::resetAfterExport()
 {
     flags_.resetFrameCounterPreOrPostExport = true;
-    cpuBlock_.iTime = exportData_.originalTime;
+    fBlock_.iTime = exportData_.originalTime;
     ExportData cache = exportData_;
     setResolution(exportData_.originalResolution, false, false);
     exportData_ = cache;
@@ -463,9 +483,9 @@ void SharedUniforms::resetAfterExport()
 void SharedUniforms::save(ObjectIO& io) const
 {
     io.writeObjectStart("sharedUniforms");
-    io.write("windowResolution", cpuBlock_.iResolution);
+    io.write("windowResolution", fBlock_.iResolution);
     io.write("exportWindowResolutionScale", exportData_.resolutionScale);
-    io.write("time", cpuBlock_.iTime);
+    io.write("time", fBlock_.iTime);
     io.write("timePaused", flags_.isTimePaused);
     io.write("timeLooped", flags_.isTimeLooped);
     io.write("timeBounds", bounds_.at(Uniform::SpecialType::Time));
@@ -489,16 +509,16 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
     auto ioSu = io.readObject("sharedUniforms");
     auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
     su->setResolution(resolution, false);
-    su->cpuBlock_.iTime = ioSu.read<float>("time");
+    su->fBlock_.iTime = ioSu.read<float>("time");
     su->bounds_[Uniform::SpecialType::Time] = ioSu.read<glm::vec2>("timeBounds");
-    su->cpuBlock_.iWASD = ioSu.read<glm::vec3>("iWASD");
-    su->cpuBlock_.iLook = ioSu.read<glm::vec3>("iLook");
+    su->fBlock_.iWASD = ioSu.read<glm::vec3>("iWASD");
+    su->fBlock_.iLook = ioSu.read<glm::vec3>("iLook");
     su->flags_.isTimePaused = ioSu.read<bool>("timePaused");
     su->flags_.isTimeLooped = ioSu.read<bool>("timeLooped");
     su->flags_.isTimeResetOnFrameCounterReset = 
         ioSu.read<bool>("resetTimeOnFrameCounterReset");
-    su->shaderCamera_->setDirection(su->cpuBlock_.iLook.packed());
-    su->shaderCamera_->setPosition(su->cpuBlock_.iWASD.packed());
+    su->shaderCamera_->setDirection(su->fBlock_.iLook.packed());
+    su->shaderCamera_->setPosition(su->fBlock_.iWASD.packed());
     su->shaderCamera_->setKeySensitivity(ioSu.read<float>("iWASDSensitivity"));
     su->shaderCamera_->setMouseSensitivity(ioSu.read<float>("iLookSensitivity"));
     su->shaderCamera_->update();
@@ -513,7 +533,7 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
     su->exportData_.resolutionScale = 
         ioSu.read<float>("exportWindowResolutionScale");
     su->exportData_.resolution = 
-        (glm::vec2)su->cpuBlock_.iResolution*
+        (glm::vec2)su->fBlock_.iResolution*
         su->exportData_.resolutionScale + .5f;
     su->flags_.updateDataRangeII = true;
     su->flags_.updateDataRangeIII = true;
@@ -528,7 +548,7 @@ void SharedUniforms::renderWindowResolutionMenuGUI()
         ImGui::Text("Resolution ");
         ImGui::SameLine();
         ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
-        glm::ivec2 resolution(cpuBlock_.iResolution);
+        glm::ivec2 resolution(fBlock_.iResolution);
         if 
         (
             ImGui::InputInt2

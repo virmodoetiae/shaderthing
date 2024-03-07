@@ -126,7 +126,7 @@ void splitFilepath
         else break;
     }
     if (foundDot)
-        filepathNoExtension = filepath.substr(0, i);
+        filepathNoExtension = filepath.substr(0, i+1);
     else
         filepathNoExtension = filepath;
 }

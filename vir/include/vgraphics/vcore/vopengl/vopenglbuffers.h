@@ -160,8 +160,9 @@ protected :
 public :
     OpenGLUniformBuffer(uint32_t size);
     ~OpenGLUniformBuffer();
-    void bind(uint32_t) override;
-    void unbind(uint32_t) override;
+    void bind() override;
+    void unbind() override;
+    void setBindingPoint(uint32_t) override;
     void setData
     (
         void* data,

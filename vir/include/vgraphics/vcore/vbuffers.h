@@ -389,8 +389,9 @@ public :
     virtual ~UniformBuffer(){}
     static UniformBuffer* create(uint32_t size);
     uint32_t id() const {return id_;}
-    virtual void bind(uint32_t) = 0;
-    virtual void unbind(uint32_t) = 0;
+    virtual void bind() = 0;
+    virtual void unbind() = 0;
+    virtual void setBindingPoint(uint32_t) = 0;
     virtual void setData
     (
         void* data,

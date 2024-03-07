@@ -166,26 +166,25 @@ public:
     virtual void bind() const = 0;
     virtual void unbind() const = 0;
 
-    virtual void setUniformBool(std::string, bool) = 0;
-    virtual void setUniformUInt(std::string, uint32_t) = 0;
-    virtual void setUniformInt(std::string, int) = 0;
-    virtual void setUniformInt2(std::string, glm::ivec2) = 0;
-    virtual void setUniformInt3(std::string, glm::ivec3) = 0;
-    virtual void setUniformInt4(std::string, glm::ivec4) = 0;
-    virtual void setUniformFloat(std::string, float) = 0;
-    virtual void setUniformFloat2(std::string, glm::vec2) = 0;
-    virtual void setUniformFloat3(std::string, glm::vec3) = 0;
-    virtual void setUniformFloat4(std::string, glm::vec4) = 0;
-    virtual void setUniformMat3(std::string, glm::mat3) = 0;
-    virtual void setUniformMat4(std::string, glm::mat4) = 0;
+    virtual void setUniformBool  (const std::string&, bool) = 0;
+    virtual void setUniformUInt  (const std::string&, uint32_t) = 0;
+    virtual void setUniformInt   (const std::string&, int) = 0;
+    virtual void setUniformInt2  (const std::string&, glm::ivec2) = 0;
+    virtual void setUniformInt3  (const std::string&, glm::ivec3) = 0;
+    virtual void setUniformInt4  (const std::string&, glm::ivec4) = 0;
+    virtual void setUniformFloat (const std::string&, float) = 0;
+    virtual void setUniformFloat2(const std::string&, glm::vec2) = 0;
+    virtual void setUniformFloat3(const std::string&, glm::vec3) = 0;
+    virtual void setUniformFloat4(const std::string&, glm::vec4) = 0;
+    virtual void setUniformMat3  (const std::string&, glm::mat3) = 0;
+    virtual void setUniformMat4  (const std::string&, glm::mat4) = 0;
 
     // Locates and binds a named uniform block in this shader to the provided
-    // uboBindingPoint, while binding the actual ubo to it
+    // bindingPoint
     virtual void bindUniformBlock
     (
-        std::string name, 
-        UniformBuffer& ubo, 
-        uint32_t uboBindingPoint=0
+        const std::string& blockName,  
+        uint32_t bindingPoint
     ) = 0;
 
     uint32_t id() const {return id_;}

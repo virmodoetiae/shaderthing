@@ -58,10 +58,10 @@ private:
     };
 
     // A properly aligned layout-std140 compilant C++ representation of the
-    // ShaderThing shared uniform block. Grouped by update frequency for 
+    // ShaderThing fragment uniform block. Grouped by update frequency for 
     // convenience of passing only certain ranges of it to the GPU UniformBlock
     // at a time. Somewhat wasteful because of the extensive usage of vec3s
-    struct Block
+    struct FragmentBlock
     {
         struct alignas(16) ivec3A16
         {
@@ -98,32 +98,32 @@ private:
                     vec3A16    iLook        = {0,0,1};      // 32 - 48       | 16
                     glm::vec4  iMouse       = {0,0,0,0};    // 48 - 64       | 16
         // Low update frequency (data range III)
-                    glm::mat4  iMVP         = glm::mat4(0); // 64 -128       | 64
-                    float      iAspectRatio = 1.f;          // 128-132       | 4
+                    //glm::mat4  iMVP         = glm::mat4(0); // 64 -128       | 64
+                    float      iAspectRatio = 1.f;          // 64-68       | 4
         // Using alignas(8) to force iResolution to start 
         // at byte 136 instead of 132
-        alignas(8)  glm::vec2  iResolution  = {512,512};    // 136-144       | 8
+        alignas(8)  glm::vec2  iResolution  = {512,512};    // 72-80       | 8
 
         // Whole array never updated all at once, only one 
         // array element at a time, medium update frequency
-                    ivec3A16   iKeyboard[256] {};           // 144-4240      | 16*256 = 4096
+                    ivec3A16   iKeyboard[256] {};           // 80-4176      | 16*256 = 4096
 
         static const uint32_t dataRangeICumulativeSize()   {return 12;}
         static const uint32_t dataRangeIICumulativeSize()  {return 64;}
-        static const uint32_t dataRangeIIICumulativeSize() {return 144;}
-        static const uint32_t iKeyboardKeyOffset(int iKey) {return 144+iKey*16;}
+        static const uint32_t dataRangeIIICumulativeSize() {return 80;}
+        static const uint32_t iKeyboardKeyOffset(int iKey) {return 80+iKey*16;}
         static const uint32_t iKeyboardKeySize()           {return 16;}
-        static const uint32_t size()                       {return 4240;}
+        static const uint32_t size()                       {return 4176;}
 
         static constexpr unsigned int nUniforms = 9;
         
-        static constexpr const char* glslName = "SharedBlock";
+        static constexpr const char* glslName = "sharedBlock";
         // The order of the uniforms within the block source must be the same as the
         // order in which they have been delcared in CPUBlock. On the other hand,
         // the actual uniform names do not matter, but I keep them mapped for
         // consistency
         static constexpr const char* glslSource =
-R"(layout(std140) uniform SharedBlock {
+R"(layout(std140) uniform sharedBlock {
         float iTime;
         int iFrame;
         int iRenderPass;
@@ -131,17 +131,30 @@ R"(layout(std140) uniform SharedBlock {
         vec3 iWASD;
         vec3 iLook;
         vec4 iMouse;
-        mat4 iMVP;
         float iWindowAspectRatio;
         vec2 iWindowResolution;
         ivec3 iKeyboard[256];};
 )";
     };
+
+    struct VertexBlock
+    {
+        glm::mat4 iMVP = glm::mat4(0);
+        static const uint32_t size() {return 64;}
+        static constexpr const char* glslName = "vertexBlock";
+        static constexpr const char* glslSource =
+R"(layout(std140) uniform vertexBlock {mat4 iMVP;};
+)";
+    };
     
-    const unsigned int        gpuBindingPoint_;
-          Flags               flags_    = {};
-          Block               cpuBlock_ = {};
-          vir::UniformBuffer* gpuBlock_ = nullptr;
+    const unsigned int        fBindingPoint_ = 0;
+    const unsigned int        vBindingPoint_ = 1;
+          FragmentBlock       fBlock_        = {};
+          VertexBlock         vBlock_        = {};
+          vir::UniformBuffer* fBuffer_       = nullptr;
+          vir::UniformBuffer* vBuffer_       = nullptr;
+          Flags               flags_         = {};
+          ExportData          exportData_     = {};
         
           // Fixed camera used to retrieve the value of the projection view 
           // matrix iMVP
@@ -153,8 +166,6 @@ R"(layout(std140) uniform SharedBlock {
 
           std::unordered_map<Uniform::SpecialType, glm::vec2> 
                               bounds_         = {};
-
-          ExportData          exportData_     = {};
 
     void setUserAction(bool flag);
     void setResolution
@@ -170,7 +181,7 @@ R"(layout(std140) uniform SharedBlock {
 
 public:
 
-    SharedUniforms(const unsigned int bindingPoint = 0);
+    SharedUniforms();
     ~SharedUniforms();
 
     void save(ObjectIO& io) const;
@@ -202,12 +213,16 @@ public:
 
     void renderWindowResolutionMenuGUI();
 
-    const char* glslBlockSource() const {return cpuBlock_.glslSource;}
+    const char* glslFragmentBlockSource() const {return fBlock_.glslSource;}
+    const char* glslVertexBlockSource() const {return vBlock_.glslSource;}
+    const char* glslFragmentBlockName() const {return fBlock_.glslName;}
+    const char* glslVertexBlockName() const {return vBlock_.glslName;}
+
     ExportData& exportData() {return exportData_;}
     const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
-    const float& iTime() const {return cpuBlock_.iTime;}
-    const int& iFrame() const {return cpuBlock_.iFrame;}
-    const int& iRenderPass() const {return cpuBlock_.iRenderPass;}
+    const float& iTime() const {return fBlock_.iTime;}
+    const int& iFrame() const {return fBlock_.iFrame;}
+    const int& iRenderPass() const {return fBlock_.iRenderPass;}
 };
 
 }

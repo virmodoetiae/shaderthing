@@ -147,7 +147,7 @@ bool Uniform::renderUniformsGUI
         NEXT_COLUMN
         // No bounds
         NEXT_COLUMN
-        ImGui::Text("%d", sharedUniforms.cpuBlock_.iFrame);
+        ImGui::Text("%d", sharedUniforms.fBlock_.iFrame);
         END_ROW
         
         // iRenderPass --------------------------------------------------------
@@ -163,7 +163,7 @@ bool Uniform::renderUniformsGUI
         NEXT_COLUMN
         ImGui::Text
         (
-            std::to_string(sharedUniforms.cpuBlock_.iRenderPass).c_str()
+            std::to_string(sharedUniforms.fBlock_.iRenderPass).c_str()
         );
         END_ROW
 
@@ -217,7 +217,7 @@ bool Uniform::renderUniformsGUI
             bounds
         );
         NEXT_COLUMN
-        auto iTimePtr = &sharedUniforms.cpuBlock_.iTime;
+        auto iTimePtr = &sharedUniforms.fBlock_.iTime;
         if (!boundsChanged)
         {
             bounds->x = std::min(*iTimePtr, bounds->x);
@@ -259,7 +259,7 @@ bool Uniform::renderUniformsGUI
         NEXT_COLUMN
         ImGui::Text
         (
-            "%.3f", sharedUniforms.cpuBlock_.iAspectRatio
+            "%.3f", sharedUniforms.fBlock_.iAspectRatio
         );
         END_ROW
 
@@ -277,8 +277,8 @@ bool Uniform::renderUniformsGUI
         ImGui::Text
         (
             "%d x %d", 
-            (int)sharedUniforms.cpuBlock_.iResolution.x, 
-            (int)sharedUniforms.cpuBlock_.iResolution.y
+            (int)sharedUniforms.fBlock_.iResolution.x, 
+            (int)sharedUniforms.fBlock_.iResolution.y
         );
         END_ROW
 
@@ -309,7 +309,7 @@ bool Uniform::renderUniformsGUI
         std::string toggled = "Toggled:";
         for (int key=0; key<255; key++)
         {
-            auto& keyData(sharedUniforms.cpuBlock_.iKeyboard[key]);
+            auto& keyData(sharedUniforms.fBlock_.iKeyboard[key]);
             if (keyData.x > 0)
                 pressed += " "+vir::keyCodeToName[key];
             else if (keyData.y > 0)
@@ -350,10 +350,10 @@ bool Uniform::renderUniformsGUI
         ImGui::Text
         (
             "%d, %d, %d, %d", 
-            (int)sharedUniforms.cpuBlock_.iMouse.x, 
-            (int)sharedUniforms.cpuBlock_.iMouse.y, 
-            (int)sharedUniforms.cpuBlock_.iMouse.z, 
-            (int)sharedUniforms.cpuBlock_.iMouse.w
+            (int)sharedUniforms.fBlock_.iMouse.x, 
+            (int)sharedUniforms.fBlock_.iMouse.y, 
+            (int)sharedUniforms.fBlock_.iMouse.z, 
+            (int)sharedUniforms.fBlock_.iMouse.w
         );
         END_ROW
         
@@ -395,7 +395,7 @@ bool Uniform::renderUniformsGUI
         );
         NEXT_COLUMN
         {
-            glm::vec3 value = sharedUniforms.cpuBlock_.iWASD.packed();
+            glm::vec3 value = sharedUniforms.fBlock_.iWASD.packed();
             if (!boundsChanged)
             {
                 bounds->x = std::min(value.x, bounds->x);
@@ -427,7 +427,7 @@ bool Uniform::renderUniformsGUI
                     value.z = std::max(value.z, bounds->x);
                     value.z = std::min(value.z, bounds->y);
                 }
-                sharedUniforms.cpuBlock_.iWASD = value;
+                sharedUniforms.fBlock_.iWASD = value;
                 sharedUniforms.shaderCamera_->setPosition(value);
                 sharedUniforms.setUserAction(true);
             }
@@ -467,7 +467,7 @@ bool Uniform::renderUniformsGUI
         // All cmpts always bounds in [-1, 1]
         NEXT_COLUMN
         {
-            glm::vec3 value = sharedUniforms.cpuBlock_.iLook.packed();
+            glm::vec3 value = sharedUniforms.fBlock_.iLook.packed();
             ImGui::PushItemWidth(-1);
             if 
             (
@@ -482,7 +482,7 @@ bool Uniform::renderUniformsGUI
             )
             {
                 value = glm::normalize(value);
-                sharedUniforms.cpuBlock_.iLook = value;
+                sharedUniforms.fBlock_.iLook = value;
                 sharedUniforms.shaderCamera_->setDirection(value);
                 sharedUniforms.setUserAction(true);
             }

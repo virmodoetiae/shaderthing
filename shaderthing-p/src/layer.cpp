@@ -693,9 +693,8 @@ R"(layout (location=0) in vec3 iqc;
 layout (location=1) in vec2 itc;
 out vec2 qc;
 out vec2 tc;
-)" + sharedUniforms.glslBlockSource() +
+)" + sharedUniforms.glslVertexBlockSource() +
 R"(
-uniform mat4 iMVP2;
 void main(){
     gl_Position = iMVP*vec4(iqc, 1.);
     qc = iqc.xy;
@@ -717,7 +716,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
     (
         glslVersionSource()+
         "in vec2 qc;\nin vec2 tc;\nout vec4 fragColor;\n"+
-        sharedUniforms.glslBlockSource()
+        sharedUniforms.glslFragmentBlockSource()
     );
 
     for (const auto* u : uniforms_)
@@ -1115,7 +1114,6 @@ void Layer::renderShader
     }
 
     // Actual render call
-    rendering_.shader->bind();
     renderer->submit
     (
         *rendering_.quad,
@@ -1144,9 +1142,9 @@ void Layer::renderShader
     // Render texture rendered by the previous call to the provided initial 
     // target (or to main window if target0 == nullptr). Also, manage the
     // lifetime of the shared internal framebuffer via a static unique_ptr
-    static auto internalFramebufferShader
-    (
-        std::unique_ptr<vir::Shader>
+    auto constructInternalFramebufferToWindowShader = [&sharedUniforms]()
+    {
+        auto shader = std::unique_ptr<vir::Shader>
         (
             vir::Shader::create
             (
@@ -1155,19 +1153,23 @@ void Layer::renderShader
 R"(out  vec4      fragColor;
 in      vec2      qc;
 in      vec2      tc;
-uniform sampler2D self;
-void main(){fragColor = texture(self, tc);})",
+uniform sampler2D tx;
+void main(){fragColor = texture(tx, tc);})",
                 vir::Shader::ConstructFrom::SourceCode
             )
-        )
-    );
-    internalFramebufferShader->bind();
+        );
+        sharedUniforms.bindShader(shader.get());
+        return shader;
+    };
+    static auto internalFramebufferToWindowShader = 
+        constructInternalFramebufferToWindowShader();
+    internalFramebufferToWindowShader->bind();
     rendering_.framebuffer->bindColorBuffer(0);
-    internalFramebufferShader->setUniformInt("self", 0);
+    internalFramebufferToWindowShader->setUniformInt("tx", 0);
     renderer->submit
     (
         *rendering_.quad, 
-        internalFramebufferShader.get(), 
+        internalFramebufferToWindowShader.get(), 
         target0,
         clearTarget
     );
@@ -1272,9 +1274,9 @@ void Layer::renderShaders // Static
             static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
             auto viewport = Helpers::normalizedWindowResolution();
             blankQuad->update(viewport.x, viewport.y, 0);
-            static auto blankShader
-            (
-                std::unique_ptr<vir::Shader>
+            auto constructBlankShader = [&sharedUniforms]()
+            {
+                auto shader = std::unique_ptr<vir::Shader>
                 (
                     vir::Shader::create
                     (
@@ -1286,8 +1288,11 @@ in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})",
                         vir::Shader::ConstructFrom::SourceCode
                     )
-                )
-            );
+                );
+                sharedUniforms.bindShader(shader.get());
+                return shader;
+            };
+            static auto blankShader = constructBlankShader();
             vir::GlobalPtr<vir::Renderer>::instance()->submit
             (
                 *blankQuad.get(), 

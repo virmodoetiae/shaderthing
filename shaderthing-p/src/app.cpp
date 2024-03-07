@@ -85,8 +85,8 @@ void App::update()
     float timeStep = window->time()->outerTimestep();
     
     // If exporting, this update will set timeStep to the requested export
-    // timeStep (i.e., inverse of export fps if exporting an animation (gif or
-    // video frames), left unmodified otherwise)
+    // timeStep (i.e., inverse of export fps if exporting an animated gif or
+    // video frames, left unmodified otherwise)
     exporter_->      update(*sharedUniforms_, layers_,             {timeStep});
     sharedUniforms_->update(                                       {timeStep});
     Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
@@ -100,9 +100,6 @@ void App::update()
     if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
     {
         fps = elapsedFrames/elapsedTime;
-        //static char bfps[8];
-        //*(std::to_chars(bfps,bfps+8,fps,std::chars_format::fixed,1)).ptr='\0';
-        //std::string sfps(bfps);
         window->setTitle("ShaderThing ("+Helpers::format(fps, 1)+" FPS)");
         elapsedFrames = 0;
         elapsedTime = 0;

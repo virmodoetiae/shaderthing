@@ -841,7 +841,6 @@ UniformBuffer(size)
     glGenBuffers(1, &id_);
     glBindBuffer(GL_UNIFORM_BUFFER, id_);
     glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 OpenGLUniformBuffer::~OpenGLUniformBuffer()
@@ -849,15 +848,20 @@ OpenGLUniformBuffer::~OpenGLUniformBuffer()
     glDeleteBuffers(1, &id_);
 }
 
-void OpenGLUniformBuffer::bind(uint32_t unit)
+void OpenGLUniformBuffer::bind()
 {
     glBindBuffer(GL_UNIFORM_BUFFER, id_);
-    glBindBufferBase(GL_UNIFORM_BUFFER, unit, id_);
 }
 
-void OpenGLUniformBuffer::unbind(uint32_t)
+void OpenGLUniformBuffer::unbind()
 {
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void OpenGLUniformBuffer::setBindingPoint(uint32_t bindingPoint)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, id_);
 }
 
 void OpenGLUniformBuffer::setData
@@ -867,9 +871,13 @@ void OpenGLUniformBuffer::setData
     uint32_t offset
 )
 {
-    glBindBuffer(GL_UNIFORM_BUFFER, id_);
-    size = size == 0 ? size_ : size;
-    glBufferSubData(GL_UNIFORM_BUFFER, offset, size, data);
+    glBufferSubData
+    (
+        GL_UNIFORM_BUFFER, 
+        offset, 
+        size == 0 ? size_ : size, 
+        data
+    );
 }
 
 //----------------------------------------------------------------------------//

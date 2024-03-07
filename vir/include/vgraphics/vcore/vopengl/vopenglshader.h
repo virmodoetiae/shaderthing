@@ -24,28 +24,27 @@ public:
     void bind() const override;
     void unbind() const override;
 
-    void setUniformBool(std::string, bool) override;
-    void setUniformUInt(std::string, uint32_t) override;
-    void setUniformInt(std::string, int) override;
-    void setUniformInt2(std::string, glm::ivec2) override;
-    void setUniformInt3(std::string, glm::ivec3) override;
-    void setUniformInt4(std::string, glm::ivec4) override;
-    void setUniformFloat(std::string, float) override;
-    void setUniformFloat2(std::string, glm::vec2) override;
-    void setUniformFloat3(std::string, glm::vec3) override;
-    void setUniformFloat4(std::string, glm::vec4) override;
-    void setUniformMat3(std::string, glm::mat3) override;
-    void setUniformMat4(std::string, glm::mat4) override;
+    void setUniformBool  (const std::string&, bool) override;
+    void setUniformUInt  (const std::string&, uint32_t) override;
+    void setUniformInt   (const std::string&, int) override;
+    void setUniformInt2  (const std::string&, glm::ivec2) override;
+    void setUniformInt3  (const std::string&, glm::ivec3) override;
+    void setUniformInt4  (const std::string&, glm::ivec4) override;
+    void setUniformFloat (const std::string&, float) override;
+    void setUniformFloat2(const std::string&, glm::vec2) override;
+    void setUniformFloat3(const std::string&, glm::vec3) override;
+    void setUniformFloat4(const std::string&, glm::vec4) override;
+    void setUniformMat3  (const std::string&, glm::mat3) override;
+    void setUniformMat4  (const std::string&, glm::mat4) override;
 
     void bindUniformBlock
     (
-        std::string name, 
-        UniformBuffer& ubo, 
-        uint32_t uboBindingPoint=0
+        const std::string& blockName, 
+        uint32_t bindingPoint
     ) override;
 
-    GLint getUniformLocation(std::string&);
-    GLint getUniformBlockIndex(std::string&);
+    GLint getUniformLocation(const std::string&);
+    GLint getUniformBlockIndex(const std::string&);
 };
 
 }
