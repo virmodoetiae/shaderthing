@@ -16,6 +16,8 @@ bool isCtrlShiftKeyPressed(ImGuiKey key);
 
 glm::vec2 normalizedWindowResolution();
 
+unsigned int countNewLines(const std::string& text);
+
 std::string fileExtension(const std::string& filepath, bool toLowerCase=true);
 
 std::string filename(const std::string& filepath);

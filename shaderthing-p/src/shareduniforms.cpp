@@ -374,7 +374,12 @@ void SharedUniforms::bindShader(vir::Shader* shader) const
 void SharedUniforms::update(const UpdateArgs& args)
 {
     if (!flags_.isTimePaused)
+    {
         fBlock_.iTime += args.timeStep;
+        fBlock_.iTimeDelta = args.timeStep;
+    }
+    else
+        fBlock_.iTimeDelta = 0;
 
     const glm::vec2& timeLoopBounds(bounds_[Uniform::SpecialType::Time]);
     if (flags_.isTimeLooped && fBlock_.iTime >= timeLoopBounds.y)
@@ -426,16 +431,16 @@ void SharedUniforms::update(const UpdateArgs& args)
     {
         //fBuffer_->bind(gpuBindingPoint_+1);
         if (!flags_.updateDataRangeII)
-            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeICumulativeSize(), 0);
+            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
         else
         {
-            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIICumulativeSize(), 0);
+            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIISize(), 0);
             flags_.updateDataRangeII = false;
         }
     }
     else
     {
-        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIIICumulativeSize(), 0);
+        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIIISize(), 0);
         vBuffer_->bind();
         vBuffer_->setData(&vBlock_, VertexBlock::size(), 0);
         fBuffer_->bind();
@@ -453,7 +458,7 @@ void SharedUniforms::update(const UpdateArgs& args)
 void SharedUniforms::nextRenderPass()
 {
     ++fBlock_.iRenderPass;
-    fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeICumulativeSize(), 0);
+    fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
 }
 
 //----------------------------------------------------------------------------//
@@ -465,6 +470,9 @@ void SharedUniforms::prepareForExport(float exportStartTime)
     fBlock_.iTime = exportStartTime;
     exportData_.originalResolution = fBlock_.iResolution;
     setResolution(exportData_.resolution, false, true);
+
+    fBlock_.iExport = true;
+    flags_.updateDataRangeII = true;
 }
 
 //----------------------------------------------------------------------------//
@@ -476,6 +484,9 @@ void SharedUniforms::resetAfterExport()
     ExportData cache = exportData_;
     setResolution(exportData_.originalResolution, false, false);
     exportData_ = cache;
+
+    fBlock_.iExport = false;
+    flags_.updateDataRangeII = true;
 }
 
 //----------------------------------------------------------------------------//
@@ -497,6 +508,7 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("iLookInputEnabled",flags_.isCameraMouseInputEnabled);
     io.write("iMouseInputEnabled", flags_.isMouseInputEnabled);
     io.write("iKeyboardInputEnabled", flags_.isKeyboardInputEnabled);
+    io.write("smoothTimeDelta", flags_.isTimeDeltaSmooth);
     io.write("resetTimeOnFrameCounterReset", flags_.isTimeResetOnFrameCounterReset);
     io.writeObjectEnd();
 }
@@ -515,6 +527,7 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
     su->fBlock_.iLook = ioSu.read<glm::vec3>("iLook");
     su->flags_.isTimePaused = ioSu.read<bool>("timePaused");
     su->flags_.isTimeLooped = ioSu.read<bool>("timeLooped");
+    su->flags_.isTimeDeltaSmooth = ioSu.read<bool>("smoothTimeDelta");
     su->flags_.isTimeResetOnFrameCounterReset = 
         ioSu.read<bool>("resetTimeOnFrameCounterReset");
     su->shaderCamera_->setDirection(su->fBlock_.iLook.packed());

@@ -291,7 +291,11 @@ void Exporter::renderGUI
                     100.f/int(100.f/std::min(settings_.fps,100.f)+.5f);
             
             ImGui::Text("Palette bit depth           ");
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                ImGui::BeginTooltip()
+            )
             {
                 ImGui::Text(
 R"(Determines the GIF palette size. The number of colors in the palette is 
@@ -318,7 +322,11 @@ R"(Determines the GIF palette size. The number of colors in the palette is
             );
             
             ImGui::Text("Transparency cutoff         ");
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                ImGui::BeginTooltip()
+            )
             {
                 ImGui::Text(
 R"(Alpha channel threshold below which (threshold excluded) a pixel is considered

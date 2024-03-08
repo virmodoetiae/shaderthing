@@ -82,7 +82,10 @@ App::~App()
 void App::update()
 {
     static auto* window(vir::GlobalPtr<vir::Window>::instance());
-    float timeStep = window->time()->outerTimestep();
+    float timeStep = 
+        sharedUniforms_->isTimeDeltaSmooth() ?
+        window->time()->smoothOuterTimestep() : 
+        window->time()->outerTimestep();
     
     // If exporting, this update will set timeStep to the requested export
     // timeStep (i.e., inverse of export fps if exporting an animated gif or
@@ -96,7 +99,7 @@ void App::update()
     static int elapsedFrames(0);
     static float elapsedTime(0);
     elapsedFrames++;
-    elapsedTime += window->time()->outerTimestep();
+    elapsedTime += window->time()->smoothOuterTimestep();
     if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
     {
         fps = elapsedFrames/elapsedTime;
@@ -418,28 +421,6 @@ void App::renderMenuBarGUI()
                 }
                 ImGui::EndMenu();
             }
-            /*
-            if (ImGui::BeginMenu("Misc"))
-            {
-                ImGui::Text("Time reset on rendering restart");
-                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-                {
-                    ImGui::Text(
-R"(If true, the iTime uniform shared by all layers will be reset to 0 every time
-the rendering is restarted, i.e., via: 1) shader recompilation (Ctrl+B) or 2) 
-resetting the iFrame uniform (Ctrl+R))"
-                    );
-                    ImGui::EndTooltip();
-                }
-                ImGui::SameLine();
-                ImGui::Checkbox
-                (
-                    "##timeResetOnRenderingRestart",
-                    &app->sharedUniforms.flags.isTimeResetOnRenderingRestart
-                );
-                ImGui::EndMenu();
-            }
-            */
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Resources"))
@@ -461,7 +442,6 @@ resetting the iFrame uniform (Ctrl+R))"
             }
             if (ImGui::BeginMenu("About ShaderThing"))
             {
-                //
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("System info"))

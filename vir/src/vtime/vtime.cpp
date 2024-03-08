@@ -80,7 +80,6 @@ void Time::update()
     if (couplingType_ == CouplingType::Coupled)
         accumulator_ += outerTimestep_;
     innerLoop_ = true;
-    //std::cout << outerTime_ << " "<< outerTimestep_ << std::endl;
 }
 
 }

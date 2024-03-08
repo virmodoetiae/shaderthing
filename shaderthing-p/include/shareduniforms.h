@@ -34,7 +34,7 @@ private:
 
     struct Flags
     {
-        const bool updateDataRangeI                 = true;
+    //  const bool updateDataRangeI                 = true;
               bool updateDataRangeII                = false;
               bool updateDataRangeIII               = false;
               bool resetFrameCounter                = false;
@@ -43,6 +43,7 @@ private:
               bool isTimePaused                     = false;
               bool isTimeLooped                     = false;
               bool isTimeResetOnFrameCounterReset   = true;
+              bool isTimeDeltaSmooth                = false;
               bool isKeyboardInputEnabled           = true; // iKeyboard
               bool isMouseInputEnabled              = true; // iMouse
               bool isCameraKeyboardInputEnabled     = true; // iWASD
@@ -89,50 +90,48 @@ private:
         };
                                                             // Range (bytes) | Size (bytes)
         // High update frequency (data range I)
-                    float      iTime        = 0.f;          // 0  -  4       | 4
-                    int        iFrame       = 0;            // 4  -  8       | 4
-                    int        iRenderPass  = 0;            // 8  - 12       | 4
+                    int        iFrame       = 0;            //  0 -  4       | 4
+                    int        iRenderPass  = 0;            //  4 -  8       | 4
+                    float      iTime        = 0.f;          //  8 - 12       | 4
+                    float      iTimeDelta   = 0.f;          // 12 - 16       | 4
         // Medium update frequency (data range II)
-                    bool       iUserAction  = false;        // 12 - 16       | 4
-                    vec3A16    iWASD        = {0,0,-1};     // 16 - 32       | 16
-                    vec3A16    iLook        = {0,0,1};      // 32 - 48       | 16
-                    glm::vec4  iMouse       = {0,0,0,0};    // 48 - 64       | 16
+                    bool       iUserAction  = false;        // 16 - 17       | 1
+        alignas(4)  bool       iExport      = false;        // 20 - 21       | 1
+                    vec3A16    iWASD        = {0,0,-1};     // 32 - 48       | 16
+                    vec3A16    iLook        = {0,0,1};      // 48 - 64       | 16
+                    glm::vec4  iMouse       = {0,0,0,0};    // 64 - 80       | 16
         // Low update frequency (data range III)
-                    //glm::mat4  iMVP         = glm::mat4(0); // 64 -128       | 64
-                    float      iAspectRatio = 1.f;          // 64-68       | 4
-        // Using alignas(8) to force iResolution to start 
-        // at byte 136 instead of 132
-        alignas(8)  glm::vec2  iResolution  = {512,512};    // 72-80       | 8
+                    float      iAspectRatio = 1.f;          // 80 - 84       | 4
+        alignas(8)  glm::vec2  iResolution  = {512,512};    // 88 - 96       | 8
 
         // Whole array never updated all at once, only one 
         // array element at a time, medium update frequency
-                    ivec3A16   iKeyboard[256] {};           // 80-4176      | 16*256 = 4096
+                    ivec3A16   iKeyboard[256] {};           // 96 - 4192     | 16*256 = 4096
 
-        static const uint32_t dataRangeICumulativeSize()   {return 12;}
-        static const uint32_t dataRangeIICumulativeSize()  {return 64;}
-        static const uint32_t dataRangeIIICumulativeSize() {return 80;}
-        static const uint32_t iKeyboardKeyOffset(int iKey) {return 80+iKey*16;}
+        static const uint32_t dataRangeISize()             {return 16;}
+        static const uint32_t dataRangeIISize()            {return 80;}
+        static const uint32_t dataRangeIIISize()           {return 96;}
+        static const uint32_t iKeyboardKeyOffset(int iKey) {return 96+iKey*16;}
         static const uint32_t iKeyboardKeySize()           {return 16;}
-        static const uint32_t size()                       {return 4176;}
-
-        static constexpr unsigned int nUniforms = 9;
+        static const uint32_t size()                       {return 4192;}
         
         static constexpr const char* glslName = "sharedBlock";
-        // The order of the uniforms within the block source must be the same as the
-        // order in which they have been delcared in CPUBlock. On the other hand,
-        // the actual uniform names do not matter, but I keep them mapped for
-        // consistency
+        // The order of the uniforms within the block source must be the same as
+        // the order in which they have been delcared in FragmentBlock. On the
+        // other hand, the actual uniform names do not matter
         static constexpr const char* glslSource =
 R"(layout(std140) uniform sharedBlock {
+        int   iFrame;
+        int   iRenderPass;
         float iTime;
-        int iFrame;
-        int iRenderPass;
-        bool iUserAction;
-        vec3 iWASD;
-        vec3 iLook;
-        vec4 iMouse;
+        float iTimeDelta;
+        bool  iUserAction;
+        bool  iExport;
+        vec3  iWASD;
+        vec3  iLook;
+        vec4  iMouse;
         float iWindowAspectRatio;
-        vec2 iWindowResolution;
+        vec2  iWindowResolution;
         ivec3 iKeyboard[256];};
 )";
     };
@@ -215,11 +214,11 @@ public:
 
     const char* glslFragmentBlockSource() const {return fBlock_.glslSource;}
     const char* glslVertexBlockSource() const {return vBlock_.glslSource;}
-    const char* glslFragmentBlockName() const {return fBlock_.glslName;}
-    const char* glslVertexBlockName() const {return vBlock_.glslName;}
 
     ExportData& exportData() {return exportData_;}
+    
     const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
+    const bool& isTimeDeltaSmooth() const {return flags_.isTimeDeltaSmooth;}
     const float& iTime() const {return fBlock_.iTime;}
     const int& iFrame() const {return fBlock_.iFrame;}
     const int& iRenderPass() const {return fBlock_.iRenderPass;}

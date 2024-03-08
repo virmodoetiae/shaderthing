@@ -110,7 +110,11 @@ bool Uniform::renderUniformsGUI
             sharedUniforms.resetFrameCounter();
             Layer::Flags::restartRendering = true;
         }
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
+            ImGui::BeginTooltip()
+        )
         {
             static ImVec4 ctrlRColor = 
                 ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
@@ -149,23 +153,6 @@ bool Uniform::renderUniformsGUI
         NEXT_COLUMN
         ImGui::Text("%d", sharedUniforms.fBlock_.iFrame);
         END_ROW
-        
-        // iRenderPass --------------------------------------------------------
-        START_ROW
-        NEXT_COLUMN
-        // No actions
-        NEXT_COLUMN
-        ImGui::Text("iRenderPass");
-        NEXT_COLUMN
-        ImGui::Text(vir::Shader::uniformTypeToName[Type::UInt].c_str());
-        NEXT_COLUMN
-        // No bounds
-        NEXT_COLUMN
-        ImGui::Text
-        (
-            std::to_string(sharedUniforms.fBlock_.iRenderPass).c_str()
-        );
-        END_ROW
 
         // iTime --------------------------------------------------------------
         START_ROW
@@ -182,7 +169,11 @@ bool Uniform::renderUniformsGUI
         )
             sharedUniforms.flags_.isTimeLooped = 
                 !sharedUniforms.flags_.isTimeLooped;
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
         {
             ImGui::Text
             (
@@ -246,6 +237,73 @@ bool Uniform::renderUniformsGUI
         ImGui::PopItemWidth();
         END_ROW
 
+        START_ROW
+        NEXT_COLUMN
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isTimeResetOnFrameCounterReset ? 
+                ICON_FA_BAN " " ICON_FA_UNDO: 
+                ICON_FA_CHECK " " ICON_FA_UNDO, 
+                ImVec2(-1, 0)
+            )
+        )
+            sharedUniforms.flags_.isTimeResetOnFrameCounterReset =
+                !sharedUniforms.flags_.isTimeResetOnFrameCounterReset;
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            if (sharedUniforms.flags_.isTimeResetOnFrameCounterReset)
+                ImGui::Text("Disable time reset on rendering restart");
+            else
+                ImGui::Text("Enable time reset on rendering restart");
+            ImGui::EndTooltip();
+        }
+        END_ROW
+
+        // iTimeDelta --------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isTimeDeltaSmooth ?
+                ICON_FA_WAVE_SQUARE : 
+                ICON_FA_SIGNATURE, 
+                ImVec2(-1, 0)
+            )
+        )
+            sharedUniforms.flags_.isTimeDeltaSmooth =
+                !sharedUniforms.flags_.isTimeDeltaSmooth;
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            if (sharedUniforms.flags_.isTimeDeltaSmooth)
+                ImGui::Text("Disable time step smoothing");
+            else
+                ImGui::Text("Enable time step smoothing");
+            ImGui::EndTooltip();
+        }
+        // No actions
+        NEXT_COLUMN
+        ImGui::Text("iTimeDelta");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        ImGui::Text("%.4f s", sharedUniforms.fBlock_.iTimeDelta);
+        END_ROW
+        ImGui::Dummy({0, 0.1f*fontSize});
+
         // iWindowAspectRatio --------------------------------------------------
         START_ROW
         NEXT_COLUMN
@@ -262,6 +320,7 @@ bool Uniform::renderUniformsGUI
             "%.3f", sharedUniforms.fBlock_.iAspectRatio
         );
         END_ROW
+        ImGui::Dummy({0, 0.1f*fontSize});
 
         // iWindowResolution ---------------------------------------------------
         START_ROW
@@ -281,7 +340,6 @@ bool Uniform::renderUniformsGUI
             (int)sharedUniforms.fBlock_.iResolution.y
         );
         END_ROW
-
         
         // iKeyboard -----------------------------------------------------------
         START_ROW
@@ -489,6 +547,7 @@ bool Uniform::renderUniformsGUI
             ImGui::PopItemWidth();
         }
         END_ROW
+        ImGui::Dummy({0, 0.05f*fontSize});
     }; // End of renderSharedUniformsGUI lambda
 
     // -------------------------------------------------------------------------
@@ -533,7 +592,11 @@ bool Uniform::renderUniformsGUI
         {
             if (ImGui::Button(ICON_FA_TRASH, ImVec2(-1, 0)))
                 uniform->gui.markedForDeletion = true;
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                ImGui::BeginTooltip()
+            )
             {
                 ImGui::Text("Delete this uniform");
                 ImGui::EndTooltip();
@@ -1259,7 +1322,11 @@ bool Uniform::renderUniformsGUI
             uniforms.emplace_back(uniform);
             uncompiledUniforms.emplace_back(uniform);
         }
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
         {
             ImGui::Text("Add new uniform");
             ImGui::EndTooltip();

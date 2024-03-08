@@ -839,7 +839,7 @@ void Resource::renderResourcesGUI
         {1,0}                                                               \
     );
             SHOW_IMAGE(previewSize)
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
             {
                 SHOW_IMAGE(hoverSize)
                 ImGui::EndTooltip();
@@ -1197,7 +1197,7 @@ bool Resource::createOrEditAnimationButtonGUI
                 false, 
                 ImGuiSelectableFlags_DontClosePopups
             );
-            if (ImGui::IsItemActive() && !ImGui::IsItemHovered())
+            if (ImGui::IsItemActive() && !ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
             {
                 int j = i + (ImGui::GetMouseDragDelta(0).y<0.f?-1:1);
                 if (j >= 0 && j < nFrames)
@@ -1561,7 +1561,7 @@ void Resource::renderResourceActionsButtonGUI
 
             if (ImGui::Button("Settings", size))
                 ImGui::OpenPopup("##resourceSettings");
-            if (ImGui::IsItemHovered() && inUseBy.size() > 0)
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && inUseBy.size() > 0)
             {
                 // Again, if inUseBy.size() > 0 I am assured this 
                 // resource is a Texture2D, not a Cubemap nor an Animation

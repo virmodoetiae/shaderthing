@@ -60,6 +60,14 @@ glm::vec2 normalizedWindowResolution()
     };
 }
 
+unsigned int countNewLines(const std::string& text)
+{
+    unsigned int result(0);
+    for (auto c : text)
+        result += (unsigned int)(c == '\n');
+    return result;
+}
+
 std::string fileExtension(const std::string& filepath, bool toLowerCase)
 {
     std::string fileExtension = "";

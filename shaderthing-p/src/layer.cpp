@@ -135,12 +135,11 @@ Layer::Layer
 ) :
     id_(findFreeId(layers))
 {
-    // Set layer resolution from current app window resolution
+    // Set layer resolution from current app window resolution. Also
+    // initializes framebuffers if not initialized and sets the iResolution,
+    // iAspectRatio uniforms
     static const auto window = vir::GlobalPtr<vir::Window>::instance();
     setResolution({window->width(), window->height()}, false);
-    //resolution_ = {window->width(), window->height()};
-    //resolutionRatio_ = {1,1};
-    //aspectRatio_ = ((float)resolution_.x)/resolution_.y;
 
     // Add default uniforms
     {
@@ -186,13 +185,6 @@ R"(void main()
 
     // Set depth (also inits rendering quad on first call)
     setDepth((float)layers.size()/Layer::nMaxLayers);
-
-    // Init framebuffers
-    /*rebuildFramebuffers
-    (
-        vir::TextureBuffer2D::InternalFormat::RGBA_SF_32,
-        resolution_
-    );*/
 
     // Register with event broadcaster
     this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY+id_);
@@ -711,15 +703,15 @@ Layer::fragmentShaderHeaderSourceAndLineCount
     const SharedUniforms& sharedUniforms
 ) const
 {
-    int nLines = 16;
     std::string header
     (
         glslVersionSource()+
         "in vec2 qc;\nin vec2 tc;\nout vec4 fragColor;\n"+
         sharedUniforms.glslFragmentBlockSource()
     );
+    auto nLines = Helpers::countNewLines(header);
 
-    for (const auto* u : uniforms_)
+    for (auto* u : uniforms_)
     {
         // If the uniform has no name, I can't add it to the source
         if (u->name.size() == 0)
@@ -745,11 +737,12 @@ Layer::fragmentShaderHeaderSourceAndLineCount
         header += 
             "uniform "+typeName+" "+u->name+";\n";
         ++nLines;
-        // Automatically managed sampler2D resolution uniform
+        // Automatically managed sampler2D resolution and aspect-ratio uniforms
         if (isSampler2D)
         {
-            header +=
-                "uniform vec2 "+u->name+"Resolution;\n";
+            header += "uniform float "+u->name+"AspectRatio;\n";
+            ++nLines;
+            header += "uniform vec2 "+u->name+"Resolution;\n";
             ++nLines;
         }
     }
@@ -996,6 +989,12 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
                     continue;
             }
         }
+        rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
+        rendering_.shader->setUniformFloat2
+        (
+            "iResolution", 
+            (glm::vec2)resolution_
+        );
         return true;
     }
     // Else if shader not valid
@@ -1041,6 +1040,7 @@ void Layer::renderShader
 )
 {
     // Set sampler-type uniforms
+    rendering_.shader->bind();
     uint32_t unit = 0; 
     for (auto u : uniforms_)
     {
@@ -1084,13 +1084,21 @@ void Layer::renderShader
             resource->bind(unit);
         rendering_.shader->setUniformInt(u->name, unit);
         unit++;
-        // Set the (automatically managed) sampler2D resolution uniform value
+        // Set the (automatically managed) sampler2D resolution uniform value.
+        // Should find a better way rather than setting this every render call
         if (u->type == vir::Shader::Variable::Type::Sampler2D)
+        {
+            rendering_.shader->setUniformFloat
+            (
+                u->name+"AspectRatio", 
+                float(resource->width())/resource->height()
+            );
             rendering_.shader->setUniformFloat2
             (
                 u->name+"Resolution", 
                 {resource->width(), resource->height()}
             );
+        }
     }
 
     // Flip buffers
@@ -1389,7 +1397,7 @@ void Layer::renderSettingsMenuGUI(std::vector<Resource*>& resources)
                 setResolution(resolution, false);
             }
         }
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
         {
             ImGui::Text(
 R"(If checked, the layer aspect ratio is 
@@ -1798,7 +1806,7 @@ void Layer::renderLayersTabBarGUI // Static
     {
         compilationErrors = true;
         ImGui::Bullet(); ImGui::Text("Common");
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
         {
             for (auto& error : sharedErrors)
             {
@@ -1819,7 +1827,7 @@ void Layer::renderLayersTabBarGUI // Static
         {
             compilationErrors = true;
             ImGui::Bullet();ImGui::Text(layer->gui_.name.c_str());
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
             {
                 if (layer->gui_.headerErrors.size() > 0)
                     ImGui::Text(layer->gui_.headerErrors.c_str());
@@ -2027,7 +2035,7 @@ void Layer::renderTabBarGUI
                 if 
                 (
                     headerErrors && 
-                    ImGui::IsItemHovered() && 
+                    ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
                     ImGui::BeginTooltip()
                 )
                 {
