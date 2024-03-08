@@ -161,9 +161,9 @@ bool Uniform::renderUniformsGUI
         (
             ImGui::Button
             (
-                sharedUniforms.flags_.isTimeLooped ? 
-                ICON_FA_MINUS : 
-                ICON_FA_CIRCLE_NOTCH, 
+                sharedUniforms.flags_.isTimeLooped ?
+                ICON_FA_INFINITY : 
+                ICON_FA_CIRCLE_NOTCH,
                 ImVec2(halfButtonSize, 0)
             )
         )
@@ -1337,6 +1337,18 @@ bool Uniform::renderUniformsGUI
 
     //--------------------------------------------------------------------------
     bool shaderRequiresRecompilation(false);
+    static bool showSharedUniforms(true);
+    if 
+    (
+        ImGui::Button
+        (
+            showSharedUniforms ? 
+            "Hide shared uniforms" : 
+            "Show shared uniforms",
+            {-1,0}
+        )
+    )
+        showSharedUniforms = !showSharedUniforms;
     if 
     (
         ImGui::BeginTable
@@ -1360,8 +1372,9 @@ bool Uniform::renderUniformsGUI
             ImGui::GetContentRegionAvail().x
         );
         ImGui::TableHeadersRow();
-
-        renderSharedUniformsGUI(sharedUniforms, row);
+        
+        if (showSharedUniforms)
+            renderSharedUniformsGUI(sharedUniforms, row);
 
         shader.bind(); // Must be bound, else uniforms in renderUniformGUI will
                        // not be set
@@ -1370,7 +1383,7 @@ bool Uniform::renderUniformsGUI
         {
             renderUniformGUI
             (
-                sharedUniforms, // Required to set iUserAction if user changes 
+                sharedUniforms, // Required to set iUserAction if user changes
                                 // anything
                 uniform,
                 uncompiledUniforms,

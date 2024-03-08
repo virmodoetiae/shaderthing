@@ -706,8 +706,9 @@ Layer::fragmentShaderHeaderSourceAndLineCount
     std::string header
     (
         glslVersionSource()+
-        "in vec2 qc;\nin vec2 tc;\nout vec4 fragColor;\n"+
-        sharedUniforms.glslFragmentBlockSource()
+        "in      vec2  qc;\nin      vec2  tc;\nout     vec4  fragColor;\n"+
+        sharedUniforms.glslFragmentBlockSource()+
+        "\n"
     );
     auto nLines = Helpers::countNewLines(header);
 
