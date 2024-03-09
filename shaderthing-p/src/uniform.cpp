@@ -1318,7 +1318,7 @@ bool Uniform::renderUniformsGUI
         START_COLUMN
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
         {
-            auto uniform = new Uniform();
+            auto uniform = new Uniform{};
             uniforms.emplace_back(uniform);
             uncompiledUniforms.emplace_back(uniform);
         }

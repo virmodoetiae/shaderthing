@@ -3,8 +3,12 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+
+#include "shaderthing-p/include/macros.h"
 #include "shaderthing-p/include/uniform.h"
+
 #include "vir/include/vir.h"
+
 #include "thirdparty/glm/glm.hpp"
 
 namespace vir
@@ -177,6 +181,8 @@ R"(layout(std140) uniform vertexBlock {mat4 iMVP;};
     void toggleKeyboardInputs();
     void toggleCameraKeyboardInputs();
     void toggleCameraMouseInputs();
+
+    DELETE_COPY_MOVE(SharedUniforms)
 
 public:
 

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "shaderthing-p/include/filedialog.h"
+#include "shaderthing-p/include/macros.h"
 
 #include "vir/include/vir.h"
 
@@ -68,6 +69,8 @@ private:
     double            timeStep_                       = 0.f;
 
     void exportButtonGUI();
+
+    DELETE_COPY_MOVE(Exporter)
 
 public:
 

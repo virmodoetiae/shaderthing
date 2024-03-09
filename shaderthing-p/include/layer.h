@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "shaderthing-p/include/macros.h"
 #include "shaderthing-p/include/texteditor.h"
 
 #include "thirdparty/glm/glm.hpp"
@@ -139,6 +140,8 @@ private:
         const SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
+
+    DELETE_COPY_MOVE(Layer)
 
 public:
 

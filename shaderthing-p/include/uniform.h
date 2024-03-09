@@ -1,8 +1,12 @@
 #pragma once
 
 #include <vector>
-#include "thirdparty/glm/glm.hpp"
+
+#include "shaderthing-p/include/macros.h"
+
 #include "vir/include/vgraphics/vcore/vshader.h"
+
+#include "thirdparty/glm/glm.hpp"
 
 namespace ShaderThing
 {
@@ -53,6 +57,8 @@ struct Uniform : public vir::Shader::Uniform
         bool showBounds = true;
     };
     GUI gui;
+
+    DELETE_COPY_MOVE(Uniform)
 
     // Render the Uniforms tab bar GUI, which allows to add/remove/modify
     // existing layer uniforms and shared uniforms. It also sets the uniform

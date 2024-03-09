@@ -145,7 +145,7 @@ Layer::Layer
     {
         Uniform* u = nullptr;
         
-        u = new Uniform();
+        u = new Uniform{};
         u->specialType = Uniform::SpecialType::LayerAspectRatio;
         u->name = "iAspectRatio";
         u->type = Uniform::Type::Float;
@@ -153,7 +153,7 @@ Layer::Layer
         u->gui.showBounds = false;
         uniforms_.emplace_back(u);
 
-        u = new Uniform();
+        u = new Uniform{};
         u->specialType = Uniform::SpecialType::LayerResolution;
         u->name = "iResolution";
         u->type = Uniform::Type::Float2;
@@ -415,7 +415,7 @@ Layer* Layer::load
     for(auto uniformName : uniformsData.members())
     {
         auto uniformData = uniformsData.readObject(uniformName);
-        auto uniform = new Uniform();
+        auto uniform = new Uniform{};
         uniform->type = vir::Shader::uniformNameToType[
             uniformData.read<std::string>("type")];
         layer->uniforms_.emplace_back(uniform);
