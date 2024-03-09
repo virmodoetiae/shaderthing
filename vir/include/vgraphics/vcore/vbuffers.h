@@ -157,17 +157,30 @@ public:
     virtual ~TextureBuffer2D(){}
     static TextureBuffer2D* create
     (
-        std::string, 
-        InternalFormat internalFormat = InternalFormat::Undefined
-    );
-    static TextureBuffer2D* create
-    (
         const unsigned char* data, 
         uint32_t width,
         uint32_t height,
         InternalFormat internalFormat
     );
-    bool valid() const {return width_*height_;}
+    // Create a texture object starting from file data loaded from an image file,
+    // e.g., .png, .jpg, .jpeg, etc. The appropriate format will be deduced when
+    // possibile if internalFormat == InternalFormat::Undefined, otherwise the
+    // file format will be enforced. A nullptr is returned if the creation fails
+    static TextureBuffer2D* create
+    (
+        const unsigned char* fileData, 
+        uint32_t size,
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
+    // Create a texture object starting from an image file on disk,
+    // e.g., .png, .jpg, .jpeg, etc. The appropriate format will be deduced when
+    // possibile if internalFormat == InternalFormat::Undefined, otherwise the
+    // file format will be enforced. A nullptr is returned if the creation fails
+    static TextureBuffer2D* create
+    (
+        std::string filepath, 
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
 };
@@ -209,11 +222,6 @@ protected:
     );
 public:
     virtual ~AnimatedTextureBuffer2D();
-    static AnimatedTextureBuffer2D* create // From filepath (of GIF image)
-    (
-        std::string, 
-        InternalFormat internalFormat = InternalFormat::Undefined
-    );
     static AnimatedTextureBuffer2D* create // From raw data
     (
         const unsigned char* data, 
@@ -221,6 +229,17 @@ public:
         uint32_t height,
         uint32_t nFrames,
         InternalFormat internalFormat
+    );
+    static AnimatedTextureBuffer2D* create // From file data
+    (
+        const unsigned char* fileData, 
+        uint32_t size,
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
+    static AnimatedTextureBuffer2D* create // From file (GIF image)
+    (
+        std::string filepath, 
+        InternalFormat internalFormat = InternalFormat::Undefined
     );
     static AnimatedTextureBuffer2D* create // From existing TextureBuffer2Ds
     (
@@ -282,6 +301,12 @@ public:
     static CubeMapBuffer* create
     (
         std::string filepaths[6], 
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
+    static CubeMapBuffer* create
+    (
+        const unsigned char* fileData[6], 
+        uint32_t size,
         InternalFormat internalFormat = InternalFormat::Undefined
     );
     static CubeMapBuffer* create

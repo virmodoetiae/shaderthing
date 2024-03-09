@@ -44,6 +44,12 @@ unsigned char* readFileContents
 
 std::string format(float value, unsigned int precision);
 
+void oneLineColorfulText
+(
+    const std::string& text, 
+    const std::vector<std::pair<char, ImVec4>>& colors = {}
+);
+
 // Get the format string of a numeric value type such that:
 // 1) if value < lowExpThreshold or value > highExpThreshold, the format will
 //    consists of expDigits digits in exponential notation;

@@ -37,7 +37,6 @@ virmodoetiaeImage_(nullptr)
     ) return;
     delete virmodoetiaeImage_;
     virmodoetiaeImage_ = nullptr;
-
 }
 
 About::~About()

@@ -51,7 +51,7 @@ public:
     
     virtual ~Resource();
     static Resource*           create(const std::string& filepath);
-    static Resource*           create(unsigned char* rawData, unsigned int size, bool gif);
+    static Resource*           create(const unsigned char* rawData, unsigned int size, bool gif);
     static Resource*           create(const std::vector<Texture2DResource*>& frames);
     static Resource*           create(const Texture2DResource* faces[6]);
     static Resource*           create(vir::Framebuffer** framebuffer);
@@ -175,7 +175,7 @@ class Texture2DResource : public Resource
     friend           CubemapResource;
     
     vir::TextureBuffer2D* native_      = nullptr;
-    unsigned char*        rawData_     = nullptr;
+    const unsigned char*  rawData_     = nullptr;
     unsigned int          rawDataSize_ = 0;
     std::string           originalFileExtension_;
     
@@ -187,7 +187,7 @@ class Texture2DResource : public Resource
 public:
     ~Texture2DResource();
     bool set(const std::string& filepath);
-    bool set(unsigned char* rawData, unsigned int size);
+    bool set(const unsigned char* rawData, unsigned int size);
     DECLARE_OVERRIDE_VIRTUALS
 };
 
@@ -196,7 +196,7 @@ class AnimatedTexture2DResource : public Resource
     friend Resource;
     
     vir::AnimatedTextureBuffer2D*   native_                       = nullptr;
-    unsigned char*                  rawData_                      = nullptr;
+    const unsigned char*            rawData_                      = nullptr;
     unsigned int                    rawDataSize_                  = 0;
     std::string                     originalFileExtension_;
     std::vector<Texture2DResource*> unmanagedFrames_;
@@ -215,7 +215,7 @@ class AnimatedTexture2DResource : public Resource
 public:
     ~AnimatedTexture2DResource();
     bool set(const std::string& filepath);
-    bool set(unsigned char* rawData, unsigned int size);
+    bool set(const unsigned char* rawData, unsigned int size);
     bool set(const std::vector<Texture2DResource*>& animationFrames);
     const unsigned int frameId() const {return native_->frameId();}
     void update(const UpdateArgs& args) override;

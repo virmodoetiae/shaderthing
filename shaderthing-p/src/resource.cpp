@@ -23,8 +23,6 @@
 #include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
-#include "thirdparty/imguifiledialog/ImGuiFileDialog.h"
-#include "thirdparty/stb/stb_image.h"
 
 namespace ShaderThing
 {
@@ -130,7 +128,12 @@ Resource* Resource::create(const std::string& filepath)
     return nullptr;
 }
 
-Resource* Resource::create(unsigned char* rawData, unsigned int size, bool gif)
+Resource* Resource::create
+(
+    const unsigned char* rawData, 
+    unsigned int size, 
+    bool gif
+)
 {
     if (!gif)
     {
@@ -260,73 +263,29 @@ void Resource::loadAll
 
 bool Texture2DResource::set(const std::string& filepath)
 {
+    auto native = vir::TextureBuffer2D::create
+    (
+        filepath, 
+        vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+    );
+    if (native == nullptr)
+        return false;
     unsigned int rawDataSize;
     unsigned char* rawData = Helpers::readFileContents(filepath, rawDataSize);
-    vir::TextureBuffer2D* native = nullptr;
-    try
-    {
-        native = vir::TextureBuffer2D::create
-        (
-            filepath, 
-            vir::TextureBuffer::InternalFormat::RGBA_UNI_8
-        );
-        if (native == nullptr)
-        {
-            if (rawData != nullptr) delete[] rawData;
-            return false;
-        }
-    }
-    catch(const std::exception& e)
-    {
-        std::cout 
-            << "Texture2DResource::set(const std::string& filepath): "
-            << e.what() << std::endl;
-        if (rawData != nullptr) delete[] rawData;
-        return false;
-    }
     originalFileExtension_ = Helpers::fileExtension(filepath);
     SET_NATIVE_AND_RAW_AND_RETURN(rawData, rawDataSize)
 }
 
-bool Texture2DResource::set(unsigned char* rawData, unsigned int size)
+bool Texture2DResource::set(const unsigned char* rawData, unsigned int size)
 {
-    int width, height, nChannels;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load_from_memory
+    auto native = vir::TextureBuffer2D::create
     (
         rawData, 
-        size, 
-        &width, 
-        &height, 
-        &nChannels,
-        4 // Force all textures to be treated as 4-component
+        size,
+        vir::TextureBuffer::defaultInternalFormat(4)
     );
-    nChannels = 4; // Force all textures to be treated as 4-component
-    vir::TextureBuffer2D* native = nullptr;
-    try
-    {
-        native = vir::TextureBuffer2D::create
-        (
-            data, 
-            width,
-            height,
-            vir::TextureBuffer::defaultInternalFormat(nChannels)
-        );
-        if (native == nullptr)
-        {
-            stbi_image_free(data);
-            return false;
-        }
-    }
-    catch(const std::exception& e)
-    {
-        std::cout 
-            << "Texture2DResource::set(const unsigned char* rawData, unsigned int size): "
-            << e.what() << std::endl;
-        stbi_image_free(data);
+    if (native == nullptr)
         return false;
-    }
-    stbi_image_free(data);
     SET_NATIVE_AND_RAW_AND_RETURN(rawData, size)
 }
 
@@ -373,89 +332,35 @@ Texture2DResource* Texture2DResource::load(const ObjectIO& io)
 
 bool AnimatedTexture2DResource::set(const std::string& filepath)
 {
-    // Load image data
+    // Create native resource from raw data
+    auto native = vir::AnimatedTextureBuffer2D::create
+    (
+        filepath, 
+        vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+    );
+    if (native == nullptr)
+        return false;
     unsigned int rawDataSize;
     unsigned char* rawData = Helpers::readFileContents(filepath, rawDataSize);
-
-    // Create native resource from raw data
-    vir::AnimatedTextureBuffer2D* native = nullptr;
-    try
-    {
-        native = vir::AnimatedTextureBuffer2D::create
-        (
-            filepath, 
-            vir::TextureBuffer::InternalFormat::RGBA_UNI_8
-        );
-        if (native == nullptr)
-        {
-            delete[] rawData;
-            return false;
-        }
-    }
-    catch(const std::exception& e)
-    {
-        std::cout 
-            << "AnimatedTexture2DResource::set(const std::string& filepath): "
-            << e.what() << std::endl;
-        delete[] rawData;
-        return false;
-    }
-
-    // Set original file extension and raw data if all went well
     originalFileExtension_ = Helpers::fileExtension(filepath);
     SET_NATIVE_AND_RAW_AND_RETURN(rawData, rawDataSize)
 }
 
-bool AnimatedTexture2DResource::set(unsigned char* rawData, unsigned int size)
+bool AnimatedTexture2DResource::set
+(
+    const unsigned char* rawData, 
+    unsigned int size
+)
 {
-    int width, height, nFrames, nChannels;
-    int* frameDuration;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load_gif_from_memory
-    (
-        rawData, 
-        size, 
-        &frameDuration,
-        &width, 
-        &height, 
-        &nFrames,
-        &nChannels,
-        4 // Force all textures to be treated as 4-component
-    );
-    nChannels = 4; // Force all textures to be treated as 4-component
     vir::AnimatedTextureBuffer2D* native = nullptr;
-    try
-    {
-        native = vir::AnimatedTextureBuffer2D::create
-        (
-            data, 
-            width, 
-            height, 
-            nFrames,
-            vir::TextureBuffer::defaultInternalFormat(nChannels)
-        );
-        if (native == nullptr)
-        {
-            stbi_image_free(frameDuration);
-            stbi_image_free(data);
-            return false;
-        }
-    }
-    catch(const std::exception& e)
-    {
-        std::cout 
-            << "AnimatedTexture2DResource::set(unsigned char* rawData, unsigned int size): "
-            << e.what() << std::endl;
-        stbi_image_free(frameDuration);
-        stbi_image_free(data);
+    native = vir::AnimatedTextureBuffer2D::create
+    (
+        rawData,
+        size,
+        vir::TextureBuffer::defaultInternalFormat(4)
+    );
+    if (native == nullptr)
         return false;
-    }
-    float duration = 0.f;
-    for (int i=0; i<nFrames; i++)
-        duration += frameDuration[i];
-    native->setFrameDuration(duration/nFrames);
-    stbi_image_free(frameDuration);
-    stbi_image_free(data);
     SET_NATIVE_AND_RAW_AND_RETURN(rawData, size)
 }
 
@@ -465,23 +370,13 @@ bool AnimatedTexture2DResource::set(const std::vector<Texture2DResource*>& frame
     for(int i=0; i<frames.size(); i++)
         nativeFrames[i] = frames[i]->native_;
     vir::AnimatedTextureBuffer2D* native = nullptr;
-    try
-    {
-        native = vir::AnimatedTextureBuffer2D::create
-        (
-            nativeFrames,
-            false
-        );
-        if (native == nullptr)
-            return false;
-    }
-    catch(const std::exception& e)
-    {
-        std::cout 
-            << "AnimatedTexture2DResource::set(const std::vector<Texture2DResource*>& frames): "
-            << e.what() << std::endl;
+    native = vir::AnimatedTextureBuffer2D::create
+    (
+        nativeFrames,
+        false
+    );
+    if (native == nullptr)
         return false;
-    }
     unmanagedFrames_.clear();
     unmanagedFrames_.resize(frames.size());
     for(int i=0; i<frames.size(); i++)
@@ -599,59 +494,24 @@ bool CubemapResource::set(const Texture2DResource* faces[6])
         nativeFaces[i] = (faces[i])->native_;
     if (!vir::CubeMapBuffer::validFaces(nativeFaces))
         return false;
-    
-    // Read face data
-    const unsigned char* faceData[6];
-    stbi_set_flip_vertically_on_load(false);
-    int width, height, nChannels;
+    const unsigned char* nativeFaceData[6];
     for (int i=0; i<6; i++)
-    {
-        const unsigned char* rawData = faces[i]->rawData_;
-        int rawDataSize = faces[i]->rawDataSize_;
-        faceData[i] = stbi_load_from_memory
-        (
-            rawData, 
-            rawDataSize, 
-            &width, 
-            &height, 
-            &nChannels,
-            4 // Force all textures to be treated as 4-component
-        );
-    }
-    vir::CubeMapBuffer* native;
-    try
-    {
-        native = vir::CubeMapBuffer::create
-        (
-            faceData, 
-            width, 
-            height, 
-            vir::TextureBuffer::InternalFormat::RGBA_UNI_8
-        );
-        if (native == nullptr)
-        {
-            for (int i=0; i<6; i++)
-                stbi_image_free((void*)faceData[i]);
-            return false;
-        }
-    }
-    catch(const std::exception& e)
-    {
-        std::cout 
-            << "CubemapResource::set(const Texture2DResource* faces[6]): "
-            << e.what() << std::endl;
-        for (int i=0; i<6; i++)
-            stbi_image_free((void*)faceData[i]);
+        nativeFaceData[i] = (faces[i])->rawData_;
+    unsigned int size = faces[0]->rawDataSize_;
+    
+    auto native = vir::CubeMapBuffer::create
+    (
+        nativeFaceData, 
+        size, 
+        vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+    );
+    if (native == nullptr)
         return false;
-    }
-
-    if (native_ != nullptr) delete native_;
+    if (native_ != nullptr) 
+        delete native_;
     native_ = native;
     for (int i=0; i<6; i++)
-    {
         unmanagedFaces_[i] = faces[i];
-        stbi_image_free((void*)faceData[i]);
-    }
     return true;
 }
 

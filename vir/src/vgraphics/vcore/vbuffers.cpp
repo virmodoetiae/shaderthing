@@ -1,6 +1,9 @@
 #include "vpch.h"
 #include <cmath>
+
 #include "vgraphics/vcore/vopengl/vopenglbuffers.h"
+
+#include "thirdparty/stb/stb_image.h"
 
 namespace vir
 {
@@ -44,30 +47,13 @@ const std::unordered_map<TextureBuffer::FilterMode, std::string>
     {TextureBuffer::FilterMode::Nearest, "Nearest"}
 };
 
-// Texture2D -----------------------------------------------------------------//
+#define ENFORCE_CHANNEL_FORMAT_CONSISTENCY                                  \
+    if (internalFormat != InternalFormat::Undefined)                        \
+        nChannels = TextureBuffer2D::nChannels(internalFormat);             \
+    else                                                                    \
+        internalFormat = TextureBuffer2D::defaultInternalFormat(nChannels); \
 
-TextureBuffer2D* TextureBuffer2D::create
-(
-    std::string filepath, 
-    InternalFormat internalFormat
-)
-{
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
-        return nullptr;
-    OpenGLTextureBuffer2D* buffer = nullptr;
-    switch(window->context()->type())
-    {
-        case (GraphicsContext::Type::OpenGL) :
-            buffer = new OpenGLTextureBuffer2D(filepath, internalFormat);
-            break;
-    }
-    if (buffer == nullptr)
-        return nullptr;
-    else if (!buffer->valid())
-        return nullptr;
-    return buffer;
-}
+// Texture2D -----------------------------------------------------------------//
 
 TextureBuffer2D* TextureBuffer2D::create
 (
@@ -80,18 +66,126 @@ TextureBuffer2D* TextureBuffer2D::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLTextureBuffer2D
-            (
-                data, 
-                width, 
-                height,
-                internalFormat
-            );
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLTextureBuffer2D
+                (
+                    data, 
+                    width, 
+                    height,
+                    internalFormat
+                );
+        }
     }
+    catch(...){}
     return nullptr;
+}
+
+TextureBuffer2D* TextureBuffer2D::create
+(
+    const unsigned char* fileData, 
+    uint32_t size,
+    InternalFormat internalFormat
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    unsigned char* data = nullptr;
+    TextureBuffer2D* buffer = nullptr;
+    try
+    {
+        int width, height, nChannels;
+        stbi_set_flip_vertically_on_load(true);
+        data = stbi_load_from_memory
+        (
+            fileData, 
+            size, 
+            &width, 
+            &height, 
+            &nChannels,
+            TextureBuffer2D::nChannels(internalFormat)
+        );
+        if (fileData == nullptr || data == nullptr)
+            throw std::runtime_error
+            (
+                "TextureBuffer2D::create - Invalid data"
+            );
+        ENFORCE_CHANNEL_FORMAT_CONSISTENCY
+    
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                buffer =  new OpenGLTextureBuffer2D
+                (
+                    data, 
+                    width, 
+                    height,
+                    internalFormat
+                );
+        }
+        stbi_image_free(data);
+    }
+    catch (...)
+    {
+        if (data != nullptr)
+            stbi_image_free(data);
+    }
+    return buffer;
+}
+
+TextureBuffer2D* TextureBuffer2D::create
+(
+    std::string filepath, 
+    InternalFormat internalFormat
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    unsigned char* data = nullptr;
+    TextureBuffer2D* buffer = nullptr;
+    try
+    {
+        int width = 0, height = 0, nChannels = 0;
+        stbi_set_flip_vertically_on_load(true);
+        data = stbi_load
+        (
+            filepath.c_str(), 
+            &width, 
+            &height, 
+            &nChannels, 
+            TextureBuffer2D::nChannels(internalFormat)
+        );
+        if (data == nullptr)
+            throw std::runtime_error
+            (
+                "TextureBuffer2D::create - Invalid data in "+filepath
+            );
+        ENFORCE_CHANNEL_FORMAT_CONSISTENCY
+    
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                buffer =  new OpenGLTextureBuffer2D
+                (
+                    data, 
+                    width, 
+                    height,
+                    internalFormat
+                );
+        }
+        stbi_image_free(data);
+    }
+    catch (...)
+    {
+        if (data != nullptr)
+            stbi_image_free(data);
+    }
+    return buffer;
 }
 
 // AnimatedTexture2D ---------------------------------------------------------//
@@ -139,7 +233,8 @@ isFrameOwner_(gainFrameOwnership),
 frameDuration_(1.0f/60)
 {
     if (frames.size() == 0)
-        throw std::runtime_error(
+        throw std::runtime_error
+        (
 R"(vbuffers.cpp - AnimatedTextureBuffer2D(std::vector<TextureBuffer2D*>&, bool) 
 - Cannot construct from empty array of frames)"
         );
@@ -165,7 +260,7 @@ R"(vbuffers.cpp - AnimatedTextureBuffer2D(std::vector<TextureBuffer2D*>&, bool)
 R"(vbuffers.cpp - AnimatedTextureBuffer2D(std::vector<TextureBuffer2D*>&, bool) 
 - Cannot construct because not all frames have same width, height or internal 
 format)"
-        );
+            );
         }
     }
     frame_ = frames_[frameIndex_];
@@ -190,20 +285,104 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     InternalFormat internalFormat
 )
 {
+    unsigned char* fileData = nullptr;
+    uint32_t size = 0;
+    try
+    {
+        std::ifstream fileDataStream
+        (
+            filepath, std::ios::binary | std::ios::in
+        );
+        fileDataStream.seekg(0, std::ios::end);
+        size = fileDataStream.tellg();
+        fileDataStream.seekg(0, std::ios::beg);
+        fileData = new unsigned char[size];
+        fileDataStream.read((char*)fileData, size);
+        fileDataStream.close();
+    }
+    catch(...)
+    {
+        if (fileData != nullptr)
+            delete[] fileData;
+        return nullptr;
+    }
+    auto buffer = AnimatedTextureBuffer2D::create
+    (
+        fileData,
+        size,
+        internalFormat
+    );
+    delete[] fileData;
+    return buffer;
+}
+
+AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+(
+    const unsigned char* fileData, 
+    uint32_t size,
+    InternalFormat internalFormat
+)
+{
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    OpenGLAnimatedTextureBuffer2D* buffer = nullptr;
-    switch(window->context()->type())
+    unsigned char* data = nullptr;
+    int* delays = nullptr;
+    AnimatedTextureBuffer2D* buffer = nullptr;
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            buffer = new OpenGLAnimatedTextureBuffer2D(filepath, internalFormat);
-            break;
+        // Unpack raw gif data in memory
+        int width = 0, height = 0, nFrames = 0, nChannels = 0;
+        stbi_set_flip_vertically_on_load(true);
+        data = stbi_load_gif_from_memory
+        (
+            fileData,
+            size,
+            &delays, // in ms, might be 0
+            &width,
+            &height,
+            &nFrames,
+            &nChannels,
+            TextureBuffer::nChannels(internalFormat)
+        );
+        if (fileData == nullptr || data == nullptr)
+            throw std::runtime_error
+            (
+                "AnimatedTextureBuffer2D::create - Invalid data"
+            );
+        ENFORCE_CHANNEL_FORMAT_CONSISTENCY
+        
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                buffer = new OpenGLAnimatedTextureBuffer2D
+                (
+                    data,
+                    width,
+                    height,
+                    nFrames,
+                    internalFormat
+                );
+        }
+        // Set overall duration (individual frame durations are not currently
+        // stored)
+        float duration = 0.f;
+        for (int i=0; i<nFrames ;i++)
+            duration += std::max(float(delays[i]/1000.0f), 0.01f);
+        buffer->setDuration(duration);
+        
+        if (data != nullptr)
+            stbi_image_free(data);
+        if (delays != nullptr)
+            stbi_image_free(delays);
     }
-    if (buffer == nullptr)
-        return nullptr;
-    else if (!buffer->valid())
-        return nullptr;
+    catch(...)
+    {
+        if (data != nullptr)
+            stbi_image_free(data);
+        if (delays != nullptr)
+            stbi_image_free(delays);
+    }
     return buffer;
 }
 
@@ -219,19 +398,22 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLAnimatedTextureBuffer2D
-            (
-                data, 
-                width, 
-                height,
-                nFrames,
-                internalFormat
-            );
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLAnimatedTextureBuffer2D
+                (
+                    data, 
+                    width, 
+                    height,
+                    nFrames,
+                    internalFormat
+                );
+        }
     }
+    catch(...){}
     return nullptr;
 }
 
@@ -244,14 +426,18 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLAnimatedTextureBuffer2D
-            (
-                frames, gainFrameOwnership
-            );
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLAnimatedTextureBuffer2D
+                (
+                    frames, gainFrameOwnership
+                );
+        }
     }
+    catch(...){}
     return nullptr;
 }
 
@@ -346,12 +532,128 @@ CubeMapBuffer* CubeMapBuffer::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    CubeMapBuffer* buffer = nullptr;
+    const unsigned char* faceData[6] = 
+        {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    int i = 0;
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLCubeMapBuffer(filepaths, internalFormat);
+        stbi_set_flip_vertically_on_load(false);
+        int width0 = 0, height0 = 0, nChannels0 = 0;
+        for (i=0; i<6; i++)
+        {
+            int width = 0, height = 0, nChannels = 0;
+            faceData[i] = stbi_load
+            (
+                filepaths[i].c_str(), 
+                &width, 
+                &height, 
+                &nChannels, 
+                TextureBuffer::nChannels(internalFormat)
+            );
+            if (i == 0)
+            {
+                width0 = width;
+                height0 = height;
+                ENFORCE_CHANNEL_FORMAT_CONSISTENCY
+                nChannels0 = nChannels;
+            }
+            else if 
+            (
+                width != width0 || 
+                height != height0 || 
+                nChannels != nChannels0 ||
+                !faceData[i]
+            )
+                throw std::runtime_error
+                (
+                    "CubeMapBuffer::create - Invalid file data"
+                );
+        }
+        buffer = CubeMapBuffer::create
+        (
+            faceData,
+            width0,
+            height0,
+            internalFormat
+        );
+        for (int j=0; j<6; j++)
+            stbi_image_free((void*)faceData[j]);
     }
-    return nullptr;
+    catch(...)
+    {
+        for (int j=0; j<i; j++)
+            stbi_image_free((void*)faceData[j]);
+    }
+    return buffer;
+}
+
+CubeMapBuffer* CubeMapBuffer::create
+(
+    const unsigned char* fileData[6], 
+    uint32_t size,
+    InternalFormat internalFormat
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    CubeMapBuffer* buffer = nullptr;
+    const unsigned char* faceData[6] = 
+        {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    int i = 0;
+    try
+    {
+        stbi_set_flip_vertically_on_load(false);
+        int width0 = 0, height0 = 0, nChannels0 = 0;
+        for (i=0; i<6; i++)
+        {
+            int width = 0, height = 0, nChannels = 0;
+            faceData[i] = stbi_load_from_memory
+            (
+                fileData[i], 
+                size,
+                &width, 
+                &height, 
+                &nChannels, 
+                TextureBuffer::nChannels(internalFormat)
+            );
+            ENFORCE_CHANNEL_FORMAT_CONSISTENCY
+            if (i == 0)
+            {
+                width0 = width;
+                height0 = height;
+                nChannels0 = nChannels;
+            }
+            else if 
+            (
+                width != width0 || 
+                height != height0 || 
+                nChannels != nChannels0 || 
+                !fileData[i] ||
+                !faceData[i]
+            )
+                throw std::runtime_error
+                (
+                    "CubeMapBuffer::create - Invalid data"
+                );
+        }
+        buffer = CubeMapBuffer::create
+        (
+            faceData,
+            width0,
+            height0,
+            internalFormat
+        );
+        for (int j=0; j<6; j++)
+            stbi_image_free((void*)faceData[j]);
+    }
+    catch(...)
+    {
+        for (int j=0; j<i; j++)
+            stbi_image_free((void*)faceData[j]);
+    }
+    return buffer;
 }
 
 CubeMapBuffer* CubeMapBuffer::create
@@ -365,17 +667,21 @@ CubeMapBuffer* CubeMapBuffer::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLCubeMapBuffer
-            (
-                faceData, 
-                width, 
-                height,
-                internalFormat
-            );
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLCubeMapBuffer
+                (
+                    faceData, 
+                    width, 
+                    height,
+                    internalFormat
+                );
+        }
     }
+    catch(...){}
     return nullptr;
 }
 
@@ -420,11 +726,15 @@ Framebuffer* Framebuffer::create
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLFramebuffer(width, height, format);
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLFramebuffer(width, height, format);
+        }
     }
+    catch(...){}
     return nullptr;
 }
 
@@ -454,11 +764,15 @@ VertexBuffer* VertexBuffer::create(float* vertices, uint32_t size)
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLVertexBuffer(vertices, size);
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLVertexBuffer(vertices, size);
+        }
     }
+    catch(...){}
     return nullptr;
 }
 
@@ -494,11 +808,15 @@ IndexBuffer* IndexBuffer::create(uint32_t* indices, uint32_t size)
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLIndexBuffer(indices, size);
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLIndexBuffer(indices, size);
+        }
     }
+    catch(...){}
     return nullptr;
 }
 
@@ -519,11 +837,15 @@ VertexArray* VertexArray::create()
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLVertexArray();
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLVertexArray();
+        }
     }
+    catch(...){}
     return nullptr;
 }
 
@@ -534,11 +856,15 @@ UniformBuffer* UniformBuffer::create(uint32_t size)
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
         return nullptr;
-    switch(window->context()->type())
+    try
     {
-        case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLUniformBuffer(size);
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLUniformBuffer(size);
+        }
     }
+    catch(...){}
     return nullptr;
 }
 

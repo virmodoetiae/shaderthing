@@ -39,8 +39,8 @@ extern const unsigned char sTIconData[10039];
 namespace Image
 {
 
-extern const unsigned int virmodoetiae0Size;
-extern const unsigned char virmodoetiae0Data[422615];
+extern const unsigned int virmodoetiaeSize;
+extern const unsigned char virmodoetiaeData[422615];
 
 } // End of Image
 

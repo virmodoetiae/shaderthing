@@ -22,20 +22,7 @@ static GLint OpenGLType(TextureBuffer::InternalFormat internalFormat);
 
 class OpenGLTextureBuffer2D : public TextureBuffer2D
 {
-private:
-    bool initialize
-    (
-        const unsigned char* data, 
-        uint32_t width,
-        uint32_t height,
-        InternalFormat internalFormat
-    );
 public:
-    OpenGLTextureBuffer2D
-    (
-        std::string filepath, 
-        InternalFormat internalFormat=InternalFormat::Undefined
-    );
     OpenGLTextureBuffer2D
     (
         const unsigned char* data, 
@@ -61,20 +48,7 @@ private:
     static uint32_t nextFreeId_; // Global Id counter since id of animation
                                  // container not tied to any TextureBuffer2D 
                                  // instance
-    bool initialize
-    (
-        const unsigned char* data, 
-        uint32_t width,
-        uint32_t height,
-        uint32_t nFrames,
-        InternalFormat internalFormat
-    );
 public:
-    OpenGLAnimatedTextureBuffer2D // Construct from .gif filepath
-    (
-        std::string filepath, 
-        InternalFormat internalFormat=InternalFormat::Undefined
-    );
     OpenGLAnimatedTextureBuffer2D // Construct from raw data and frame info
     (
         const unsigned char* data, 
@@ -102,23 +76,10 @@ public:
 
 class OpenGLCubeMapBuffer : public CubeMapBuffer
 {
-private:
-    bool initialize
-    (
-        const unsigned char* faceData[6], 
-        uint32_t width,
-        uint32_t height,
-        InternalFormat internalFormat
-    );
 public:
     OpenGLCubeMapBuffer
     (
-        std::string filepaths[6], 
-        InternalFormat internalFormat=InternalFormat::Undefined
-    );
-    OpenGLCubeMapBuffer
-    (
-        const unsigned char* faceData[6], 
+        const unsigned char* faceData[6],
         uint32_t width,
         uint32_t height,
         InternalFormat internalFormat

@@ -17,6 +17,7 @@
 
 #include "shaderthing-p/include/app.h"
 
+#include "shaderthing-p/include/about.h"
 #include "shaderthing-p/include/bytedata.h"
 #include "shaderthing-p/include/coderepository.h"
 #include "shaderthing-p/include/exporter.h"
@@ -442,6 +443,7 @@ void App::renderMenuBarGUI()
             }
             if (ImGui::BeginMenu("About ShaderThing"))
             {
+                About::renderGUI();
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("System info"))
