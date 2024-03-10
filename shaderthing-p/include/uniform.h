@@ -68,7 +68,7 @@ struct Uniform : public vir::Shader::Uniform
     // uniform types or names have been modified, or if some uniforms have
     // been deleted, signalling that the underlying shader requires
     // recompilation
-    static bool renderUniformsGUI
+    static bool renderUniformsGui
     (
         SharedUniforms& sharedUniforms,
         std::vector<Uniform*>& uniforms,

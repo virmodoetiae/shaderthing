@@ -198,7 +198,7 @@ void Exporter::update
 
 //----------------------------------------------------------------------------//
 
-void Exporter::renderGUI
+void Exporter::renderGui
 (
     SharedUniforms& sharedUniforms,
     const std::vector<Layer*>& layers
@@ -581,7 +581,7 @@ transparency)");
     //--------------------------------------------------------------------------
 
     ImGui::Separator();
-    exportButtonGUI();
+    exportButtonGui();
     if (isRunning_)
         ImGui::ProgressBar
         (
@@ -592,7 +592,7 @@ transparency)");
 
 //----------------------------------------------------------------------------//
 
-void Exporter::exportButtonGUI()
+void Exporter::exportButtonGui()
 {
     if (isRunning_)
         ImGui::BeginDisabled();

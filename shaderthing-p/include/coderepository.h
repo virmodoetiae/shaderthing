@@ -6,7 +6,7 @@ namespace ShaderThing
 namespace CodeRepository
 {
 
-void renderGUI();
+void renderGui();
 
 }
 

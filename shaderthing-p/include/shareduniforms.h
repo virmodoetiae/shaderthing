@@ -216,7 +216,7 @@ public:
     void prepareForExport(float exportStartTime);
     void resetAfterExport();
 
-    void renderWindowResolutionMenuGUI();
+    void renderWindowResolutionMenuGui();
 
     const char* glslFragmentBlockSource() const {return fBlock_.glslSource;}
     const char* glslVertexBlockSource() const {return vBlock_.glslSource;}

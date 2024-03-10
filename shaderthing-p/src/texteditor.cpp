@@ -939,7 +939,7 @@ void TextEditor::handleMouseInputs()
     }
 }
 
-void TextEditor::renderGUI()
+void TextEditor::renderGui()
 {
     // Compute charAdvance_ regarding to scaled font size (Ctrl + mouse wheel)
     const float fontSize = 
@@ -1399,7 +1399,7 @@ void TextEditor::renderGUI()
     useSetTextStart_ = false;
 }
 
-void TextEditor::renderGUI
+void TextEditor::renderGui
 (
     const char* aTitle, 
     const ImVec2& aSize, 
@@ -1435,7 +1435,7 @@ void TextEditor::renderGUI
         handleMouseInputs();
 
     colorizeInternal();
-    renderGUI();
+    renderGui();
 
     if (handleKeyboardInputs_)
         ImGui::PopAllowKeyboardFocus();
@@ -3512,9 +3512,9 @@ float TextEditor::getLineIndexColumnWidth() const
         ).x + leftMargin_;
 }
 
-void TextEditor::renderFindReplaceToolMenuGUI()
+void TextEditor::renderFindReplaceToolMenuGui()
 {
-    findReplaceTool_.renderMenuGUI();
+    findReplaceTool_.renderMenuGui();
 }
 
 //----------------------------------------------------------------------------//
@@ -3578,7 +3578,7 @@ bool TextEditor::FindReplaceTool::checkShortcuts()
 
 //----------------------------------------------------------------------------//
 
-void TextEditor::FindReplaceTool::renderMenuGUI()
+void TextEditor::FindReplaceTool::renderMenuGui()
 {
     // These isFindOpen/isFindAndReplaceOpen flags are purely for aesthetic
     // purposes to enable checkmars showing correctly next to the menu items
@@ -3598,7 +3598,7 @@ void TextEditor::FindReplaceTool::renderMenuGUI()
 
 //----------------------------------------------------------------------------//
 
-bool TextEditor::FindReplaceTool::renderGUI(TextEditor& editor)
+bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
 {
     // Check if tool has been just opened or closed or if editor changed, and --
     // thus check it tool should run at all or if cache should be cleaned ------

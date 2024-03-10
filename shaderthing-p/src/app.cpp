@@ -41,7 +41,7 @@ App::App()
     vir::initialize(settings);
     
     // Setup ImGui
-    initializeGUI();
+    initializeGui();
 
     newProject();
 
@@ -49,7 +49,7 @@ App::App()
     auto window = vir::GlobalPtr<vir::Window>::instance();
     while(window->isOpen())
     {   
-        renderGUI();
+        renderGui();
         Layer::renderShaders
         (
             layers_, 
@@ -204,7 +204,7 @@ void App::newProject()
 
 //----------------------------------------------------------------------------//
 
-void App::initializeGUI()
+void App::initializeGui()
 {
     // Disable reading/writing from/to imgui.ini
     ImGuiIO& io = ImGui::GetIO();
@@ -278,7 +278,7 @@ void App::initializeGUI()
 
 //----------------------------------------------------------------------------//
 
-void App::renderGUI()
+void App::renderGui()
 {
     vir::ImGuiRenderer::newFrame();
     ImGui::SetNextWindowSize(ImVec2(750,900), ImGuiCond_FirstUseEver);
@@ -288,8 +288,8 @@ void App::renderGUI()
     );
     ImGui::Begin("Control panel", NULL, flags);
     
-    renderMenuBarGUI();
-    Layer::renderLayersTabBarGUI(layers_, *sharedUniforms_, resources_);
+    renderMenuBarGui();
+    Layer::renderLayersTabBarGui(layers_, *sharedUniforms_, resources_);
 
     ImGui::End();
     vir::ImGuiRenderer::render();
@@ -297,7 +297,7 @@ void App::renderGUI()
 
 //----------------------------------------------------------------------------//
 
-void App::renderMenuBarGUI()
+void App::renderMenuBarGui()
 {
     float fontSize = ImGui::GetFontSize();
 
@@ -369,16 +369,16 @@ void App::renderMenuBarGUI()
             ImGui::Separator();
             if (ImGui::BeginMenu("Export"))
             {
-                exporter_->renderGUI(*sharedUniforms_, layers_);
+                exporter_->renderGui(*sharedUniforms_, layers_);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings"))
         {
-            sharedUniforms_->renderWindowResolutionMenuGUI();
+            sharedUniforms_->renderWindowResolutionMenuGui();
             for (auto layer : layers_)
-                layer->renderSettingsMenuGUI(resources_);
+                layer->renderSettingsMenuGui(resources_);
             ImGui::Separator();
             if (ImGui::BeginMenu("Font"))
             {
@@ -426,24 +426,24 @@ void App::renderMenuBarGUI()
         }
         if (ImGui::BeginMenu("Resources"))
         {
-            Resource::renderResourcesMenuItemGUI(resources_, layers_);
+            Resource::renderResourcesMenuItemGui(resources_, layers_);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
         {
-            TextEditor::renderFindReplaceToolMenuGUI();
+            TextEditor::renderFindReplaceToolMenuGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Help"))
         {
             if (ImGui::BeginMenu("Code repository"))
             {
-                CodeRepository::renderGUI();
+                CodeRepository::renderGui();
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("About ShaderThing"))
             {
-                About::renderGUI();
+                About::renderGui();
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("System info"))
@@ -469,7 +469,7 @@ void App::renderMenuBarGUI()
         ImGui::EndMenuBar();
     }
     if (Resource::isGuiDetachedFromMenu)
-        Resource::renderResourcesGUI(resources_, layers_);
+        Resource::renderResourcesGui(resources_, layers_);
     
     if (project_.action == Project::Action::None)
     {

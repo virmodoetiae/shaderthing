@@ -6,7 +6,7 @@ namespace ShaderThing
 namespace About
 {
 
-void renderGUI();
+void renderGui();
 
 }
 

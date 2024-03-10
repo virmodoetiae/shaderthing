@@ -18,12 +18,14 @@
 #include "shaderthing-p/include/helpers.h"
 #include "shaderthing-p/include/macros.h"
 #include "shaderthing-p/include/objectio.h"
+#include "shaderthing-p/include/postprocess.h"
 #include "shaderthing-p/include/resource.h"
 #include "shaderthing-p/include/shareduniforms.h"
 #include "shaderthing-p/include/uniform.h"
 
 #include "vir/include/vir.h"
 
+#include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 #include "thirdparty/imgui/imgui_internal.h"
 
@@ -198,6 +200,10 @@ Layer::~Layer()
     DELETE_IF_NOT_NULLPTR(rendering_.framebufferB)
     DELETE_IF_NOT_NULLPTR(rendering_.shader)
     DELETE_IF_NOT_NULLPTR(rendering_.quad)
+    for (auto postProcess : rendering_.postProcesses)
+    {
+        DELETE_IF_NOT_NULLPTR(postProcess)
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -341,14 +347,14 @@ void Layer::save(ObjectIO& io) const
     io.writeObjectEnd(); // End of uniforms
     io.writeObjectEnd(); // End of shaders
 
-    /*// Write post-processing effects data, if any
-    if (postProcesses_.size() > 0)
+    // Write post-processing effects data, if any
+    if (rendering_.postProcesses.size() > 0)
     {
         io.writeObjectStart("postProcesses");
-        for (auto postProcess : postProcesses_)
-            postProcess->saveState(io);
+        for (auto postProcess : rendering_.postProcesses)
+            postProcess->save(io);
         io.writeObjectEnd(); // End of postProcesses
-    }*/
+    }
     
     io.writeObjectEnd(); // End of 'gui_.name'
 }
@@ -386,7 +392,7 @@ Layer* Layer::load
 
     layer->setName(io.name());
     layer->flags_.rename = true; // <- hack to prevent layer tab bar re-ordering
-                                 // on first renderGUI after loading
+                                 // on first renderGui after loading
     layer->rendering_.target = (Rendering::Target)io.read<int>("renderTarget");
     layer->resolution_ = io.read<glm::ivec2>("resolution");
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
@@ -558,18 +564,18 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
         framebufferData.read<int>("exportClearPolicy");
 
     // Initialize post-processing effects, if any were saved 
-    /*if (io.hasMember("postProcesses"))
+    if (io.hasMember("postProcesses"))
     {
         auto postProcessData = io.readObject("postProcesses");
         for (auto name : postProcessData.members())
         {
             ObjectIO data(postProcessData.readObject(name));
-            postProcesses_.emplace_back
+            layer->rendering_.postProcesses.emplace_back
             (
-                PostProcess::create(app_, this, data)
+                PostProcess::load(data, layer)
             );
         }
-    }*/
+    }
 
     //
     if (layer->rendering_.target != Rendering::Target::Window)
@@ -1070,7 +1076,7 @@ void Layer::renderShader
             // Buffers are flipped afterwards, so rendering_.framebuffer
             // is guaranteed to contain the read-only framebuffer pointer
             vir::Framebuffer* sourceFramebuffer = rendering_.framebuffer;
-            /*for (auto* postProcess : postProcesses_)
+            for (auto* postProcess : rendering_.postProcesses)
             {
                 if 
                 (
@@ -1078,7 +1084,7 @@ void Layer::renderShader
                     postProcess->outputFramebuffer() != nullptr
                 )
                     sourceFramebuffer = postProcess->outputFramebuffer();
-            }*/
+            }
             sourceFramebuffer->bindColorBuffer(unit);
         }
         else
@@ -1138,8 +1144,8 @@ void Layer::renderShader
         renderer->setBlending(true);
 
     // Apply post-processing effects, if any
-    // for (auto postProcess : postProcesses_)
-    //    postProcess->run();
+    for (auto postProcess : rendering_.postProcesses)
+        postProcess->run();
 
     if 
     (
@@ -1313,7 +1319,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderSettingsMenuGUI(std::vector<Resource*>& resources)
+void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
 {
     if (ImGui::BeginMenu(("Layer ["+gui_.name+"]").c_str()))
     {
@@ -1326,7 +1332,7 @@ void Layer::renderSettingsMenuGUI(std::vector<Resource*>& resources)
         ImGui::PushItemWidth(entryWidth);
         if (ImGui::InputText(label.get(), &gui_.newName))
             flags_.rename = true; // The actual renaming happens in the static
-                                  // function Layer::renderLayersTabBarGUI(...)
+                                  // function Layer::renderLayersTabBarGui(...)
         ImGui::PopItemWidth();
 
         static std::map<Rendering::Target, const char*> 
@@ -1623,13 +1629,13 @@ locked to that of the main window)"
                 ImGui::PopItemWidth();
             }
 
-            /*
             ImGui::SeparatorText("Post-processing effects");
             int iDelete = -1;
             static int iActive = -1;
-            for (int i = 0; i < postProcesses_.size(); i++)
+            auto& postProcesses = rendering_.postProcesses;
+            for (int i = 0; i < postProcesses.size(); i++)
             {
-                PostProcess* postProcess = postProcesses_[i];
+                PostProcess* postProcess = postProcesses[i];
                 ImGui::PushID(i);
                 if (ImGui::SmallButton(ICON_FA_TRASH))
                     iDelete = i;
@@ -1652,8 +1658,8 @@ locked to that of the main window)"
                             iActive = i;
                         else if (iActive != i)
                         {
-                            postProcesses_[i] = postProcesses_[iActive];
-                            postProcesses_[iActive] = postProcess;
+                            postProcesses[i] = postProcesses[iActive];
+                            postProcesses[iActive] = postProcess;
                             iActive = -1;
                         }
                     }
@@ -1668,28 +1674,28 @@ locked to that of the main window)"
                     }
                     else
                     {
-                        *(postProcess->isGuiOpenPtr()) = true;
+                        //*(postProcess->isGuiOpenPtr()) = true;
                         postProcess->renderGui();
                     }
                     ImGui::EndMenu();
                 }
-                else
-                    *(postProcess->isGuiOpenPtr()) = false;
+                //else
+                //    *(postProcess->isGuiOpenPtr()) = false;
                 ImGui::PopID();
             }
             if (iDelete != -1)
             {
-                auto* postProcess = postProcesses_[iDelete];
+                auto* postProcess = postProcesses[iDelete];
                 delete postProcess;
                 postProcess = nullptr;
-                postProcesses_.erase(postProcesses_.begin()+iDelete);
+                postProcesses.erase(postProcesses.begin()+iDelete);
             }
-            */
+            
             
             // Selector for adding a new post-processing effect with the constraint
             // that each layer may have at most one post-processing effect of each
             // type
-            /*
+            
             ImGui::PushItemWidth(-1);
             if 
             (
@@ -1709,7 +1715,7 @@ locked to that of the main window)"
                 }
                 std::vector<vir::PostProcess::Type> 
                     availableTypes(allAvailableTypes);
-                for (auto* postProcess : postProcesses_)
+                for (auto* postProcess : postProcesses)
                 {
                     auto it = std::find
                     (
@@ -1731,15 +1737,15 @@ locked to that of the main window)"
                     )
                     {
                         PostProcess* postProcess = 
-                            PostProcess::create(app_, this, type);
+                            PostProcess::create(this, type);
                         if (postProcess != nullptr)
-                            postProcesses_.emplace_back(postProcess);
+                            postProcesses.emplace_back(postProcess);
                     }
                 }
                 ImGui::EndCombo();
             }
             ImGui::PopItemWidth();
-            */
+            
         }
         ImGui::EndMenu();
     }
@@ -1747,7 +1753,7 @@ locked to that of the main window)"
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderLayersTabBarGUI // Static
+void Layer::renderLayersTabBarGui // Static
 (
     std::vector<Layer*>& layers,
     SharedUniforms& sharedUnifoms,
@@ -1892,7 +1898,7 @@ void Layer::renderLayersTabBarGUI // Static
                 )
             )
             {
-                layer->renderTabBarGUI(sharedUnifoms, resources);
+                layer->renderTabBarGui(sharedUnifoms, resources);
                 ImGui::EndTabItem();
             }
             bool deleted(false);
@@ -1991,8 +1997,8 @@ void Layer::renderLayersTabBarGUI // Static
 
     // Check if layers framebuffers should be cleared as a consequence of
     // a rendering restart. This flag is set in the lambda
-    // Uniform::renderUniformsGUI::renderSharedUniformsGUI eventually called by
-    // renderTabBarGUI
+    // Uniform::renderUniformsGui::renderSharedUniformsGui eventually called by
+    // renderTabBarGui
     if (Layer::Flags::restartRendering)
     {
         for (auto layer : layers)
@@ -2006,7 +2012,7 @@ void Layer::renderLayersTabBarGUI // Static
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderTabBarGUI
+void Layer::renderTabBarGui
 (
     SharedUniforms& sharedUnifoms,
     std::vector<Resource*>& resources
@@ -2022,7 +2028,7 @@ void Layer::renderTabBarGUI
             
             bool headerErrors(gui_.headerErrors.size() > 0);
             bool madeReplacements = 
-                gui_.sourceEditor.renderFindReplaceToolGUI();
+                gui_.sourceEditor.renderFindReplaceToolGui();
             flags_.uncompiledChanges = 
                 flags_.uncompiledChanges || madeReplacements;
             if (ImGui::TreeNode("Header"))
@@ -2053,23 +2059,23 @@ void Layer::renderTabBarGUI
                 ImGui::Unindent(indent);
                 ImGui::Indent(); // Re-add indent from Header TreeNode
             }
-            gui_.sourceEditor.renderGUI("##sourceEditor");
+            gui_.sourceEditor.renderGui("##sourceEditor");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Shared source"))
         {
             bool madeReplacements = 
-                gui_.sharedSourceEditor.renderFindReplaceToolGUI();
+                gui_.sharedSourceEditor.renderFindReplaceToolGui();
             flags_.uncompiledChanges = 
                 flags_.uncompiledChanges || madeReplacements;
-            gui_.sharedSourceEditor.renderGUI("##sharedSourceEditor");
+            gui_.sharedSourceEditor.renderGui("##sharedSourceEditor");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Uniforms"))
         {
             if 
             (
-                Uniform::renderUniformsGUI
+                Uniform::renderUniformsGui
                 (
                     sharedUnifoms, 
                     uniforms_, 

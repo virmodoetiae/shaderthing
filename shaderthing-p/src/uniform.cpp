@@ -27,7 +27,7 @@
 namespace ShaderThing
 {
 
-bool Uniform::renderUniformsGUI
+bool Uniform::renderUniformsGui
 (
     SharedUniforms& sharedUniforms,
     std::vector<Uniform*>& uniforms,
@@ -55,7 +55,7 @@ bool Uniform::renderUniformsGUI
         ImGui::TableSetColumnIndex(column++);
 
     //--------------------------------------------------------------------------
-    auto renderEditUniformBoundsButtonGUI =
+    auto renderEditUniformBoundsButtonGui =
     [&fontSize](Type type, glm::vec2* bounds)
     {
         if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
@@ -92,11 +92,11 @@ bool Uniform::renderUniformsGUI
             return (*bounds != bounds0);
         }
         return false;
-    }; // End of renderUniformBoundsButtonGUI lambda
+    }; // End of renderUniformBoundsButtonGui lambda
 
     //--------------------------------------------------------------------------
-    auto renderSharedUniformsGUI = 
-    [&fontSize, &renderEditUniformBoundsButtonGUI]
+    auto renderSharedUniformsGui = 
+    [&fontSize, &renderEditUniformBoundsButtonGui]
     (SharedUniforms& sharedUniforms, int& row)
     {
         int column;
@@ -142,7 +142,7 @@ bool Uniform::renderUniformsGUI
             sharedUniforms.flags_.isRenderingPaused = 
                 !sharedUniforms.flags_.isRenderingPaused;
             sharedUniforms.flags_.isTimePaused = 
-                !sharedUniforms.flags_.isTimePaused;
+                sharedUniforms.flags_.isRenderingPaused;
         }
         NEXT_COLUMN
         ImGui::Text("iFrame");
@@ -192,7 +192,7 @@ bool Uniform::renderUniformsGUI
                 ICON_FA_PLAY : 
                 ICON_FA_PAUSE, 
                 ImVec2(-1, 0)
-            )
+            ) && !sharedUniforms.flags_.isRenderingPaused
         )
             sharedUniforms.flags_.isTimePaused = 
                 !sharedUniforms.flags_.isTimePaused;
@@ -202,7 +202,7 @@ bool Uniform::renderUniformsGUI
         ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
         NEXT_COLUMN
         glm::vec2* bounds = &sharedUniforms.bounds_[SpecialType::Time];
-        bool boundsChanged = renderEditUniformBoundsButtonGUI
+        bool boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float, 
             bounds
@@ -446,7 +446,7 @@ bool Uniform::renderUniformsGUI
         ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
         NEXT_COLUMN
         bounds = &sharedUniforms.bounds_[SpecialType::CameraPosition];
-        boundsChanged = renderEditUniformBoundsButtonGUI
+        boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float3, 
             bounds
@@ -548,7 +548,7 @@ bool Uniform::renderUniformsGUI
         }
         END_ROW
         ImGui::Dummy({0, 0.05f*fontSize});
-    }; // End of renderSharedUniformsGUI lambda
+    }; // End of renderSharedUniformsGui lambda
 
     // -------------------------------------------------------------------------
     static std::string supportedUniformTypeNames[11]
@@ -565,8 +565,8 @@ bool Uniform::renderUniformsGUI
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Sampler2D],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube]
     };
-    auto renderUniformGUI = 
-    [&fontSize, &renderEditUniformBoundsButtonGUI]
+    auto renderUniformGui = 
+    [&fontSize, &renderEditUniformBoundsButtonGui]
     (
         SharedUniforms& sharedUniforms,
         Uniform* uniform,
@@ -653,7 +653,7 @@ bool Uniform::renderUniformsGUI
         bool boundsChanged(false);
         if (uniform->gui.showBounds)
         {
-            boundsChanged = renderEditUniformBoundsButtonGUI
+            boundsChanged = renderEditUniformBoundsButtonGui
             (
                 uniform->type, 
                 &uniform->gui.bounds
@@ -1302,7 +1302,7 @@ bool Uniform::renderUniformsGUI
             )
         )
             uncompiledUniforms.emplace_back(uniform);
-    }; // End of renderUniformGUI lambda
+    }; // End of renderUniforui lambda
 
     //--------------------------------------------------------------------------
     auto renderAddUniformButton = 
@@ -1374,14 +1374,14 @@ bool Uniform::renderUniformsGUI
         ImGui::TableHeadersRow();
         
         if (showSharedUniforms)
-            renderSharedUniformsGUI(sharedUniforms, row);
+            renderSharedUniformsGui(sharedUniforms, row);
 
-        shader.bind(); // Must be bound, else uniforms in renderUniformGUI will
+        shader.bind(); // Must be bound, else uniforms in renderUniformGui will
                        // not be set
         
         for(auto uniform : uniforms)
         {
-            renderUniformGUI
+            renderUniformGui
             (
                 sharedUniforms, // Required to set iUserAction if user changes
                                 // anything
@@ -1405,8 +1405,18 @@ bool Uniform::renderUniformsGUI
                 (
                     uniforms.begin(),
                     uniforms.end(),
-                    [](const Uniform* uniform)
+                    [](Uniform* uniform)
                     {
+                        if 
+                        (
+                            uniform->gui.markedForDeletion &&
+                            uniform->type == Type::Sampler2D ||
+                            uniform->type == Type::SamplerCube
+                        )
+                        {
+                            auto resource = uniform->getValuePtr<Resource>();
+                            resource->unbind();
+                        }
                         return uniform->gui.markedForDeletion;
                     }
                 )

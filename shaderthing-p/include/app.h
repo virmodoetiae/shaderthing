@@ -53,9 +53,9 @@ private:
     void newProject();
 
     void update();
-    void initializeGUI();
-    void renderGUI();
-    void renderMenuBarGUI();
+    void initializeGui();
+    void renderGui();
+    void renderMenuBarGui();
     
 public:
 

@@ -554,7 +554,7 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::renderWindowResolutionMenuGUI()
+void SharedUniforms::renderWindowResolutionMenuGui()
 {
     if (ImGui::BeginMenu("Window"))
     {

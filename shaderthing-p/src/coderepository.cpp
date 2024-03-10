@@ -25,7 +25,7 @@ namespace ShaderThing
 namespace CodeRepository
 {
 
-void renderGUI()
+void renderGui()
 {
     float fontSize(ImGui::GetFontSize());
     float textWidth(46.0f*fontSize);

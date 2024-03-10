@@ -68,7 +68,7 @@ private:
     unsigned int      nFrames_                        = 0;
     double            timeStep_                       = 0.f;
 
-    void exportButtonGUI();
+    void exportButtonGui();
 
     DELETE_COPY_MOVE(Exporter)
 
@@ -90,7 +90,7 @@ public:
         const UpdateArgs& args
     );
 
-    void renderGUI
+    void renderGui
     (
         SharedUniforms& sharedUniforms, 
         const std::vector<Layer*>& layers

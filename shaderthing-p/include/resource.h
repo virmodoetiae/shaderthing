@@ -75,12 +75,12 @@ public:
 
     static bool isGuiOpen;
     static bool isGuiDetachedFromMenu;
-    static void renderResourcesGUI
+    static void renderResourcesGui
     (
         std::vector<Resource*>& resources, 
         const std::vector<Layer*>& layers
     );
-    static void renderResourcesMenuItemGUI
+    static void renderResourcesMenuItemGui
     (
         std::vector<Resource*>& resources,
         const std::vector<Layer*>& layers
@@ -122,31 +122,31 @@ private:
         const std::vector<Resource*>& resources
     );
     
-    static bool loadOrReplaceTextureOrAnimationButtonGUI
+    static bool loadOrReplaceTextureOrAnimationButtonGui
     (
         Resource*& resource,
         const ImVec2 size=ImVec2(0,0),
         const bool animation=false,
         const bool disabled=false
     );
-    static bool createOrEditAnimationButtonGUI
+    static bool createOrEditAnimationButtonGui
     (
         Resource*& resource,
         const std::vector<Resource*>& resources,
         const ImVec2 size=ImVec2(0,0)
     );
-    static bool createOrEditCubemapButtonGUI
+    static bool createOrEditCubemapButtonGui
     (
         Resource*& resource,
         const std::vector<Resource*>& resources,
         const ImVec2 size=ImVec2(0,0)
     );
-    static bool exportTextureOrAnimationButtonGUI
+    static bool exportTextureOrAnimationButtonGui
     (
         const Resource* resource,
         const ImVec2 size=ImVec2(0,0)
     );
-    static void renderResourceActionsButtonGUI
+    static void renderResourceActionsButtonGui
     (
         Resource*& resource,
         bool& deleteResource,

@@ -16,13 +16,16 @@ namespace ShaderThing
 typedef vir::TextureBuffer::WrapMode   WrapMode;
 typedef vir::TextureBuffer::FilterMode FilterMode;
 
-struct Uniform;
+
+class ObjectIO;
+class PostProcess;
 class Resource;
 class SharedUniforms;
-class ObjectIO;
+struct Uniform;
 
 class Layer : vir::Event::Receiver
 {
+friend PostProcess;
 public:
     struct Rendering
     {
@@ -51,6 +54,7 @@ public:
                vir::Framebuffer* framebufferB   = nullptr;
                vir::Framebuffer* framebuffer    = nullptr;
                vir::Shader*      shader         = nullptr;
+       std::vector<PostProcess*> postProcesses  = {};
     };
     struct GUI
     {
@@ -185,13 +189,13 @@ public:
         const unsigned int nRenderPasses = 1
     );
 
-    void renderSettingsMenuGUI(std::vector<Resource*>& resources);
-    void renderTabBarGUI
+    void renderSettingsMenuGui(std::vector<Resource*>& resources);
+    void renderTabBarGui
     (
         SharedUniforms& sharedUnifoms,
         std::vector<Resource*>& resources
     );
-    static void renderLayersTabBarGUI
+    static void renderLayersTabBarGui
     (
         std::vector<Layer*>& layers,
         SharedUniforms& sharedUnifoms,

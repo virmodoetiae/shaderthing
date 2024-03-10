@@ -591,7 +591,7 @@ FramebufferResource::~FramebufferResource()
 bool Resource::isGuiOpen = false;
 bool Resource::isGuiDetachedFromMenu = false;
 
-void Resource::renderResourcesGUI
+void Resource::renderResourcesGui
 (
     std::vector<Resource*>& resources,
     const std::vector<Layer*>& layers
@@ -626,7 +626,7 @@ void Resource::renderResourcesGUI
         ImGui::TableSetColumnIndex(column++);
 
     //--------------------------------------------------------------------------
-    auto renderResourceGUI = 
+    auto renderResourceGui = 
     [
         &fontSize, 
         &buttonWidth
@@ -640,7 +640,7 @@ void Resource::renderResourcesGUI
         int column = 0;
         START_ROW
         START_COLUMN // Actions column -----------------------------------------
-        renderResourceActionsButtonGUI
+        renderResourceActionsButtonGui
         (
             resources[row], 
             deleteResource, 
@@ -752,10 +752,10 @@ void Resource::renderResourcesGUI
         ImGui::Text("%.3f", aspectRatio);
         END_COLUMN
         END_ROW
-    }; // End of renderResourceGUI lambda
+    }; // End of renderResourceGui lambda
 
     //--------------------------------------------------------------------------
-    auto renderAddResourceButtonGUI = [&fontSize, &buttonWidth]
+    auto renderAddResourceButtonGui = [&fontSize, &buttonWidth]
     (
         std::vector<Resource*>& resources,
         const int row
@@ -769,25 +769,25 @@ void Resource::renderResourcesGUI
         if (ImGui::BeginPopup("##addResourcePopup"))
         {
             Resource* resource = nullptr;
-            Resource::loadOrReplaceTextureOrAnimationButtonGUI
+            Resource::loadOrReplaceTextureOrAnimationButtonGui
             (
                 resource,
                 ImVec2(buttonWidth, 0),
                 false
             );
-            Resource::loadOrReplaceTextureOrAnimationButtonGUI
+            Resource::loadOrReplaceTextureOrAnimationButtonGui
             (
                 resource,
                 ImVec2(buttonWidth, 0),
                 true
             );
-            Resource::createOrEditAnimationButtonGUI
+            Resource::createOrEditAnimationButtonGui
             (
                 resource,
                 resources,
                 ImVec2(buttonWidth, 0)
             );
-            Resource::createOrEditCubemapButtonGUI
+            Resource::createOrEditCubemapButtonGui
             (
                 resource,
                 resources,
@@ -807,7 +807,7 @@ void Resource::renderResourcesGUI
             ImGui::EndPopup();
         }
         END_ROW
-    }; // End of renderAddResourceButtonGUI lambda
+    }; // End of renderAddResourceButtonGui lambda
     
     //--------------------------------------------------------------------------
     static float tableHeight = 0;
@@ -838,14 +838,14 @@ void Resource::renderResourcesGUI
         const int nRows = resources.size();
         for (int row=0; row<nRows; row++)
         {
-            renderResourceGUI(deleteResource, resources, row);
+            renderResourceGui(deleteResource, resources, row);
             if (deleteResource)
             {
                 deleteRow = row;
                 deleteResource = false;
             }
         }
-        renderAddResourceButtonGUI(resources, nRows);
+        renderAddResourceButtonGui(resources, nRows);
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
         if (deleteRow != -1)
         {
@@ -864,7 +864,7 @@ void Resource::renderResourcesGUI
 
 //----------------------------------------------------------------------------//
 
-void Resource::renderResourcesMenuItemGUI
+void Resource::renderResourcesMenuItemGui
 (
     std::vector<Resource*>& resources,
     const std::vector<Layer*>& layers
@@ -878,7 +878,7 @@ void Resource::renderResourcesMenuItemGUI
         if (ImGui::BeginMenu("Resource manager"))
         {
             isGuiOpen = true;
-            Resource::renderResourcesGUI(resources, layers);
+            Resource::renderResourcesGui(resources, layers);
             ImGui::EndMenu();
         }
         else
@@ -929,7 +929,7 @@ bool Resource::removeLayerFromResources
 
 //----------------------------------------------------------------------------//
 
-bool Resource::loadOrReplaceTextureOrAnimationButtonGUI
+bool Resource::loadOrReplaceTextureOrAnimationButtonGui
 (
     Resource*& resource,
     const ImVec2 size,
@@ -976,7 +976,7 @@ bool Resource::loadOrReplaceTextureOrAnimationButtonGUI
 
 //----------------------------------------------------------------------------//
 
-bool Resource::createOrEditAnimationButtonGUI
+bool Resource::createOrEditAnimationButtonGui
 (
     Resource*& resource,
     const std::vector<Resource*>& resources,
@@ -1158,7 +1158,7 @@ bool Resource::createOrEditAnimationButtonGUI
 
 //----------------------------------------------------------------------------//
 
-bool Resource::createOrEditCubemapButtonGUI
+bool Resource::createOrEditCubemapButtonGui
 (
     Resource*& resource,
     const std::vector<Resource*>& resources,
@@ -1326,7 +1326,7 @@ among those loaded in the resource manager.)");
 
 //----------------------------------------------------------------------------//
 
-bool Resource::exportTextureOrAnimationButtonGUI
+bool Resource::exportTextureOrAnimationButtonGui
 (
     const Resource* resource,
     const ImVec2 size
@@ -1369,7 +1369,7 @@ bool Resource::exportTextureOrAnimationButtonGUI
 
 //----------------------------------------------------------------------------//
 
-void Resource::renderResourceActionsButtonGUI
+void Resource::renderResourceActionsButtonGui
 (
     Resource*& resource,
     bool& deleteResource,
@@ -1668,7 +1668,7 @@ affect any cubemaps or animations using this texture)");
                 switch (resource->type_)
                 {
                     case Resource::Type::Texture2D:
-                        loadOrReplaceTextureOrAnimationButtonGUI
+                        loadOrReplaceTextureOrAnimationButtonGui
                         (
                             resource,
                             size, 
@@ -1679,13 +1679,13 @@ affect any cubemaps or animations using this texture)");
                         
                         ((AnimatedTexture2DResource*)resource)->
                         unmanagedFrames_.size() == 0 ? 
-                        loadOrReplaceTextureOrAnimationButtonGUI
+                        loadOrReplaceTextureOrAnimationButtonGui
                         (
                             resource,
                             size, 
                             true
                         ) :
-                        createOrEditAnimationButtonGUI
+                        createOrEditAnimationButtonGui
                         (
                             resource,
                             resources,
@@ -1693,7 +1693,7 @@ affect any cubemaps or animations using this texture)");
                         );
                         break;
                     case Resource::Type::Cubemap:
-                        createOrEditCubemapButtonGUI
+                        createOrEditCubemapButtonGui
                         (
                             resource,
                             resources,
@@ -1706,7 +1706,7 @@ affect any cubemaps or animations using this texture)");
                     // Resource::Type::Texture2D, so no cubemaps or 
                     // animations here
             {
-                loadOrReplaceTextureOrAnimationButtonGUI
+                loadOrReplaceTextureOrAnimationButtonGui
                 (
                     resource,
                     size,
@@ -1738,7 +1738,7 @@ affect any cubemaps or animations using this texture)");
                 resource->type_ == Resource::Type::Texture2D ||
                 resource->type_ == Resource::Type::AnimatedTexture2D
             )
-                exportTextureOrAnimationButtonGUI(resource,size);
+                exportTextureOrAnimationButtonGui(resource,size);
             //------------------------------------------------------------------
             if (inUseBy.size() == 0)
             {

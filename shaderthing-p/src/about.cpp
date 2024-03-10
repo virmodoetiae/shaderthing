@@ -15,7 +15,7 @@
 namespace ShaderThing
 {
 
-void About::renderGUI()
+void About::renderGui()
 {
 
     float fontSize(ImGui::GetFontSize());
