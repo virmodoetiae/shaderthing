@@ -379,9 +379,10 @@ void ShaderThingApp::resetSharedUniforms()
     static constexpr uint32_t kUBOSize = 256*16;
     if (keyobardUniformBuffer_ == nullptr);
         keyobardUniformBuffer_ = vir::UniformBuffer::create(kUBOSize);
+    keyobardUniformBuffer_->setBindingPoint(0);
     auto keyboardData0 = new int[kUBOSize];
     std::memset(keyboardData0, 0, kUBOSize);
-    keyobardUniformBuffer_->bind(0);
+    keyobardUniformBuffer_->bind();
     keyobardUniformBuffer_->setData(keyboardData0);
     delete[] keyboardData0;
     

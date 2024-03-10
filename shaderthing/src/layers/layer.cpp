@@ -387,7 +387,7 @@ internalFramebufferClearPolicyOnExport_
         );
 
     // Bind shared uniform block
-    shader_->bindUniformBlock("KeyboardBlock", app_.keyboardUniformBufferRef(), 0);
+    shader_->bindUniformBlock("KeyboardBlock", 0);
 
     //
     createStaticShaders();
