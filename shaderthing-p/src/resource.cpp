@@ -15,6 +15,7 @@
 
 #include "shaderthing-p/include/resource.h"
 
+#include "shaderthing-p/include/bytedata.h"
 #include "shaderthing-p/include/filedialog.h"
 #include "shaderthing-p/include/helpers.h"
 #include "shaderthing-p/include/layer.h"
@@ -604,6 +605,21 @@ void Resource::renderResourcesGui
         ImGui::SetNextWindowSize(ImVec2(900,350), ImGuiCond_FirstUseEver);
         static ImGuiWindowFlags windowFlags(ImGuiWindowFlags_NoCollapse);
         ImGui::Begin("Resource manager", &Resource::isGuiOpen, windowFlags);
+
+        // Refresh icon if needed
+        static bool isIconSet(false);
+        static bool isWindowDocked(ImGui::IsWindowDocked());
+        if (!isIconSet || isWindowDocked != ImGui::IsWindowDocked())
+        {
+            isIconSet = vir::ImGuiRenderer::setWindowIcon
+            (
+                "Resource manager", 
+                ByteData::Icon::sTIconData, 
+                ByteData::Icon::sTIconSize,
+                false
+            );
+            isWindowDocked = ImGui::IsWindowDocked();
+        }
     }
 
     const float fontSize = ImGui::GetFontSize();

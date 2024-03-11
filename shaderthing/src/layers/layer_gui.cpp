@@ -143,7 +143,6 @@ locked to that of the main window)"
     if (rendersTo_ != RendersTo::Window)
     {
         ImGui::SeparatorText("Framebuffer settings");
-        //if (ImGui::CollapsingHeader("Framebuffer color attachment settings"))
         {
             ImGui::Text("Internal data format ");
             ImGui::SameLine();
@@ -273,8 +272,10 @@ locked to that of the main window)"
                 {
                     if 
                     (
-                        entry.first != vir::TextureBuffer::FilterMode::Nearest&&
-                        entry.first != vir::TextureBuffer::FilterMode::Linear
+                        entry.first != 
+                            vir::TextureBuffer::FilterMode::Nearest &&
+                        entry.first != 
+                            vir::TextureBuffer::FilterMode::Linear
                     )
                         continue;
                     if (ImGui::Selectable(entry.second.c_str()))
@@ -317,7 +318,11 @@ locked to that of the main window)"
                 ) && readOnlyFramebuffer_ != nullptr
             )
             {
-                for (auto entry : internalFramebufferClearPolicyOnExportToName)
+                for 
+                (
+                    auto entry : 
+                    internalFramebufferClearPolicyOnExportToName
+                )
                 {
                     if (ImGui::Selectable(entry.second.c_str()))
                         internalFramebufferClearPolicyOnExport_ = entry.first;

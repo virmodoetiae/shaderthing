@@ -39,6 +39,14 @@ App::App()
     settings.windowName = "ShaderThing";
     settings.enableFaceCulling = false;
     vir::initialize(settings);
+
+    auto window = vir::GlobalPtr<vir::Window>::instance();
+    window->setIcon
+    (
+        (unsigned char*)ByteData::Icon::sTIconData,
+        ByteData::Icon::sTIconSize,
+        false
+    );
     
     // Setup ImGui
     initializeGui();
@@ -46,7 +54,6 @@ App::App()
     newProject();
 
     // Main loop
-    auto window = vir::GlobalPtr<vir::Window>::instance();
     while(window->isOpen())
     {   
         renderGui();
@@ -281,17 +288,34 @@ void App::initializeGui()
 void App::renderGui()
 {
     vir::ImGuiRenderer::newFrame();
+    
     ImGui::SetNextWindowSize(ImVec2(750,900), ImGuiCond_FirstUseEver);
     static ImGuiWindowFlags flags
     (
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
     );
     ImGui::Begin("Control panel", NULL, flags);
+
+    // Refresh icon if needed
+    static bool isIconSet(false);
+    static bool isWindowDocked(ImGui::IsWindowDocked());
+    if (!isIconSet || isWindowDocked != ImGui::IsWindowDocked())
+    {
+        isIconSet = vir::ImGuiRenderer::setWindowIcon
+        (
+            "Control panel", 
+            ByteData::Icon::sTIconData, 
+            ByteData::Icon::sTIconSize,
+            false
+        );
+        isWindowDocked = ImGui::IsWindowDocked();
+    }
     
     renderMenuBarGui();
     Layer::renderLayersTabBarGui(layers_, *sharedUniforms_, resources_);
 
     ImGui::End();
+    ImGui::ShowDemoWindow();
     vir::ImGuiRenderer::render();
 }
 
