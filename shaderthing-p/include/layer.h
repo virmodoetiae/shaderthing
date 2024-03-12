@@ -20,12 +20,14 @@ typedef vir::TextureBuffer::FilterMode FilterMode;
 class ObjectIO;
 class PostProcess;
 class Resource;
+class LayerResource;
 class SharedUniforms;
-struct Uniform;
+class Uniform;
 
 class Layer : vir::Event::Receiver
 {
 friend PostProcess;
+friend LayerResource;
 public:
     struct Rendering
     {
@@ -35,26 +37,13 @@ public:
             InternalFramebuffer,
             InternalFramebufferAndWindow
         };
-        enum class FramebufferClearPolicy
-        {
-            // The framebuffers are never cleared
-            None, 
-            // The framebuffers are cleared only once, when the export starts
-            ClearOnFirstFrameExport,
-            // The framebuffers are cleared at the beginning of every frame, but
-            // not on sub-frame render passes (i.e., the framebuffers are 
-            // cleared at the beginning of the first sub-frame render pass of
-            // each frame)
-            ClearOnEveryFrameExport
-        };
-               Target            target         = Target::Window;
-          FramebufferClearPolicy clearPolicy    = FramebufferClearPolicy::None;
-               vir::Quad*        quad           = nullptr;
-               vir::Framebuffer* framebufferA   = nullptr;
-               vir::Framebuffer* framebufferB   = nullptr;
-               vir::Framebuffer* framebuffer    = nullptr;
-               vir::Shader*      shader         = nullptr;
-       std::vector<PostProcess*> postProcesses  = {};
+        Target                   target         = Target::Window;
+        vir::Quad*               quad           = nullptr;
+        vir::Framebuffer*        framebufferA   = nullptr;
+        vir::Framebuffer*        framebufferB   = nullptr;
+        vir::Framebuffer*        framebuffer    = nullptr;
+        vir::Shader*             shader         = nullptr;
+        std::vector<PostProcess*>postProcesses  = {};
     };
     struct GUI
     {
@@ -84,11 +73,24 @@ public:
     };
     struct ExportData
     {
+        enum class FramebufferClearPolicy
+        {
+            // The framebuffers are never cleared
+            None, 
+            // The framebuffers are cleared only once, when the export starts
+            ClearOnFirstFrameExport,
+            // The framebuffers are cleared at the beginning of every frame, but
+            // not on sub-frame render passes (i.e., the framebuffers are 
+            // cleared at the beginning of the first sub-frame render pass of
+            // each frame)
+            ClearOnEveryFrameExport
+        };
+        FramebufferClearPolicy   clearPolicy           = FramebufferClearPolicy::None;
         glm::ivec2               originalResolution;
         glm::ivec2               resolution;
-        float                    resolutionScale  = 1.f;
+        float                    resolutionScale       = 1.f;
         float                    windowResolutionScale = 1.f;
-        bool                     rescaleWithOutput = true;
+        bool                     rescaleWithOutput     = true;
     };
 
 private:
@@ -189,6 +191,7 @@ public:
         const unsigned int nRenderPasses = 1
     );
 
+    void renderFramebufferSettingsGui();
     void renderSettingsMenuGui(std::vector<Resource*>& resources);
     void renderTabBarGui
     (

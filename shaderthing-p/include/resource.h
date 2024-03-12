@@ -16,7 +16,7 @@ class ObjectIO;
 class Texture2DResource;
 class AnimatedTexture2DResource;
 class CubemapResource;
-class FramebufferResource;
+class LayerResource;
 
 class Resource
 {
@@ -54,7 +54,7 @@ public:
     static Resource*           create(const unsigned char* rawData, unsigned int size, bool gif);
     static Resource*           create(const std::vector<Texture2DResource*>& frames);
     static Resource*           create(const Texture2DResource* faces[6]);
-    static Resource*           create(vir::Framebuffer** framebuffer);
+    static Resource*           create(Layer* layer);
     
     Type                       type() const {return type_;}
     virtual void               bind(unsigned int unit) = 0;
@@ -84,17 +84,6 @@ public:
     (
         std::vector<Resource*>& resources,
         const std::vector<Layer*>& layers
-    );
-    static bool insertLayerInResources
-    (
-        std::string* name,
-        vir::Framebuffer** framebuffer, 
-        std::vector<Resource*>& resources
-    );
-    static bool removeLayerFromResources
-    (
-        const std::string* name,
-        std::vector<Resource*>& resources
     );
     static void update
     (
@@ -244,19 +233,20 @@ public:
     DECLARE_OVERRIDE_VIRTUALS
 };
 
-class FramebufferResource : public Resource
+class Layer;
+class LayerResource : public Resource
 {
-    friend Resource;    
-    vir::Framebuffer** native_ = nullptr;
-    FramebufferResource():Resource(Type::Framebuffer){isNameManaged_=false;}
+    friend Resource;
+    Layer*                layer_  = nullptr;
+    vir::Framebuffer**    native_ = nullptr;
+    LayerResource():Resource(Type::Framebuffer){isNameManaged_=false;}
     
-    DELETE_COPY_MOVE(FramebufferResource)
+    DELETE_COPY_MOVE(LayerResource)
 
     virtual void save(ObjectIO& io){}
 public:
-    ~FramebufferResource();
-    bool               set(vir::Framebuffer** framebuffer);
-    
+    ~LayerResource();
+    bool               set(Layer* layer);
     virtual void       bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit);unit_ = unit;}
     virtual void       unbind() override {(*native_)->unbind(); unit_ = -1;};
     const unsigned int id() const override {return (*native_)->colorBufferId();}
@@ -268,6 +258,17 @@ public:
     virtual void       setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
     virtual void       setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
     virtual void       setMinFilterMode(FilterMode mode) override{(*native_)->setColorBufferMinFilterMode(mode);}
+
+    static bool insertInResources
+    (
+        Layer* layer,
+        std::vector<Resource*>& resources
+    );
+    static bool removeFromResources
+    (
+        const Layer* layer,
+        std::vector<Resource*>& resources
+    );
 };
 
 }

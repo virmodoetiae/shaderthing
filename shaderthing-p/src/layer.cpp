@@ -239,7 +239,7 @@ void Layer::save(ObjectIO& io) const
         "minFilterMode",
         (int)framebuffer->colorBufferMinFilterMode()
     );
-    io.write("exportClearPolicy", (int)rendering_.clearPolicy);
+    io.write("exportClearPolicy", (int)exportData_.clearPolicy);
     io.writeObjectEnd(); // End of internalFramebuffer
 
     io.writeObjectStart("exportData");
@@ -559,8 +559,8 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
     layer->setFramebufferWrapMode(0, (WrapMode)wrapModes[0]);
     layer->setFramebufferWrapMode(1, (WrapMode)wrapModes[1]);
 
-    layer->rendering_.clearPolicy = 
-        (Rendering::FramebufferClearPolicy)
+    layer->exportData_.clearPolicy = 
+        (ExportData::FramebufferClearPolicy)
         framebufferData.read<int>("exportClearPolicy");
 
     // Initialize post-processing effects, if any were saved 
@@ -579,10 +579,9 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
 
     //
     if (layer->rendering_.target != Rendering::Target::Window)
-        Resource::insertLayerInResources
+        LayerResource::insertInResources
         (
-            &layer->gui_.name, 
-            &layer->rendering_.framebuffer,
+            layer,
             resources
         );
     return layer;
@@ -1242,15 +1241,15 @@ void Layer::renderShaders // Static
     {
         for (auto layer : layers) // Apply clear policy
         {
-            switch (layer->rendering_.clearPolicy)
+            switch (layer->exportData_.clearPolicy)
             {
-                case Rendering::FramebufferClearPolicy::None :
+                case ExportData::FramebufferClearPolicy::None :
                     continue;
-                case Rendering::FramebufferClearPolicy::ClearOnFirstFrameExport:
+                case ExportData::FramebufferClearPolicy::ClearOnFirstFrameExport:
                     if (sharedUniforms.iFrame() == 0)
                         layer->clearFramebuffers();
                     break;
-                case Rendering::FramebufferClearPolicy::ClearOnEveryFrameExport:
+                case ExportData::FramebufferClearPolicy::ClearOnEveryFrameExport:
                     if (sharedUniforms.iRenderPass() == 0)
                         layer->clearFramebuffers();
                     break;
@@ -1319,6 +1318,169 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
 
 //----------------------------------------------------------------------------//
 
+void Layer::renderFramebufferSettingsGui()
+{
+    const float entryWidth(14*ImGui::GetFontSize());
+    ImGui::Text("Internal data format ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerInternalFormatCombo",
+            vir::TextureBuffer::internalFormatToName.at
+            (
+                rendering_.framebuffer->
+                    colorBufferInternalFormat()
+            ).c_str()
+        )
+    )
+    {
+        static vir::TextureBuffer::InternalFormat 
+        supportedInternalFormats[2]
+        {
+            vir::TextureBuffer::InternalFormat::RGBA_UNI_8, 
+            vir::TextureBuffer::InternalFormat::RGBA_SF_32
+        };
+        for (auto internalFormat : supportedInternalFormats)
+        {
+            if 
+            (
+                ImGui::Selectable
+                (
+                    vir::TextureBuffer::internalFormatToName.at
+                    (
+                        internalFormat
+                    ).c_str()
+                )
+            )
+                rebuildFramebuffers
+                (
+                    internalFormat,
+                    resolution_
+                );
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    //
+    std::string selectedWrapModeX = "";
+    std::string selectedWrapModeY = "";
+    std::string selectedMagFilterMode = "";
+    std::string selectedMinFilterMode = "";
+    if (rendering_.framebuffer != nullptr)
+    {
+        selectedWrapModeX = vir::TextureBuffer::wrapModeToName.at
+        (
+            rendering_.framebuffer->colorBufferWrapMode(0)
+        );
+        selectedWrapModeY = vir::TextureBuffer::wrapModeToName.at
+        (
+            rendering_.framebuffer->colorBufferWrapMode(1)
+        );
+        selectedMagFilterMode = 
+            vir::TextureBuffer::filterModeToName.at
+            (
+                rendering_.framebuffer->colorBufferMagFilterMode()
+            );
+        selectedMinFilterMode = 
+            vir::TextureBuffer::filterModeToName.at
+            (
+                rendering_.framebuffer->colorBufferMinFilterMode()
+            );
+    }
+    ImGui::Text("Horizontal wrap mode ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerWrapModeXCombo",
+            selectedWrapModeX.c_str()
+        ) && rendering_.framebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::wrapModeToName)
+        {
+            if (ImGui::Selectable(entry.second.c_str()))
+                setFramebufferWrapMode(0, entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+    ImGui::Text("Vertical   wrap mode ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerWrapModeYCombo",
+            selectedWrapModeY.c_str()
+        ) && rendering_.framebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::wrapModeToName)
+        {
+            if (ImGui::Selectable(entry.second.c_str()))
+                setFramebufferWrapMode(1, entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    ImGui::Text("Magnification filter ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerMagModeCombo",
+            selectedMagFilterMode.c_str()
+        ) && rendering_.framebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::filterModeToName)
+        {
+            if 
+            (
+                entry.first != FilterMode::Nearest&&
+                entry.first != FilterMode::Linear
+            )
+                continue;
+            if (ImGui::Selectable(entry.second.c_str()))
+                setFramebufferMagFilterMode(entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    ImGui::Text("Minimization  filter ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerMinModeCombo",
+            selectedMinFilterMode.c_str()
+        ) && rendering_.framebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::filterModeToName)
+        {
+            if (ImGui::Selectable(entry.second.c_str()))
+                setFramebufferMinFilterMode(entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+}
+
 void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
 {
     if (ImGui::BeginMenu(("Layer ["+gui_.name+"]").c_str()))
@@ -1363,16 +1525,15 @@ void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
                 {
                     rendering_.target = target;
                     if (rendering_.target == Rendering::Target::Window)
-                        Resource::removeLayerFromResources
+                        LayerResource::removeFromResources
                         (
-                            &(gui_.name),
+                            this,
                             resources
                         );
                     else
-                        Resource::insertLayerInResources
+                        LayerResource::insertInResources
                         (
-                            &(gui_.name),
-                            &(rendering_.framebuffer),
+                            this,
                             resources
                         );
                 }
@@ -1426,208 +1587,7 @@ locked to that of the main window)"
         if (rendering_.target != Rendering::Target::Window)
         {
             ImGui::SeparatorText("Framebuffer settings");
-            {
-                ImGui::Text("Internal data format ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(entryWidth);
-                if 
-                (
-                    ImGui::BeginCombo
-                    (
-                        "##layerInternalFormatCombo",
-                        vir::TextureBuffer::internalFormatToName.at
-                        (
-                            rendering_.framebuffer->
-                                colorBufferInternalFormat()
-                        ).c_str()
-                    )
-                )
-                {
-                    static vir::TextureBuffer::InternalFormat 
-                    supportedInternalFormats[2]
-                    {
-                        vir::TextureBuffer::InternalFormat::RGBA_UNI_8, 
-                        vir::TextureBuffer::InternalFormat::RGBA_SF_32
-                    };
-                    for (auto internalFormat : supportedInternalFormats)
-                    {
-                        if 
-                        (
-                            ImGui::Selectable
-                            (
-                                vir::TextureBuffer::internalFormatToName.at
-                                (
-                                    internalFormat
-                                ).c_str()
-                            )
-                        )
-                            rebuildFramebuffers
-                            (
-                                internalFormat,
-                                resolution_
-                            );
-                    }
-                    ImGui::EndCombo();
-                }
-                ImGui::PopItemWidth();
-
-                //
-                std::string selectedWrapModeX = "";
-                std::string selectedWrapModeY = "";
-                std::string selectedMagFilterMode = "";
-                std::string selectedMinFilterMode = "";
-                std::string selectedExportClearPolicy = "";
-                static std::map
-                <
-                    Rendering::FramebufferClearPolicy, 
-                    std::string
-                > frameBufferClearPolicyToName
-                {
-                    {
-                        Rendering::FramebufferClearPolicy::
-                        ClearOnEveryFrameExport, 
-                        "On every frame"
-                    },
-                    {
-                        Rendering::FramebufferClearPolicy::
-                        ClearOnFirstFrameExport, 
-                        "On first frame"
-                    },
-                    {Rendering::FramebufferClearPolicy::None, "None"}
-                };
-                if (rendering_.framebuffer != nullptr)
-                {
-                    selectedWrapModeX = vir::TextureBuffer::wrapModeToName.at
-                    (
-                        rendering_.framebuffer->colorBufferWrapMode(0)
-                    );
-                    selectedWrapModeY = vir::TextureBuffer::wrapModeToName.at
-                    (
-                        rendering_.framebuffer->colorBufferWrapMode(1)
-                    );
-                    selectedMagFilterMode = 
-                        vir::TextureBuffer::filterModeToName.at
-                        (
-                            rendering_.framebuffer->colorBufferMagFilterMode()
-                        );
-                    selectedMinFilterMode = 
-                        vir::TextureBuffer::filterModeToName.at
-                        (
-                            rendering_.framebuffer->colorBufferMinFilterMode()
-                        );
-                    selectedExportClearPolicy = 
-                        frameBufferClearPolicyToName.at(rendering_.clearPolicy);
-                }
-                ImGui::Text("Horizontal wrap mode ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(entryWidth);
-                if 
-                (
-                    ImGui::BeginCombo
-                    (
-                        "##layerWrapModeXCombo",
-                        selectedWrapModeX.c_str()
-                    ) && rendering_.framebuffer != nullptr
-                )
-                {
-                    for (auto entry : vir::TextureBuffer::wrapModeToName)
-                    {
-                        if (ImGui::Selectable(entry.second.c_str()))
-                            setFramebufferWrapMode(0, entry.first);
-                    }
-                    ImGui::EndCombo();
-                }
-                ImGui::PopItemWidth();
-                ImGui::Text("Vertical   wrap mode ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(entryWidth);
-                if 
-                (
-                    ImGui::BeginCombo
-                    (
-                        "##layerWrapModeYCombo",
-                        selectedWrapModeY.c_str()
-                    ) && rendering_.framebuffer != nullptr
-                )
-                {
-                    for (auto entry : vir::TextureBuffer::wrapModeToName)
-                    {
-                        if (ImGui::Selectable(entry.second.c_str()))
-                            setFramebufferWrapMode(1, entry.first);
-                    }
-                    ImGui::EndCombo();
-                }
-                ImGui::PopItemWidth();
-
-                ImGui::Text("Magnification filter ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(entryWidth);
-                if 
-                (
-                    ImGui::BeginCombo
-                    (
-                        "##layerMagModeCombo",
-                        selectedMagFilterMode.c_str()
-                    ) && rendering_.framebuffer != nullptr
-                )
-                {
-                    for (auto entry : vir::TextureBuffer::filterModeToName)
-                    {
-                        if 
-                        (
-                            entry.first != FilterMode::Nearest&&
-                            entry.first != FilterMode::Linear
-                        )
-                            continue;
-                        if (ImGui::Selectable(entry.second.c_str()))
-                            setFramebufferMagFilterMode(entry.first);
-                    }
-                    ImGui::EndCombo();
-                }
-                ImGui::PopItemWidth();
-
-                ImGui::Text("Minimization  filter ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(entryWidth);
-                if 
-                (
-                    ImGui::BeginCombo
-                    (
-                        "##layerMinModeCombo",
-                        selectedMinFilterMode.c_str()
-                    ) && rendering_.framebuffer != nullptr
-                )
-                {
-                    for (auto entry : vir::TextureBuffer::filterModeToName)
-                    {
-                        if (ImGui::Selectable(entry.second.c_str()))
-                            setFramebufferMinFilterMode(entry.first);
-                    }
-                    ImGui::EndCombo();
-                }
-                ImGui::PopItemWidth();
-
-                ImGui::Text("Export clear policy  ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(entryWidth);
-                if 
-                (
-                    ImGui::BeginCombo
-                    (
-                        "##layerExportClearPolicy",
-                        selectedExportClearPolicy.c_str()
-                    ) && rendering_.framebuffer != nullptr
-                )
-                {
-                    for (auto entry : frameBufferClearPolicyToName)
-                    {
-                        if (ImGui::Selectable(entry.second.c_str()))
-                            rendering_.clearPolicy = entry.first;
-                    }
-                    ImGui::EndCombo();
-                }
-                ImGui::PopItemWidth();
-            }
+            renderFramebufferSettingsGui();
 
             ImGui::SeparatorText("Post-processing effects");
             int iDelete = -1;
@@ -1813,7 +1773,7 @@ void Layer::renderLayersTabBarGui // Static
     {
         compilationErrors = true;
         ImGui::Bullet(); ImGui::Text("Common");
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
         {
             for (auto& error : sharedErrors)
             {
@@ -1834,7 +1794,7 @@ void Layer::renderLayersTabBarGui // Static
         {
             compilationErrors = true;
             ImGui::Bullet();ImGui::Text(layer->gui_.name.c_str());
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
             {
                 if (layer->gui_.headerErrors.size() > 0)
                     ImGui::Text(layer->gui_.headerErrors.c_str());
@@ -1937,9 +1897,9 @@ void Layer::renderLayersTabBarGui // Static
                         ), 
                         layers.end()
                     );
-                    Resource::removeLayerFromResources
+                    LayerResource::removeFromResources
                     (
-                        &(layer->gui_.name),
+                        layer,
                         resources
                     );
                     delete layer;
@@ -2042,7 +2002,7 @@ void Layer::renderTabBarGui
                 if 
                 (
                     headerErrors && 
-                    ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                    ImGui::IsItemHovered() && 
                     ImGui::BeginTooltip()
                 )
                 {

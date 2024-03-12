@@ -14,8 +14,10 @@ namespace ShaderThing
 class SharedUniforms;
 class Resource;
 
-struct Uniform : public vir::Shader::Uniform
+class Uniform : public vir::Shader::Uniform
 {
+public:
+
     typedef vir::Shader::Variable::Type Type;
     
     enum class SpecialType

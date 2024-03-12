@@ -171,10 +171,10 @@ Resource* Resource::create(const Texture2DResource* faces[6])
     return nullptr;
 }
 
-Resource* Resource::create(vir::Framebuffer** framebuffer)
+Resource* Resource::create(Layer* layer)
 {
-    auto resource = new FramebufferResource();
-    if (resource->set(framebuffer))
+    auto resource = new LayerResource();
+    if (resource->set(layer))
         return resource;
     delete resource;
     return nullptr;
@@ -571,15 +571,16 @@ CubemapResource* CubemapResource::load
 
 //----------------------------------------------------------------------------//
 
-bool FramebufferResource::set(vir::Framebuffer** framebuffer)
+bool LayerResource::set(Layer* layer)
 {
-    if (framebuffer == nullptr)
+    if (layer == nullptr || layer->rendering_.framebuffer == nullptr)
         return false;
-    native_ = framebuffer;
+    layer_ = layer;
+    native_ = &layer->rendering_.framebuffer;
     return true;
 }
 
-FramebufferResource::~FramebufferResource()
+LayerResource::~LayerResource()
 {
     if (native_ != nullptr)
         this->unbind();
@@ -715,7 +716,7 @@ void Resource::renderResourcesGui
         {1,0}                                                               \
     );
             SHOW_IMAGE(previewSize)
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
             {
                 SHOW_IMAGE(hoverSize)
                 ImGui::EndTooltip();
@@ -904,37 +905,37 @@ void Resource::renderResourcesMenuItemGui
     ImGui::MenuItem("Resource manager", NULL, &Resource::isGuiOpen);
 }
 
-bool Resource::insertLayerInResources
+bool LayerResource::insertInResources
 (
-    std::string* name,
-    vir::Framebuffer** framebuffer, 
+    Layer* layer,
     std::vector<Resource*>& resources
 )
 {
     for (int i=0; i<resources.size(); i++)
     {
         auto resource = resources[i];
-        if (resource->type_ != Type::Framebuffer)
+        if (resource->type() != Type::Framebuffer)
             continue;
-        if (resource->name() == *name)
+        if (resource->name() == layer->name())
             return false;
     }
-    resources.emplace_back(Resource::create(framebuffer))->setNamePtr(name);
+    auto resource = resources.emplace_back(Resource::create(layer));
+    resource->setNamePtr(&(layer->gui_.name));
     return true;
 }
 
-bool Resource::removeLayerFromResources
+bool LayerResource::removeFromResources
 (
-    const std::string* name, 
+    const Layer* layer,
     std::vector<Resource*>& resources
 )
 {
     for (int i=0; i<resources.size(); i++)
     {
         auto resource = resources[i];
-        if (resource->type_ != Type::Framebuffer)
+        if (resource->type() != Type::Framebuffer)
             continue;
-        if (resource->name() == *name)
+        if (resource->name() == layer->name())
         {
             resources.erase(resources.begin()+i);
             return true;
@@ -1785,6 +1786,16 @@ affect any cubemaps or animations using this texture)");
                     ImGui::EndTooltip();
                 }
             }
+            ImGui::EndPopup();
+        }
+    }
+    else
+    {
+        if (ImGui::Button(ICON_FA_COG, ImVec2(-1,0)))
+            ImGui::OpenPopup("##layerFramebufferSettings");
+        if (ImGui::BeginPopup("##layerFramebufferSettings"))
+        {
+            ((LayerResource*)resource)->layer_->renderFramebufferSettingsGui();
             ImGui::EndPopup();
         }
     }

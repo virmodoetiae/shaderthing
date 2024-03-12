@@ -407,10 +407,9 @@ transparency)");
     {
         // Declare columns
         static ImGuiTableColumnFlags flags = 0;
-        ImGui::TableSetupColumn("Layer name", flags, 10.0f*fontSize);
-        ImGui::TableSetupColumn("Export resolution", flags, 10.0f*fontSize);
-        float width = 2.f*fontSize;
-        ImGui::TableSetupColumn("", flags, width);
+        ImGui::TableSetupColumn("Layer name", flags, 9.f*fontSize);
+        ImGui::TableSetupColumn("Export resolution", flags, 9.25f*fontSize);
+        ImGui::TableSetupColumn("Clear policy", flags, 9.5f*fontSize);
         ImGui::TableHeadersRow();
 
         glm::ivec2& outputResolution = sharedUniforms.exportData().resolution;
@@ -432,7 +431,7 @@ transparency)");
                 ImGui::Text("Output image");
                 
                 ImGui::TableSetColumnIndex(col++);
-                ImGui::PushItemWidth(-1);
+                ImGui::PushItemWidth(6.75*fontSize);
                 glm::ivec2 outputResolution0 = outputResolution;
                 ImGui::InputInt2
                 (
@@ -484,7 +483,7 @@ transparency)");
 
             // Column 1 --------------------------------------------------------
             ImGui::TableSetColumnIndex(col++);
-            ImGui::PushItemWidth(-1);
+            ImGui::PushItemWidth(6.75*fontSize);
             if (outputResolutionChanged)
             {
                 exportData.windowResolutionScale = outputScale;
@@ -538,17 +537,11 @@ transparency)");
                 ImGui::EndDisabled();
             }
             ImGui::PopItemWidth();
-
-            // Column 2 --------------------------------------------------------
-            ImGui::TableSetColumnIndex(col++);
-            if (layerRendersToWindow)
-            {
-                ImGui::PopID();
-                continue;
-            }
-
+            ImGui::SameLine();
             ImGui::PushItemWidth(-1);
             bool layerRescale0(layerRescale);
+            if (layerRendersToWindow)
+                ImGui::BeginDisabled();
             if 
             (
                 ImGui::Button
@@ -560,6 +553,8 @@ transparency)");
                 )
             )
                 layerRescale = !layerRescale;
+            if (layerRendersToWindow)
+                ImGui::EndDisabled();
             if (layerRescale && !layerRescale0)
             {
                 layerExportScale = 1;
@@ -568,6 +563,50 @@ transparency)");
                     layerExportScale*outputScale + .5f;
             }
             ImGui::PopItemWidth();
+
+            // Column 2 --------------------------------------------------------
+            ImGui::TableSetColumnIndex(col++);
+            if (!layerRendersToWindow)
+            {
+                static std::map
+                <
+                    Layer::ExportData::FramebufferClearPolicy, 
+                    std::string
+                > frameBufferClearPolicyToName
+                {
+                    {
+                        Layer::ExportData::FramebufferClearPolicy::
+                        ClearOnEveryFrameExport, 
+                        "On every frame"
+                    },
+                    {
+                        Layer::ExportData::FramebufferClearPolicy::
+                        ClearOnFirstFrameExport, 
+                        "On first frame"
+                    },
+                    {Layer::ExportData::FramebufferClearPolicy::None, "None"}
+                };
+                auto selectedExportClearPolicy = 
+                        frameBufferClearPolicyToName.at(exportData.clearPolicy);
+                ImGui::PushItemWidth(-1);
+                if 
+                (
+                    ImGui::BeginCombo
+                    (
+                        "##layerExportClearPolicy",
+                        selectedExportClearPolicy.c_str()
+                    )
+                )
+                {
+                    for (auto entry : frameBufferClearPolicyToName)
+                    {
+                        if (ImGui::Selectable(entry.second.c_str()))
+                            exportData.clearPolicy = entry.first;
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::PopItemWidth();
+            }
             
             ImGui::PopID();
 
