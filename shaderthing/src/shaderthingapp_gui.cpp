@@ -193,13 +193,13 @@ name##SetBuilt0 = name##SetBuilt;
     (
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
     );
-    ImGui::Begin("Control panel", NULL, flags);
+    ImGui::Begin("Control panel - v0.11.3", NULL, flags);
     static bool setIcon(false);
     if (!setIcon)
     {
         setIcon = vir::ImGuiRenderer::setWindowIcon
         (
-            "Control panel", 
+            "Control panel - v0.11.3", 
             IconData::sTIconData, 
             IconData::sTIconSize,
             false

@@ -47,7 +47,7 @@ sharedUniforms_(0)
 {
     // Initialize vir lib
     vir::Settings settings = {};
-    settings.windowName = "ShaderThing";
+    settings.windowName = "ShaderThing - v0.11.3";
     settings.enableFaceCulling = false;
     vir::initialize(settings);
 
