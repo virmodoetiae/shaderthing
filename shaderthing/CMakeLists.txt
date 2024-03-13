@@ -2,12 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(shaderthing)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../vir/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/imgui)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/include/opencv2)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../vir/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
 
@@ -17,8 +16,8 @@ set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ 
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 
 if(WIN32)
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/resources)
-    list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaderthing_win32.rc)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/data)
+    list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/shaderthing_win32.rc)
 endif()
 
 add_executable(shaderthing ${SOURCE_FILES})
