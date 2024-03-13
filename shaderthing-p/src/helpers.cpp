@@ -52,8 +52,8 @@ bool isCtrlShiftKeyPressed(ImGuiKey key)
 
 glm::vec2 normalizedWindowResolution()
 {
-    static const auto* window(vir::GlobalPtr<vir::Window>::instance());
-    const float& windowAspectRatio(window->aspectRatio());
+    static const auto* window(vir::Window::instance());
+    float windowAspectRatio = window->iconified() ? 1.f : window->aspectRatio();
     return
     {
         windowAspectRatio > 1.f ? 1.f : windowAspectRatio,

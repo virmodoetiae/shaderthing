@@ -1218,20 +1218,20 @@ void OpenGLQuantizer::resetSync()
 OpenGLQuantizer::OpenGLQuantizer() //:
 //firstWaitSyncCall_(true)
 {
-    auto context = GlobalPtr<Window>::instance()->context();
+    auto context = Window::instance()->context();
     if (context->versionMajor() < 4)
         canRunOnDeviceInUse_ = false;
     else if (context->versionMinor() < 3)
         canRunOnDeviceInUse_ = false;
     if (!canRunOnDeviceInUse_)
     {
-        auto* context(GlobalPtr<Window>::instance()->context());
+        auto* context(Window::instance()->context());
         std::string glVersion
         ( 
             std::to_string(context->versionMajor())+"."+
             std::to_string(context->versionMinor())
         );
-        std::string deviceName(GlobalPtr<Renderer>::instance()->deviceName());
+        std::string deviceName(Renderer::instance()->deviceName());
         errorMessage_ =
 R"(This feature requires an OpenGL version >= 4.3, but your graphics card in 
 use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;

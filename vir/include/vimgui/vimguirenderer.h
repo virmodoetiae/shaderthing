@@ -72,6 +72,8 @@ public:
         render();
     }
 
+    static ImGuiRenderer* instance() {return GlobalPtr<ImGuiRenderer>::instance();}
+
     /*
     // Recursive case for handling multiple arguments
     template <typename ReturnType, typename... Args>

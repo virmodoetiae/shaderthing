@@ -137,11 +137,7 @@ Layer::Layer
 ) :
     id_(findFreeId(layers))
 {
-    // Set layer resolution from current app window resolution. Also
-    // initializes framebuffers if not initialized and sets the iResolution,
-    // iAspectRatio uniforms
-    static const auto window = vir::GlobalPtr<vir::Window>::instance();
-    setResolution({window->width(), window->height()}, false);
+    setResolution(sharedUniforms.iResolution(), false);
 
     // Add default uniforms
     {
@@ -610,6 +606,8 @@ void Layer::loadAll
         );
         Layer::GUI::sharedSourceEditor.resetTextChanged();
     }
+    else
+        Layer::resetSharedSourceEditor();
     
     auto ioLayers = io.readObject("layers");
     for (auto ioLayerName : ioLayers.members())
@@ -667,7 +665,7 @@ const unsigned int Layer::findFreeId(const std::vector<Layer*>& layers)
 
 const std::string& Layer::glslVersionSource()
 {
-    static const auto window = vir::GlobalPtr<vir::Window>::instance();
+    static const auto window = vir::Window::instance();
     static const std::string version
     (
         "#version "+window->context()->shadingLanguageVersion()+" core\n"
@@ -682,7 +680,6 @@ const std::string& Layer::vertexShaderSource
     const SharedUniforms& sharedUniforms
 )
 {
-    static const auto window = vir::GlobalPtr<vir::Window>::instance();
     static const std::string vertexSource
     (
         glslVersionSource()+
@@ -767,7 +764,7 @@ void Layer::setResolution
 )
 {
     glm::ivec2 resolution = iResolution;
-    static const auto* window(vir::GlobalPtr<vir::Window>::instance());
+    static const auto* window(vir::Window::instance());
     glm::vec2 windowResolution(window->width(), window->height());
     if (windowFrameManuallyDragged)
     {
@@ -776,13 +773,18 @@ void Layer::setResolution
         auto viewport = Helpers::normalizedWindowResolution();
         rendering_.quad->update(viewport.x, viewport.y, depth_);
     }
-    else
+    else if (!window->iconified())
         resolutionRatio_ = (glm::vec2)resolution/windowResolution;
     
     if (resolution == resolution_)
         return;
     
-    if (tryEnfoceWindowAspectRatio && flags_.isAspectRatioBoundToWindow)
+    if 
+    (
+        tryEnfoceWindowAspectRatio && 
+        flags_.isAspectRatioBoundToWindow &&
+        !window->iconified()
+    )
     {
         float windowAspectRatio = window->aspectRatio();
         if (resolution.x == resolution_.x)
@@ -1117,7 +1119,7 @@ void Layer::renderShader
     // setSharedDefaultSamplerUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
-    static auto renderer = vir::GlobalPtr<vir::Renderer>::instance();
+    static auto renderer = vir::Renderer::instance();
     bool blendingEnabled = true;
     vir::Framebuffer* target0(target);
     if (rendering_.target != Layer::Rendering::Target::Window)
@@ -1307,7 +1309,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
                 return shader;
             };
             static auto blankShader = constructBlankShader();
-            vir::GlobalPtr<vir::Renderer>::instance()->submit
+            vir::Renderer::instance()->submit
             (
                 *blankQuad.get(), 
                 blankShader.get()
@@ -1481,6 +1483,8 @@ void Layer::renderFramebufferSettingsGui()
     ImGui::PopItemWidth();
 }
 
+//----------------------------------------------------------------------------//
+
 void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
 {
     if (ImGui::BeginMenu(("Layer ["+gui_.name+"]").c_str()))
@@ -1544,7 +1548,11 @@ void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
 
         ImGui::Text("Resolution           ");
         ImGui::SameLine();
-        if (rendering_.target == Rendering::Target::Window)
+        if 
+        (
+            rendering_.target == Rendering::Target::Window || 
+            vir::Window::instance()->iconified()
+        )
             ImGui::BeginDisabled();
         ImGui::SameLine();
         auto x0 = ImGui::GetCursorPos().x;
@@ -1560,7 +1568,7 @@ void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
         {
             if (flags_.isAspectRatioBoundToWindow)
             {
-                auto window = vir::GlobalPtr<vir::Window>::instance();
+                auto window = vir::Window::instance();
                 glm::ivec2 resolution = {window->width(), window->height()};
                 setResolution(resolution, false);
             }
@@ -1580,7 +1588,11 @@ locked to that of the main window)"
         std::sprintf(label.get(), "##layer%dResolution", id_);
         if (ImGui::InputInt2(label.get(), glm::value_ptr(resolution)))
             setResolution(resolution, false, true);
-        if (rendering_.target == Rendering::Target::Window)
+        if 
+        (
+            rendering_.target == Rendering::Target::Window || 
+            vir::Window::instance()->iconified()
+        )
             ImGui::EndDisabled();
         ImGui::PopItemWidth();
     
@@ -1724,7 +1736,7 @@ void Layer::renderLayersTabBarGui // Static
     static bool uncompiledEdits(false);
     if (uncompiledEdits || compilationErrors) // Render compilation button ------
     {
-        float time = vir::GlobalPtr<vir::Time>::instance()->outerTime();
+        float time = vir::Time::instance()->outerTime();
         ImVec4 compileButtonColor = 
         {
             .5f*glm::sin(6.283f*(time/3+0.f/3))+.3f,
@@ -2049,8 +2061,12 @@ void Layer::renderTabBarGui
         }
         ImGui::EndTabBar();
     }
+}
 
-    
+void Layer::resetSharedSourceEditor()
+{
+    Layer::GUI::sharedSourceEditor.setText(Layer::GUI::defaultSharedSource);
+    Layer::GUI::sharedSourceEditor.resetTextChanged();
 }
 
 }

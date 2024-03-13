@@ -11,10 +11,7 @@ GLFWOpenGLImGuiRenderer::GLFWOpenGLImGuiRenderer()
 {
     ImGui_ImplGlfw_InitForOpenGL
     (
-        static_cast<GLFWwindow*>
-        (
-            GlobalPtr<Window>::instance()->nativeWindow()
-        ), 
+        static_cast<GLFWwindow*>(Window::instance()->nativeWindow()),
         true
     );
     ImGui_ImplOpenGL3_Init("#version 410");

@@ -59,6 +59,8 @@ public :
     float outerTimestep(){return outerTimestep_;}
     float innerTimestep(){return innerTimestep_;}
     float smoothOuterTimestep(){return smoothOuterTimestep_;}
+
+    static Time* instance() {return GlobalPtr<Time>::instance();}
 };
 
 }

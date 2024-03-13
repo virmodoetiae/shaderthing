@@ -126,7 +126,9 @@ public:
     const bool& iconified() const {return iconified_;}
     const bool& resizable() const {return resizable_;}
     const bool& VSync(){return VSync_;}
-    
+
+    //
+    static Window* instance() {return GlobalPtr<Window>::instance();}
 };
 
 }

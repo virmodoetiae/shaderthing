@@ -102,10 +102,15 @@ public:
     ObjectIO readObject(const char* key) const;
 
     // Read a value of type T under the provided key/member entry. If the 
-    // provided key/member name does not exist, it returns a default-initialized
-    // variable of type T
+    // provided key/member name does not exist, an exception is thrown
     template<typename T>
     T read(const char* key) const;
+
+    // Read a value of type T under the provided key/member entry. If the 
+    // provided key/member name does not exist, the provided defaultValue
+    // is returned
+    template<typename T>
+    T readOrDefault(const char* key, T defaultValue) const;
 
     // Read a const char* under the provided key/member entry. If 'copy' is
     // true, the returned const char* will be a copy of the locally cached const
@@ -113,8 +118,14 @@ public:
     // const char* will go out of scope after top-level (root) object
     // destruction. The size of the read const char* data may also be retrieved
     // via passing a 'size' pointer. This is important as the retruned
-    // const char* is not necessarily null-terminated
-    const char* read(const char* key, bool copy, unsigned int* size=nullptr) const;
+    // const char* is not necessarily null-terminated. If the key is not found
+    // a nullptr is returned
+    const char* read
+    (
+        const char* key, 
+        bool copy, 
+        unsigned int* size=nullptr
+    ) const;
 
     // Write a value of type under the provided key/member name
     template<typename T>

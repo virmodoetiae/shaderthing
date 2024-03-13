@@ -97,7 +97,7 @@ private:
 
     const uint32_t               id_;
           glm::ivec2             resolution_;
-          glm::vec2              resolutionRatio_;
+          glm::vec2              resolutionRatio_      = {1.f, 1.f};
           float                  aspectRatio_;
           float                  depth_;
           std::vector<Uniform*>  uniforms_;
@@ -204,6 +204,8 @@ public:
         SharedUniforms& sharedUnifoms,
         std::vector<Resource*>& resources
     );
+
+    static void resetSharedSourceEditor();
 
     const std::string& name() const {return gui_.name;}
     const glm::ivec2& resolution() const {return resolution_;}

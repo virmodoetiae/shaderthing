@@ -106,6 +106,8 @@ public:
     bool broadcastInReversedOrder() const {return broadcastInReversedOrder_;}
     bool& broadcastInReversedOrder() {return broadcastInReversedOrder_;}
 
+    static Broadcaster* instance() {return GlobalPtr<Broadcaster>::instance();}
+
 protected:
 
     // Find if a receiver already exists in a certain receiver list

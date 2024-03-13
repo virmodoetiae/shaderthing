@@ -228,6 +228,7 @@ public:
     const float& iTime() const {return fBlock_.iTime;}
     const int& iFrame() const {return fBlock_.iFrame;}
     const int& iRenderPass() const {return fBlock_.iRenderPass;}
+    glm::ivec2 iResolution() const {return fBlock_.iResolution;}
 };
 
 }

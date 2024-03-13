@@ -82,7 +82,7 @@ void ImGuiRenderer::onReceive(Event::KeyCharEvent& event)
 ImGuiRenderer* ImGuiRenderer::initialize()
 {
     if (initialized_)
-        return GlobalPtr<ImGuiRenderer>::instance();
+        return ImGuiRenderer::instance();
     ImGuiRenderer* instance = nullptr;
     switch (vir::platform)
     {
@@ -114,12 +114,12 @@ ImGuiRenderer* ImGuiRenderer::initialize()
 
 void ImGuiRenderer::newFrame()
 {
-    GlobalPtr<ImGuiRenderer>::instance()->newFrameImpl();
+    ImGuiRenderer::instance()->newFrameImpl();
 }
 
 void ImGuiRenderer::render()
 {
-    GlobalPtr<ImGuiRenderer>::instance()->renderImpl();
+    ImGuiRenderer::instance()->renderImpl();
 }
 
 bool ImGuiRenderer::setWindowIcon
@@ -130,7 +130,7 @@ bool ImGuiRenderer::setWindowIcon
     bool isDataRaw
 )
 {
-    return GlobalPtr<ImGuiRenderer>::instance()->setWindowIconImpl
+    return ImGuiRenderer::instance()->setWindowIconImpl
     (
         windowName, 
         data, 
@@ -141,7 +141,7 @@ bool ImGuiRenderer::setWindowIcon
 
 void ImGuiRenderer::destroyDeviceObjects()
 {
-    GlobalPtr<ImGuiRenderer>::instance()->destroyDeviceObjectsImpl();
+    ImGuiRenderer::instance()->destroyDeviceObjectsImpl();
 }
 
 }

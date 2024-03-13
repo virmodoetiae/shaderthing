@@ -100,6 +100,9 @@ public:
     }
    
     const MousePosition& mousePosition(){return mousePosition_;}
+
+    static InputState* instance() {return GlobalPtr<InputState>::instance();}
+    
 };
 
 }

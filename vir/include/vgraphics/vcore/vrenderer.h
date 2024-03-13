@@ -74,7 +74,7 @@ public:
     );
     virtual void endScene() = 0;
 
-    
+    static Renderer* instance() {return GlobalPtr<Renderer>::instance();}
     
 };
 

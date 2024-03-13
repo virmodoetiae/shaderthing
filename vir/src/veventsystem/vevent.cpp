@@ -23,7 +23,7 @@ Receiver::~Receiver()
 
 bool Receiver::tuneIntoEventBroadcaster(int priorityValue)
 {
-    Broadcaster* p(GlobalPtr<Broadcaster>::instance());
+    Broadcaster* p(Broadcaster::instance());
     if (p == nullptr)
         return false;
     initialize();
@@ -35,7 +35,7 @@ bool Receiver::tuneIntoEventBroadcaster(int priorityValue)
 
 bool Receiver::tuneOutFromEventBroadcaster()
 {
-    Broadcaster* p(GlobalPtr<Broadcaster>::instance());
+    Broadcaster* p(Broadcaster::instance());
     if (p != nullptr)
         return p->removeReceiver(*this);
     return false;

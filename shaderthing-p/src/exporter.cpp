@@ -34,7 +34,6 @@ Exporter::Exporter()
 {
     tuneIntoEventBroadcaster();
     gifEncoder_ = new vir::GifEncoder();
-    auto window = vir::GlobalPtr<vir::Window>::instance();
 }
 
 //----------------------------------------------------------------------------//
@@ -101,7 +100,7 @@ void Exporter::update
         for (auto layer : layers)
             layer->prepareForExport();
 
-        vir::GlobalPtr<vir::Window>::instance()->setVSync(false);
+        vir::Window::instance()->setVSync(false);
 
         if (exportType_ == ExportType::GIF && !gifEncoder_->isFileOpen())
             gifEncoder_->openFile
@@ -188,7 +187,7 @@ void Exporter::update
             for (auto layer : layers)
                 layer->resetAfterExport();
 
-            vir::GlobalPtr<vir::Window>::instance()->setVSync(true);
+            vir::Window::instance()->setVSync(true);
         }
         else
             ++frame_;
@@ -395,7 +394,7 @@ transparency)");
 
     //--------------------------------------------------------------------------
 
-    auto window = vir::GlobalPtr<vir::Window>::instance();
+    auto window = vir::Window::instance();
 
     ImGui::Separator();
     ImGuiTableFlags flags = 

@@ -210,6 +210,10 @@ bool ObjectIO::hasMember(const char* key) const
 #define GET_FROM_IOOBJECT(key, type)                            \
      ((nativeReader*)nativeObject_)->operator[](key).Get##type()
 
+#define CHECK_KEY                                               \
+    if (!hasMember(key))                                        \
+        return defaultValue;
+
 ObjectIO ObjectIO::readObject(const char* key) const
 {
     ASSERT_READ_MODE_OR_THROW(readObject(const char* key))
@@ -229,9 +233,25 @@ bool ObjectIO::read(const char* key) const
 }
 
 template<>
+bool ObjectIO::readOrDefault(const char* key, bool defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(false)
+    CHECK_KEY
+    return GET_FROM_IOOBJECT(key, Bool);
+}
+
+template<>
 int ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(0)
+    return GET_FROM_IOOBJECT(key, Int);
+}
+
+template<>
+int ObjectIO::readOrDefault(const char* key, int defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(0)
+    CHECK_KEY
     return GET_FROM_IOOBJECT(key, Int);
 }
 
@@ -243,6 +263,18 @@ unsigned int ObjectIO::read(const char* key) const
 }
 
 template<>
+unsigned int ObjectIO::readOrDefault
+(
+    const char* key, 
+    unsigned int defaultValue
+) const
+{
+    ASSERT_READ_MODE_OR_RETURN(0)
+    CHECK_KEY
+    return GET_FROM_IOOBJECT(key, Int);
+}
+
+template<>
 float ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(0.0f)
@@ -250,9 +282,25 @@ float ObjectIO::read(const char* key) const
 }
 
 template<>
+float ObjectIO::readOrDefault(const char* key, float defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(0.0f)
+    CHECK_KEY
+    return GET_FROM_IOOBJECT(key, Double);
+}
+
+template<>
 double ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(0)
+    return GET_FROM_IOOBJECT(key, Double);
+}
+
+template<>
+double ObjectIO::readOrDefault(const char* key, double defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(0)
+    CHECK_KEY
     return GET_FROM_IOOBJECT(key, Double);
 }
 
@@ -271,9 +319,29 @@ glm::ivec2 ObjectIO::read(const char* key) const
 }
 
 template<>
+glm::ivec2 ObjectIO::readOrDefault
+(
+    const char* key, 
+    glm::ivec2 defaultValue
+) const
+{
+    ASSERT_READ_MODE_OR_RETURN(glm::ivec2(0))
+    CHECK_KEY
+    GET_ARRAY(2, Int, glm::ivec)
+}
+
+template<>
 glm::ivec3 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::ivec3(0))
+    GET_ARRAY(3, Int, glm::ivec)
+}
+
+template<>
+glm::ivec3 ObjectIO::readOrDefault(const char* key, glm::ivec3 defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(glm::ivec3(0))
+    CHECK_KEY
     GET_ARRAY(3, Int, glm::ivec)
 }
 
@@ -285,9 +353,25 @@ glm::ivec4 ObjectIO::read(const char* key) const
 }
 
 template<>
+glm::ivec4 ObjectIO::readOrDefault(const char* key, glm::ivec4 defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(glm::ivec4(0))
+    CHECK_KEY
+    GET_ARRAY(4, Int, glm::ivec)
+}
+
+template<>
 glm::vec2 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec2(0))
+    GET_ARRAY(2, Double, glm::vec)
+}
+
+template<>
+glm::vec2 ObjectIO::readOrDefault(const char* key, glm::vec2 defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(glm::vec2(0))
+    CHECK_KEY
     GET_ARRAY(2, Double, glm::vec)
 }
 
@@ -299,6 +383,14 @@ glm::vec3 ObjectIO::read(const char* key) const
 }
 
 template<>
+glm::vec3 ObjectIO::readOrDefault(const char* key, glm::vec3 defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(glm::vec3(0))
+    CHECK_KEY
+    GET_ARRAY(3, Double, glm::vec)
+}
+
+template<>
 glm::vec4 ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(glm::vec4(0))
@@ -306,9 +398,25 @@ glm::vec4 ObjectIO::read(const char* key) const
 }
 
 template<>
+glm::vec4 ObjectIO::readOrDefault(const char* key, glm::vec4 defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(glm::vec4(0))
+    CHECK_KEY
+    GET_ARRAY(4, Double, glm::vec)
+}
+
+template<>
 std::string ObjectIO::read(const char* key) const
 {
     ASSERT_READ_MODE_OR_RETURN(std::string())
+    return std::string(GET_FROM_IOOBJECT(key, String));
+}
+
+template<>
+std::string ObjectIO::readOrDefault(const char* key, std::string defaultValue) const
+{
+    ASSERT_READ_MODE_OR_RETURN(std::string())
+    CHECK_KEY
     return std::string(GET_FROM_IOOBJECT(key, String));
 }
 
@@ -343,9 +451,34 @@ std::vector<const char*> ObjectIO::read(const char* key) const
     return v;
 }
 
+template<>
+std::vector<const char*> ObjectIO::readOrDefault
+(
+    const char* key, 
+    std::vector<const char*> defaultValue
+) const
+{
+    ASSERT_READ_MODE_OR_RETURN(std::vector<const char*>(0))
+    CHECK_KEY
+    auto a = ((nativeReader*)nativeObject_)->operator[](key).GetArray();
+    std::vector<const char*> v(a.Size());
+    for (int i=0; i<a.Size(); i++)
+    {
+        // Force copy
+        unsigned int srcSize = a[i].GetStringLength();
+        const char* src = a[i].GetString();
+        auto dst = new char [srcSize];
+        memcpy((void*)dst, src, srcSize);
+        v[i] = dst;
+    }
+    return v;
+}
+
 const char* ObjectIO::read(const char* key, bool copy, unsigned int* size) const
 {
     ASSERT_READ_MODE_OR_RETURN(nullptr)
+    if (!hasMember(key))
+        return nullptr;
     auto data = GET_FROM_IOOBJECT(key, String);
     if (copy)
     {   

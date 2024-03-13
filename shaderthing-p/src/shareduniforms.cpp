@@ -29,11 +29,10 @@ namespace ShaderThing
 SharedUniforms::SharedUniforms()
 {
     // Init CPU block data
-    static const auto window = vir::GlobalPtr<vir::Window>::instance();
-    fBlock_.iResolution = 
-        glm::ivec2{window->width(), window->height()};
-    fBlock_.iAspectRatio = 
-        float(window->width())/float(window->height());
+    static const auto window = vir::Window::instance();
+    if (!window->iconified())
+        fBlock_.iResolution = {window->width(), window->height()};
+    fBlock_.iAspectRatio = fBlock_.iResolution.x/fBlock_.iResolution.y;
     for (int i=0; i<256; i++)
         fBlock_.iKeyboard[i] = glm::ivec3({0,0,0});
 
@@ -116,7 +115,7 @@ void SharedUniforms::setResolution
 )
 {
     // Limit resolution if not about to export
-    static const auto window = vir::GlobalPtr<vir::Window>::instance();
+    static const auto window = vir::Window::instance();
     if (!prepareForExport)
     {
         auto monitorScale = window->contentScale();
@@ -232,8 +231,7 @@ void SharedUniforms::toggleCameraMouseInputs()
 
 void SharedUniforms::onReceive(vir::Event::WindowResizeEvent& event)
 {
-    auto window = vir::GlobalPtr<vir::Window>::instance();
-    if (window->iconified())
+    if (event.width == 0 || event.height == 0)
     {
         event.handled = true;
         return;
@@ -268,7 +266,7 @@ void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
 {
     if 
     (
-        !vir::GlobalPtr<vir::InputState>::instance()->
+        !vir::InputState::instance()->
         mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked()
     )
         return;
@@ -309,7 +307,7 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
 void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 {
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
-    static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
+    static auto* inputState = vir::InputState::instance();
     auto& status = inputState->keyState(event.keyCode);
     data.x = (int)status.isPressed();
     data.y = (int)status.isHeld();
@@ -334,7 +332,7 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
 {
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
-    static auto* inputState = vir::GlobalPtr<vir::InputState>::instance();
+    static auto* inputState = vir::InputState::instance();
     int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     data.x = 0;
     data.y = 0;
@@ -556,7 +554,7 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
 
 void SharedUniforms::renderWindowResolutionMenuGui()
 {
-    if (ImGui::BeginMenu("Window"))
+    if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
     {
         ImGui::Text("Resolution ");
         ImGui::SameLine();

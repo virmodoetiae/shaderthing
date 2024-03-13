@@ -45,7 +45,7 @@ void Renderer::submit
 {
     // If I provide a target framebuffer, set it as the rendering target 
     // by binding it
-    auto window = GlobalPtr<Window>::instance();
+    auto window = Window::instance();
     bool updateTargetMipmap = false;
     if (target != nullptr)
     {

@@ -40,7 +40,7 @@ App::App()
     settings.enableFaceCulling = false;
     vir::initialize(settings);
 
-    auto window = vir::GlobalPtr<vir::Window>::instance();
+    auto window = vir::Window::instance();
     window->setIcon
     (
         (unsigned char*)ByteData::Icon::sTIconData,
@@ -89,7 +89,7 @@ App::~App()
 
 void App::update()
 {
-    static auto* window(vir::GlobalPtr<vir::Window>::instance());
+    static auto* window(vir::Window::instance());
     float timeStep = 
         sharedUniforms_->isTimeDeltaSmooth() ?
         window->time()->smoothOuterTimestep() : 
@@ -207,6 +207,7 @@ void App::newProject()
     }
     layers_.clear();
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
+    Layer::resetSharedSourceEditor();
 }
 
 //----------------------------------------------------------------------------//
@@ -376,14 +377,16 @@ void App::renderMenuBarGui()
         }
     };
 
+    
+    bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
     if (ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("Project"))
         {
-            if (ImGui::MenuItem("New", "Ctrl+N"))
+            if (ImGui::MenuItem("New", "Ctrl+N", nullptr, !windowIconified))
                 newProjectConfirmation = true;
-            if (ImGui::MenuItem("Load", "Ctrl+O"))
+            if (ImGui::MenuItem("Load", "Ctrl+O", nullptr, !windowIconified))
                 setProjectAction(Project::Action::Load, project_, fileDialog_);
             if (ImGui::MenuItem("Save", "Ctrl+S"))
                 setProjectAction(Project::Action::Save, project_, fileDialog_);
@@ -475,14 +478,14 @@ void App::renderMenuBarGui()
                 ImGui::SameLine();
                 ImGui::Text
                 (
-                    vir::GlobalPtr<vir::Renderer>::instance()->
+                    vir::Renderer::instance()->
                     deviceName().c_str()
                 );
                 ImGui::Text("Graphics context:    ");
                 ImGui::SameLine();
                 ImGui::Text
                 (
-                    vir::GlobalPtr<vir::Window>::instance()->
+                    vir::Window::instance()->
                     context()->name().c_str()
                 );
                 ImGui::EndMenu();
@@ -496,9 +499,9 @@ void App::renderMenuBarGui()
     
     if (project_.action == Project::Action::None)
     {
-        if (Helpers::isCtrlKeyPressed(ImGuiKey_N))
+        if (Helpers::isCtrlKeyPressed(ImGuiKey_N) && !windowIconified)
             newProjectConfirmation = true;
-        else if (Helpers::isCtrlKeyPressed(ImGuiKey_O))
+        else if (Helpers::isCtrlKeyPressed(ImGuiKey_O) && !windowIconified)
             setProjectAction(Project::Action::Load, project_, fileDialog_);
         else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
             setProjectAction(Project::Action::Save, project_, fileDialog_);

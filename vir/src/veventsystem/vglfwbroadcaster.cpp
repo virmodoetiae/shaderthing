@@ -11,7 +11,7 @@ GLFWBroadcaster::GLFWBroadcaster() :
     GLFWWrapper(),
     GLFWwindow_(nullptr)
 {
-    auto p(GlobalPtr<Window>::instance());
+    auto p(Window::instance());
     if (p != nullptr)
         GLFWwindow_ = static_cast<GLFWwindow*>(p->nativeWindow());
     if (GLFWwindow_ != nullptr)

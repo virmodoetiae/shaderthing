@@ -20,7 +20,7 @@ void InputCamera::onReceive(Event::MouseMotionEvent& event)
 {
     if (!modifiable_)
         return;
-    auto inputState = GlobalPtr<InputState>::instance();
+    auto inputState = InputState::instance();
     if (inputState == nullptr)
         return;
     if (inputState->mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked())
@@ -62,7 +62,7 @@ void InputCamera::onReceive(Event::WindowResizeEvent& event)
 void InputCamera::update()
 {
     // Check for pressed keys
-    auto inputState = GlobalPtr<InputState>::instance();
+    auto inputState = InputState::instance();
     if (inputState == nullptr)
         return;
     bool W = inputState->keyState(VIR_KEY_W).isPressedOrHeld();
@@ -85,7 +85,7 @@ void InputCamera::update()
     if (updated_)
         return;
 
-    float dt = GlobalPtr<Time>::instance()->smoothOuterTimestep();
+    float dt = Time::instance()->smoothOuterTimestep();
     dTheta_ *= mouseSensitivity_;
     dPhi_ *= mouseSensitivity_;
 

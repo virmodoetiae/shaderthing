@@ -771,7 +771,7 @@ bool Uniform::renderUniformsGui
                         ImVec2 delta = ImGui::GetMouseDragDelta(0, 0.0f);
                         delta.y = -delta.y;
                         auto monitor = 
-                            vir::GlobalPtr<vir::Window>::instance()->
+                            vir::Window::instance()->
                             primaryMonitorResolution();
                         int maxRes = std::max(monitor.x, monitor.y);
                         bounds.x = std::min(bounds.x, -bounds.y);
@@ -1000,7 +1000,7 @@ bool Uniform::renderUniformsGui
                         ImVec2 delta = ImGui::GetMouseDragDelta(0, 0.0f);
                         delta.y = -delta.y;
                         auto monitor = 
-                            vir::GlobalPtr<vir::Window>::instance()->
+                            vir::Window::instance()->
                             primaryMonitorResolution();
                         int maxRes = std::max(monitor.x, monitor.y);
                         bounds.x = std::min(bounds.x, -bounds.y);
