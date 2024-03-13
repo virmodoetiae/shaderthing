@@ -111,7 +111,10 @@ void App::update()
     if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
     {
         fps = elapsedFrames/elapsedTime;
-        window->setTitle("ShaderThing ("+Helpers::format(fps, 1)+" FPS)");
+        window->setTitle
+        (
+            "ShaderThing ("+Helpers::format(fps, 1)+" FPS) - "+project_.filename
+        );
         elapsedFrames = 0;
         elapsedTime = 0;
     }
@@ -137,6 +140,7 @@ void App::update()
                 break;
             }
             project_.filepath = fileDialog_.selection().front();
+            project_.filename = Helpers::filename(project_.filepath);
             project_.forceSaveAs = true;
             loadProject(project_.filepath);
             fileDialog_.clearSelection();
@@ -150,6 +154,7 @@ void App::update()
                 break;
             }
             project_.filepath = fileDialog_.selection().front();
+            project_.filename = Helpers::filename(project_.filepath);
             project_.forceSaveAs = false;
             saveProject(project_.filepath);
             fileDialog_.clearSelection();
@@ -355,7 +360,7 @@ void App::renderMenuBarGui()
                         "Save project",
                         {"ShaderThing file (*.stf)", "*.stf"},
                         project.filepath.size() == 0 ? 
-                        "new_project.stf" :
+                        project.filename.c_str() :
                         project.filepath.c_str()
                     );
                     project.action = Project::Action::SaveAs;
@@ -368,7 +373,9 @@ void App::renderMenuBarGui()
                 (
                     "Save project",
                     {"ShaderThing file (*.stf)", "*.stf"},
-                    project.filepath
+                    project.filepath.size() == 0 ? 
+                    project.filename.c_str() :
+                    project.filepath.c_str()
                 );
                 project.action = Project::Action::SaveAs;
                 break;

@@ -31,6 +31,7 @@ private:
         };
         Action             action          = Action::None;
         std::string        filepath        = "";
+        std::string        filename        = "untitled.stf";
         bool               forceSaveAs     = true;
     };
     Project                project_        = {};

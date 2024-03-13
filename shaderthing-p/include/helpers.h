@@ -4,6 +4,8 @@
 #include <vector>
 #include "thirdparty/glm/glm.hpp"
 
+struct ImVec4;
+
 namespace ShaderThing
 {
 
