@@ -15,10 +15,10 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vir vir)
 set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ -static -std=c++17")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 
-#if(WIN32)
-#    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/resources)
-#    list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaderthing_win32.rc)
-#endif()
+if(WIN32)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/data)
+    list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/shaderthing_win32.rc)
+endif()
 
 add_executable(shaderthing ${SOURCE_FILES})
 

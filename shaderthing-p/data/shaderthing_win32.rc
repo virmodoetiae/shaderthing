@@ -1,0 +1,34 @@
+#define APSTUDIO_READONLY_SYMBOLS
+#include "winver.h"
+#include "winres.h"
+#undef APSTUDIO_READONLY_SYMBOLS
+
+#ifndef IDI_ICON1
+#define IDI_ICON1 102
+#endif
+
+IDI_ICON1   ICON    "icon.ico"
+
+1 VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "Virmodoetiae Software"
+      VALUE "FileDescription", "ShaderThing"
+      VALUE "FileVersion", "1.0.0.0"
+      VALUE "InternalName", "ShaderThing"
+      VALUE "LegalCopyright", "Stefan Radman"
+      VALUE "OriginalFilename", "shaderthing.exe"
+      VALUE "ProductName", "ShaderThing"
+      VALUE "ProductVersion", "1.0.0.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END
