@@ -52,6 +52,7 @@ private:
               bool isMouseInputEnabled              = true; // iMouse
               bool isCameraKeyboardInputEnabled     = true; // iWASD
               bool isCameraMouseInputEnabled        = true; // iLook
+              bool isVSyncEnabled                   = true;
     };
 
     struct ExportData

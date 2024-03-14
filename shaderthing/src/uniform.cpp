@@ -56,26 +56,27 @@ bool Uniform::renderUniformsGui
 
     //--------------------------------------------------------------------------
     auto renderEditUniformBoundsButtonGui =
-    [&fontSize](Type type, glm::vec2* bounds)
+    [&fontSize](Type type, glm::vec2& bounds)
     {
         if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
             ImGui::OpenPopup("##uniformBounds");
         if (ImGui::BeginPopup("##uniformBounds"))
         {
-            glm::vec2 bounds0(*bounds);
+            
+            glm::vec2 bounds0(bounds);
             if (type == vir::Shader::Variable::Type::UInt)
-                bounds->x = std::max(bounds->x, 0.0f);
-            float* minValue = &(glm::value_ptr(*bounds)[0]);
-            float* maxValue = &(glm::value_ptr(*bounds)[1]);
+                bounds.x = std::max(bounds.x, 0.0f);
             ImGui::Text("Minimum value ");
             ImGui::SameLine();
             float inputWidth = 6*fontSize;
+            auto minf = Helpers::getFormat(bounds0.x);
+            auto maxf = Helpers::getFormat(bounds0.y);
             ImGui::PushItemWidth(inputWidth);
             ImGui::InputFloat
             (
                 "##minValueInput", 
-                minValue, 0.f, 0.f,
-                Helpers::getFormat(bounds0.x).c_str()
+                &(bounds.x), 0.f, 0.f,
+                minf.c_str()
             );
             ImGui::PopItemWidth();
             ImGui::Text("Maximum value ");
@@ -84,12 +85,12 @@ bool Uniform::renderUniformsGui
             ImGui::InputFloat
             (
                 "##maxValueInput", 
-                maxValue, 0.f, 0.f,
-                Helpers::getFormat(bounds0.y).c_str()
+                &(bounds.y), 0.f, 0.f,
+                maxf.c_str()
             );
             ImGui::PopItemWidth();
             ImGui::EndPopup();
-            return (*bounds != bounds0);
+            return (bounds != bounds0); 
         }
         return false;
     }; // End of renderUniformBoundsButtonGui lambda
@@ -205,7 +206,7 @@ bool Uniform::renderUniformsGui
         bool boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float, 
-            bounds
+            sharedUniforms.bounds_[SpecialType::Time]
         );
         NEXT_COLUMN
         auto iTimePtr = &sharedUniforms.fBlock_.iTime;
@@ -449,11 +450,12 @@ bool Uniform::renderUniformsGui
         boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float3, 
-            bounds
+            sharedUniforms.bounds_[SpecialType::CameraPosition]
         );
         NEXT_COLUMN
         {
             glm::vec3 value = sharedUniforms.fBlock_.iWASD.packed();
+            std::string format = Helpers::getFormat(value);
             if (!boundsChanged)
             {
                 bounds->x = std::min(value.x, bounds->x);
@@ -472,7 +474,7 @@ bool Uniform::renderUniformsGui
                     glm::value_ptr(value), 
                     bounds->x,
                     bounds->y,
-                    Helpers::getFormat(value).c_str()
+                    format.c_str()
                 ) || boundsChanged
             )
             {
@@ -526,6 +528,7 @@ bool Uniform::renderUniformsGui
         NEXT_COLUMN
         {
             glm::vec3 value = sharedUniforms.fBlock_.iLook.packed();
+            std::string format = Helpers::getFormat(value);
             ImGui::PushItemWidth(-1);
             if 
             (
@@ -535,7 +538,7 @@ bool Uniform::renderUniformsGui
                     glm::value_ptr(value), 
                     -1,
                     1,
-                    Helpers::getFormat(value).c_str()
+                    format.c_str()
                 )
             )
             {
@@ -649,16 +652,17 @@ bool Uniform::renderUniformsGui
         END_COLUMN
 
         START_COLUMN // Bounds column ------------------------------------------
-        glm::vec2& bounds = uniform->gui.bounds;
         bool boundsChanged(false);
+        glm::vec2& bounds = uniform->gui.bounds;
         if (uniform->gui.showBounds)
         {
             boundsChanged = renderEditUniformBoundsButtonGui
             (
                 uniform->type, 
-                &uniform->gui.bounds
+                bounds
             );
         }
+        
         END_COLUMN
 
         START_COLUMN // Value column -------------------------------------------
@@ -933,15 +937,17 @@ bool Uniform::renderUniformsGui
                 )
                     ImGui::Text("%.3f", value);
                 else
+                {
+                    std::string format = Helpers::getFormat(value);
                     input = ImGui::SliderFloat
                     (
                         "##fSlider", 
                         &value, 
                         bounds.x,
                         bounds.y,
-                        uniform->specialType == Uniform::SpecialType::Time ?
-                        "%.3f" : Helpers::getFormat(value).c_str()
+                        format.c_str()
                     );
+                }
                 if (input || boundsChanged)
                 {
                     if (boundsChanged)
@@ -1027,13 +1033,14 @@ bool Uniform::renderUniformsGui
                             );
                         input = true;
                     }
+                    std::string format = Helpers::getFormat(value);
                     bool input2 = ImGui::SliderFloat2
                     (
                         "##f2Slider", 
                         glm::value_ptr(value), 
                         bounds.x,
                         bounds.y,
-                        Helpers::getFormat(value).c_str()
+                        format.c_str()
                     );
                     input = input || input2;
                 }
@@ -1084,6 +1091,7 @@ bool Uniform::renderUniformsGui
                 if (!colorPicker)
                 {
                     uniform->gui.showBounds = true;
+                    std::string format = Helpers::getFormat(value);
                     if 
                     (
                         ImGui::SliderFloat3
@@ -1092,7 +1100,7 @@ bool Uniform::renderUniformsGui
                             glm::value_ptr(value), 
                             bounds.x,
                             bounds.y,
-                            Helpers::getFormat(value).c_str()
+                            format.c_str()
                         ) || boundsChanged
                     )
                     {
@@ -1175,6 +1183,7 @@ bool Uniform::renderUniformsGui
                 if (!colorPicker)
                 {
                     uniform->gui.showBounds = true;
+                    std::string format = Helpers::getFormat(value);
                     if 
                     (
                         ImGui::SliderFloat4
@@ -1183,7 +1192,7 @@ bool Uniform::renderUniformsGui
                             glm::value_ptr(value), 
                             bounds.x,
                             bounds.y,
-                            Helpers::getFormat(value).c_str()
+                            format.c_str()
                         ) || boundsChanged
                     )
                     {

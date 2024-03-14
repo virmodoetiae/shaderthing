@@ -278,36 +278,35 @@ void oneLineColorfulText
         return "%.1e";                                                  \
     floatDigits = floatDigits > 9 ? 9 : floatDigits;                    \
     expDigits = expDigits > 9 ? 9 : expDigits;                          \
-    static char format[4] = {'%', '.', char(0), char(0)};               \
+    std::string format = "%.";                                          \
     if (abs(value) < lowExpThreshold || abs(value) > highExpThreshold)  \
-        sprintf(&(format[2]), "%de", expDigits);                        \
+        format += std::to_string(expDigits)+"e";                        \
     else                                                                \
-        sprintf(&(format[2]), "%df", floatDigits);                      \
+        format += std::to_string(floatDigits)+"f";                      \
     return format;
 
 #define RETURN_VECTOR_FORMAT(nCmpts)                                    \
-    value = glm::abs(value);                                            \
     if (length(value) == 0)                                             \
         return "%.1e";                                                  \
     floatDigits = floatDigits > 9 ? 9 : floatDigits;                    \
     expDigits = expDigits > 9 ? 9 : expDigits;                          \
-    static char format[4] = {'%', '.', char(0), char(0)};               \
+    std::string format = "%.";                                          \
     for (int i=0; i<nCmpts; i++)                                        \
     {                                                                   \
-        const float& vi(value[i]);                                      \
+        float vi(std::abs(value[i]));                                   \
         if (vi >= lowExpThreshold && vi <= highExpThreshold)            \
             continue;                                                   \
-        sprintf(&(format[2]), "%de", expDigits);                        \
+        format += std::to_string(expDigits)+"e";                        \
         return format;                                                  \
     }                                                                   \
-    sprintf(&(format[2]), "%df", floatDigits);                          \
+    format += std::to_string(floatDigits)+"f";                          \
     return format;
 
 #define TYPED_GET_FORMAT_FUNC(type)                                     \
     template<>                                                          \
     std::string Helpers::getFormat                                      \
     (                                                                   \
-        type value,                                                     \
+        const type& value,                                              \
         float lowExpThreshold,                                          \
         float highExpThreshold,                                         \
         unsigned int floatDigits,                                       \

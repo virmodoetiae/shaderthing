@@ -60,7 +60,7 @@ void oneLineColorfulText
 template<typename T>
 std::string getFormat
 (
-    T value, 
+    const T& value, 
     float lowExpThreshold=1e-3, 
     float highExpThreshold=1e3,
     unsigned int floatDigits=3,

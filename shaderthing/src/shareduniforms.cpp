@@ -89,6 +89,9 @@ SharedUniforms::SharedUniforms()
 
     exportData_.resolution = fBlock_.iResolution;
 
+    // Set VSync
+    vir::Window::instance()->setVSync(flags_.isVSyncEnabled);
+
     // Register the class iteself with the vir event broadcaster with a 
     // higher priority (lower value is higher priority) than all other
     // ShaderThing event receivers
@@ -471,6 +474,9 @@ void SharedUniforms::prepareForExport(float exportStartTime)
 
     fBlock_.iExport = true;
     flags_.updateDataRangeII = true;
+
+    if (flags_.isVSyncEnabled)
+        vir::Window::instance()->setVSync(false);
 }
 
 //----------------------------------------------------------------------------//
@@ -485,6 +491,9 @@ void SharedUniforms::resetAfterExport()
 
     fBlock_.iExport = false;
     flags_.updateDataRangeII = true;
+
+    if (flags_.isVSyncEnabled)
+        vir::Window::instance()->setVSync(true);
 }
 
 //----------------------------------------------------------------------------//
@@ -508,6 +517,7 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("iKeyboardInputEnabled", flags_.isKeyboardInputEnabled);
     io.write("smoothTimeDelta", flags_.isTimeDeltaSmooth);
     io.write("resetTimeOnFrameCounterReset", flags_.isTimeResetOnFrameCounterReset);
+    io.write("vSyncEnabled", flags_.isVSyncEnabled);
     io.writeObjectEnd();
 }
 
@@ -546,6 +556,8 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
     su->exportData_.resolution = 
         (glm::vec2)su->fBlock_.iResolution*
         su->exportData_.resolutionScale + .5f;
+    su->flags_.isVSyncEnabled = ioSu.readOrDefault<bool>("vSyncEnabled", true);
+    vir::Window::instance()->setVSync(su->flags_.isVSyncEnabled);
     su->flags_.updateDataRangeII = true;
     su->flags_.updateDataRangeIII = true;
 }
@@ -570,6 +582,12 @@ void SharedUniforms::renderWindowResolutionMenuGui()
         )
             setResolution(resolution, false);
         ImGui::PopItemWidth();
+
+        ImGui::Text("VSync      ");
+        ImGui::SameLine();
+        if (ImGui::Checkbox("##windowVSync", &flags_.isVSyncEnabled))
+            vir::Window::instance()->setVSync(flags_.isVSyncEnabled);
+
         ImGui::EndMenu();
     }
 }

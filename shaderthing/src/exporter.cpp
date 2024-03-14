@@ -100,8 +100,6 @@ void Exporter::update
         for (auto layer : layers)
             layer->prepareForExport();
 
-        vir::Window::instance()->setVSync(false);
-
         if (exportType_ == ExportType::GIF && !gifEncoder_->isFileOpen())
             gifEncoder_->openFile
             ( 
@@ -186,8 +184,6 @@ void Exporter::update
             sharedUniforms.resetAfterExport();
             for (auto layer : layers)
                 layer->resetAfterExport();
-
-            vir::Window::instance()->setVSync(true);
         }
         else
             ++frame_;
