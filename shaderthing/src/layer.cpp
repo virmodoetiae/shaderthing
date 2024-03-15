@@ -211,6 +211,7 @@ void Layer::save(ObjectIO& io) const
     io.write("resolution", resolution_);
     io.write("resolutionRatio", resolutionRatio_);
     io.write("isAspectRatioBoundToWindow", flags_.isAspectRatioBoundToWindow);
+    io.write("rescaleWithWindow", flags_.rescaleWithWindow);
     io.write("depth", depth_);
 
     io.writeObjectStart("internalFramebuffer");
@@ -393,6 +394,8 @@ Layer* Layer::load
     layer->resolution_ = io.read<glm::ivec2>("resolution");
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
     layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
+    layer->flags_.rescaleWithWindow = 
+        io.readOrDefault<bool>("rescaleWithWindow", true);
     
     layer->setDepth(io.read<float>("depth"));
 
@@ -772,6 +775,8 @@ void Layer::setResolution
             glm::max(resolutionRatio_*(glm::vec2)resolution+.5f, {1,1});
         auto viewport = Helpers::normalizedWindowResolution();
         rendering_.quad->update(viewport.x, viewport.y, depth_);
+        if (!flags_.rescaleWithWindow)
+            return;
     }
     else if (!window->iconified())
         resolutionRatio_ = (glm::vec2)resolution/windowResolution;
@@ -1504,9 +1509,9 @@ void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
         static std::map<Rendering::Target, const char*> 
         renderTargetToName
         {
-        {Rendering::Target::InternalFramebufferAndWindow, "Framebuffer & window"},
-        {Rendering::Target::InternalFramebuffer, "Framebuffer"},
-        {Rendering::Target::Window, "Window"}
+            {Rendering::Target::InternalFramebufferAndWindow, "Framebuffer & window"},
+            {Rendering::Target::InternalFramebuffer, "Framebuffer"},
+            {Rendering::Target::Window, "Window"}
         };
         ImGui::Text("Render target        ");
         ImGui::SameLine();
@@ -1546,26 +1551,27 @@ void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
         }
         ImGui::PopItemWidth();
 
-        ImGui::Text("Resolution           ");
-        ImGui::SameLine();
         if 
         (
             rendering_.target == Rendering::Target::Window || 
             vir::Window::instance()->iconified()
         )
             ImGui::BeginDisabled();
+        ImGui::Text("Resolution           ");
         ImGui::SameLine();
         auto x0 = ImGui::GetCursorPos().x;
-        std::sprintf(label.get(), "##layer%dResolution", id_);
         if 
         (
-            ImGui::Checkbox
+            ImGui::Button
             (
-                label.get(), 
-                &flags_.isAspectRatioBoundToWindow
+                flags_.isAspectRatioBoundToWindow ? 
+                " " ICON_FA_LOCK " " : 
+                " " ICON_FA_LOCK_OPEN " "
             )
         )
         {
+            flags_.isAspectRatioBoundToWindow = 
+                !flags_.isAspectRatioBoundToWindow;
             if (flags_.isAspectRatioBoundToWindow)
             {
                 auto window = vir::Window::instance();
@@ -1573,28 +1579,48 @@ void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
                 setResolution(resolution, false);
             }
         }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
         {
             ImGui::Text(
-R"(If checked, the layer aspect ratio is 
-locked to that of the main window)"
+                flags_.isAspectRatioBoundToWindow ?
+ICON_FA_LOCK " - The aspect ratio is locked\n"
+"to that of the main window" :
+ICON_FA_UNLOCK " - The aspect ratio is not locked\n"
+"to that of the main window"
             );
             ImGui::EndTooltip();
         }
         ImGui::SameLine();
-        auto checkboxSize = ImGui::GetCursorPos().x-x0;
-        ImGui::PushItemWidth(entryWidth-checkboxSize);
+        auto aspectRatioLockSize = ImGui::GetCursorPos().x-x0;
+        ImGui::PushItemWidth(entryWidth-aspectRatioLockSize);
         glm::ivec2 resolution = resolution_;
         std::sprintf(label.get(), "##layer%dResolution", id_);
         if (ImGui::InputInt2(label.get(), glm::value_ptr(resolution)))
             setResolution(resolution, false, true);
+        ImGui::PopItemWidth();
+        ImGui::Text("Auto-resize mode     ");
+        ImGui::SameLine();
+        if
+        (
+            ImGui::Button
+            (
+                flags_.rescaleWithWindow ?
+                "Resize on window resize" :
+                "Do not auto-resize",
+                {-1, 0}
+            )
+        )
+            flags_.rescaleWithWindow = !flags_.rescaleWithWindow;
         if 
         (
             rendering_.target == Rendering::Target::Window || 
             vir::Window::instance()->iconified()
         )
             ImGui::EndDisabled();
-        ImGui::PopItemWidth();
     
         if (rendering_.target != Rendering::Target::Window)
         {

@@ -62,6 +62,7 @@ public:
                bool              pendingDeletion            = false;
                bool              uncompiledChanges          = false;
                bool              isAspectRatioBoundToWindow = true;
+               bool              rescaleWithWindow          = true;
         static bool              restartRendering;
     };
     struct Cache
