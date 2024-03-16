@@ -1482,7 +1482,7 @@ void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
                 flags_.isAspectRatioBoundToWindow ?
 ICON_FA_LOCK " - The aspect ratio is locked\n"
 "to that of the main window" :
-ICON_FA_UNLOCK " - The aspect ratio is not locked\n"
+ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
 "to that of the main window"
             );
             ImGui::EndTooltip();

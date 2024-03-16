@@ -237,7 +237,7 @@ public:
     void update(const UpdateArgs& args);
     void nextRenderPass();
     void prepareForExport(float exportStartTime);
-    void resetAfterExport();
+    void resetAfterExport(bool resetFrameCounter = true);
 
     void renderWindowResolutionMenuGui();
 

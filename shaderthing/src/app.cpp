@@ -174,6 +174,7 @@ void App::saveProject(const std::string& filepath) const
     sharedUniforms_->save(            project);
     Layer::          save(layers_,    project);
     Resource::       save(resources_, project);
+    exporter_->      save(            project);
 }
 
 //----------------------------------------------------------------------------//
@@ -185,6 +186,7 @@ void App::loadProject(const std::string& filepath)
     Resource::      loadAll(project,                            resources_);
     SharedUniforms::load   (project,           sharedUniforms_, resources_);
     Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
+    Exporter::      load   (project, exporter_);
 }
 
 //----------------------------------------------------------------------------//

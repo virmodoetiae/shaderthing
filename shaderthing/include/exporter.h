@@ -41,6 +41,7 @@ private:
         bool          outputResolutionChanged         = false;
         unsigned int  nRenderPasses                   = 1;
         bool          areRenderPassesOnFirstFrameOnly = false;
+        bool          resetFrameCounterAfterExport    = true;
         float         startTime                       = 0.f;
         float         endTime                         = 1.f;
         float         fps                             = 60.f;
@@ -76,6 +77,9 @@ public:
 
     Exporter();
     ~Exporter();
+
+    void save(ObjectIO& io);
+    static void load(const ObjectIO& io, Exporter*& exporter);
 
     DECLARE_RECEIVABLE_EVENTS
     (

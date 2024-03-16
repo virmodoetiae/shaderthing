@@ -20,6 +20,7 @@
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/macros.h"
+#include "shaderthing/include/objectio.h"
 #include "shaderthing/include/shareduniforms.h"
 
 #include "vir/include/vir.h"
@@ -181,7 +182,10 @@ void Exporter::update
             if (gifEncoder_->isFileOpen())
                 gifEncoder_->closeFile();
 
-            sharedUniforms.resetAfterExport();
+            sharedUniforms.resetAfterExport
+            (
+                settings_.resetFrameCounterAfterExport
+            );
             for (auto layer : layers)
                 layer->resetAfterExport();
         }
@@ -277,6 +281,8 @@ void Exporter::renderGui
             "%.2f"
         );
         ImGui::PopItemWidth();
+        
+        ImGui::PushItemWidth(-1);
         if (exportType_ == ExportType::GIF)
         {
             // Ensure valid GIF fps (can only be such that the resulting frame
@@ -387,6 +393,14 @@ transparency)");
             &settings_.areRenderPassesOnFirstFrameOnly
         );
     }
+
+    ImGui::Text("Reset iFrame after export   ");
+    ImGui::SameLine();
+    ImGui::Checkbox
+    (
+        "##resetFrameCounterAfterExport", 
+        &settings_.resetFrameCounterAfterExport
+    );
 
     //--------------------------------------------------------------------------
 
@@ -516,8 +530,8 @@ transparency)");
                 {
                     layerExportScale =
                         layerExportResolution.x > layerExportResolution.y ?
-                        (float)layerExportResolution.x/layer->resolution().x :
-                        (float)layerExportResolution.y/layer->resolution().y;
+                        (float)layerExportResolution.x/outputScale/layer->resolution().x :
+                        (float)layerExportResolution.y/outputScale/layer->resolution().y;
                 }
             }
             else
@@ -641,6 +655,62 @@ void Exporter::exportButtonGui()
     }
     if (isRunning_)
         ImGui::EndDisabled();
+}
+
+//----------------------------------------------------------------------------//
+
+void Exporter::save(ObjectIO& io)
+{
+    io.writeObjectStart("exporter");
+    io.write("type", (int)exportType_);
+    io.write("outputFilepath", settings_.outputFilepath);
+    io.write("nRenderPasses", settings_.nRenderPasses);
+    io.write("areRenderPassesOnFirstFrameOnly", settings_.areRenderPassesOnFirstFrameOnly);
+    io.write("resetFrameCounterAfterExport", settings_.resetFrameCounterAfterExport);
+    io.write("startTime", settings_.startTime);
+    io.write("endTime", settings_.endTime);
+    io.write("fps", settings_.fps);
+    io.write("isGifPaletteDynamic", settings_.isGifPaletteDynamic);
+    io.write("gifPaletteBitDepth", settings_.gifPaletteBitDepth);
+    io.write("gifAlphaCutoff", settings_.gifAlphaCutoff);
+    io.write("gifDitherMode", (int)settings_.gifDitherMode);
+    io.writeObjectEnd();
+}
+
+//----------------------------------------------------------------------------//
+
+void Exporter::load(const ObjectIO& io, Exporter*& exporter)
+{
+    DELETE_IF_NOT_NULLPTR(exporter)
+    exporter = new Exporter();
+    if (!io.hasMember("exporter"))
+        return;
+    
+    auto ioEx = io.readObject("exporter");
+    exporter->exportType_ = (ExportType)ioEx.read<int>("type");
+    auto settings = Settings{};
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define READ_SETTINGS_ITEM(Name, Type)                                      \
+    settings.Name = ioEx.readOrDefault<Type>(TOSTRING(Name),settings.Name);
+#define READ_SETTINGS_ITEM2(Name, Type, Type2)                              \
+    settings.Name = (Type2)(ioEx.readOrDefault<Type>(TOSTRING(Name),        \
+                                              (Type)settings.Name));
+    
+    READ_SETTINGS_ITEM(outputFilepath, std::string)
+    READ_SETTINGS_ITEM(nRenderPasses, int)
+    READ_SETTINGS_ITEM(areRenderPassesOnFirstFrameOnly, bool)
+    READ_SETTINGS_ITEM(resetFrameCounterAfterExport, bool)
+    READ_SETTINGS_ITEM(startTime, float)
+    READ_SETTINGS_ITEM(endTime, float)
+    READ_SETTINGS_ITEM(fps, float)
+    READ_SETTINGS_ITEM(isGifPaletteDynamic, bool)
+    READ_SETTINGS_ITEM(gifPaletteBitDepth, int)
+    READ_SETTINGS_ITEM(gifAlphaCutoff, int)
+    READ_SETTINGS_ITEM2(gifDitherMode, int, DitherMode)
+
+    exporter->settings_ = settings;
 }
 
 }

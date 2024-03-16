@@ -482,9 +482,9 @@ void SharedUniforms::prepareForExport(float exportStartTime)
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::resetAfterExport()
+void SharedUniforms::resetAfterExport(bool resetFrameCounter)
 {
-    flags_.resetFrameCounterPreOrPostExport = true; //true;
+    flags_.resetFrameCounterPreOrPostExport = resetFrameCounter;
     fBlock_.iTime = exportData_.originalTime;
     ExportData cache = exportData_;
     setResolution(exportData_.originalResolution, false, false);
