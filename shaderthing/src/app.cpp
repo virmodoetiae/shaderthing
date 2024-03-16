@@ -182,8 +182,8 @@ void App::loadProject(const std::string& filepath)
 {
     auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
     *gui_.fontScale = project.read<float>("UIScale");
-    SharedUniforms::load(   project,           sharedUniforms_);
     Resource::      loadAll(project,                            resources_);
+    SharedUniforms::load   (project,           sharedUniforms_, resources_);
     Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
 }
 

@@ -17,6 +17,7 @@
 
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/resource.h"
 #include "shaderthing/include/uniform.h"
 
 #include "vir/include/vir.h"
@@ -466,7 +467,7 @@ void SharedUniforms::nextRenderPass()
 
 void SharedUniforms::prepareForExport(float exportStartTime)
 {
-    flags_.resetFrameCounterPreOrPostExport = true;
+    flags_.resetFrameCounterPreOrPostExport = true; //true;
     exportData_.originalTime = fBlock_.iTime;
     fBlock_.iTime = exportStartTime;
     exportData_.originalResolution = fBlock_.iResolution;
@@ -483,7 +484,7 @@ void SharedUniforms::prepareForExport(float exportStartTime)
 
 void SharedUniforms::resetAfterExport()
 {
-    flags_.resetFrameCounterPreOrPostExport = true;
+    flags_.resetFrameCounterPreOrPostExport = true; //true;
     fBlock_.iTime = exportData_.originalTime;
     ExportData cache = exportData_;
     setResolution(exportData_.originalResolution, false, false);
@@ -518,10 +519,16 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("smoothTimeDelta", flags_.isTimeDeltaSmooth);
     io.write("resetTimeOnFrameCounterReset", flags_.isTimeResetOnFrameCounterReset);
     io.write("vSyncEnabled", flags_.isVSyncEnabled);
+    Uniform::saveAll(io, userUniforms_);
     io.writeObjectEnd();
 }
 
-void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
+void SharedUniforms::load
+(
+    const ObjectIO& io, 
+    SharedUniforms*& su,
+    const std::vector<Resource*>& resources
+)
 {
     if (su != nullptr)
         delete su;
@@ -535,7 +542,8 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
     su->fBlock_.iLook = ioSu.read<glm::vec3>("iLook");
     su->flags_.isTimePaused = ioSu.read<bool>("timePaused");
     su->flags_.isTimeLooped = ioSu.read<bool>("timeLooped");
-    su->flags_.isTimeDeltaSmooth = ioSu.read<bool>("smoothTimeDelta");
+    su->flags_.isTimeDeltaSmooth = 
+        ioSu.readOrDefault<bool>("smoothTimeDelta", false);
     su->flags_.isTimeResetOnFrameCounterReset = 
         ioSu.read<bool>("resetTimeOnFrameCounterReset");
     su->shaderCamera_->setDirection(su->fBlock_.iLook.packed());
@@ -546,7 +554,7 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
     if (!ioSu.read<bool>("iWASDInputEnabled"))
         su->toggleCameraKeyboardInputs();
     if (!ioSu.read<bool>("iLookInputEnabled"))
-        su->toggleCameraKeyboardInputs();
+        su->toggleCameraMouseInputs();
     if (!ioSu.read<bool>("iMouseInputEnabled"))
         su->toggleMouseInputs();
     if (!ioSu.read<bool>("iKeyboardInputEnabled"))
@@ -558,8 +566,34 @@ void SharedUniforms::load(const ObjectIO& io, SharedUniforms*& su)
         su->exportData_.resolutionScale + .5f;
     su->flags_.isVSyncEnabled = ioSu.readOrDefault<bool>("vSyncEnabled", true);
     vir::Window::instance()->setVSync(su->flags_.isVSyncEnabled);
+    Uniform::loadAll
+    (
+        ioSu, 
+        su->userUniforms_,
+        resources,
+        su->cache_.uninitializedResourceLayers
+    );
     su->flags_.updateDataRangeII = true;
     su->flags_.updateDataRangeIII = true;
+}
+
+void SharedUniforms::postLoadProcessCachedResourceLayers
+(
+    const std::vector<Resource*>& resources
+)
+{
+    for (auto& entry : cache_.uninitializedResourceLayers)
+    {
+        auto* uniform = entry.first;
+        auto& layerName = entry.second;
+        for (auto resource : resources)
+        {
+            if (resource->name() != layerName)
+                continue;
+            uniform->setValuePtr<Resource>(resource);
+        }
+    }
+    cache_.uninitializedResourceLayers.clear();
 }
 
 //----------------------------------------------------------------------------//

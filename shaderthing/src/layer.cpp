@@ -255,93 +255,8 @@ void Layer::save(ObjectIO& io) const
         true
     );
     
-    io.writeObjectStart("uniforms");
-    for (auto u : uniforms_)
-    {
-        float& min(u->gui.bounds.x);
-        float& max(u->gui.bounds.y);
-        if 
-        (
-            u->name.size() == 0 || 
-            u->specialType != Uniform::SpecialType::None
-        )
-            continue;
-        io.writeObjectStart(u->name.c_str());
-        io.write("type", vir::Shader::uniformTypeToName[u->type].c_str());
-
-#define WRITE_MIN_MAX               \
-        io.write("min", min);   \
-        io.write("max", max);   \
-
-        switch(u->type)
-        {
-            case vir::Shader::Variable::Type::Bool :
-            {
-                io.write("value", u->getValue<bool>());
-                break;
-            }
-            case vir::Shader::Variable::Type::Int :
-            {
-                io.write("value", u->getValue<int>());
-                WRITE_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Int2 :
-            {
-                io.write("value", u->getValue<glm::ivec2>());
-                WRITE_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Int3 :
-            {
-                io.write("value", u->getValue<glm::ivec3>());
-                WRITE_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Int4 :
-            {
-                io.write("value", u->getValue<glm::ivec4>());
-                WRITE_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Float :
-            {
-                io.write("value", u->getValue<float>());
-                WRITE_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Float2 :
-            {
-                io.write("value", u->getValue<glm::vec2>());
-                WRITE_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Float3 :
-            {
-                io.write("value", u->getValue<glm::vec3>());
-                WRITE_MIN_MAX
-                io.write("usesColorPicker", u->gui.usesColorPicker);
-                break;
-            }
-            case vir::Shader::Variable::Type::Float4 :
-            {
-                io.write("value", u->getValue<glm::vec4>());
-                WRITE_MIN_MAX
-                io.write("usesColorPicker", u->gui.usesColorPicker);
-            }
-            case vir::Shader::Variable::Type::Sampler2D :
-            case vir::Shader::Variable::Type::SamplerCube :
-            {
-                auto r = u->getValuePtr<Resource>();
-                io.write("value", r->name().c_str());
-                break;
-            }
-            default:
-                break;
-        }
-        io.writeObjectEnd(); // End of 'u->name'
-    }
-    io.writeObjectEnd(); // End of uniforms
+    Uniform::saveAll(io, uniforms_);
+    
     io.writeObjectEnd(); // End of shaders
 
     // Write post-processing effects data, if any
@@ -416,110 +331,14 @@ Layer* Layer::load
 
     auto shaderData = io.readObject("shader");
     auto fragmentSource = shaderData.read("fragmentSource", false);
-    auto uniformsData = shaderData.readObject("uniforms");
-    for(auto uniformName : uniformsData.members())
-    {
-        auto uniformData = uniformsData.readObject(uniformName);
-        auto uniform = new Uniform{};
-        uniform->type = vir::Shader::uniformNameToType[
-            uniformData.read<std::string>("type")];
-        layer->uniforms_.emplace_back(uniform);
-        float min, max, x, y, z, w;
 
-#define SET_UNIFORM(type)                   \
-    uniform->setValue<type>(uniformData.read<type>("value"));
-#define READ_MIN_MAX                        \
-    min = uniformData.read<float>("min");   \
-    max = uniformData.read<float>("max");
-
-        switch (uniform->type)
-        {
-            case vir::Shader::Variable::Type::Bool :
-            {
-                SET_UNIFORM(bool)
-                uniform->gui.showBounds = false;
-                break;
-            }
-            case vir::Shader::Variable::Type::Int :
-            {
-                SET_UNIFORM(int)
-                READ_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Int2 :
-            {
-                SET_UNIFORM(glm::ivec2)
-                READ_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Int3 :
-            {
-                SET_UNIFORM(glm::ivec3)
-                READ_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Int4 :
-            {
-                SET_UNIFORM(glm::ivec4)
-                READ_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Float :
-            {
-                SET_UNIFORM(float)
-                READ_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Float2 :
-            {
-                SET_UNIFORM(glm::vec2)
-                READ_MIN_MAX
-                break;
-            }
-            case vir::Shader::Variable::Type::Float3 :
-            {
-                SET_UNIFORM(glm::vec3)
-                READ_MIN_MAX
-                uniform->gui.usesColorPicker = uniformData.read<bool>(
-                    "usesColorPicker");
-                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
-                break;
-            }
-            case vir::Shader::Variable::Type::Float4 :
-            {
-                SET_UNIFORM(glm::vec4)
-                READ_MIN_MAX
-                uniform->gui.usesColorPicker = uniformData.read<bool>(
-                    "usesColorPicker");
-                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
-                break;
-            }
-            case vir::Shader::Variable::Type::Sampler2D :
-            case vir::Shader::Variable::Type::SamplerCube :
-            {
-                std::string resourceName = uniformData.read("value", false);
-                uniform->gui.showBounds = false;
-                bool found = false;
-                for (auto resource : resources)
-                {
-                    if (resource->name() == resourceName)
-                    {
-                        uniform->setValuePtr<Resource>(resource);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                    layer->cache_.uninitializedResourceFramebuffers.insert
-                    (
-                        {uniform, resourceName}
-                    );
-                break;
-            }
-        }
-        uniform->gui.bounds = {min, max};
-        uniform->name = uniformName;
-    }
+    Uniform::loadAll
+    (
+        shaderData,
+        layer->uniforms_,
+        resources,
+        layer->cache_.uninitializedResourceLayers
+    );
     
     layer->gui_.sourceEditor.setText(fragmentSource);
     layer->gui_.sourceEditor.resetTextChanged();
@@ -592,7 +411,7 @@ void Layer::loadAll
 (
     const ObjectIO& io,
     std::vector<Layer*>& layers, 
-    const SharedUniforms& sharedUniforms,
+    SharedUniforms& sharedUniforms,
     std::vector<Resource*>& resources
 )
 {
@@ -624,7 +443,7 @@ void Layer::loadAll
     // being used as a sampler2D uniform by another layer)
     for (auto* layer : layers)
     {
-        for (auto& entry : layer->cache_.uninitializedResourceFramebuffers)
+        for (auto& entry : layer->cache_.uninitializedResourceLayers)
         {
             auto* uniform = entry.first;
             auto& layerName = entry.second;
@@ -635,8 +454,12 @@ void Layer::loadAll
                 uniform->setValuePtr<Resource>(resource);
             }
         }
-        layer->cache_.uninitializedResourceFramebuffers.clear();
+        layer->cache_.uninitializedResourceLayers.clear();
     }
+
+    // Same exact thing as what has been done for the layer uniforms, but here
+    // done for shared user-custom uniforms
+    sharedUniforms.postLoadProcessCachedResourceLayers(resources);
 }
 
 //----------------------------------------------------------------------------//
@@ -716,6 +539,42 @@ Layer::fragmentShaderHeaderSourceAndLineCount
         "\n"
     );
     auto nLines = Helpers::countNewLines(header);
+
+    for (auto* u : sharedUniforms.userUniforms())
+    {
+        // If the uniform has no name, I can't add it to the source
+        if (u->name.size() == 0)
+            continue;
+        // All names in uniformTypeToName map 1:1 to GLSL uniform names, except
+        // for sampler2D (which maps to texture2D) and samplerCube (which maps
+        // to cubemap). I should re-organize the mappings a bit
+        std::string typeName; 
+        bool isSampler2D(false);
+        switch (u->type)
+        {
+            case vir::Shader::Variable::Type::Sampler2D :
+                isSampler2D = true;
+                typeName = "sampler2D";
+                break;
+            case vir::Shader::Variable::Type::SamplerCube :
+                typeName = "samplerCube";
+                break;
+            default :
+                typeName = vir::Shader::uniformTypeToName[u->type];
+                break;
+        }
+        header += 
+            "uniform "+typeName+" "+u->name+";\n";
+        ++nLines;
+        // Automatically managed sampler2D resolution and aspect-ratio uniforms
+        if (isSampler2D)
+        {
+            header += "uniform float "+u->name+"AspectRatio;\n";
+            ++nLines;
+            header += "uniform vec2 "+u->name+"Resolution;\n";
+            ++nLines;
+        }
+    }
 
     for (auto* u : uniforms_)
     {
@@ -1002,6 +861,24 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
                     continue;
             }
         }
+        for (auto u : sharedUniforms.userUniforms())
+        {
+            bool named(u->name.size() > 0);
+            switch(u->type)
+            {
+                CASE(Bool, bool, setUniformBool)
+                CASE(Int, int, setUniformInt)
+                CASE(Int2, glm::ivec2, setUniformInt2)
+                CASE(Int3, glm::ivec3, setUniformInt3)
+                CASE(Int4, glm::ivec4, setUniformInt4)
+                CASE(Float, float, setUniformFloat)
+                CASE(Float2, glm::vec2, setUniformFloat2)
+                CASE(Float3, glm::vec3, setUniformFloat3)
+                CASE(Float4, glm::vec4, setUniformFloat4)
+                default:
+                    continue;
+            }
+        }
         rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
         rendering_.shader->setUniformFloat2
         (
@@ -1052,67 +929,83 @@ void Layer::renderShader
     const SharedUniforms& sharedUniforms
 )
 {
-    // Set sampler-type uniforms
+    // Set sampler-type uniforms found in both this layer's uniforms as well
+    // as the shared user-added uniforms
     rendering_.shader->bind();
-    uint32_t unit = 0; 
-    for (auto u : uniforms_)
+    unsigned int unit = 0; 
+
+    auto setSamplerUniforms = []
+    (
+        const std::vector<Uniform*>& uniforms,
+        Layer* layer, 
+        unsigned int& unit
+    )
     {
-        if 
-        (
-
-            u->specialType != Uniform::SpecialType::None ||
-            u->name.size() == 0 || 
-            (
-                u->type != vir::Shader::Variable::Type::Sampler2D &&
-                u->type != vir::Shader::Variable::Type::SamplerCube
-            )
-        )
-            continue;
-        
-        // Sampler case
-        auto resource = u->getValuePtr<Resource>();
-        if (resource == nullptr)
-            continue;
-
-        // These two lines are required when returning writeOnlyFramebuffer_
-        // in readOnlyFramebuffer() to avoid visual artifacts. Depending on
-        // the outcome of my experiments, I might keep this approach
-        if (resource->name() == gui_.name)
+        vir::Shader* shader(layer->rendering_.shader);
+        for (auto u : uniforms)
         {
-            // Buffers are flipped afterwards, so rendering_.framebuffer
-            // is guaranteed to contain the read-only framebuffer pointer
-            vir::Framebuffer* sourceFramebuffer = rendering_.framebuffer;
-            for (auto* postProcess : rendering_.postProcesses)
-            {
-                if 
+            if 
+            (
+
+                u->specialType != Uniform::SpecialType::None ||
+                u->name.size() == 0 || 
                 (
-                    postProcess->isActive() && 
-                    postProcess->outputFramebuffer() != nullptr
+                    u->type != vir::Shader::Variable::Type::Sampler2D &&
+                    u->type != vir::Shader::Variable::Type::SamplerCube
                 )
-                    sourceFramebuffer = postProcess->outputFramebuffer();
+            )
+                continue;
+            
+            // Sampler case
+            auto resource = u->getValuePtr<Resource>();
+            if (resource == nullptr)
+                continue;
+
+            // These two lines are required when a layer reads from its own 
+            // framebuffer to avoid visual artifacts. It makes it so that the
+            // target read framebuffer is the framebuffer of the previous
+            // render step
+            if (resource->name() == layer->gui_.name)
+            {
+                // Buffers are flipped afterwards, so rendering_.framebuffer
+                // is guaranteed to contain the read-only framebuffer pointer
+                vir::Framebuffer* sourceFramebuffer = 
+                    layer->rendering_.framebuffer;
+                for (auto* postProcess : layer->rendering_.postProcesses)
+                {
+                    if 
+                    (
+                        postProcess->isActive() && 
+                        postProcess->outputFramebuffer() != nullptr
+                    )
+                        sourceFramebuffer = postProcess->outputFramebuffer();
+                }
+                sourceFramebuffer->bindColorBuffer(unit);
             }
-            sourceFramebuffer->bindColorBuffer(unit);
+            else
+                resource->bind(unit);
+            shader->setUniformInt(u->name, unit);
+            unit++;
+            // Set the (automatically managed) sampler2D resolution uniform 
+            // value. Should find a better way rather than setting this every
+            // render call
+            if (u->type == vir::Shader::Variable::Type::Sampler2D)
+            {
+                shader->setUniformFloat
+                (
+                    u->name+"AspectRatio", 
+                    float(resource->width())/resource->height()
+                );
+                shader->setUniformFloat2
+                (
+                    u->name+"Resolution", 
+                    {resource->width(), resource->height()}
+                );
+            }
         }
-        else
-            resource->bind(unit);
-        rendering_.shader->setUniformInt(u->name, unit);
-        unit++;
-        // Set the (automatically managed) sampler2D resolution uniform value.
-        // Should find a better way rather than setting this every render call
-        if (u->type == vir::Shader::Variable::Type::Sampler2D)
-        {
-            rendering_.shader->setUniformFloat
-            (
-                u->name+"AspectRatio", 
-                float(resource->width())/resource->height()
-            );
-            rendering_.shader->setUniformFloat2
-            (
-                u->name+"Resolution", 
-                {resource->width(), resource->height()}
-            );
-        }
-    }
+    };
+    setSamplerUniforms(sharedUniforms.userUniforms(), this, unit);
+    setSamplerUniforms(uniforms_, this, unit);
 
     // Flip buffers
     rendering_.framebuffer = 
@@ -1896,7 +1789,7 @@ void Layer::renderLayersTabBarGui // Static
                 )
             )
             {
-                layer->renderTabBarGui(sharedUnifoms, resources);
+                layer->renderTabBarGui(layers, sharedUnifoms, resources);
                 ImGui::EndTabItem();
             }
             bool deleted(false);
@@ -2012,6 +1905,7 @@ void Layer::renderLayersTabBarGui // Static
 
 void Layer::renderTabBarGui
 (
+    const std::vector<Layer*>& layers,
     SharedUniforms& sharedUnifoms,
     std::vector<Resource*>& resources
 )
@@ -2071,18 +1965,13 @@ void Layer::renderTabBarGui
         }
         if (ImGui::BeginTabItem("Uniforms"))
         {
-            if 
+            Uniform::renderUniformsGui
             (
-                Uniform::renderUniformsGui
-                (
-                    sharedUnifoms, 
-                    uniforms_, 
-                    cache_.uncompiledUniforms,
-                    *rendering_.shader,
-                    resources
-                )
-            )
-                flags_.uncompiledChanges = true;
+                sharedUnifoms, 
+                this,
+                layers,
+                resources
+            );
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

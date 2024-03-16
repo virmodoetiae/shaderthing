@@ -21,6 +21,7 @@ namespace ShaderThing
 {
 
 class ObjectIO;
+class Resource;
 
 class SharedUniforms : vir::Event::Receiver
 {
@@ -171,6 +172,18 @@ R"(layout(std140) uniform vertexBlock {mat4 iMVP;};
           std::unordered_map<Uniform::SpecialType, glm::vec2> 
                               bounds_         = {};
 
+          // List of user-created uniforms which are shared by all layers
+          std::vector<Uniform*> 
+                              userUniforms_ = {};
+
+    // Only used in the post-loading step
+    struct Cache
+    {
+        std::map<Uniform*, std::string> 
+                              uninitializedResourceLayers = {};
+    };
+          Cache               cache_ = {};
+
     void setUserAction(bool flag);
     void setResolution
     (
@@ -191,7 +204,16 @@ public:
     ~SharedUniforms();
 
     void save(ObjectIO& io) const;
-    static void load(const ObjectIO& io, SharedUniforms*& SharedUniforms);
+    static void load
+    (
+        const ObjectIO& io, 
+        SharedUniforms*& SharedUniforms,
+        const std::vector<Resource*>& resources
+    );
+    void postLoadProcessCachedResourceLayers
+    (
+        const std::vector<Resource*>& resources
+    );
 
     DECLARE_RECEIVABLE_EVENTS
     (
@@ -230,6 +252,7 @@ public:
     const int& iFrame() const {return fBlock_.iFrame;}
     const int& iRenderPass() const {return fBlock_.iRenderPass;}
     glm::ivec2 iResolution() const {return fBlock_.iResolution;}
+    const std::vector<Uniform*>& userUniforms() const {return userUniforms_;}
 };
 
 }

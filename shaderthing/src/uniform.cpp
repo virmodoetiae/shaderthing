@@ -17,6 +17,7 @@
 
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
+#include "shaderthing/include/objectio.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/shareduniforms.h"
 
@@ -27,12 +28,11 @@
 namespace ShaderThing
 {
 
-bool Uniform::renderUniformsGui
+void Uniform::renderUniformsGui
 (
     SharedUniforms& sharedUniforms,
-    std::vector<Uniform*>& uniforms,
-    std::vector<Uniform*>& uncompiledUniforms,
-    vir::Shader& shader,
+    Layer* layer,
+    const std::vector<Layer*>& layers,
     const std::vector<Resource*>& resources
 )
 {
@@ -415,85 +415,6 @@ bool Uniform::renderUniformsGui
             (int)sharedUniforms.fBlock_.iMouse.w
         );
         END_ROW
-        
-        
-        // iWASD ---------------------------------------------------------------
-        START_ROW
-        NEXT_COLUMN
-        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
-            ImGui::OpenPopup("##iWASDSettings");
-        if (ImGui::BeginPopup("##iWASDSettings"))
-        {
-            bool enabled = sharedUniforms.flags_.isCameraKeyboardInputEnabled;
-            std::string text = enabled ? "Disable" : "Enable";
-            if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
-                sharedUniforms.toggleCameraKeyboardInputs();
-            ImGui::Text("Keyboard sensitivity ");
-            ImGui::SameLine();
-            ImGui::PushItemWidth(-1);
-            ImGui::SliderFloat
-            (
-                "##iWASDSensitivity", 
-                &sharedUniforms.shaderCamera_->keySensitivityRef(),
-                1e-1,
-                50
-            );
-            ImGui::PopItemWidth();
-            ImGui::EndPopup();
-        }
-        NEXT_COLUMN
-        ImGui::Text("iWASD");
-        NEXT_COLUMN
-        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
-        NEXT_COLUMN
-        bounds = &sharedUniforms.bounds_[SpecialType::CameraPosition];
-        boundsChanged = renderEditUniformBoundsButtonGui
-        (
-            Type::Float3, 
-            sharedUniforms.bounds_[SpecialType::CameraPosition]
-        );
-        NEXT_COLUMN
-        {
-            glm::vec3 value = sharedUniforms.fBlock_.iWASD.packed();
-            std::string format = Helpers::getFormat(value);
-            if (!boundsChanged)
-            {
-                bounds->x = std::min(value.x, bounds->x);
-                bounds->x = std::min(value.y, bounds->x);
-                bounds->x = std::min(value.z, bounds->x);
-                bounds->y = std::max(value.x, bounds->y);
-                bounds->y = std::max(value.y, bounds->y);
-                bounds->y = std::max(value.z, bounds->y);
-            }
-            ImGui::PushItemWidth(-1);
-            if 
-            (
-                ImGui::SliderFloat3
-                (
-                    "##iWASDSlider", 
-                    glm::value_ptr(value), 
-                    bounds->x,
-                    bounds->y,
-                    format.c_str()
-                ) || boundsChanged
-            )
-            {
-                if (boundsChanged)
-                {
-                    value.x = std::max(value.x, bounds->x);
-                    value.x = std::min(value.x, bounds->y);
-                    value.y = std::max(value.y, bounds->x);
-                    value.y = std::min(value.y, bounds->y);
-                    value.z = std::max(value.z, bounds->x);
-                    value.z = std::min(value.z, bounds->y);
-                }
-                sharedUniforms.fBlock_.iWASD = value;
-                sharedUniforms.shaderCamera_->setPosition(value);
-                sharedUniforms.setUserAction(true);
-            }
-            ImGui::PopItemWidth();
-        }
-        END_ROW
 
         // iLook ---------------------------------------------------------------
         START_ROW
@@ -550,7 +471,107 @@ bool Uniform::renderUniformsGui
             ImGui::PopItemWidth();
         }
         END_ROW
-        ImGui::Dummy({0, 0.05f*fontSize});
+
+        // iWASD ---------------------------------------------------------------
+        bool showSeparator(sharedUniforms.userUniforms_.size() == 0);
+        float posY = 0;
+        START_ROW
+        NEXT_COLUMN
+        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+            ImGui::OpenPopup("##iWASDSettings");
+        if (ImGui::BeginPopup("##iWASDSettings"))
+        {
+            bool enabled = sharedUniforms.flags_.isCameraKeyboardInputEnabled;
+            std::string text = enabled ? "Disable" : "Enable";
+            if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+                sharedUniforms.toggleCameraKeyboardInputs();
+            ImGui::Text("Keyboard sensitivity ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-1);
+            ImGui::SliderFloat
+            (
+                "##iWASDSensitivity", 
+                &sharedUniforms.shaderCamera_->keySensitivityRef(),
+                1e-1,
+                50
+            );
+            ImGui::PopItemWidth();
+            ImGui::EndPopup();
+        }
+        if (showSeparator)
+        {
+            posY = ImGui::GetCursorPosY();
+            ImGui::Separator();
+        }
+        NEXT_COLUMN
+        ImGui::Text("iWASD");
+        if (showSeparator)
+        {
+            ImGui::SetCursorPosY(posY);
+            ImGui::Separator();
+        }
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
+        if (showSeparator)
+        {
+            ImGui::SetCursorPosY(posY);
+            ImGui::Separator();
+        }
+        NEXT_COLUMN
+        bounds = &sharedUniforms.bounds_[SpecialType::CameraPosition];
+        boundsChanged = renderEditUniformBoundsButtonGui
+        (
+            Type::Float3, 
+            sharedUniforms.bounds_[SpecialType::CameraPosition]
+        );
+        if (showSeparator)
+            ImGui::Separator();
+        NEXT_COLUMN
+        {
+            glm::vec3 value = sharedUniforms.fBlock_.iWASD.packed();
+            std::string format = Helpers::getFormat(value);
+            if (!boundsChanged)
+            {
+                bounds->x = std::min(value.x, bounds->x);
+                bounds->x = std::min(value.y, bounds->x);
+                bounds->x = std::min(value.z, bounds->x);
+                bounds->y = std::max(value.x, bounds->y);
+                bounds->y = std::max(value.y, bounds->y);
+                bounds->y = std::max(value.z, bounds->y);
+            }
+            ImGui::PushItemWidth(-1);
+            if 
+            (
+                ImGui::SliderFloat3
+                (
+                    "##iWASDSlider", 
+                    glm::value_ptr(value), 
+                    bounds->x,
+                    bounds->y,
+                    format.c_str()
+                ) || boundsChanged
+            )
+            {
+                if (boundsChanged)
+                {
+                    value.x = std::max(value.x, bounds->x);
+                    value.x = std::min(value.x, bounds->y);
+                    value.y = std::max(value.y, bounds->x);
+                    value.y = std::min(value.y, bounds->y);
+                    value.z = std::max(value.z, bounds->x);
+                    value.z = std::min(value.z, bounds->y);
+                }
+                sharedUniforms.fBlock_.iWASD = value;
+                sharedUniforms.shaderCamera_->setPosition(value);
+                sharedUniforms.setUserAction(true);
+            }
+            ImGui::PopItemWidth();
+        }
+        if (showSeparator)
+            ImGui::Separator();
+        END_ROW
+
+        //ImGui::Dummy({0, 0.05f*fontSize});
     }; // End of renderSharedUniformsGui lambda
 
     // -------------------------------------------------------------------------
@@ -573,10 +594,11 @@ bool Uniform::renderUniformsGui
     (
         SharedUniforms& sharedUniforms,
         Uniform* uniform,
-        std::vector<Uniform*>& uncompiledUniforms,
-        vir::Shader& shader,
+        Layer* layer,
+        const std::vector<Layer*>& layers,
         const std::vector<Resource*>& resources,
-        int& row
+        int& row,
+        bool showSeparator = false
     )
     {
         int column;
@@ -585,16 +607,30 @@ bool Uniform::renderUniformsGui
             uniform->specialType == SpecialType::LayerAspectRatio ||
             uniform->specialType == SpecialType::LayerResolution
         );
+        bool isSharedByUser0 = uniform->isSharedByUser;
         auto name0 = uniform->name;
         auto type0 = uniform->type;
         
         START_ROW
 
         START_COLUMN // Action column ------------------------------------------
+        float y0 = 0;
         if (!managed)
         {
-            if (ImGui::Button(ICON_FA_TRASH, ImVec2(-1, 0)))
+            float halfButtonSize(1.7*fontSize);
+            if (ImGui::Button(ICON_FA_TRASH, ImVec2(halfButtonSize, 0)))
+            {
                 uniform->gui.markedForDeletion = true;
+                // The uniform is gonna get deleted, so the layer(s) using it
+                // will have to be recompiled
+                if (uniform->isSharedByUser)
+                {
+                    for (auto l : layers)
+                        l->flags_.uncompiledChanges = true;
+                }
+                else
+                    layer->flags_.uncompiledChanges = true;
+            }
             if 
             (
                 ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
@@ -604,7 +640,40 @@ bool Uniform::renderUniformsGui
                 ImGui::Text("Delete this uniform");
                 ImGui::EndTooltip();
             }
+            ImGui::SameLine();
+            if 
+            (
+                ImGui::Button
+                (
+                    !uniform->isSharedByUser ?
+                    ICON_FA_ARROW_UP :
+                    ICON_FA_ARROW_DOWN,
+                    {-1, 0}
+                )
+            )
+            {
+                uniform->hasSharedByUserChanged = true;
+                uniform->isSharedByUser = 
+                    !uniform->isSharedByUser;
+            }
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                ImGui::BeginTooltip()
+            )
+            {
+                if (!uniform->isSharedByUser)
+                    ImGui::Text("Share this uniform across all layers");
+                else
+                    ImGui::Text(
+"Remove this uniform from shared\nuniforms across all layers"\
+                    );
+                ImGui::EndTooltip();
+            }
+            y0 = ImGui::GetCursorPosY();
         }
+        if (showSeparator)
+            ImGui::Separator();
         END_COLUMN
         
         START_COLUMN // Name column --------------------------------------------
@@ -613,6 +682,8 @@ bool Uniform::renderUniformsGui
         else
             ImGui::InputText("##uniformName", &uniform->name);
         bool named(uniform->name.size() > 0);
+        if (showSeparator)
+            ImGui::Separator();
         END_COLUMN
 
         START_COLUMN // Type column --------------------------------------------
@@ -649,6 +720,8 @@ bool Uniform::renderUniformsGui
                 }
             ImGui::EndCombo();
         }
+        if (showSeparator)
+            ImGui::Separator();
         END_COLUMN
 
         START_COLUMN // Bounds column ------------------------------------------
@@ -662,8 +735,23 @@ bool Uniform::renderUniformsGui
                 bounds
             );
         }
-        
+        if (showSeparator)
+        {
+            if (y0 > 0)
+                ImGui::SetCursorPosY(y0);
+            ImGui::Separator();
+        }
         END_COLUMN
+
+#define SET_UNIFORM_VALUE(Type)                                             \
+    if (!isSharedByUser0)                                                   \
+        layer->rendering_.shader->setUniform##Type(uniform->name, value);   \
+    else                                                                    \
+        for (auto l : layers)                                               \
+        {                                                                   \
+            l->rendering_.shader->bind();                                   \
+            l->rendering_.shader->setUniform##Type(uniform->name, value);   \
+        }                                                                   \
 
         START_COLUMN // Value column -------------------------------------------
         switch(uniform->type)
@@ -676,7 +764,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformBool(uniform->name, value);
+                        SET_UNIFORM_VALUE(Bool)
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -709,7 +797,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformInt(uniform->name, value);
+                        SET_UNIFORM_VALUE(Int)
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -743,7 +831,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformInt(uniform->name, value);
+                        SET_UNIFORM_VALUE(Int)
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -823,7 +911,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformInt2(uniform->name, value);
+                        SET_UNIFORM_VALUE(Int2)
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -864,11 +952,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformInt3
-                        (
-                            uniform->name, 
-                            value
-                        );
+                        SET_UNIFORM_VALUE(Int3)
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -913,7 +997,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformInt4(uniform->name, value);
+                        SET_UNIFORM_VALUE(Int4)
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -958,7 +1042,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformFloat(uniform->name, value);
+                        SET_UNIFORM_VALUE(Float)                                                                
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -1056,7 +1140,7 @@ bool Uniform::renderUniformsGui
                     uniform->setValue(value);
                     if (named)
                     {
-                        shader.setUniformFloat2(uniform->name, value);
+                        SET_UNIFORM_VALUE(Float2)
                         sharedUniforms.setUserAction(true);
                     }
                 }
@@ -1123,7 +1207,7 @@ bool Uniform::renderUniformsGui
                         uniform->setValue(value);
                         if (named)
                         {
-                            shader.setUniformFloat3(uniform->name, value);
+                            SET_UNIFORM_VALUE(Float3)
                             sharedUniforms.setUserAction(true);
                         }
                     }
@@ -1145,7 +1229,7 @@ bool Uniform::renderUniformsGui
                         uniform->setValue(value);
                         if (named)
                         {
-                            shader.setUniformFloat3(uniform->name, value);
+                            SET_UNIFORM_VALUE(Float3);
                             sharedUniforms.setUserAction(true);
                         }
                     }
@@ -1209,7 +1293,7 @@ bool Uniform::renderUniformsGui
                         }
                         uniform->setValue(value);
                         if (named)
-                            shader.setUniformFloat4(uniform->name, value);
+                            SET_UNIFORM_VALUE(Float4)
                     }
                 }
                 else
@@ -1230,7 +1314,7 @@ bool Uniform::renderUniformsGui
                         uniform->setValue(value);
                         if (named)
                         {
-                            shader.setUniformFloat4(uniform->name, value);
+                            SET_UNIFORM_VALUE(Float4)
                             sharedUniforms.setUserAction(true);
                         }
                     }
@@ -1293,24 +1377,75 @@ bool Uniform::renderUniformsGui
                 break;
             }
         }
+        if (showSeparator)
+            ImGui::Separator();
         END_COLUMN
         
         END_ROW
 
         if 
         (
-            std::find
-            (
-                uncompiledUniforms.begin(), 
-                uncompiledUniforms.end(), 
-                uniform
-            ) == uncompiledUniforms.end() &&
-            (
-                uniform->name != name0 ||
-                uniform->type != type0
-            )
+            uniform->name == name0 &&
+            uniform->type == type0
         )
-            uncompiledUniforms.emplace_back(uniform);
+            return;
+
+        // If the uniform name or type have changed, it should be added to the
+        // list of uncompiled uniforms of the layer using this uniform (if this
+        // uniform is not SharedByUser) or of all the layers (if this uniform
+        // is SharedByUser). Also, if at least one uniform has been named,
+        // said layer should be recompiled (all other layer uniforms which are
+        // still unnamed are simply ignored)
+        if (isSharedByUser0)
+        {
+            for (auto l : layers)
+            {
+                if 
+                (
+                    std::find // I.e., if not already in uncompiledUniforms
+                    (
+                        l->cache_.uncompiledUniforms.begin(), 
+                        l->cache_.uncompiledUniforms.end(), 
+                        uniform
+                    ) == l->cache_.uncompiledUniforms.end()
+                )
+                    l->cache_.uncompiledUniforms.emplace_back(uniform);
+                bool atLeastOneUniformNamed = false;
+                for (auto* u : l->cache_.uncompiledUniforms)
+                {
+                    if (u->name.size() == 0)
+                        continue;
+                    atLeastOneUniformNamed = true;
+                    break;
+                }
+                if (atLeastOneUniformNamed)
+                    l->flags_.uncompiledChanges = true;
+            }
+        }
+        else
+        {
+            if 
+            (
+                std::find
+                (
+                    layer->cache_.uncompiledUniforms.begin(), 
+                    layer->cache_.uncompiledUniforms.end(), 
+                    uniform
+                ) == layer->cache_.uncompiledUniforms.end()
+            )
+                layer->cache_.uncompiledUniforms.emplace_back(uniform);
+            bool atLeastOneUniformNamed = false;
+            for (auto* u : layer->cache_.uncompiledUniforms)
+            {
+                if (u->name.size() == 0)
+                    continue;
+                atLeastOneUniformNamed = true;
+                break;
+            }
+            if (atLeastOneUniformNamed)
+                layer->flags_.uncompiledChanges = true;
+        }
+        
     }; // End of renderUniforui lambda
 
     //--------------------------------------------------------------------------
@@ -1345,7 +1480,8 @@ bool Uniform::renderUniformsGui
     }; // End of addNewUniform lambda
 
     //--------------------------------------------------------------------------
-    bool shaderRequiresRecompilation(false);
+    bool atLeastOneUniformMarkedForDeletion(false);
+    bool hasSharedByUserChanged(false);
     static bool showSharedUniforms(true);
     if 
     (
@@ -1358,12 +1494,13 @@ bool Uniform::renderUniformsGui
         )
     )
         showSharedUniforms = !showSharedUniforms;
+    int nColumns = 5;
     if 
     (
         ImGui::BeginTable
         (
             "##uniformTable", 
-            5, 
+            nColumns, 
             ImGuiTableFlags_BordersV | 
             ImGuiTableFlags_BordersOuterH |
             ImGuiTableFlags_SizingFixedFit
@@ -1385,72 +1522,337 @@ bool Uniform::renderUniformsGui
         if (showSharedUniforms)
             renderSharedUniformsGui(sharedUniforms, row);
 
-        shader.bind(); // Must be bound, else uniforms in renderUniformGui will
-                       // not be set
-        
-        for(auto uniform : uniforms)
+        for (auto uniform : sharedUniforms.userUniforms_)
         {
             renderUniformGui
             (
-                sharedUniforms, // Required to set iUserAction if user changes
-                                // anything
+                sharedUniforms,
                 uniform,
-                uncompiledUniforms,
-                shader,
+                layer,
+                layers,
+                resources,
+                row,
+                uniform == sharedUniforms.userUniforms_.back()
+            );
+            if (uniform->gui.markedForDeletion)
+                atLeastOneUniformMarkedForDeletion = true;
+            if (uniform->hasSharedByUserChanged)
+                hasSharedByUserChanged = true;
+        }
+
+        layer->rendering_.shader->bind();
+        for(auto uniform : layer->uniforms_)
+        {
+            renderUniformGui
+            (
+                sharedUniforms,
+                uniform,
+                layer,
+                layers,
                 resources,
                 row
             );
             if (uniform->gui.markedForDeletion)
-                shaderRequiresRecompilation = true;
+                atLeastOneUniformMarkedForDeletion = true;
+            if (uniform->hasSharedByUserChanged)
+                hasSharedByUserChanged = true;
         }
-        renderAddUniformButton(uniforms, uncompiledUniforms, row);
-
-        // Remove uniforms marked for deletion
-        if (shaderRequiresRecompilation)
-        {
-            uniforms.erase
-            (
-                std::remove_if
-                (
-                    uniforms.begin(),
-                    uniforms.end(),
-                    [](Uniform* uniform)
-                    {
-                        if 
-                        (
-                            uniform->gui.markedForDeletion &&
-                            uniform->type == Type::Sampler2D ||
-                            uniform->type == Type::SamplerCube
-                        )
-                        {
-                            auto resource = uniform->getValuePtr<Resource>();
-                            resource->unbind();
-                        }
-                        return uniform->gui.markedForDeletion;
-                    }
-                )
-            );
-        }
-
-        // Check if all uncompiled uniforms have been named (and thus now
-        // eligible for compilation)
-        if (uncompiledUniforms.size() > 0)
-        {
-            bool allUniformsAreNamed = true;
-            for (auto* uniform : uncompiledUniforms)
-            {
-                if (uniform->name.size()>0)
-                    continue;
-                allUniformsAreNamed = false;
-                break;
-            }
-            if (allUniformsAreNamed)
-                shaderRequiresRecompilation = true;
-        }
-
+        renderAddUniformButton
+        (
+            layer->uniforms_, 
+            layer->cache_.uncompiledUniforms, 
+            row
+        );
         ImGui::EndTable();
     }
-    return shaderRequiresRecompilation;
+
+    // Remove uniforms marked for deletion
+    if (atLeastOneUniformMarkedForDeletion)
+    {
+        layer->uniforms_.erase
+        (
+            std::remove_if
+            (
+                layer->uniforms_.begin(),
+                layer->uniforms_.end(),
+                [](Uniform* uniform)
+                {
+                    if 
+                    (
+                        uniform->gui.markedForDeletion &&
+                        uniform->type == Type::Sampler2D ||
+                        uniform->type == Type::SamplerCube
+                    )
+                    {
+                        auto resource = uniform->getValuePtr<Resource>();
+                        resource->unbind();
+                    }
+                    return uniform->gui.markedForDeletion;
+                }
+            )
+        );
+        // The uncompiledChanges flag of the relevant layers have already
+        // been set earlier, where the uniform markedForDeletion flag is set
+    }
+
+    if (!hasSharedByUserChanged)
+        return;
+
+    // Check if the uniform state was changed from non-shared to shared
+    for (auto uniform : layer->uniforms_)
+    {
+        if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
+            continue;
+        sharedUniforms.userUniforms_.emplace_back(uniform);
+        layer->uniforms_.erase
+        (
+            std::remove_if
+            (
+                layer->uniforms_.begin(),
+                layer->uniforms_.end(),
+                [uniform](Uniform* u){return uniform == u;}
+            )
+        );
+        if (uniform->name.size() > 0)
+            for (auto l : layers)
+            {
+                l->flags_.uncompiledChanges = true;
+            }
+        uniform->hasSharedByUserChanged = false;
+    }
+
+    // Check if the uniform state was changed from shared to non-shared
+    for (auto uniform : sharedUniforms.userUniforms_)
+    {
+        if (!(uniform->hasSharedByUserChanged && !uniform->isSharedByUser))
+            continue;
+        layer->uniforms_.emplace_back(uniform);
+        sharedUniforms.userUniforms_.erase
+        (
+            std::remove_if
+            (
+                sharedUniforms.userUniforms_.begin(),
+                sharedUniforms.userUniforms_.end(),
+                [uniform](Uniform* u){return uniform == u;}
+            )
+        );
+        if (uniform->name.size() > 0)
+            for (auto l : layers)
+            {
+                l->flags_.uncompiledChanges = true;
+            }
+        uniform->hasSharedByUserChanged = false;
+    }
+}
+
+void Uniform::loadAll
+(
+    const ObjectIO& io, 
+    std::vector<Uniform*>& uniforms,
+    const std::vector<Resource*>& resources,
+    std::map<Uniform*, std::string>& uninitializedResourceLayers
+)
+{
+    if (!io.hasMember("uniforms"))
+        return;
+    auto uniformsData = io.readObject("uniforms");
+    for(auto uniformName : uniformsData.members())
+    {
+        auto uniformData = uniformsData.readObject(uniformName);
+        auto uniform = new Uniform{};
+        uniform->type = vir::Shader::uniformNameToType[
+            uniformData.read<std::string>("type")];
+        uniform->isSharedByUser = 
+            uniformData.readOrDefault<bool>("shared", false);
+        uniforms.emplace_back(uniform);
+        float min, max, x, y, z, w;
+
+#define SET_UNIFORM(type)                   \
+    uniform->setValue<type>(uniformData.read<type>("value"));
+#define READ_MIN_MAX                        \
+    min = uniformData.read<float>("min");   \
+    max = uniformData.read<float>("max");
+
+        switch (uniform->type)
+        {
+            case vir::Shader::Variable::Type::Bool :
+            {
+                SET_UNIFORM(bool)
+                uniform->gui.showBounds = false;
+                break;
+            }
+            case vir::Shader::Variable::Type::Int :
+            {
+                SET_UNIFORM(int)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int2 :
+            {
+                SET_UNIFORM(glm::ivec2)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int3 :
+            {
+                SET_UNIFORM(glm::ivec3)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int4 :
+            {
+                SET_UNIFORM(glm::ivec4)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float :
+            {
+                SET_UNIFORM(float)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float2 :
+            {
+                SET_UNIFORM(glm::vec2)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float3 :
+            {
+                SET_UNIFORM(glm::vec3)
+                READ_MIN_MAX
+                uniform->gui.usesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
+                break;
+            }
+            case vir::Shader::Variable::Type::Float4 :
+            {
+                SET_UNIFORM(glm::vec4)
+                READ_MIN_MAX
+                uniform->gui.usesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
+                break;
+            }
+            case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::SamplerCube :
+            {
+                std::string resourceName = uniformData.read("value", false);
+                uniform->gui.showBounds = false;
+                bool found = false;
+                for (auto resource : resources)
+                {
+                    if (resource->name() == resourceName)
+                    {
+                        uniform->setValuePtr<Resource>(resource);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    uninitializedResourceLayers.insert
+                    (
+                        {uniform, resourceName}
+                    );
+                break;
+            }
+        }
+        uniform->gui.bounds = {min, max};
+        uniform->name = uniformName;
+    }
+}
+
+void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
+{
+    io.writeObjectStart("uniforms");
+    for (auto u : uniforms)
+    {
+        float& min(u->gui.bounds.x);
+        float& max(u->gui.bounds.y);
+        if 
+        (
+            u->name.size() == 0 || 
+            u->specialType != Uniform::SpecialType::None
+        )
+            continue;
+        io.writeObjectStart(u->name.c_str());
+        io.write("type", vir::Shader::uniformTypeToName[u->type].c_str());
+        io.write("shared", u->isSharedByUser);
+
+#define WRITE_MIN_MAX               \
+        io.write("min", min);   \
+        io.write("max", max);   \
+
+        switch(u->type)
+        {
+            case vir::Shader::Variable::Type::Bool :
+            {
+                io.write("value", u->getValue<bool>());
+                break;
+            }
+            case vir::Shader::Variable::Type::Int :
+            {
+                io.write("value", u->getValue<int>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int2 :
+            {
+                io.write("value", u->getValue<glm::ivec2>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int3 :
+            {
+                io.write("value", u->getValue<glm::ivec3>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Int4 :
+            {
+                io.write("value", u->getValue<glm::ivec4>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float :
+            {
+                io.write("value", u->getValue<float>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float2 :
+            {
+                io.write("value", u->getValue<glm::vec2>());
+                WRITE_MIN_MAX
+                break;
+            }
+            case vir::Shader::Variable::Type::Float3 :
+            {
+                io.write("value", u->getValue<glm::vec3>());
+                WRITE_MIN_MAX
+                io.write("usesColorPicker", u->gui.usesColorPicker);
+                break;
+            }
+            case vir::Shader::Variable::Type::Float4 :
+            {
+                io.write("value", u->getValue<glm::vec4>());
+                WRITE_MIN_MAX
+                io.write("usesColorPicker", u->gui.usesColorPicker);
+            }
+            case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::SamplerCube :
+            {
+                auto r = u->getValuePtr<Resource>();
+                io.write("value", r->name().c_str());
+                break;
+            }
+            default:
+                break;
+        }
+        io.writeObjectEnd(); // End of 'u->name'
+    }
+    io.writeObjectEnd(); // End of uniforms
 }
 
 }

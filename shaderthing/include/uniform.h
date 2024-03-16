@@ -11,8 +11,10 @@
 namespace ShaderThing
 {
 
-class SharedUniforms;
+class Layer;
+class ObjectIO;
 class Resource;
+class SharedUniforms;
 
 class Uniform : public vir::Shader::Uniform
 {
@@ -39,7 +41,10 @@ public:
 
     // Uniform special type if this uniform is one of the shared uniforms or if
     // it is a default layer uniform
-    SpecialType specialType = SpecialType::None;
+    SpecialType specialType            = SpecialType::None;
+
+    bool        isSharedByUser         = false;
+    bool        hasSharedByUserChanged = false;
 
     struct GUI
     {
@@ -66,18 +71,23 @@ public:
     // existing layer uniforms and shared uniforms. It also sets the uniform
     // values in the provided layer shader for convenience: the GUI has 
     // knowledge of when a uniform changes, and it is only then that the 
-    // uniform value is actually set (once) in the shader. Returns true if
-    // uniform types or names have been modified, or if some uniforms have
-    // been deleted, signalling that the underlying shader requires
-    // recompilation
-    static bool renderUniformsGui
+    // uniform value is actually set (once) in the shader. 
+    static void renderUniformsGui
     (
         SharedUniforms& sharedUniforms,
-        std::vector<Uniform*>& uniforms,
-        std::vector<Uniform*>& uncompiledUniforms,
-        vir::Shader& shader,
+        Layer* layer,
+        const std::vector<Layer*>& layers,
         const std::vector<Resource*>& resources
     );
+
+    static void loadAll
+    (
+        const ObjectIO& io, 
+        std::vector<Uniform*>& uniforms,
+        const std::vector<Resource*>& resources,
+        std::map<Uniform*, std::string>& uninitializedResourceLayers
+    );
+    static void saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms);
 };
 
 }

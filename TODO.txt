@@ -146,28 +146,45 @@ TODO ---------------------------------------------------------------------------
     Quantizer). This was achieved by first developing a compute-shader based
     Blurrer in the vir lib and wrapping it in a new ShaderThing::PostProcess
 
-(W) Test performance of ShaderThing compiled with max level optimizations (-O3)6
+(X) Test performance of ShaderThing compiled with max level optimizations (-O3)6
     (note that the thirdparty library is always compiled with max optimizations,
     regardless, this only pertains to vir/ and shaderthing/).
     Memory leaks and/or segfaults seem to habe been solved by disabling
     delete-pointer-checks when compiling with optimizations, but it is still
     being test
 
-(W) Expand code repository section
-
-( ) Implement layer cloning (for convenience)
-
-( ) Implement additional keyboard-input-uniform management, however on a global
+(X) Implement additional keyboard-input-uniform management, however on a global
     basis (i.e., a uniform with the state of all the keys, e.g., like done in
     ShaderToy via a dedicated texture uniform just for that) instead of local
     basis as it is currently implemented (i.e., one key -> one uniform)
 
-( ) Implement "replace next" occurence of found text in the find/replace tool,
-    as currently only a "replace all" can be performed
-
-( ) Fix (or find workaround) for ImGui window icons disappearing on
+(X) Fix (or find workaround) for ImGui window icons disappearing on
     ImGui docking/undocking actions (Windows-only, at least until I see how
     this performs on Linux)
+
+(W) Expand code repository section
+
+( ) Add option to disable iFrame reset to 0 on framebuffer export finish (as
+    some shaders might actively check for iFrame == 0 in order to initialize
+    their framebuffers from scratch)
+
+( ) Check if possible to keep original source framebuffer contents on export
+    when the export framebuffer size is different than the original framebuffer
+    size (which causes a framebuffer clearing). An idea would be to create an
+    intermediate framebuffer of the final size, render the original framebuffer
+    contents onto the target framebuffer, then delete the original, and then
+    re-render the intermediate framebuffer contents onto the resized target
+    framebuffer. But should this be done for both the front and back buffers?
+    Probably yes. But then again, think about it
+
+( ) Check if possible to integrate additional shared output SSBO in order to
+    provide an additional output 'channel' for the fragment shaders which is
+    independent of the fragment/pixel being processed
+
+( ) Implement layer cloning (for convenience)
+
+( ) Implement "replace next" occurence of found text in the find/replace tool,
+    as currently only a "replace all" can be performed
 
 ( ) Add example projects that can be loaded in ShaderThings as demos/tutorials
 

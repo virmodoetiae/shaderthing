@@ -26,8 +26,9 @@ class Uniform;
 
 class Layer : vir::Event::Receiver
 {
-friend PostProcess;
 friend LayerResource;
+friend PostProcess;
+friend Uniform;
 public:
     struct Rendering
     {
@@ -70,7 +71,7 @@ public:
         std::vector<Uniform*>    uncompiledUniforms;
         std::map<
             Uniform*, 
-            std::string>         uninitializedResourceFramebuffers;
+            std::string>         uninitializedResourceLayers;
     };
     struct ExportData
     {
@@ -166,7 +167,7 @@ public:
     (
         const ObjectIO& io,
         std::vector<Layer*>& layers,
-        const SharedUniforms& sharedUniforms,
+        SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
 
@@ -196,6 +197,7 @@ public:
     void renderSettingsMenuGui(std::vector<Resource*>& resources);
     void renderTabBarGui
     (
+        const std::vector<Layer*>& layers,
         SharedUniforms& sharedUnifoms,
         std::vector<Resource*>& resources
     );
