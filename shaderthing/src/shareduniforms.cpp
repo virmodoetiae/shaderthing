@@ -151,7 +151,12 @@ void SharedUniforms::setResolution
     );
     screenCamera_->update();
     vBlock_.iMVP = screenCamera_->projectionViewMatrix();
-    flags_.updateDataRangeIII = true;
+    
+    // Let's try updating these instantly
+    fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIIISize(), 0);
+    vBuffer_->bind();
+    vBuffer_->setData(&vBlock_, VertexBlock::size(), 0);
+    fBuffer_->bind();
 
     // Set the actual window resolution and propagate event if not preparing
     // for export
@@ -427,27 +432,17 @@ void SharedUniforms::update(const UpdateArgs& args)
         flags_.updateDataRangeII = true;
     }
     
-    // The goal of the following section is to reduce the number of gpuBlock
-    // setData calls, hence the weird branching
-    if (!flags_.updateDataRangeIII)
-    {
-        //fBuffer_->bind(gpuBindingPoint_+1);
-        if (!flags_.updateDataRangeII)
-            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
-        else
-        {
-            fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIISize(), 0);
-            flags_.updateDataRangeII = false;
-        }
-    }
+    // Data range I is always updated, data range III is updated on the spot
+    // in setResolution, the keyboard data range is updated on the spot in
+    // onReceive(KeyPressEvent/KeyReleaseEvent)
+    if (!flags_.updateDataRangeII)
+        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
     else
     {
-        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIIISize(), 0);
-        vBuffer_->bind();
-        vBuffer_->setData(&vBlock_, VertexBlock::size(), 0);
-        fBuffer_->bind();
-        flags_.updateDataRangeIII = false;
+        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIISize(), 0);
+        flags_.updateDataRangeII = false;
     }
+
     if (fBlock_.iUserAction) // Always reset
     {
         flags_.updateDataRangeII = true;
@@ -574,7 +569,6 @@ void SharedUniforms::load
         su->cache_.uninitializedResourceLayers
     );
     su->flags_.updateDataRangeII = true;
-    su->flags_.updateDataRangeIII = true;
 }
 
 void SharedUniforms::postLoadProcessCachedResourceLayers

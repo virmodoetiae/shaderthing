@@ -562,6 +562,23 @@ transparency)");
                 )
             )
                 layerRescale = !layerRescale;
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
+                ImGui::BeginTooltip()
+            )
+            {
+                if (layerRescale)
+                    ImGui::Text(
+ICON_FA_LOCK " - The layer resolution will rescale\nwith the output resolution"
+                    );
+                else
+                    ImGui::Text(
+ICON_FA_LOCK_OPEN " - The layer resolution will not rescale\nwith the output "
+"resolution"
+                    );
+                ImGui::EndTooltip();
+            }
             if (layerRendersToWindow)
                 ImGui::EndDisabled();
             if (layerRescale && !layerRescale0)

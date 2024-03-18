@@ -156,30 +156,27 @@ TODO ---------------------------------------------------------------------------
 (X) Implement additional keyboard-input-uniform management, however on a global
     basis (i.e., a uniform with the state of all the keys, e.g., like done in
     ShaderToy via a dedicated texture uniform just for that) instead of local
-    basis as it is currently implemented (i.e., one key -> one uniform)
+    basis as it is currently implemented (i.e., one key -> one uniform). This
+    was ultimately achieved via an array of vec3s via a uniform buffer object
 
 (X) Fix (or find workaround) for ImGui window icons disappearing on
     ImGui docking/undocking actions (Windows-only, at least until I see how
     this performs on Linux)
 
-(W) Expand code repository section
-
-( ) Add option to disable iFrame reset to 0 on framebuffer export finish (as
+(X) Add option to disable iFrame reset to 0 on framebuffer export finish (as
     some shaders might actively check for iFrame == 0 in order to initialize
     their framebuffers from scratch)
 
-( ) Check if possible to keep original source framebuffer contents on export
-    when the export framebuffer size is different than the original framebuffer
-    size (which causes a framebuffer clearing). An idea would be to create an
-    intermediate framebuffer of the final size, render the original framebuffer
-    contents onto the target framebuffer, then delete the original, and then
-    re-render the intermediate framebuffer contents onto the resized target
-    framebuffer. But should this be done for both the front and back buffers?
-    Probably yes. But then again, think about it
+(X) Implement framebuffer content re-sizing on framebuffer rebuild, instead of
+    loosing its contents on every re-size
 
 ( ) Check if possible to integrate additional shared output SSBO in order to
-    provide an additional output 'channel' for the fragment shaders which is
-    independent of the fragment/pixel being processed
+    provide an additional output 'channel' for a fragment shader, which is
+    independent of the fragment/pixel being processed. Can be handy in a variety
+    of applications (e.g., finally tallying scalar results in Monte Carlo-like
+    simulations!)
+
+(W) Expand code repository section
 
 ( ) Implement layer cloning (for convenience)
 

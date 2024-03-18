@@ -39,9 +39,7 @@ private:
 
     struct Flags
     {
-    //  const bool updateDataRangeI                 = true;
               bool updateDataRangeII                = false;
-              bool updateDataRangeIII               = false;
               bool resetFrameCounter                = false;
               bool resetFrameCounterPreOrPostExport = false;
               bool isRenderingPaused                = false;

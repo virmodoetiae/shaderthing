@@ -128,6 +128,10 @@ vec2 fragCoord = gl_FragCoord.xy;
 TextEditor Layer::GUI::sharedSourceEditor = 
     TextEditor(Layer::GUI::defaultSharedSource);
 
+// Shader for mapping the contents of a framebuffer to another one, potentially
+// at a different resolution and/or internal format
+std::unique_ptr<vir::Shader> Layer::Rendering::textureMapperShader = nullptr;
+
 //----------------------------------------------------------------------------//
 
 Layer::Layer
@@ -186,6 +190,25 @@ R"(void main()
 
     // Register with event broadcaster
     this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY+id_);
+
+    // Initialize std::unique_ptrs to manage static shaders
+    if (Layer::Rendering::textureMapperShader != nullptr)
+        return;
+    Layer::Rendering::textureMapperShader = std::unique_ptr<vir::Shader>
+    (
+        vir::Shader::create
+        (
+            vertexShaderSource(sharedUniforms),
+            glslVersionSource()+
+R"(out  vec4      fragColor;
+in      vec2      qc;
+in      vec2      tc;
+uniform sampler2D tx;
+void main(){fragColor = texture(tx, tc);})",
+            vir::Shader::ConstructFrom::SourceCode
+        )
+    );
+    sharedUniforms.bindShader(Layer::Rendering::textureMapperShader.get());
 }
 
 //----------------------------------------------------------------------------//
@@ -750,6 +773,7 @@ void Layer::rebuildFramebuffers
     auto rebuildFramebuffer = []
     (
         vir::Framebuffer*& framebuffer, 
+        vir::GeometricPrimitive& quad,
         const vir::TextureBuffer::InternalFormat& internalFormat, 
         const glm::ivec2& resolution
     )
@@ -760,14 +784,33 @@ void Layer::rebuildFramebuffers
             auto wrapModeY = framebuffer->colorBufferWrapMode(1);
             auto minFilterMode = framebuffer->colorBufferMinFilterMode();
             auto magFilterMode = framebuffer->colorBufferMagFilterMode();
-            framebuffer->unbind();
-            delete framebuffer;
-            framebuffer = vir::Framebuffer::create
+            auto internalFormat = framebuffer->colorBufferInternalFormat();
+            
+            
+            // Preserve original framebuffer contents after resizing
+            auto newFramebuffer = vir::Framebuffer::create
             (
-                resolution.x, 
-                resolution.y, 
+                resolution.x,
+                resolution.y,
                 internalFormat
             );
+            Layer::Rendering::textureMapperShader->bind();
+            Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
+            framebuffer->bindColorBuffer(0);
+            
+            // This rendering step is to copy the original framebuffer contents
+            // to the new framebuffer according to the original framebuffer
+            // filtering options
+            vir::Renderer::instance()->submit
+            (
+                quad, 
+                Layer::Rendering::textureMapperShader.get(), 
+                newFramebuffer
+            );
+            framebuffer->unbind();
+            DELETE_IF_NOT_NULLPTR(framebuffer)
+            framebuffer = newFramebuffer;
+
             framebuffer->setColorBufferWrapMode(0, wrapModeX);
             framebuffer->setColorBufferWrapMode(1, wrapModeY);
             framebuffer->setColorBufferMinFilterMode(minFilterMode);
@@ -781,8 +824,20 @@ void Layer::rebuildFramebuffers
                 internalFormat
             );
     };
-    rebuildFramebuffer(rendering_.framebufferA, internalFormat, resolution);
-    rebuildFramebuffer(rendering_.framebufferB, internalFormat, resolution);
+    rebuildFramebuffer
+    (
+        rendering_.framebufferA, 
+        *rendering_.quad, 
+        internalFormat, 
+        resolution
+    );
+    rebuildFramebuffer
+    (
+        rendering_.framebufferB, 
+        *rendering_.quad, 
+        internalFormat, 
+        resolution
+    );
     rendering_.framebuffer = rendering_.framebufferA;
 }
 
@@ -1054,36 +1109,14 @@ void Layer::renderShader
         return;
 
     // Render texture rendered by the previous call to the provided initial 
-    // target (or to main window if target0 == nullptr). Also, manage the
-    // lifetime of the shared internal framebuffer via a static unique_ptr
-    auto constructInternalFramebufferToWindowShader = [&sharedUniforms]()
-    {
-        auto shader = std::unique_ptr<vir::Shader>
-        (
-            vir::Shader::create
-            (
-                vertexShaderSource(sharedUniforms),
-                glslVersionSource()+
-R"(out  vec4      fragColor;
-in      vec2      qc;
-in      vec2      tc;
-uniform sampler2D tx;
-void main(){fragColor = texture(tx, tc);})",
-                vir::Shader::ConstructFrom::SourceCode
-            )
-        );
-        sharedUniforms.bindShader(shader.get());
-        return shader;
-    };
-    static auto internalFramebufferToWindowShader = 
-        constructInternalFramebufferToWindowShader();
-    internalFramebufferToWindowShader->bind();
+    // target (or to main window if target0 == nullptr)
+    Layer::Rendering::textureMapperShader->bind();
     rendering_.framebuffer->bindColorBuffer(0);
-    internalFramebufferToWindowShader->setUniformInt("tx", 0);
+    Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
     renderer->submit
     (
         *rendering_.quad, 
-        internalFramebufferToWindowShader.get(), 
+        Layer::Rendering::textureMapperShader.get(), 
         target0,
         clearTarget
     );
@@ -1502,7 +1535,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
             ImGui::Button
             (
                 flags_.rescaleWithWindow ?
-                "Resize on window resize" :
+                "Rescale on window resize" :
                 "Do not auto-resize",
                 {-1, 0}
             )

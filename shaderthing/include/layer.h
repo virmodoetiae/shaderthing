@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,10 @@ public:
         vir::Framebuffer*        framebuffer    = nullptr;
         vir::Shader*             shader         = nullptr;
         std::vector<PostProcess*>postProcesses  = {};
+        // I only use unique_ptrs to conveniently manage the lifetime of static
+        // ptr-type resources
+        static std::unique_ptr<vir::Shader>
+                                 textureMapperShader;
     };
     struct GUI
     {
