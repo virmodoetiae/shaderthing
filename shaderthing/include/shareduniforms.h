@@ -147,10 +147,15 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
 
     struct ShaderStorageBlock
     {
-        static constexpr const unsigned int size = 32*32*(1+4)*4;
+        int*       ioIntData  = nullptr;
+        glm::vec4* ioVec4Data = nullptr;
+        static constexpr const unsigned int size = 1024*(1+4)*4;
         static constexpr const char* glslName = "sharedStorageBlock";
         static constexpr const char* glslSource =
-R"(layout(std140) buffer sharedStorageBlock {
+//  Using std430 to avoid packing problems, plus, if ShaderThing is running on a
+//  computer with an OpenGL version < 4.3, the SSBO is not available anyway, so
+//  no real compatibility breaking
+R"(layout(std430) buffer sharedStorageBlock {
         int    ioIntData[1024]; // <- atomically writeable!
         vec4   ioVec4Data[1024];};
 )";

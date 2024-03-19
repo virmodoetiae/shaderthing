@@ -440,9 +440,11 @@ public :
     virtual void bind() = 0;
     virtual void unbind() = 0;
     virtual void setBindingPoint(uint32_t) = 0;
-    virtual void setData
+    // Maps a range of the GPU-side buffer data to a permanent CPU-side address.
+    // When used, any previous mappings are invalidated. This mapping is
+    // persistent
+    virtual void* mapData
     (
-        void* data,
         uint32_t size = 0,
         uint32_t offset = 0
     ) = 0;

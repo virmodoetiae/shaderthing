@@ -91,6 +91,7 @@ SharedUniforms::SharedUniforms()
     )
         flags_.isSSBOSupported = true;
     
+    // Init SSBO if supported
     if (flags_.isSSBOSupported)
     {
         if (ssBuffer_ == nullptr)
@@ -98,6 +99,8 @@ SharedUniforms::SharedUniforms()
                 vir::ShaderStorageBuffer::create(ShaderStorageBlock::size);
         ssBuffer_->bind();
         ssBuffer_->setBindingPoint(ssBindingPoint_);
+        ssBlock_.ioIntData = (int*)ssBuffer_->mapData();
+        ssBlock_.ioVec4Data = (glm::vec4*)(ssBlock_.ioIntData+1024);
     }
 
     // Init bounds
@@ -520,7 +523,13 @@ void SharedUniforms::resetAfterExport(bool resetFrameCounter)
 void SharedUniforms::shaderStorageMemoryBarrier() const
 {
     if (flags_.isSSBOSupported)
+    //{
         ssBuffer_->memoryBarrier();
+    //    std::cout << "int0  " << ssBlock_.ioIntData[0] << std::endl;
+    //    std::cout << "int1  " << ssBlock_.ioIntData[1] << std::endl;
+    //    std::cout << "int4  " << ssBlock_.ioIntData[4] << std::endl;
+    //    std::cout << "vec40 " << glm::to_string(ssBlock_.ioVec4Data[0]) << std::endl;
+    //}
 }
 
 //----------------------------------------------------------------------------//

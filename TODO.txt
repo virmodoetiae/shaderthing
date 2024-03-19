@@ -170,7 +170,7 @@ TODO ---------------------------------------------------------------------------
 (X) Implement framebuffer content re-sizing on framebuffer rebuild, instead of
     loosing its contents on every re-size
 
-( ) Check if possible to integrate additional shared output SSBO in order to
+(W) Check if possible to integrate additional shared output SSBO in order to
     provide an additional output 'channel' for a fragment shader, which is
     independent of the fragment/pixel being processed. Can be handy in a variety
     of applications (e.g., finally tallying scalar results in Monte Carlo-like

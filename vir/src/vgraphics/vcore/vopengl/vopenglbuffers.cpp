@@ -690,12 +690,25 @@ ShaderStorageBuffer(size)
 {
     glGenBuffers(1, &id_);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, size, NULL, GL_DYNAMIC_DRAW);
+    //glBufferData(GL_SHADER_STORAGE_BUFFER, size, NULL, GL_DYNAMIC_DRAW);
+    glBufferStorage
+    (
+        GL_SHADER_STORAGE_BUFFER, 
+        size,
+        NULL,
+        GL_MAP_PERSISTENT_BIT | 
+        GL_MAP_COHERENT_BIT |
+        GL_MAP_WRITE_BIT | 
+        GL_MAP_READ_BIT
+    );
 }
 
 OpenGLShaderStorageBuffer::~OpenGLShaderStorageBuffer()
 {
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
     glDeleteBuffers(1, &id_);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void OpenGLShaderStorageBuffer::bind()
@@ -714,19 +727,23 @@ void OpenGLShaderStorageBuffer::setBindingPoint(uint32_t bindingPoint)
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingPoint, id_);
 }
 
-void OpenGLShaderStorageBuffer::setData
+void* OpenGLShaderStorageBuffer::mapData
 (
-    void* data,
     uint32_t size,
     uint32_t offset
 )
 {
-    glBufferSubData
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+    return glMapBufferRange
     (
         GL_SHADER_STORAGE_BUFFER, 
         offset, 
-        size == 0 ? size_ : size, 
-        data
+        size == 0 ? size_ : size,
+        GL_MAP_PERSISTENT_BIT | 
+        GL_MAP_COHERENT_BIT |
+        GL_MAP_WRITE_BIT | 
+        GL_MAP_READ_BIT
     );
 }
 
@@ -734,6 +751,7 @@ void OpenGLShaderStorageBuffer::setData
 void OpenGLShaderStorageBuffer::memoryBarrier()
 {
     glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT|GL_SHADER_STORAGE_BARRIER_BIT);
+    OpenGLWaitSync();
 }
 
 //----------------------------------------------------------------------------//
