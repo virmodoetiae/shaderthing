@@ -132,6 +132,25 @@ public :
     ) override;
 };
 
+class OpenGLShaderStorageBuffer : public ShaderStorageBuffer
+{
+protected :
+public :
+    OpenGLShaderStorageBuffer(uint32_t size);
+    ~OpenGLShaderStorageBuffer();
+    void bind() override;
+    void unbind() override;
+    void setBindingPoint(uint32_t) override;
+    void setData
+    (
+        void* data,
+        uint32_t size = 0,
+        uint32_t offset = 0
+    ) override;
+    // Wait for all shader invocations writing to this SSBO to finish writing
+    void memoryBarrier() override;
+};
+
 class OpenGLVertexBuffer : public VertexBuffer
 {
 protected:

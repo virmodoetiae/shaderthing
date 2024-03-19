@@ -62,9 +62,10 @@ SharedUniforms::SharedUniforms()
 
     // Init uniform buffers, bind to designated binding points and set
     // initial data
-    if (vBuffer_ == nullptr);
+    if (vBuffer_ == nullptr)
         vBuffer_ = 
             vir::UniformBuffer::create(VertexBlock::size());
+    vBuffer_->bind();
     vBuffer_->setBindingPoint(vBindingPoint_);
     vBuffer_->setData
     (
@@ -72,9 +73,10 @@ SharedUniforms::SharedUniforms()
         VertexBlock::size(),
         0
     );
-    if (fBuffer_ == nullptr);
+    if (fBuffer_ == nullptr)
         fBuffer_ = 
             vir::UniformBuffer::create(FragmentBlock::size());
+    fBuffer_->bind();
     fBuffer_->setBindingPoint(fBindingPoint_);
     fBuffer_->setData
     (
@@ -82,7 +84,21 @@ SharedUniforms::SharedUniforms()
         FragmentBlock::size(),
         0
     );
-    fBuffer_->bind();
+    if 
+    (
+        window->context()->versionMajor() >= 4 &&
+        window->context()->versionMinor() >= 3
+    )
+        flags_.isSSBOSupported = true;
+    
+    if (flags_.isSSBOSupported)
+    {
+        if (ssBuffer_ == nullptr)
+            ssBuffer_ =
+                vir::ShaderStorageBuffer::create(ShaderStorageBlock::size);
+        ssBuffer_->bind();
+        ssBuffer_->setBindingPoint(ssBindingPoint_);
+    }
 
     // Init bounds
     bounds_.insert({Uniform::SpecialType::Time, {0, 1}});
@@ -105,6 +121,7 @@ SharedUniforms::~SharedUniforms()
 {
     DELETE_IF_NOT_NULLPTR(fBuffer_)
     DELETE_IF_NOT_NULLPTR(vBuffer_)
+    DELETE_IF_NOT_NULLPTR(ssBuffer_)
     DELETE_IF_NOT_NULLPTR(screenCamera_)
     DELETE_IF_NOT_NULLPTR(shaderCamera_)
 }
@@ -374,6 +391,12 @@ void SharedUniforms::bindShader(vir::Shader* shader) const
         VertexBlock::glslName,
         vBindingPoint_
     );
+    if (flags_.isSSBOSupported)
+        shader->bindShaderStorageBlock
+        (
+            ShaderStorageBlock::glslName,
+            ssBindingPoint_
+        );
 }
 
 //----------------------------------------------------------------------------//
@@ -490,6 +513,14 @@ void SharedUniforms::resetAfterExport(bool resetFrameCounter)
 
     if (flags_.isVSyncEnabled)
         vir::Window::instance()->setVSync(true);
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::shaderStorageMemoryBarrier() const
+{
+    if (flags_.isSSBOSupported)
+        ssBuffer_->memoryBarrier();
 }
 
 //----------------------------------------------------------------------------//
@@ -618,6 +649,15 @@ void SharedUniforms::renderWindowResolutionMenuGui()
 
         ImGui::EndMenu();
     }
+}
+
+//----------------------------------------------------------------------------//
+
+const char* SharedUniforms::glslShaderStorageBlockSource() const
+{
+    if (flags_.isSSBOSupported)
+        return ShaderStorageBlock::glslSource;
+    return "";
 }
 
 }

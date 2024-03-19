@@ -868,4 +868,23 @@ UniformBuffer* UniformBuffer::create(uint32_t size)
     return nullptr;
 }
 
+// Shader Storage Buffer Object ----------------------------------------------//
+
+ShaderStorageBuffer* ShaderStorageBuffer::create(uint32_t size)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    try
+    {
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLShaderStorageBuffer(size);
+        }
+    }
+    catch(...){}
+    return nullptr;
+}
+
 }

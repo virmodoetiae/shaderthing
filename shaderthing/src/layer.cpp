@@ -557,7 +557,8 @@ Layer::fragmentShaderHeaderSourceAndLineCount
     std::string header
     (
         glslVersionSource()+
-        "in      vec2  qc;\nin      vec2  tc;\nout     vec4  fragColor;\n"+
+        "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n"+
+        sharedUniforms.glslShaderStorageBlockSource()+
         sharedUniforms.glslFragmentBlockSource()+
         "\n"
     );
@@ -785,7 +786,6 @@ void Layer::rebuildFramebuffers
             auto minFilterMode = framebuffer->colorBufferMinFilterMode();
             auto magFilterMode = framebuffer->colorBufferMagFilterMode();
             auto internalFormat = framebuffer->colorBufferInternalFormat();
-            
             
             // Preserve original framebuffer contents after resizing
             auto newFramebuffer = vir::Framebuffer::create
@@ -1083,6 +1083,7 @@ void Layer::renderShader
     }
 
     // Actual render call
+    sharedUniforms.shaderStorageMemoryBarrier();
     renderer->submit
     (
         *rendering_.quad,

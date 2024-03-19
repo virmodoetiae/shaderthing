@@ -305,4 +305,21 @@ void OpenGLShader::bindUniformBlock
     glUniformBlockBinding(id_, location, bindingPoint);
 }
 
+void OpenGLShader::bindShaderStorageBlock
+(
+    const std::string& blockName,  
+    uint32_t bindingPoint
+)
+{
+    GLint location = glGetProgramResourceIndex
+    (
+        id_,
+        GL_SHADER_STORAGE_BLOCK,
+        blockName.c_str()
+    );
+    if (location == -1)
+        return;
+    glShaderStorageBlockBinding(id_, location, bindingPoint);
+}
+
 }

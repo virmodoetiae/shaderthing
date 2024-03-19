@@ -1,6 +1,6 @@
 #include "vpch.h"
 #include "vgraphics/vcore/vopengl/vopenglbuffers.h"
-
+#include "vgraphics/vcore/vopengl/vopenglmisc.h"
 
 namespace vir
 {
@@ -360,61 +360,6 @@ void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
 // CubeMap buffer ------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-/*
-OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
-(
-    std::string filepaths[6], 
-    InternalFormat internalFormat
-)
-{
-    int requestedNChannels = TextureBuffer::nChannels(internalFormat);
-    const unsigned char* faceData[6];
-    stbi_set_flip_vertically_on_load(false);
-    for (int i=0; i<6; i++)
-    {
-        int width, height, nChannels;
-        faceData[i] = stbi_load
-        (
-            filepaths[i].c_str(), 
-            &width, 
-            &height, 
-            &nChannels, 
-            requestedNChannels
-        );
-        if (i == 0)
-        {
-            width_ = (uint32_t)width;
-            height_ = (uint32_t)height;
-            nChannels_ = 
-                requestedNChannels ? requestedNChannels : (uint32_t)nChannels;
-            if (internalFormat == InternalFormat::Undefined)
-                internalFormat == 
-                    TextureBuffer::defaultInternalFormat(nChannels_);
-            internalFormat_ = internalFormat;
-        }
-        else if 
-        (
-            width != width_ || 
-            height != height_ || 
-            (requestedNChannels==0 && nChannels != nChannels_) || 
-            !faceData[i]
-        )
-        {
-            for (int j=0; j<i; j++)
-                stbi_image_free((void*)faceData[j]);
-            throw std::runtime_error
-            (
-R"(vopenglbuffers.cpp - OpenGLCubeMapBuffer(std::string[6], InternalFormat),
-failed to construct due to inconsistent face width, height or internalFormat)"
-            );
-        }
-    }
-    initialize(faceData, width_, height_, internalFormat_);
-    for (int i=0; i<6; i++)
-        stbi_image_free((void*)faceData[i]);
-}
-*/
-
 OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
 (
     const unsigned char* faceData[6], 
@@ -652,7 +597,6 @@ void OpenGLFramebuffer::bindDepthBuffer(uint32_t unit)
 {
     /*glActiveTexture(GL_TEXTURE0+unit);
     glBindTexture(GL_TEXTURE_2D, depthBufferId_);*/
-    
     //glBindRenderbuffer(GL_RENDERBUFFER, depthBufferId_);
 }
 
@@ -687,7 +631,6 @@ void OpenGLFramebuffer::updateColorBufferMipmap()
     glBindTexture(GL_TEXTURE_2D, colorBufferId_);
     glGenerateMipmap(GL_TEXTURE_2D);
 }
-
 
 //----------------------------------------------------------------------------//
 // Uniform buffer ------------------------------------------------------------//
@@ -736,6 +679,61 @@ void OpenGLUniformBuffer::setData
         size == 0 ? size_ : size, 
         data
     );
+}
+
+//----------------------------------------------------------------------------//
+// Shader storage buffer -----------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+OpenGLShaderStorageBuffer::OpenGLShaderStorageBuffer(uint32_t size) :
+ShaderStorageBuffer(size)
+{
+    glGenBuffers(1, &id_);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, size, NULL, GL_DYNAMIC_DRAW);
+}
+
+OpenGLShaderStorageBuffer::~OpenGLShaderStorageBuffer()
+{
+    glDeleteBuffers(1, &id_);
+}
+
+void OpenGLShaderStorageBuffer::bind()
+{
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);
+}
+
+void OpenGLShaderStorageBuffer::unbind()
+{
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void OpenGLShaderStorageBuffer::setBindingPoint(uint32_t bindingPoint)
+{
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingPoint, id_);
+}
+
+void OpenGLShaderStorageBuffer::setData
+(
+    void* data,
+    uint32_t size,
+    uint32_t offset
+)
+{
+    glBufferSubData
+    (
+        GL_SHADER_STORAGE_BUFFER, 
+        offset, 
+        size == 0 ? size_ : size, 
+        data
+    );
+}
+
+// Wait for all shader invocations writing to this SSBO to finish writing
+void OpenGLShaderStorageBuffer::memoryBarrier()
+{
+    glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT|GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 //----------------------------------------------------------------------------//

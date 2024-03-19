@@ -187,6 +187,14 @@ public:
         uint32_t bindingPoint
     ) = 0;
 
+    // Locates and binds a named shader storage block in this shader to the
+    // provided bindingPoint
+    virtual void bindShaderStorageBlock
+    (
+        const std::string& blockName,  
+        uint32_t bindingPoint
+    ) = 0;
+
     uint32_t id() const {return id_;}
     const CompilationErrors& compilationErrors() const 
     {

@@ -43,6 +43,12 @@ public:
         uint32_t bindingPoint
     ) override;
 
+    void bindShaderStorageBlock
+    (
+        const std::string& blockName,  
+        uint32_t bindingPoint
+    ) override;
+
     GLint getUniformLocation(const std::string&);
     GLint getUniformBlockIndex(const std::string&);
 };

@@ -11,12 +11,6 @@
 
 #include "thirdparty/glm/glm.hpp"
 
-namespace vir
-{
-    class UniformBuffer;
-    class Camera;
-}
-
 namespace ShaderThing
 {
 
@@ -52,6 +46,7 @@ private:
               bool isCameraKeyboardInputEnabled     = true; // iWASD
               bool isCameraMouseInputEnabled        = true; // iLook
               bool isVSyncEnabled                   = true;
+              bool isSSBOSupported                  = false;
     };
 
     struct ExportData
@@ -124,19 +119,19 @@ private:
         // the order in which they have been delcared in FragmentBlock. On the
         // other hand, the actual uniform names do not matter
         static constexpr const char* glslSource =
-R"(layout(std140) uniform sharedBlock {
-        int   iFrame;
-        int   iRenderPass;
-        float iTime;
-        float iTimeDelta;
-        bool  iUserAction;
-        bool  iExport;
-        vec3  iWASD;
-        vec3  iLook;
-        vec4  iMouse;
-        float iWindowAspectRatio;
-        vec2  iWindowResolution;
-        ivec3 iKeyboard[256];};
+R"(layout(std140) uniform sharedUniformBlock {
+        int    iFrame;
+        int    iRenderPass;
+        float  iTime;
+        float  iTimeDelta;
+        bool   iUserAction;
+        bool   iExport;
+        vec3   iWASD;
+        vec3   iLook;
+        vec4   iMouse;
+        float  iWindowAspectRatio;
+        vec2   iWindowResolution;
+        ivec3  iKeyboard[256];};
 )";
     };
 
@@ -144,20 +139,34 @@ R"(layout(std140) uniform sharedBlock {
     {
         glm::mat4 iMVP = glm::mat4(0);
         static const uint32_t size() {return 64;}
-        static constexpr const char* glslName = "vertexBlock";
+        static constexpr const char* glslName = "vertexUniformBlock";
         static constexpr const char* glslSource =
-R"(layout(std140) uniform vertexBlock {mat4 iMVP;};
+R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
+)";
+    };
+
+    struct ShaderStorageBlock
+    {
+        static constexpr const unsigned int size = 32*32*(1+4)*4;
+        static constexpr const char* glslName = "sharedStorageBlock";
+        static constexpr const char* glslSource =
+R"(layout(std140) buffer sharedStorageBlock {
+        int    ioIntData[1024]; // <- atomically writeable!
+        vec4   ioVec4Data[1024];};
 )";
     };
     
     const unsigned int        fBindingPoint_ = 0;
     const unsigned int        vBindingPoint_ = 1;
+    const unsigned int        ssBindingPoint_= 2;
           FragmentBlock       fBlock_        = {};
           VertexBlock         vBlock_        = {};
+          ShaderStorageBlock  ssBlock_       = {};
           vir::UniformBuffer* fBuffer_       = nullptr;
           vir::UniformBuffer* vBuffer_       = nullptr;
+    vir::ShaderStorageBuffer* ssBuffer_      = nullptr;
           Flags               flags_         = {};
-          ExportData          exportData_     = {};
+          ExportData          exportData_    = {};
         
           // Fixed camera used to retrieve the value of the projection view 
           // matrix iMVP
@@ -236,11 +245,13 @@ public:
     void nextRenderPass();
     void prepareForExport(float exportStartTime);
     void resetAfterExport(bool resetFrameCounter = true);
+    void shaderStorageMemoryBarrier() const;
 
     void renderWindowResolutionMenuGui();
 
     const char* glslFragmentBlockSource() const {return fBlock_.glslSource;}
     const char* glslVertexBlockSource() const {return vBlock_.glslSource;}
+    const char* glslShaderStorageBlockSource() const;
 
     ExportData& exportData() {return exportData_;}
     
