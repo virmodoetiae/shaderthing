@@ -52,6 +52,8 @@ void oneLineColorfulText
     const std::vector<std::pair<char, ImVec4>>& colors = {}
 );
 
+//float parseComputeArrayExpression(const std::string& expression, float* array);
+
 // Get the format string of a numeric value type such that:
 // 1) if value < lowExpThreshold or value > highExpThreshold, the format will
 //    consists of expDigits digits in exponential notation;

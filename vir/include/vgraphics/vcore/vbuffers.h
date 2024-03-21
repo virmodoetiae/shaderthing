@@ -448,8 +448,8 @@ public :
         uint32_t size = 0,
         uint32_t offset = 0
     ) = 0;
-    // Wait for all shader invocations writing to this SSBO to finish writing
     virtual void memoryBarrier() = 0;
+    virtual void fenceSync() = 0;
 };
 
 //----------------------------------------------------------------------------//

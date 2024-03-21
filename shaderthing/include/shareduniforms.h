@@ -144,32 +144,13 @@ R"(layout(std140) uniform sharedUniformBlock {
 R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
 )";
     };
-
-    struct ShaderStorageBlock
-    {
-        int*       ioIntData  = nullptr;
-        glm::vec4* ioVec4Data = nullptr;
-        static constexpr const unsigned int size = 1024*(1+4)*4;
-        static constexpr const char* glslName = "sharedStorageBlock";
-        static constexpr const char* glslSource =
-//  Using std430 to avoid packing problems, plus, if ShaderThing is running on a
-//  computer with an OpenGL version < 4.3, the SSBO is not available anyway, so
-//  no real compatibility breaking
-R"(layout(std430) buffer sharedStorageBlock {
-        int    ioIntData[1024]; // <- atomically writeable!
-        vec4   ioVec4Data[1024];};
-)";
-    };
     
     const unsigned int        fBindingPoint_ = 0;
     const unsigned int        vBindingPoint_ = 1;
-    const unsigned int        ssBindingPoint_= 2;
           FragmentBlock       fBlock_        = {};
           VertexBlock         vBlock_        = {};
-          ShaderStorageBlock  ssBlock_       = {};
           vir::UniformBuffer* fBuffer_       = nullptr;
           vir::UniformBuffer* vBuffer_       = nullptr;
-    vir::ShaderStorageBuffer* ssBuffer_      = nullptr;
           Flags               flags_         = {};
           ExportData          exportData_    = {};
         
@@ -250,13 +231,11 @@ public:
     void nextRenderPass();
     void prepareForExport(float exportStartTime);
     void resetAfterExport(bool resetFrameCounter = true);
-    void shaderStorageMemoryBarrier() const;
 
     void renderWindowResolutionMenuGui();
 
     const char* glslFragmentBlockSource() const {return fBlock_.glslSource;}
     const char* glslVertexBlockSource() const {return vBlock_.glslSource;}
-    const char* glslShaderStorageBlockSource() const;
 
     ExportData& exportData() {return exportData_;}
     

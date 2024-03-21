@@ -22,6 +22,7 @@ class ObjectIO;
 class PostProcess;
 class Resource;
 class LayerResource;
+class SharedStorage;
 class SharedUniforms;
 class Uniform;
 
@@ -39,44 +40,45 @@ public:
             InternalFramebuffer,
             InternalFramebufferAndWindow
         };
-        Target                   target         = Target::Window;
-        vir::Quad*               quad           = nullptr;
-        vir::Framebuffer*        framebufferA   = nullptr;
-        vir::Framebuffer*        framebufferB   = nullptr;
-        vir::Framebuffer*        framebuffer    = nullptr;
-        vir::Shader*             shader         = nullptr;
-        std::vector<PostProcess*>postProcesses  = {};
+        Target                          target        = Target::Window;
+        vir::Quad*                      quad          = nullptr;
+        vir::Framebuffer*               framebufferA  = nullptr;
+        vir::Framebuffer*               framebufferB  = nullptr;
+        vir::Framebuffer*               framebuffer   = nullptr;
+        vir::Shader*                    shader        = nullptr;
+        std::vector<PostProcess*>       postProcesses = {};
+        
         // I only use unique_ptrs to conveniently manage the lifetime of static
         // ptr-type resources
         static std::unique_ptr<vir::Shader>
-                                 textureMapperShader;
+                                        textureMapperShader;
+        static std::unique_ptr<SharedStorage> 
+                                        sharedStorage;
     };
     struct GUI
     {
-               std::string       name;
-               std::string       newName;
-               std::string       sourceHeader;
-               std::string       headerErrors;
-               TextEditor        sourceEditor;
-        static std::string       defaultSharedSource;
-        static TextEditor        sharedSourceEditor;
+               std::string              name;
+               std::string              newName;
+               std::string              sourceHeader;
+               std::string              headerErrors;
+               TextEditor               sourceEditor;
+        static std::string              defaultSharedSource;
+        static TextEditor               sharedSourceEditor;
         
     };
     struct Flags
     {
-               bool              rename                     = false;
-               bool              pendingDeletion            = false;
-               bool              uncompiledChanges          = false;
-               bool              isAspectRatioBoundToWindow = true;
-               bool              rescaleWithWindow          = true;
-        static bool              restartRendering;
+               bool                     rename                     = false;
+               bool                     pendingDeletion            = false;
+               bool                     uncompiledChanges          = false;
+               bool                     isAspectRatioBoundToWindow = true;
+               bool                     rescaleWithWindow          = true;
+        static bool                     restartRendering;
     };
     struct Cache
     {
-        std::vector<Uniform*>    uncompiledUniforms;
-        std::map<
-            Uniform*, 
-            std::string>         uninitializedResourceLayers;
+        std::vector<Uniform*>           uncompiledUniforms;
+        std::map<Uniform*, std::string> uninitializedResourceLayers;
     };
     struct ExportData
     {
@@ -92,27 +94,27 @@ public:
             // each frame)
             ClearOnEveryFrameExport
         };
-        FramebufferClearPolicy   clearPolicy           = FramebufferClearPolicy::None;
-        glm::ivec2               originalResolution;
-        glm::ivec2               resolution;
-        float                    resolutionScale       = 1.f;
-        float                    windowResolutionScale = 1.f;
-        bool                     rescaleWithOutput     = true;
+        FramebufferClearPolicy          clearPolicy           = FramebufferClearPolicy::None;
+        glm::ivec2                      originalResolution;
+        glm::ivec2                      resolution;
+        float                           resolutionScale       = 1.f;
+        float                           windowResolutionScale = 1.f;
+        bool                            rescaleWithOutput     = true;
     };
 
 private:
 
-    const uint32_t               id_;
-          glm::ivec2             resolution_;
-          glm::vec2              resolutionRatio_      = {1.f, 1.f};
-          float                  aspectRatio_;
-          float                  depth_;
-          std::vector<Uniform*>  uniforms_;
-          Rendering              rendering_;
-          GUI                    gui_;
-          Flags                  flags_;
-          Cache                  cache_;
-          ExportData             exportData_;
+    const uint32_t                      id_;
+          glm::ivec2                    resolution_;
+          glm::vec2                     resolutionRatio_ = {1.f, 1.f};
+          float                         aspectRatio_;
+          float                         depth_;
+          std::vector<Uniform*>         uniforms_;
+          Rendering                     rendering_;
+          GUI                           gui_;
+          Flags                         flags_;
+          Cache                         cache_;
+          ExportData                    exportData_;
 
     //------------------------------------------------------------------------//
 

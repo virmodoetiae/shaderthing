@@ -13,7 +13,7 @@ void OpenGLWaitSync()
         (
             dataSync, 
             GL_SYNC_FLUSH_COMMANDS_BIT, 
-            100000 // ns == 100 us timeout
+            1000000 // ns == 1000 us timeout
         );
         if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED)
         {

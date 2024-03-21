@@ -750,7 +750,16 @@ void* OpenGLShaderStorageBuffer::mapData
 // Wait for all shader invocations writing to this SSBO to finish writing
 void OpenGLShaderStorageBuffer::memoryBarrier()
 {
-    glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT|GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier
+    (
+        GL_BUFFER_UPDATE_BARRIER_BIT | 
+        GL_SHADER_STORAGE_BARRIER_BIT |
+        GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT
+    );
+}
+
+void OpenGLShaderStorageBuffer::fenceSync()
+{
     OpenGLWaitSync();
 }
 

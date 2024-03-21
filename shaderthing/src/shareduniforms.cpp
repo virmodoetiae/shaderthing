@@ -84,24 +84,6 @@ SharedUniforms::SharedUniforms()
         FragmentBlock::size(),
         0
     );
-    if 
-    (
-        window->context()->versionMajor() >= 4 &&
-        window->context()->versionMinor() >= 3
-    )
-        flags_.isSSBOSupported = true;
-    
-    // Init SSBO if supported
-    if (flags_.isSSBOSupported)
-    {
-        if (ssBuffer_ == nullptr)
-            ssBuffer_ =
-                vir::ShaderStorageBuffer::create(ShaderStorageBlock::size);
-        ssBuffer_->bind();
-        ssBuffer_->setBindingPoint(ssBindingPoint_);
-        ssBlock_.ioIntData = (int*)ssBuffer_->mapData();
-        ssBlock_.ioVec4Data = (glm::vec4*)(ssBlock_.ioIntData+1024);
-    }
 
     // Init bounds
     bounds_.insert({Uniform::SpecialType::Time, {0, 1}});
@@ -124,7 +106,6 @@ SharedUniforms::~SharedUniforms()
 {
     DELETE_IF_NOT_NULLPTR(fBuffer_)
     DELETE_IF_NOT_NULLPTR(vBuffer_)
-    DELETE_IF_NOT_NULLPTR(ssBuffer_)
     DELETE_IF_NOT_NULLPTR(screenCamera_)
     DELETE_IF_NOT_NULLPTR(shaderCamera_)
 }
@@ -394,12 +375,6 @@ void SharedUniforms::bindShader(vir::Shader* shader) const
         VertexBlock::glslName,
         vBindingPoint_
     );
-    if (flags_.isSSBOSupported)
-        shader->bindShaderStorageBlock
-        (
-            ShaderStorageBlock::glslName,
-            ssBindingPoint_
-        );
 }
 
 //----------------------------------------------------------------------------//
@@ -516,20 +491,6 @@ void SharedUniforms::resetAfterExport(bool resetFrameCounter)
 
     if (flags_.isVSyncEnabled)
         vir::Window::instance()->setVSync(true);
-}
-
-//----------------------------------------------------------------------------//
-
-void SharedUniforms::shaderStorageMemoryBarrier() const
-{
-    if (flags_.isSSBOSupported)
-    //{
-        ssBuffer_->memoryBarrier();
-    //    std::cout << "int0  " << ssBlock_.ioIntData[0] << std::endl;
-    //    std::cout << "int1  " << ssBlock_.ioIntData[1] << std::endl;
-    //    std::cout << "int4  " << ssBlock_.ioIntData[4] << std::endl;
-    //    std::cout << "vec40 " << glm::to_string(ssBlock_.ioVec4Data[0]) << std::endl;
-    //}
 }
 
 //----------------------------------------------------------------------------//
@@ -658,15 +619,6 @@ void SharedUniforms::renderWindowResolutionMenuGui()
 
         ImGui::EndMenu();
     }
-}
-
-//----------------------------------------------------------------------------//
-
-const char* SharedUniforms::glslShaderStorageBlockSource() const
-{
-    if (flags_.isSSBOSupported)
-        return ShaderStorageBlock::glslSource;
-    return "";
 }
 
 }

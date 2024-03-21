@@ -20,6 +20,7 @@
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/postprocess.h"
 #include "shaderthing/include/resource.h"
+#include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/shareduniforms.h"
 #include "shaderthing/include/uniform.h"
 
@@ -132,6 +133,9 @@ TextEditor Layer::GUI::sharedSourceEditor =
 // at a different resolution and/or internal format
 std::unique_ptr<vir::Shader> Layer::Rendering::textureMapperShader = nullptr;
 
+// Shared storage buffer for all layers
+std::unique_ptr<SharedStorage> Layer::Rendering::sharedStorage     = nullptr;
+
 //----------------------------------------------------------------------------//
 
 Layer::Layer
@@ -181,6 +185,12 @@ R"(void main()
 })"
     );
     gui_.sourceEditor.resetTextChanged();
+
+    // Initialize shared storage - needs to be done before shader compilation
+    if (Rendering::sharedStorage == nullptr)
+        Rendering::sharedStorage = std::make_unique<SharedStorage>();
+    else if (layers.size() == 0) // Clear on new project or load project
+        Rendering::sharedStorage->clear();
 
     // Compile shader
     compileShader(sharedUniforms);
@@ -557,9 +567,9 @@ Layer::fragmentShaderHeaderSourceAndLineCount
     std::string header
     (
         glslVersionSource()+
-        "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n"+
-        sharedUniforms.glslShaderStorageBlockSource()+
-        sharedUniforms.glslFragmentBlockSource()+
+        "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n" +
+        Rendering::sharedStorage->glslBlockSource() +
+        sharedUniforms.glslFragmentBlockSource() +
         "\n"
     );
     auto nLines = Helpers::countNewLines(header);
@@ -829,14 +839,14 @@ void Layer::rebuildFramebuffers
         rendering_.framebufferA, 
         *rendering_.quad, 
         internalFormat, 
-        resolution
+        glm::max(resolution, {1,1})
     );
     rebuildFramebuffer
     (
         rendering_.framebufferB, 
         *rendering_.quad, 
         internalFormat, 
-        resolution
+        glm::max(resolution, {1,1})
     );
     rendering_.framebuffer = rendering_.framebufferA;
 }
@@ -888,6 +898,7 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
         flags_.uncompiledChanges = false;
         // Re-set uniforms
         sharedUniforms.bindShader(rendering_.shader);
+        Rendering::sharedStorage->bindShader(rendering_.shader);
         rendering_.shader->bind();
         #define CASE(ST, T, F)                                              \
         case Uniform::Type::ST :                                            \
@@ -1083,7 +1094,6 @@ void Layer::renderShader
     }
 
     // Actual render call
-    sharedUniforms.shaderStorageMemoryBarrier();
     renderer->submit
     (
         *rendering_.quad,
@@ -1092,6 +1102,14 @@ void Layer::renderShader
         clearTarget || // Or force clear if not rendering to window
         rendering_.target != Layer::Rendering::Target::Window
     );
+    Rendering::sharedStorage->gpuMemoryBarrier();
+    /*
+    Rendering::sharedStorage->buffer->fenceSync();
+    std::cout << gui_.name << " - int0  " 
+    << Rendering::sharedStorage->block.ioIntData[0] << std::endl;
+    if (Rendering::sharedStorage->block.ioIntData[0] == 9)
+        Rendering::sharedStorage->block.ioIntData[0] = 8;
+    */
 
     // Re-enable blending before either leaving or redirecting the rendered 
     // texture to the main window

@@ -887,7 +887,7 @@ void Resource::renderResourcesMenuItemGui
     const std::vector<Layer*>& layers
 )
 {
-    if(ImGui::SmallButton(isGuiDetachedFromMenu ? "Z" : "O" ))
+    if (ImGui::SmallButton(isGuiDetachedFromMenu ? "Z" : "O" ))
         isGuiDetachedFromMenu = !isGuiDetachedFromMenu;
     ImGui::SameLine();
     if (!isGuiDetachedFromMenu)

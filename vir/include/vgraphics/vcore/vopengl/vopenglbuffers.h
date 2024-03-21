@@ -147,6 +147,7 @@ public :
         uint32_t offset = 0
     ) override;
     void memoryBarrier() override;
+    void fenceSync();
 };
 
 class OpenGLVertexBuffer : public VertexBuffer

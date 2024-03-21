@@ -25,6 +25,7 @@
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/resource.h"
+#include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/shareduniforms.h"
 
 #include "vir/include/vir.h"
@@ -323,6 +324,9 @@ void App::renderGui()
     Layer::renderLayersTabBarGui(layers_, *sharedUniforms_, resources_);
 
     ImGui::End();
+    
+    ImGui::ShowDemoWindow();
+    
     vir::ImGuiRenderer::render();
 }
 
@@ -462,6 +466,7 @@ void App::renderMenuBarGui()
         if (ImGui::BeginMenu("Resources"))
         {
             Resource::renderResourcesMenuItemGui(resources_, layers_);
+            Layer::Rendering::sharedStorage->renderMenuItemGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
@@ -505,6 +510,8 @@ void App::renderMenuBarGui()
     }
     if (Resource::isGuiDetachedFromMenu)
         Resource::renderResourcesGui(resources_, layers_);
+    if (Layer::Rendering::sharedStorage->isGuiDetachedFromMenu())
+        Layer::Rendering::sharedStorage->renderGui();
     
     if (project_.action == Project::Action::None)
     {

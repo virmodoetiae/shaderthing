@@ -273,6 +273,35 @@ void oneLineColorfulText
     im_colors[ImGuiCol_Text] = default_color;
 }
 
+/*float parseComputeArrayExpression(const std::string& expression, float* array)
+{
+    float result = 0;
+    std::string cleanExpression = expression;
+    cleanExpression.erase
+    (
+        std::remove(cleanExpression.begin(), cleanExpression.end(), ' '), 
+        cleanExpression.end()
+    );
+    unsigned int n = cleanExpression.size();
+    unsigned int braketLevel = 0;
+    std::string number = "";
+    for (int i=0; i<n; i++)
+    {
+        const char& c0 = cleanExpression[i];
+        if (isdigit(c0))
+            number += c0;
+        else
+        {
+
+        }
+        if (i < n-1)
+        {
+            const char& c1 = cleanExpression[i+1];
+        }
+    }
+    return result;
+}*/
+
 #define RETURN_SCALAR_FORMAT                                            \
     if (value == 0)                                                     \
         return "%.1e";                                                  \
