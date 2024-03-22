@@ -17,6 +17,7 @@
 
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/random.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/uniform.h"
 
@@ -59,6 +60,11 @@ SharedUniforms::SharedUniforms()
     shaderCamera_->update();
     vBlock_.iMVP = 
         screenCamera_->projectionViewMatrix();
+
+    // Init random number generator and set initial random number
+    if (random_ == nullptr)
+        random_ = new Random();
+    fBlock_.iRandom = random_->generateFloat();
 
     // Init uniform buffers, bind to designated binding points and set
     // initial data
@@ -108,6 +114,7 @@ SharedUniforms::~SharedUniforms()
     DELETE_IF_NOT_NULLPTR(vBuffer_)
     DELETE_IF_NOT_NULLPTR(screenCamera_)
     DELETE_IF_NOT_NULLPTR(shaderCamera_)
+     DELETE_IF_NOT_NULLPTR(random_)
 }
 
 //----------------------------------------------------------------------------//
@@ -421,6 +428,10 @@ void SharedUniforms::update(const UpdateArgs& args)
     // event callback), so we update it here and check whether the GPU data
     // should be updated as well
     shaderCamera_->update();
+
+    // Re-gen random number
+    fBlock_.iRandom = random_->generateFloat();
+
     if 
     (
         fBlock_.iWASD != shaderCamera_->position() ||

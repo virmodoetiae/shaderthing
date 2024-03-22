@@ -18,6 +18,9 @@ inputFramebuffer_(&inputLayer->rendering_.framebuffer)
 PostProcess::~PostProcess()
 {
     DELETE_IF_NOT_NULLPTR(native_)
+    if (isActive_)
+        *inputFramebuffer_ = 
+            inputLayer_->rendering_.framebufferA;
 }
 
 PostProcess* PostProcess::create

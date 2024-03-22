@@ -15,6 +15,7 @@ namespace ShaderThing
 {
 
 class ObjectIO;
+class Random;
 class Resource;
 
 class SharedUniforms : vir::Event::Receiver
@@ -93,9 +94,10 @@ private:
                     int        iRenderPass  = 0;            //  4 -  8       | 4
                     float      iTime        = 0.f;          //  8 - 12       | 4
                     float      iTimeDelta   = 0.f;          // 12 - 16       | 4
+                    float      iRandom      = 0.f;          // 16 - 20       | 4
         // Medium update frequency (data range II)
-                    bool       iUserAction  = false;        // 16 - 17       | 1
-        alignas(4)  bool       iExport      = false;        // 20 - 21       | 1
+                    bool       iUserAction  = false;        // 20 - 21       | 1
+        alignas(4)  bool       iExport      = false;        // 24 - 25       | 1
                     vec3A16    iWASD        = {0,0,-1};     // 32 - 48       | 16
                     vec3A16    iLook        = {0,0,1};      // 48 - 64       | 16
                     glm::vec4  iMouse       = {0,0,0,0};    // 64 - 80       | 16
@@ -107,7 +109,7 @@ private:
         // array element at a time, medium update frequency
                     ivec3A16   iKeyboard[256] {};           // 96 - 4192     | 16*256 = 4096
 
-        static const uint32_t dataRangeISize()             {return 16;}
+        static const uint32_t dataRangeISize()             {return 20;}
         static const uint32_t dataRangeIISize()            {return 80;}
         static const uint32_t dataRangeIIISize()           {return 96;}
         static const uint32_t iKeyboardKeyOffset(int iKey) {return 96+iKey*16;}
@@ -124,6 +126,7 @@ R"(layout(std140) uniform sharedUniformBlock {
         int    iRenderPass;
         float  iTime;
         float  iTimeDelta;
+        float  iRandom;
         bool   iUserAction;
         bool   iExport;
         vec3   iWASD;
@@ -167,7 +170,10 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
 
           // List of user-created uniforms which are shared by all layers
           std::vector<Uniform*> 
-                              userUniforms_ = {};
+                              userUniforms_   = {};
+
+          // For generating random numbers for iSeed
+          Random*             random_         = nullptr;
 
     // Only used in the post-loading step
     struct Cache

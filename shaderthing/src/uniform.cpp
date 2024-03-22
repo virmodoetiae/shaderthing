@@ -305,6 +305,20 @@ void Uniform::renderUniformsGui
         END_ROW
         ImGui::Dummy({0, 0.1f*fontSize});
 
+        // iRandom -------------------------------------------------------------
+        START_ROW
+        NEXT_COLUMN
+        // No actions
+        NEXT_COLUMN
+        ImGui::Text("iRandom");
+        NEXT_COLUMN
+        ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+        NEXT_COLUMN
+        // No bounds
+        NEXT_COLUMN
+        ImGui::Text("%.8f", sharedUniforms.fBlock_.iRandom);
+        END_ROW
+
         // iWindowAspectRatio --------------------------------------------------
         START_ROW
         NEXT_COLUMN
