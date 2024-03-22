@@ -10,6 +10,11 @@
 
 #define DELETE_IF_NOT_NULLPTR(ptr) if (ptr!=nullptr) delete ptr; ptr=nullptr;
 
+// Use TO_STRING instead of this, this is just a helper
+#define _TO_STRING(x) #x
+
+#define TO_STRING(x) _TO_STRING(x)
+
 #define START_TIMING                                                        \
     static double __time = 0;                                               \
     auto __startTime = std::chrono::high_resolution_clock::now();

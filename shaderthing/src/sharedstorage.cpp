@@ -1,6 +1,5 @@
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/bytedata.h"
-#include "shaderthing/include/macros.h"
 
 #include "vir/include/vir.h"
 
@@ -75,6 +74,7 @@ void SharedStorage::renderGui()
     if (!gui_.isOpen)
         return;
     const float fontSize = ImGui::GetFontSize();
+    const float textWidth = 45.f*fontSize;
     if (gui_.isDetachedFromMenu)
     {
         ImGui::SetNextWindowSize(ImVec2(600,300), ImGuiCond_FirstUseEver);
@@ -97,15 +97,39 @@ void SharedStorage::renderGui()
         }
     }
     else
-        ImGui::Dummy({40.f*fontSize, 0});
+        ImGui::Dummy({textWidth, 0});
 
-    float controlsHeight = 4*ImGui::GetTextLineHeightWithSpacing();
+    /*ImGui::PushTextWrapPos
+    (
+        ImGui::GetCursorPos().x + 
+        gui_.isDetachedFromMenu ? 
+        ImGui::GetContentRegionAvail().x : 
+        textWidth
+    );
+    ImGui::Text(
+ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
+"performance loss due to the need to sync GPU and CPU read/write operations, "
+"which are required to show the values stored in these shared storage block "
+"arrays"
+    );
+    ImGui::PopTextWrapPos();
+    ImGui::Dummy
+    (
+        {
+            gui_.isDetachedFromMenu ? 
+            ImGui::GetContentRegionAvail().x : 
+            textWidth, 
+            0
+        }
+    );*/
+
+    float controlsHeight = 5*ImGui::GetTextLineHeightWithSpacing();
 
     {
         ImGui::BeginChild
         (
             "##sharedStorageIntControlsChild", 
-            ImVec2(ImGui::GetContentRegionAvail().x * 0.34f, controlsHeight),
+            ImVec2(ImGui::GetContentRegionAvail().x * 0.30f, controlsHeight),
             false
         );
         ImGui::SeparatorText("ioIntData");
@@ -115,7 +139,11 @@ void SharedStorage::renderGui()
         ImGui::PushItemWidth(-1);
         if (ImGui::InputInt("##intStartIndex", &gui_.ioIntDataViewStartIndex))
             gui_.ioIntDataViewStartIndex = 
-                std::max(std::min(gui_.ioIntDataViewStartIndex, Block::arraySize), 0);
+                std::max
+                (
+                    std::min(gui_.ioIntDataViewStartIndex, Block::arraySize),
+                    0
+                );
         ImGui::PopItemWidth();
         
         ImGui::Text("View end   ");
@@ -123,7 +151,11 @@ void SharedStorage::renderGui()
         ImGui::PushItemWidth(-1);
         ImGui::InputInt("##intEndIndex", &gui_.ioIntDataViewEndIndex);
             gui_.ioIntDataViewEndIndex = 
-                std::max(std::min(gui_.ioIntDataViewEndIndex, Block::arraySize), 0);
+                std::max
+                (
+                    std::min(gui_.ioIntDataViewEndIndex, Block::arraySize),
+                    0
+                );
         ImGui::PopItemWidth();
         
         ImGui::EndChild();
@@ -143,7 +175,11 @@ void SharedStorage::renderGui()
         ImGui::PushItemWidth(-1);
         if (ImGui::InputInt("##intStartIndex", &gui_.ioVec4DataViewStartIndex))
             gui_.ioVec4DataViewStartIndex = 
-                std::max(std::min(gui_.ioVec4DataViewStartIndex, Block::arraySize), 0);
+                std::max
+                (
+                    std::min(gui_.ioVec4DataViewStartIndex, Block::arraySize),
+                    0
+                );
         ImGui::PopItemWidth();
         
         ImGui::Text("View end   ");
@@ -151,8 +187,20 @@ void SharedStorage::renderGui()
         ImGui::PushItemWidth(-1);
         ImGui::InputInt("##intEndIndex", &gui_.ioVec4DataViewEndIndex);
             gui_.ioVec4DataViewEndIndex = 
-                std::max(std::min(gui_.ioVec4DataViewEndIndex, Block::arraySize), 0);
+                std::max
+                (
+                    std::min(gui_.ioVec4DataViewEndIndex, Block::arraySize),
+                    0
+                );
         ImGui::PopItemWidth();
+
+        ImGui::Text("Show color ");
+        ImGui::SameLine();
+        ImGui::Checkbox
+        (
+            "##ioVec4DataShowColor", 
+            &gui_.isVec4DataAlsoShownAsColor
+        );
 
         ImGui::EndChild();
     }
@@ -171,7 +219,7 @@ void SharedStorage::renderGui()
         ImGui::BeginChild
         (
             "##sharedStorageIntRangeViewerChild", 
-            ImVec2(ImGui::GetContentRegionAvail().x * 0.34f, rangeViewerHeight),
+            ImVec2(ImGui::GetContentRegionAvail().x * 0.3f, rangeViewerHeight),
             false
         );
         if 
@@ -188,7 +236,7 @@ void SharedStorage::renderGui()
             )
         )
         {
-            indexColumnWidth = ImGui::GetContentRegionAvail().x/4;
+            indexColumnWidth = ImGui::GetContentRegionAvail().x/5;
             ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableSetupColumn
             (
@@ -261,16 +309,27 @@ void SharedStorage::renderGui()
                 ImGui::Text("%d", row);
                 ImGui::TableSetColumnIndex(1);
                 const glm::vec4& value = block_.ioVec4Data[row];
-                std::string format = "%.3f, %.3f, %.3f, %.3f";
+                if (gui_.isVec4DataAlsoShownAsColor)
+                {
+                    glm::vec4 valueCopy(value);
+                    ImGui::ColorEdit4
+                    (
+                        "##ioVec4DataColorPicker", 
+                        &(valueCopy.x),
+                        ImGuiColorEditFlags_NoInputs
+                    );
+                    ImGui::SameLine();
+                }
+                /*std::string format = "%.3f, %.3f, %.3f, %.3f";
                 for (int i=0; i<4; i++)
                 {
                     float v(std::abs(value[i]));
                     if ((v < 1e-3 || v > 1e3) && v != 0)
                         format[3+5*i] = 'e';
-                }
+                }*/
                 ImGui::Text
                 (
-                    format.c_str(), 
+                    "%.3e, %.3e, %.3e, %.3e",
                     value.x,
                     value.y,
                     value.z,

@@ -1103,6 +1103,7 @@ void Layer::renderShader
         rendering_.target != Layer::Rendering::Target::Window
     );
     Rendering::sharedStorage->gpuMemoryBarrier();
+    
     /*
     Rendering::sharedStorage->buffer->fenceSync();
     std::cout << gui_.name << " - int0  " 
@@ -1189,12 +1190,15 @@ void Layer::renderShaders // Static
     const unsigned int nRenderPasses
 )
 {
-    if (target != nullptr) // I.e., if exporting
+    bool clearTarget = true;
+    if (!sharedUniforms.isRenderingPaused())
     {
-        for (auto layer : layers) // Apply clear policy
+        if (target != nullptr) // I.e., if exporting
         {
-            switch (layer->exportData_.clearPolicy)
+            for (auto layer : layers) // Apply clear policy
             {
+                switch (layer->exportData_.clearPolicy)
+                {
                 case ExportData::FramebufferClearPolicy::None :
                     continue;
                 case ExportData::FramebufferClearPolicy::ClearOnFirstFrameExport:
@@ -1205,66 +1209,68 @@ void Layer::renderShaders // Static
                     if (sharedUniforms.iRenderPass() == 0)
                         layer->clearFramebuffers();
                     break;
+                }
+            }
+        }
+
+        for (int renderPass = 0; renderPass < nRenderPasses; renderPass++)
+        {
+            clearTarget = true;
+            if (renderPass > 0)
+                sharedUniforms.nextRenderPass(); // Advance iRenderPass in 
+                                                 // sharedUniforms
+            for (auto layer : layers)
+            {
+                layer->renderShader(target, clearTarget, sharedUniforms);
+                // At the end of this loop, the status of clearTarget will 
+                // represent whether the main window has been cleared of its 
+                // contents at least once (true if never cleared at least once)
+                if 
+                (
+                    clearTarget &&
+                    layer->rendering_.target != 
+                        Layer::Rendering::Target::InternalFramebuffer
+                )
+                    clearTarget = false;
             }
         }
     }
-    for (int renderPass = 0; renderPass < nRenderPasses; renderPass++)
+    
+    // If the window has not been cleared at least once, or if I am not
+    // rendering to the window at all (i.e., if target != nullptr, which is only
+    // true during exports), then render a dummy/void/blank window, simply to
+    // avoid visual artifacts when nothing is rendering to the main window.
+    // As for the internalFramebufferShader in Layer::renderShader, the lifetime
+    // of the shader (and quad) is managed statically within here
+    if (clearTarget || target != nullptr)
     {
-        if (renderPass > 0)
-            sharedUniforms.nextRenderPass(); // Advance iRenderPass in 
-                                             // sharedUniforms
-        bool clearTarget(true);
-        for (auto layer : layers)
+        static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
+        auto viewport = Helpers::normalizedWindowResolution();
+        blankQuad->update(viewport.x, viewport.y, 0);
+        auto constructBlankShader = [&sharedUniforms]()
         {
-            layer->renderShader(target, clearTarget, sharedUniforms);
-            // At the end of this loop, the status of clearTarget will represent
-            // whether the main window has been cleared of its contents at least
-            // once (true if never cleared at least once)
-            if 
+            auto shader = std::unique_ptr<vir::Shader>
             (
-                clearTarget &&
-                layer->rendering_.target != 
-                    Layer::Rendering::Target::InternalFramebuffer
-            )
-                clearTarget = false;
-        }
-        // If the window has not been cleared at least once, or if I am not
-        // rendering to the window at all (i.e., if target != nullptr, which is
-        // only true during exports), then render a dummy/void/blank window,
-        // simply to avoid visual artifacts when nothing is rendering to the
-        // main window. As for the internalFramebufferShader in 
-        // Layer::renderShader, the lifetime of the shader (and quad) is managed
-        // statically within here
-        if (clearTarget || target != nullptr)
-        {
-            static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
-            auto viewport = Helpers::normalizedWindowResolution();
-            blankQuad->update(viewport.x, viewport.y, 0);
-            auto constructBlankShader = [&sharedUniforms]()
-            {
-                auto shader = std::unique_ptr<vir::Shader>
+                vir::Shader::create
                 (
-                    vir::Shader::create
-                    (
-                        vertexShaderSource(sharedUniforms),
-                        glslVersionSource()+
+                    vertexShaderSource(sharedUniforms),
+                    glslVersionSource()+
 R"(out vec4 fragColor;
 in     vec2 qc;
 in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})",
-                        vir::Shader::ConstructFrom::SourceCode
-                    )
-                );
-                sharedUniforms.bindShader(shader.get());
-                return shader;
-            };
-            static auto blankShader = constructBlankShader();
-            vir::Renderer::instance()->submit
-            (
-                *blankQuad.get(), 
-                blankShader.get()
+                    vir::Shader::ConstructFrom::SourceCode
+                )
             );
-        }
+            sharedUniforms.bindShader(shader.get());
+            return shader;
+        };
+        static auto blankShader = constructBlankShader();
+        vir::Renderer::instance()->submit
+        (
+            *blankQuad.get(), 
+            blankShader.get()
+        );
     }
 }
 

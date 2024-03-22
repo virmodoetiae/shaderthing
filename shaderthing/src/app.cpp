@@ -325,8 +325,6 @@ void App::renderGui()
 
     ImGui::End();
     
-    ImGui::ShowDemoWindow();
-    
     vir::ImGuiRenderer::render();
 }
 
