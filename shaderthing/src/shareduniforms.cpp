@@ -393,8 +393,8 @@ void SharedUniforms::update(const UpdateArgs& args)
         fBlock_.iTime += args.timeStep;
         fBlock_.iTimeDelta = args.timeStep;
     }
-    else
-        fBlock_.iTimeDelta = 0;
+    else if (flags_.stepToNextFrame)
+        fBlock_.iTime += fBlock_.iTimeDelta;
 
     const glm::vec2& timeLoopBounds(bounds_[Uniform::SpecialType::Time]);
     if (flags_.isTimeLooped && fBlock_.iTime >= timeLoopBounds.y)
@@ -406,10 +406,11 @@ void SharedUniforms::update(const UpdateArgs& args)
         fBlock_.iTime = timeLoopBounds.x + duration*fraction;
     }
     
-    if (!flags_.isRenderingPaused)
+    if (!(flags_.isRenderingPaused && !flags_.stepToNextFrame))
         ++fBlock_.iFrame;
     fBlock_.iRenderPass = 0;
 
+    flags_.stepToNextFrame = false;
     if (flags_.resetFrameCounterPreOrPostExport)
     {
         fBlock_.iFrame = 0;
@@ -430,7 +431,8 @@ void SharedUniforms::update(const UpdateArgs& args)
     shaderCamera_->update();
 
     // Re-gen random number
-    fBlock_.iRandom = random_->generateFloat();
+    if (!flags_.isRandomNumberGeneratorPaused)
+        fBlock_.iRandom = random_->generateFloat();
 
     if 
     (
@@ -467,13 +469,18 @@ void SharedUniforms::update(const UpdateArgs& args)
 void SharedUniforms::nextRenderPass()
 {
     ++fBlock_.iRenderPass;
+    if (!flags_.isRandomNumberGeneratorPaused)
+        fBlock_.iRandom = random_->generateFloat(); // Also update iRandom on
+                                                    // each renderPass
     fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
 }
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::prepareForExport(float exportStartTime)
+void SharedUniforms::prepareForExport(float exportStartTime, bool resumeTime)
 {
+    if (resumeTime && flags_.isTimePaused)
+        flags_.isTimePaused = false;
     flags_.resetFrameCounterPreOrPostExport = true; //true;
     exportData_.originalTime = fBlock_.iTime;
     fBlock_.iTime = exportStartTime;
@@ -515,6 +522,7 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("timePaused", flags_.isTimePaused);
     io.write("timeLooped", flags_.isTimeLooped);
     io.write("timeBounds", bounds_.at(Uniform::SpecialType::Time));
+    io.write("randomGeneratorPaused", flags_.isRandomNumberGeneratorPaused);
     io.write("iWASD", shaderCamera_->position());
     io.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
     io.write("iWASDInputEnabled", flags_.isCameraKeyboardInputEnabled);
@@ -553,6 +561,8 @@ void SharedUniforms::load
         ioSu.readOrDefault<bool>("smoothTimeDelta", false);
     su->flags_.isTimeResetOnFrameCounterReset = 
         ioSu.read<bool>("resetTimeOnFrameCounterReset");
+    su->flags_.isRandomNumberGeneratorPaused = 
+        ioSu.readOrDefault<bool>("randomGeneratorPaused", false);
     su->shaderCamera_->setDirection(su->fBlock_.iLook.packed());
     su->shaderCamera_->setPosition(su->fBlock_.iWASD.packed());
     su->shaderCamera_->setKeySensitivity(ioSu.read<float>("iWASDSensitivity"));

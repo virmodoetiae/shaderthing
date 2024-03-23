@@ -28,16 +28,12 @@ public:
         VideoFrames
     };
 
-    struct UpdateArgs
-    {
-        float& timeStep;
-    };
-
 private:
 
     struct Settings
     {
         std::string   outputFilepath;
+        glm::vec2     outputResolution                = {0, 0};
         bool          outputResolutionChanged         = false;
         unsigned int  nRenderPasses                   = 1;
         bool          areRenderPassesOnFirstFrameOnly = false;
@@ -69,7 +65,7 @@ private:
     unsigned int      nFrames_                        = 0;
     double            timeStep_                       = 0.f;
 
-    void exportButtonGui();
+    void exportButtonGui(bool disabled = false);
 
     DELETE_COPY_MOVE(Exporter)
 
@@ -90,9 +86,10 @@ public:
     void update
     (
         SharedUniforms& sharedUniforms,
-        const std::vector<Layer*>& layers,
-        const UpdateArgs& args
+        const std::vector<Layer*>& layers
     );
+
+    void writeOutput();
 
     void renderGui
     (
@@ -101,6 +98,7 @@ public:
     );
 
     bool isRunning() const {return isRunning_;}
+    float timeStep() const {return timeStep_;}
     unsigned int nRenderPasses() const {return settings_.nRenderPasses;}
     vir::Framebuffer* framebuffer() const {return framebuffer_;}
 };

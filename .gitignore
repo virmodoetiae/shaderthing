@@ -6,4 +6,3 @@
 *.vscode
 *.VS*
 shaderthing-old/*
-!*nativefiledialog/build/*

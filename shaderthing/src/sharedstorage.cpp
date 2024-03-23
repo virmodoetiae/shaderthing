@@ -1,5 +1,6 @@
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/bytedata.h"
+#include "shaderthing/include/objectio.h"
 
 #include "vir/include/vir.h"
 
@@ -29,10 +30,56 @@ SharedStorage::SharedStorage()
     }
 }
 
+//----------------------------------------------------------------------------//
+
 SharedStorage::~SharedStorage()
 {
     DELETE_IF_NOT_NULLPTR(buffer_)
 }
+
+//----------------------------------------------------------------------------//
+
+void SharedStorage::save(ObjectIO& io) const
+{
+    io.writeObjectStart("sharedStorage");
+
+    #define WRITE_GUI_ITEM(Name)             \
+        io.write(TO_STRING(Name), gui_.Name);\
+
+    WRITE_GUI_ITEM(ioIntDataViewStartIndex)
+    WRITE_GUI_ITEM(ioIntDataViewEndIndex)
+    WRITE_GUI_ITEM(ioVec4DataViewEndIndex)
+    WRITE_GUI_ITEM(ioVec4DataViewStartIndex)
+    WRITE_GUI_ITEM(isVec4DataAlsoShownAsColor)
+
+    io.writeObjectEnd();
+}
+
+//----------------------------------------------------------------------------//
+
+SharedStorage* SharedStorage::load(const ObjectIO& io)
+{
+    auto sharedStorage = new SharedStorage();
+    if (!io.hasMember("sharedStorage"))
+        return sharedStorage;
+
+    auto ioSS = io.readObject("sharedStorage");
+    auto gui = GUI{};
+
+#define READ_GUI_ITEM(Name, Type)                                  \
+    gui.Name = ioSS.readOrDefault<Type>(TO_STRING(Name),gui.Name);
+
+    READ_GUI_ITEM(ioIntDataViewStartIndex, int)
+    READ_GUI_ITEM(ioIntDataViewEndIndex, int)
+    READ_GUI_ITEM(ioVec4DataViewEndIndex, int)
+    READ_GUI_ITEM(ioVec4DataViewStartIndex, int)
+    READ_GUI_ITEM(isVec4DataAlsoShownAsColor, bool)
+
+    sharedStorage->gui_ = gui;
+    return sharedStorage;
+}
+
+//----------------------------------------------------------------------------//
 
 void SharedStorage::clear()
 {
@@ -44,11 +91,15 @@ void SharedStorage::clear()
         *(dataStart+i) = 0;
 }
 
+//----------------------------------------------------------------------------//
+
 void SharedStorage::gpuMemoryBarrier() const
 {
     if (isSupported_)
         buffer_->memoryBarrier();
 }
+
+//----------------------------------------------------------------------------//
 
 void SharedStorage::cpuMemoryBarrier() const
 {
@@ -56,11 +107,15 @@ void SharedStorage::cpuMemoryBarrier() const
         buffer_->fenceSync();
 }
 
+//----------------------------------------------------------------------------//
+
 void SharedStorage::bindShader(vir::Shader* shader)
 {
     if (isSupported_)
         shader->bindShaderStorageBlock(Block::glslName, bindingPoint_);
 }
+
+//----------------------------------------------------------------------------//
 
 const char* SharedStorage::glslBlockSource() const
 {
@@ -68,6 +123,8 @@ const char* SharedStorage::glslBlockSource() const
         return block_.glslSource;
     return "";
 }
+
+//----------------------------------------------------------------------------//
 
 void SharedStorage::renderGui()
 {
@@ -346,6 +403,8 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
     if (gui_.isDetachedFromMenu)
         ImGui::End();
 }
+
+//----------------------------------------------------------------------------//
 
 void SharedStorage::renderMenuItemGui()
 {

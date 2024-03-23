@@ -353,7 +353,13 @@ void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
     // TextureBuffer2Ds, as those might get deleted before this animation does.
     // Unfortunately (and also due to my unwillingless to use smart ptrs), there
     // is no way around this for now, but whatever
-    try{frame_->unbind(unit);}catch(...){}
+    try
+    {
+        frame_->unbind(unit);
+    }
+    catch(...)
+    {
+    }
 }
 
 //----------------------------------------------------------------------------//

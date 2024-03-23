@@ -96,7 +96,7 @@ void Uniform::renderUniformsGui
     }; // End of renderUniformBoundsButtonGui lambda
 
     //--------------------------------------------------------------------------
-    auto renderSharedUniformsGui = 
+    auto renderDefaultSharedUniformsGui = 
     [&fontSize, &renderEditUniformBoundsButtonGui]
     (SharedUniforms& sharedUniforms, int& row)
     {
@@ -142,8 +142,29 @@ void Uniform::renderUniformsGui
         {
             sharedUniforms.flags_.isRenderingPaused = 
                 !sharedUniforms.flags_.isRenderingPaused;
-            sharedUniforms.flags_.isTimePaused = 
-                sharedUniforms.flags_.isRenderingPaused;
+            
+            if (sharedUniforms.flags_.isRenderingPaused)
+            {
+                sharedUniforms.flags_.isTimePausedBecauseRenderingPaused = 
+                    !sharedUniforms.flags_.isTimePaused;
+                sharedUniforms.flags_.isTimePaused = true;
+            }
+            else if (sharedUniforms.flags_.isTimePausedBecauseRenderingPaused)
+                sharedUniforms.flags_.isTimePaused = false;
+        }
+        if (sharedUniforms.flags_.isRenderingPaused)
+        {
+            if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
+                sharedUniforms.flags_.stepToNextFrame = true;
+        }
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            ImGui::Text("Render next frame and increment\niTime by iTimeDelta");
+            ImGui::EndTooltip();
         }
         NEXT_COLUMN
         ImGui::Text("iFrame");
@@ -301,14 +322,41 @@ void Uniform::renderUniformsGui
         NEXT_COLUMN
         // No bounds
         NEXT_COLUMN
-        ImGui::Text("%.4f s", sharedUniforms.fBlock_.iTimeDelta);
+        if (!sharedUniforms.flags_.isRenderingPaused)
+            ImGui::Text("%.6f s", sharedUniforms.fBlock_.iTimeDelta);
+        else
+        {
+            ImGui::InputFloat
+            (
+                "##iTimeDeltaSliderFloat", 
+                &sharedUniforms.fBlock_.iTimeDelta,
+                0,
+                0,
+                "%.6f"
+            );
+            sharedUniforms.fBlock_.iTimeDelta = 
+                std::max(sharedUniforms.fBlock_.iTimeDelta, 0.f);
+            ImGui::SameLine();
+            ImGui::Text("s");
+        }
         END_ROW
         ImGui::Dummy({0, 0.1f*fontSize});
 
         // iRandom -------------------------------------------------------------
         START_ROW
         NEXT_COLUMN
-        // No actions
+        if 
+        (
+            ImGui::Button
+            (
+                sharedUniforms.flags_.isRandomNumberGeneratorPaused ? 
+                ICON_FA_PAUSE : 
+                ICON_FA_PLAY, 
+                ImVec2(-1, 0)
+            )
+        )
+            sharedUniforms.flags_.isRandomNumberGeneratorPaused = 
+                !sharedUniforms.flags_.isRandomNumberGeneratorPaused;
         NEXT_COLUMN
         ImGui::Text("iRandom");
         NEXT_COLUMN
@@ -316,7 +364,7 @@ void Uniform::renderUniformsGui
         NEXT_COLUMN
         // No bounds
         NEXT_COLUMN
-        ImGui::Text("%.8f", sharedUniforms.fBlock_.iRandom);
+        ImGui::Text("%.6f", sharedUniforms.fBlock_.iRandom);
         END_ROW
 
         // iWindowAspectRatio --------------------------------------------------
@@ -612,7 +660,8 @@ void Uniform::renderUniformsGui
         const std::vector<Layer*>& layers,
         const std::vector<Resource*>& resources,
         int& row,
-        bool showSeparator = false
+        const bool showSeparator = false,
+        const bool showDefaultUniforms = true
     )
     {
         int column;
@@ -621,6 +670,9 @@ void Uniform::renderUniformsGui
             uniform->specialType == SpecialType::LayerAspectRatio ||
             uniform->specialType == SpecialType::LayerResolution
         );
+        std::cout << managed << " " << showDefaultUniforms << std::endl;
+        if (managed && !showDefaultUniforms)
+            return;
         bool isSharedByUser0 = uniform->isSharedByUser;
         auto name0 = uniform->name;
         auto type0 = uniform->type;
@@ -1496,18 +1548,18 @@ void Uniform::renderUniformsGui
     //--------------------------------------------------------------------------
     bool atLeastOneUniformMarkedForDeletion(false);
     bool hasSharedByUserChanged(false);
-    static bool showSharedUniforms(true);
+    static bool showDefaultUniforms(true);
     if 
     (
         ImGui::Button
         (
-            showSharedUniforms ? 
-            "Hide shared uniforms" : 
-            "Show shared uniforms",
+            showDefaultUniforms ? 
+            "Hide default uniforms" : 
+            "Show default uniforms",
             {-1,0}
         )
     )
-        showSharedUniforms = !showSharedUniforms;
+        showDefaultUniforms = !showDefaultUniforms;
     int nColumns = 5;
     if 
     (
@@ -1533,8 +1585,8 @@ void Uniform::renderUniformsGui
         );
         ImGui::TableHeadersRow();
         
-        if (showSharedUniforms)
-            renderSharedUniformsGui(sharedUniforms, row);
+        if (showDefaultUniforms)
+            renderDefaultSharedUniformsGui(sharedUniforms, row);
 
         for (auto uniform : sharedUniforms.userUniforms_)
         {
@@ -1564,7 +1616,9 @@ void Uniform::renderUniformsGui
                 layer,
                 layers,
                 resources,
-                row
+                row,
+                false,
+                showDefaultUniforms
             );
             if (uniform->gui.markedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;

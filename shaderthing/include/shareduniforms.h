@@ -34,20 +34,23 @@ private:
 
     struct Flags
     {
-              bool updateDataRangeII                = false;
-              bool resetFrameCounter                = false;
-              bool resetFrameCounterPreOrPostExport = false;
-              bool isRenderingPaused                = false;
-              bool isTimePaused                     = false;
-              bool isTimeLooped                     = false;
-              bool isTimeResetOnFrameCounterReset   = true;
-              bool isTimeDeltaSmooth                = false;
-              bool isKeyboardInputEnabled           = true; // iKeyboard
-              bool isMouseInputEnabled              = true; // iMouse
-              bool isCameraKeyboardInputEnabled     = true; // iWASD
-              bool isCameraMouseInputEnabled        = true; // iLook
-              bool isVSyncEnabled                   = true;
-              bool isSSBOSupported                  = false;
+              bool updateDataRangeII                  = false;
+              bool stepToNextFrame                    = false;
+              bool resetFrameCounter                  = true;
+              bool resetFrameCounterPreOrPostExport   = false;
+              bool isRenderingPaused                  = false;
+              bool isTimePaused                       = false;
+              bool isTimePausedBecauseRenderingPaused = false;
+              bool isTimeLooped                       = false;
+              bool isTimeResetOnFrameCounterReset     = true;
+              bool isTimeDeltaSmooth                  = false;
+              bool isRandomNumberGeneratorPaused      = false;
+              bool isKeyboardInputEnabled             = true; // iKeyboard
+              bool isMouseInputEnabled                = true; // iMouse
+              bool isCameraKeyboardInputEnabled       = true; // iWASD
+              bool isCameraMouseInputEnabled          = true; // iLook
+              bool isVSyncEnabled                     = true;
+              bool isSSBOSupported                    = false;
     };
 
     struct ExportData
@@ -235,7 +238,7 @@ public:
     void bindShader(vir::Shader* shader) const;
     void update(const UpdateArgs& args);
     void nextRenderPass();
-    void prepareForExport(float exportStartTime);
+    void prepareForExport(float exportStartTime, bool resumeTime);
     void resetAfterExport(bool resetFrameCounter = true);
 
     void renderWindowResolutionMenuGui();
@@ -245,6 +248,7 @@ public:
 
     ExportData& exportData() {return exportData_;}
     
+    const bool& stepToNextFrame() const {return flags_.stepToNextFrame;}
     const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
     const bool& isTimeDeltaSmooth() const {return flags_.isTimeDeltaSmooth;}
     const float& iTime() const {return fBlock_.iTime;}

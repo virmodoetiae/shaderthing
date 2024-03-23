@@ -57,16 +57,20 @@ App::App()
     // Main loop
     while(window->isOpen())
     {   
+        processProjectActions();
         renderGui();
+        update();
         Layer::renderShaders
         (
             layers_, 
             exporter_->isRunning() ? exporter_->framebuffer() : nullptr, 
             *sharedUniforms_,
-            exporter_->isRunning() ? exporter_->nRenderPasses() : 1
+            exporter_->isRunning() ? exporter_->nRenderPasses() : 1,
+            renderNextFrame_
         );
-        update();
-        window->update(!sharedUniforms_->isRenderingPaused());
+        window->update(renderNextFrame_);
+        if (exporter_->isRunning())
+            exporter_->writeOutput();
     }
 }
 
@@ -90,17 +94,21 @@ App::~App()
 
 void App::update()
 {
-    static auto* window(vir::Window::instance());
-    float timeStep = 
-        sharedUniforms_->isTimeDeltaSmooth() ?
-        window->time()->smoothOuterTimestep() : 
-        window->time()->outerTimestep();
-    
-    // If exporting, this update will set timeStep to the requested export
-    // timeStep (i.e., inverse of export fps if exporting an animated gif or
-    // video frames, left unmodified otherwise)
-    exporter_->      update(*sharedUniforms_, layers_,             {timeStep});
-    sharedUniforms_->update(                                       {timeStep});
+    exporter_->update(*sharedUniforms_, layers_);
+
+    float timeStep = exporter_->isRunning() ?
+        exporter_->timeStep() :
+        (
+            sharedUniforms_->isTimeDeltaSmooth() ?
+            vir::Window::instance()->time()->smoothOuterTimestep() : 
+            vir::Window::instance()->time()->outerTimestep()
+        );
+
+    renderNextFrame_ = 
+        !sharedUniforms_->isRenderingPaused() || 
+        sharedUniforms_->stepToNextFrame();
+
+    sharedUniforms_->update(             {                          timeStep});
     Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
 
     // Compute FPS and set in window title
@@ -108,19 +116,76 @@ void App::update()
     static int elapsedFrames(0);
     static float elapsedTime(0);
     elapsedFrames++;
-    elapsedTime += window->time()->smoothOuterTimestep();
+    elapsedTime +=vir::Window::instance()->time()->smoothOuterTimestep();
     if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
     {
         fps = elapsedFrames/elapsedTime;
-        window->setTitle
+        vir::Window::instance()->setTitle
         (
             "ShaderThing ("+Helpers::format(fps, 1)+" FPS) - "+project_.filename
         );
         elapsedFrames = 0;
         elapsedTime = 0;
     }
+}
 
-    // Process project actions
+//----------------------------------------------------------------------------//
+
+void App::saveProject(const std::string& filepath) const
+{
+    auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Write);
+    project.write("UIScale", *gui_.fontScale);
+    
+    sharedUniforms_->save(            project);
+    Layer::          save(layers_,    project);
+    Resource::       save(resources_, project);
+    exporter_->      save(            project);
+}
+
+//----------------------------------------------------------------------------//
+    
+void App::loadProject(const std::string& filepath)
+{
+    auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
+    *gui_.fontScale = project.read<float>("UIScale");
+    Resource::      loadAll(project,                            resources_);
+    SharedUniforms::load   (project,           sharedUniforms_, resources_);
+    Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
+    Exporter::      load   (project, exporter_                            );
+}
+
+//----------------------------------------------------------------------------//
+
+void App::newProject()
+{
+    project_ = {};
+    *gui_.fontScale = .6;
+
+    DELETE_IF_NOT_NULLPTR(exporter_);
+    exporter_ = new Exporter();
+    
+    DELETE_IF_NOT_NULLPTR(sharedUniforms_);
+    sharedUniforms_ = new SharedUniforms();
+    
+    for (auto resource : resources_)
+    {
+        DELETE_IF_NOT_NULLPTR(resource)
+    }
+    resources_.clear();
+
+    for (auto layer : layers_)
+    {
+        DELETE_IF_NOT_NULLPTR(layer)
+    }
+    layers_.clear();
+    layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
+    Layer::resetSharedSourceEditor();
+}
+
+//----------------------------------------------------------------------------//
+
+void App::processProjectActions()
+{
     switch (project_.action)
     {
         case Project::Action::None :
@@ -162,60 +227,6 @@ void App::update()
             project_.action = Project::Action::None;
             break;
     }
-
-}
-
-//----------------------------------------------------------------------------//
-
-void App::saveProject(const std::string& filepath) const
-{
-    auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Write);
-    project.write("UIScale", *gui_.fontScale);
-    
-    sharedUniforms_->save(            project);
-    Layer::          save(layers_,    project);
-    Resource::       save(resources_, project);
-    exporter_->      save(            project);
-}
-
-//----------------------------------------------------------------------------//
-    
-void App::loadProject(const std::string& filepath)
-{
-    auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
-    *gui_.fontScale = project.read<float>("UIScale");
-    Resource::      loadAll(project,                            resources_);
-    SharedUniforms::load   (project,           sharedUniforms_, resources_);
-    Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
-    Exporter::      load   (project, exporter_);
-}
-
-//----------------------------------------------------------------------------//
-
-void App::newProject()
-{
-    project_ = {};
-    *gui_.fontScale = .6;
-
-    DELETE_IF_NOT_NULLPTR(exporter_);
-    exporter_ = new Exporter();
-    
-    DELETE_IF_NOT_NULLPTR(sharedUniforms_);
-    sharedUniforms_ = new SharedUniforms();
-    
-    for (auto resource : resources_)
-    {
-        DELETE_IF_NOT_NULLPTR(resource)
-    }
-    resources_.clear();
-
-    for (auto layer : layers_)
-    {
-        DELETE_IF_NOT_NULLPTR(layer)
-    }
-    layers_.clear();
-    layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
-    Layer::resetSharedSourceEditor();
 }
 
 //----------------------------------------------------------------------------//

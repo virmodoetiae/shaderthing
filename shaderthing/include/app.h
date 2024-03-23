@@ -29,29 +29,32 @@ private:
             Save,
             SaveAs
         };
-        Action             action          = Action::None;
-        std::string        filepath        = "";
-        std::string        filename        = "untitled.stf";
-        bool               forceSaveAs     = true;
+        Action             action           = Action::None;
+        std::string        filepath         = "";
+        std::string        filename         = "untitled.stf";
+        bool               forceSaveAs      = true;
     };
-    Project                project_        = {};
+    Project                project_         = {};
 
     struct GUI
     {
-        float*             fontScale       = nullptr;
+        float*             fontScale        = nullptr;
     };
-    GUI                    gui_            = {};
+    GUI                    gui_             = {};
 
-    SharedUniforms*        sharedUniforms_ = nullptr;
-    std::vector<Layer*>    layers_         = {};
-    std::vector<Resource*> resources_      = {};
-    Exporter*              exporter_       = nullptr;
+    bool                   renderNextFrame_ = true;
+
+    SharedUniforms*        sharedUniforms_  = nullptr;
+    std::vector<Layer*>    layers_          = {};
+    std::vector<Resource*> resources_       = {};
+    Exporter*              exporter_        = nullptr;
 
     FileDialog             fileDialog_;
     
     void saveProject(const std::string& filepath) const;
     void loadProject(const std::string& filepath);
     void newProject();
+    void processProjectActions();
 
     void update();
     void initializeGui();

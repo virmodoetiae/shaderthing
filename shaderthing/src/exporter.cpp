@@ -56,8 +56,7 @@ void Exporter::onReceive(vir::Event::WindowResizeEvent& event)
 void Exporter::update
 (
     SharedUniforms& sharedUniforms,
-    const std::vector<Layer*>& layers,
-    const UpdateArgs& updateArgs
+    const std::vector<Layer*>& layers
 )
 {
     if (!isRunning_)
@@ -84,7 +83,7 @@ void Exporter::update
             nFrames_ = 1;
             timeStep_ = 0.f;
         }
-        updateArgs.timeStep = 0.f;
+        settings_.outputResolution = sharedUniforms.exportData().resolution;
 
         DELETE_IF_NOT_NULLPTR(framebuffer_);
         auto outputResolution = sharedUniforms.exportData().resolution;
@@ -97,7 +96,11 @@ void Exporter::update
         framebufferData_ = 
             new unsigned char[framebuffer_->colorBufferDataSize()];
 
-        sharedUniforms.prepareForExport(settings_.startTime);
+        sharedUniforms.prepareForExport
+        (
+            settings_.startTime, 
+            exportType_ != ExportType::Image
+        );
         for (auto layer : layers)
             layer->prepareForExport();
 
@@ -112,86 +115,87 @@ void Exporter::update
                     vir::Quantizer::Settings::IndexMode::Alpha :
                     vir::Quantizer::Settings::IndexMode::Default
             );
-
-        return;
     }
-    else // Save to disk
+    else if (frame_ == nFrames_-1) // Terminate
     {
-        switch (exportType_)
+        isRunning_ = false;
+        frame_ = 0;
+        
+        DELETE_IF_NOT_NULLPTR(framebuffer_)
+        DELETE_IF_NOT_NULLPTR(framebufferData_)
+
+        if (gifEncoder_->isFileOpen())
+            gifEncoder_->closeFile();
+
+        sharedUniforms.resetAfterExport
+        (
+            settings_.resetFrameCounterAfterExport
+        );
+        for (auto layer : layers)
+            layer->resetAfterExport();
+    }
+    else
+        ++frame_;
+}
+
+//----------------------------------------------------------------------------//
+
+void Exporter::writeOutput()
+{
+    if (!isRunning_)
+        return;
+    switch (exportType_)
+    {
+        case (ExportType::Image) :
+        case (ExportType::VideoFrames) :
         {
-            case (ExportType::Image) :
-            case (ExportType::VideoFrames) :
+            const char* filepath;
+            if (exportType_ == ExportType::VideoFrames)
             {
-                const char* filepath;
-                if (exportType_ == ExportType::VideoFrames)
-                {
-                    // Save frame FPS and frame number in out path as well. If
-                    // the FPS is not an integer, the '.' is replaced by a 'd'
-                    // (for 'dot') so not to mess with the file extension
-                    auto fps = Helpers::format(settings_.fps, 2);
-                    std::replace(fps.begin(), fps.end(), '.', 'd');
-                    fps = "_"+fps+"_"+std::to_string(frame_);
-                    cache_.outputFilepathExtended = 
-                        Helpers::appendToFilename
-                        (
-                            settings_.outputFilepath, 
-                            fps
-                        );
-                    filepath = cache_.outputFilepathExtended.c_str();
-                }
-                else
-                    filepath = settings_.outputFilepath.c_str();
-                framebuffer_->colorBufferData(framebufferData_, true);
-                stbi_write_png
-                (
-                    filepath, 
-                    sharedUniforms.exportData().resolution.x,
-                    sharedUniforms.exportData().resolution.y,
-                    4, 
-                    (const void*)framebufferData_, 
-                    sharedUniforms.exportData().resolution.x*4
-                );
-                break;
+                // Save frame FPS and frame number in out path as well. If
+                // the FPS is not an integer, the '.' is replaced by a 'd'
+                // (for 'dot') so not to mess with the file extension
+                auto fps = Helpers::format(settings_.fps, 2);
+                std::replace(fps.begin(), fps.end(), '.', 'd');
+                fps = "_"+fps+"_"+std::to_string(frame_);
+                cache_.outputFilepathExtended = 
+                    Helpers::appendToFilename
+                    (
+                        settings_.outputFilepath, 
+                        fps
+                    );
+                filepath = cache_.outputFilepathExtended.c_str();
             }
-            case (ExportType::GIF) :
-            {
-                gifEncoder_->encodeFrame
-                (
-                    framebuffer_,
-                    {   // Encoding options
-                        std::max(int(100.0f/settings_.fps), 1), // fps
-                        true,                                   // flip Y
-                        settings_.gifDitherMode,                // 
-                        0,                                      // Dither thres.
-                        (int)settings_.gifAlphaCutoff,          //
-                        settings_.isGifPaletteDynamic           //
-                    }
-                );
-                break;
-            }
-        }
-
-        if (frame_ == nFrames_-1) // Terminate
-        {
-            isRunning_ = false;
-            frame_ = 0;
-            
-            DELETE_IF_NOT_NULLPTR(framebuffer_)
-            DELETE_IF_NOT_NULLPTR(framebufferData_)
-
-            if (gifEncoder_->isFileOpen())
-                gifEncoder_->closeFile();
-
-            sharedUniforms.resetAfterExport
+            else
+                filepath = settings_.outputFilepath.c_str();
+            framebuffer_->colorBufferData(framebufferData_, true);
+            stbi_write_png
             (
-                settings_.resetFrameCounterAfterExport
+                filepath, 
+                settings_.outputResolution.x,
+                settings_.outputResolution.y,
+                4, 
+                (const void*)framebufferData_, 
+                4*settings_.outputResolution.x // <- stride
             );
-            for (auto layer : layers)
-                layer->resetAfterExport();
+            break;
         }
-        else
-            ++frame_;
-        updateArgs.timeStep = timeStep_;
+        case (ExportType::GIF) :
+        {
+            gifEncoder_->encodeFrame
+            (
+                framebuffer_,
+                {   // Encoding options
+                    std::max(int(100.0f/settings_.fps), 1), // fps
+                    true,                                   // flip Y
+                    settings_.gifDitherMode,                // 
+                    0,                                      // Dither thres.
+                    (int)settings_.gifAlphaCutoff,          //
+                    settings_.isGifPaletteDynamic           //
+                }
+            );
+            break;
+        }
     }
 }
 
@@ -646,7 +650,7 @@ ICON_FA_LOCK_OPEN " - The layer resolution will not rescale\nwith the output "
     //--------------------------------------------------------------------------
 
     ImGui::Separator();
-    exportButtonGui();
+    exportButtonGui(sharedUniforms.isRenderingPaused());
     if (isRunning_)
         ImGui::ProgressBar
         (
@@ -657,9 +661,9 @@ ICON_FA_LOCK_OPEN " - The layer resolution will not rescale\nwith the output "
 
 //----------------------------------------------------------------------------//
 
-void Exporter::exportButtonGui()
+void Exporter::exportButtonGui(bool disable)
 {
-    if (isRunning_)
+    if (isRunning_ || disable)
         ImGui::BeginDisabled();
     if (ImGui::Button(isRunning_ ? "Exporting..." : "Export", {-1,0}))
     {
@@ -670,7 +674,7 @@ void Exporter::exportButtonGui()
             filters = {"Image files (*.png)", "*.png"};
         fileDialog_.runSaveFileDialog("Export graphics to file", filters);
     }
-    if (isRunning_)
+    if (isRunning_ || disable)
         ImGui::EndDisabled();
 }
 
@@ -707,12 +711,10 @@ void Exporter::load(const ObjectIO& io, Exporter*& exporter)
     exporter->exportType_ = (ExportType)ioEx.read<int>("type");
     auto settings = Settings{};
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
 #define READ_SETTINGS_ITEM(Name, Type)                                      \
-    settings.Name = ioEx.readOrDefault<Type>(TOSTRING(Name),settings.Name);
+    settings.Name = ioEx.readOrDefault<Type>(TO_STRING(Name),settings.Name);
 #define READ_SETTINGS_ITEM2(Name, Type, Type2)                              \
-    settings.Name = (Type2)(ioEx.readOrDefault<Type>(TOSTRING(Name),        \
+    settings.Name = (Type2)(ioEx.readOrDefault<Type>(TO_STRING(Name),       \
                                               (Type)settings.Name));
     
     READ_SETTINGS_ITEM(outputFilepath, std::string)

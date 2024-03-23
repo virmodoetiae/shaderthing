@@ -317,6 +317,7 @@ void Layer::save(const std::vector<Layer*>& layers, ObjectIO& io)
             sharedSource.size(), 
             true
         );
+    Layer::Rendering::sharedStorage->save(io);
     io.writeObjectStart("layers");
     for (auto layer : layers)
         layer->save(io);
@@ -463,6 +464,9 @@ void Layer::loadAll
     }
     else
         Layer::resetSharedSourceEditor();
+
+    Layer::Rendering::sharedStorage = 
+        std::unique_ptr<SharedStorage>(SharedStorage::load(io));
     
     auto ioLayers = io.readObject("layers");
     for (auto ioLayerName : ioLayers.members())
@@ -1187,11 +1191,12 @@ void Layer::renderShaders // Static
     const std::vector<Layer*>& layers,
     vir::Framebuffer* target, 
     SharedUniforms& sharedUniforms,
-    const unsigned int nRenderPasses
+    const unsigned int nRenderPasses,
+    const bool renderNextFrame
 )
 {
     bool clearTarget = true;
-    if (!sharedUniforms.isRenderingPaused())
+    if (renderNextFrame)
     {
         if (target != nullptr) // I.e., if exporting
         {

@@ -197,7 +197,8 @@ public:
         const std::vector<Layer*>& layers,
         vir::Framebuffer* target, 
         SharedUniforms& sharedUniforms,
-        const unsigned int nRenderPasses = 1
+        const unsigned int nRenderPasses = 1,
+        const bool renderNextFrame = true
     );
 
     void renderFramebufferSettingsGui();

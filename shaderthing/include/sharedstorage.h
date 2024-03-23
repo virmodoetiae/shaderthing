@@ -13,6 +13,8 @@ class ShaderStorageBuffer;
 namespace ShaderThing
 {
 
+class ObjectIO;
+
 class SharedStorage
 {
     struct Block
@@ -59,6 +61,9 @@ public:
     
     SharedStorage();
     ~SharedStorage();
+    
+    void save(ObjectIO& io) const;
+    static SharedStorage* load(const ObjectIO& io);
     
     // Reset block contents to 0s
     void clear();
