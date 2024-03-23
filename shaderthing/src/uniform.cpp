@@ -350,8 +350,8 @@ void Uniform::renderUniformsGui
             ImGui::Button
             (
                 sharedUniforms.flags_.isRandomNumberGeneratorPaused ? 
-                ICON_FA_PAUSE : 
-                ICON_FA_PLAY, 
+                ICON_FA_PLAY : 
+                ICON_FA_PAUSE, 
                 ImVec2(-1, 0)
             )
         )

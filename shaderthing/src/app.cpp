@@ -178,6 +178,7 @@ void App::newProject()
         DELETE_IF_NOT_NULLPTR(layer)
     }
     layers_.clear();
+    Layer::Rendering::sharedStorage.reset();
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     Layer::resetSharedSourceEditor();
 }

@@ -38,8 +38,9 @@ std::string Layer::GUI::defaultSharedSource =
 R"(// Common source code is shared by all fragment shaders across all layers and
 // has access to all shared in/out/uniform declarations
 
-// Fragment coordinates
-vec2 fragCoord = gl_FragCoord.xy; 
+#define IF_FRAG_X(X) if (int(gl_FragCoord.x)==X)
+#define IF_FRAG_Y(Y) if (int(gl_FragCoord.y)==Y)
+#define IF_FRAG_XY(X,Y) if (int(gl_FragCoord.x)==X && int(gl_FragCoord.y)==Y)
 
 // Keyboard defs for convenience. To access the state of a key, use the ivec3
 // iKeboard[KEY_XXX] uniform, where KEY_XXX is replaced by one of the defs here
@@ -124,8 +125,10 @@ vec2 fragCoord = gl_FragCoord.xy;
 #define KEY_F12 123
 
 // For convenience when importing ShaderToy shaders
-#define MainFromShaderToy void main(){mainImage(fragColor, fragCoord);}
+#define SHADER_TOY_MAIN void main(){mainImage(fragColor, fragCoord);}
+vec2 fragCoord = gl_FragCoord.xy; 
 )";
+
 TextEditor Layer::GUI::sharedSourceEditor = 
     TextEditor(Layer::GUI::defaultSharedSource);
 
@@ -189,8 +192,6 @@ R"(void main()
     // Initialize shared storage - needs to be done before shader compilation
     if (Rendering::sharedStorage == nullptr)
         Rendering::sharedStorage = std::make_unique<SharedStorage>();
-    else if (layers.size() == 0) // Clear on new project or load project
-        Rendering::sharedStorage->clear();
 
     // Compile shader
     compileShader(sharedUniforms);
@@ -2040,6 +2041,8 @@ void Layer::renderTabBarGui
         ImGui::EndTabBar();
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void Layer::resetSharedSourceEditor()
 {

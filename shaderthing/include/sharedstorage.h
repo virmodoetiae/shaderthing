@@ -42,13 +42,17 @@ class SharedStorage
 
     struct GUI
     {
-        bool isOpen                     = false;
-        bool isDetachedFromMenu         = false;
-        bool isVec4DataAlsoShownAsColor = false;
-        int  ioIntDataViewStartIndex    = 0;
-        int  ioIntDataViewEndIndex      = 7;
-        int  ioVec4DataViewStartIndex   = 0;
-        int  ioVec4DataViewEndIndex     = 7;
+        bool isOpen                          = false;
+        bool isDetachedFromMenu              = false;
+        bool isVec4DataAlsoShownAsColor      = false;
+        int  ioIntDataViewStartIndex         = 0;
+        int  ioIntDataViewEndIndex           = 7;
+        int  ioVec4DataViewStartIndex        = 0;
+        int  ioVec4DataViewEndIndex          = 7;
+        int  ioVec4DataViewPrecision         = 3;
+        bool ioVec4DataViewExponentialFormat = false;
+        bool ioVec4DataViewComponents[4]     = {true, true, true, true};
+        std::string ioVec4DataViewFormat;
     };
     
     Block                     block_        = {};

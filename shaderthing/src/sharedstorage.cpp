@@ -27,6 +27,12 @@ SharedStorage::SharedStorage()
         block_.dataStart = buffer_->mapData();
         block_.ioIntData = (int*)block_.dataStart;
         block_.ioVec4Data = (glm::vec4*)(block_.ioIntData+Block::arraySize);
+        gui_.ioVec4DataViewFormat =
+        (
+            "%."+
+            std::to_string(gui_.ioVec4DataViewPrecision)+
+            (gui_.ioVec4DataViewExponentialFormat ? "e" : "f")
+        );
     }
 }
 
@@ -51,6 +57,12 @@ void SharedStorage::save(ObjectIO& io) const
     WRITE_GUI_ITEM(ioVec4DataViewEndIndex)
     WRITE_GUI_ITEM(ioVec4DataViewStartIndex)
     WRITE_GUI_ITEM(isVec4DataAlsoShownAsColor)
+    WRITE_GUI_ITEM(ioVec4DataViewPrecision)
+    WRITE_GUI_ITEM(ioVec4DataViewExponentialFormat)
+    glm::ivec4 values(4);
+    for (int i=0; i<4; i++)
+        values[i] = int(gui_.ioVec4DataViewComponents[i]);
+    io.write("ioVec4DataViewComponents", values);
 
     io.writeObjectEnd();
 }
@@ -74,6 +86,16 @@ SharedStorage* SharedStorage::load(const ObjectIO& io)
     READ_GUI_ITEM(ioVec4DataViewEndIndex, int)
     READ_GUI_ITEM(ioVec4DataViewStartIndex, int)
     READ_GUI_ITEM(isVec4DataAlsoShownAsColor, bool)
+    READ_GUI_ITEM(ioVec4DataViewPrecision, int)
+    READ_GUI_ITEM(ioVec4DataViewExponentialFormat, bool)
+    glm::ivec4 values = 
+        ioSS.readOrDefault<glm::ivec4>
+        (
+            "ioVec4DataViewComponents", 
+            glm::ivec4{1, 1, 1, 1}
+        );
+    for (int i=0; i<4; i++)
+        gui.ioVec4DataViewComponents[i] = bool(values[i]);
 
     sharedStorage->gui_ = gui;
     return sharedStorage;
@@ -180,7 +202,7 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
         }
     );*/
 
-    float controlsHeight = 5*ImGui::GetTextLineHeightWithSpacing();
+    float controlsHeight = 8*ImGui::GetTextLineHeightWithSpacing();
 
     {
         ImGui::BeginChild
@@ -218,6 +240,8 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
         ImGui::EndChild();
     }
     ImGui::SameLine();
+    
+    
     {
         ImGui::BeginChild
         (
@@ -227,7 +251,7 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
         );
         ImGui::SeparatorText("ioVec4Data");
 
-        ImGui::Text("View start ");
+        ImGui::Text("View start        ");
         ImGui::SameLine();
         ImGui::PushItemWidth(-1);
         if (ImGui::InputInt("##intStartIndex", &gui_.ioVec4DataViewStartIndex))
@@ -239,7 +263,7 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
                 );
         ImGui::PopItemWidth();
         
-        ImGui::Text("View end   ");
+        ImGui::Text("View end          ");
         ImGui::SameLine();
         ImGui::PushItemWidth(-1);
         ImGui::InputInt("##intEndIndex", &gui_.ioVec4DataViewEndIndex);
@@ -251,13 +275,62 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
                 );
         ImGui::PopItemWidth();
 
-        ImGui::Text("Show color ");
+        ImGui::Text("Show color        ");
         ImGui::SameLine();
         ImGui::Checkbox
         (
             "##ioVec4DataShowColor", 
             &gui_.isVec4DataAlsoShownAsColor
         );
+
+        ImGui::Text("Precision, format ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(10*fontSize);
+        if 
+        (
+            ImGui::SliderInt
+            (
+                "##ioVec4DataPrecision", 
+                &gui_.ioVec4DataViewPrecision, 
+                0, 
+                15
+            )
+        )
+        {
+            gui_.ioVec4DataViewFormat = 
+                "%."+
+                std::to_string(gui_.ioVec4DataViewPrecision)+
+                (gui_.ioVec4DataViewExponentialFormat ? "e" : "f");
+        }
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        if 
+        (
+            ImGui::Button
+            (
+                gui_.ioVec4DataViewExponentialFormat ?
+                "Scientific" : "Decimal",
+                {-1, 0}
+            )
+        )
+        {
+            gui_.ioVec4DataViewExponentialFormat = 
+                !gui_.ioVec4DataViewExponentialFormat;
+            gui_.ioVec4DataViewFormat = 
+                "%."+
+                std::to_string(gui_.ioVec4DataViewPrecision)+
+                (gui_.ioVec4DataViewExponentialFormat ? "e" : "f");
+        }
+        ImGui::Text("Show components   ");
+        static const char* labels[4] = {"x, ", "y, ", "z, ", "w"};
+        for (int i=0; i<4; i++)
+        {
+            ImGui::SameLine();
+            std::string label = "##ioVec4DataShowCmpt"+std::to_string(i);
+            ImGui::Checkbox(label.c_str(), &gui_.ioVec4DataViewComponents[i]);
+            ImGui::SameLine();
+            ImGui::Text(labels[i]);
+        }
 
         ImGui::EndChild();
     }
@@ -268,7 +341,8 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
 
     float rangeViewerHeight = 
         gui_.isDetachedFromMenu ? 
-        ImGui::GetContentRegionAvail().y :
+        ImGui::GetContentRegionAvail().y-
+        1.25*ImGui::GetTextLineHeightWithSpacing() :
         9*ImGui::GetTextLineHeightWithSpacing();
     float indexColumnWidth = 0;
 
@@ -377,21 +451,18 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
                     );
                     ImGui::SameLine();
                 }
-                /*std::string format = "%.3f, %.3f, %.3f, %.3f";
                 for (int i=0; i<4; i++)
                 {
-                    float v(std::abs(value[i]));
-                    if ((v < 1e-3 || v > 1e3) && v != 0)
-                        format[3+5*i] = 'e';
-                }*/
-                ImGui::Text
-                (
-                    "%.3e, %.3e, %.3e, %.3e",
-                    value.x,
-                    value.y,
-                    value.z,
-                    value.w
-                );
+                    if (!gui_.ioVec4DataViewComponents[i])
+                        continue;
+                    ImGui::Text
+                    (
+                        gui_.ioVec4DataViewFormat.c_str(),
+                        value[i]
+                    );
+                    if (i < 3)
+                        ImGui::SameLine();
+                }
                 ImGui::PopID();
             }
             ImGui::EndTable();
@@ -409,10 +480,16 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
 void SharedStorage::renderMenuItemGui()
 {
     ImGui::PushID(0);
-    if (ImGui::SmallButton(gui_.isDetachedFromMenu ? "Z" : "O" ))
-    {
+    if 
+    (
+        ImGui::SmallButton
+        (
+            gui_.isDetachedFromMenu ? 
+            ICON_FA_WINDOW_MAXIMIZE : 
+            ICON_FA_ARROW_RIGHT
+        )
+    )
         gui_.isDetachedFromMenu = !gui_.isDetachedFromMenu;
-    }
     ImGui::PopID();
     ImGui::SameLine();
     if (!gui_.isDetachedFromMenu)
