@@ -58,13 +58,16 @@ public:
         Layer* inputLayer, 
         Type type
     );
+    
+    static void loadStaticData(const ObjectIO& io);
+    static void saveStaticData(ObjectIO& io);
+
     static PostProcess* load
     ( 
         const ObjectIO& io,
         Layer* inputLayer
     );
-
-    virtual void save(ObjectIO& writer) = 0;
+    virtual void save(ObjectIO& writer) const = 0;
     virtual void run() = 0;
     virtual void renderGui() = 0;
 
@@ -116,18 +119,38 @@ protected:
         false,                        // overwriteInput
         0                             // inputUnit
     };
-    unsigned int             paletteSize_         = 4;
-    // Palette data of size 3*paletteSize_, with each value in the [0,255] range
-    unsigned char*           uIntPalette_         = nullptr;
-    // Same as uIntPalette_, but with each value in the [0.,1.] range
-    float*                   floatPalette_        = nullptr;
+    
+    struct Palette
+    {
+        unsigned int     nColors = 0;
+        // Palette data of size 3*size, with each value in the [0,255] range
+        unsigned char*   data = nullptr;
+        std::string      name = "New palette";
+        Palette(){}
+        Palette(const Palette& palette);
+        Palette
+        (
+            std::initializer_list<unsigned int> colors, 
+            const char* name = "New palette"
+        );
+        Palette& operator=(const Palette& rhs);
+        ~Palette();
+        void clear();
+        bool operator==(const Palette& rhs);
+        bool operator!=(const Palette& rhs){return !this->operator==(rhs);}
+    };
+    
+    Palette                     currentPalette_ = {};
+    static std::vector<Palette> userPalettes_;
+    static std::vector<Palette> defaultPalettes_;
+
     // True if the palette has been manually modified via the embedded color
     // picker in the quantization tool (can be accessed by clicking any color
     // in the displayed palette), regardless of palette size changes
-    bool                     paletteModified_     = false;
+    bool                 paletteModified_     = false;
     // True if the palette size has been modified
-    bool                     paletteSizeModified_ = true;
-    bool                     refreshPalette_      = false;
+    bool                 paletteSizeModified_ = true;
+    bool                 refreshPalette_      = false;
 
 public:
     
@@ -140,9 +163,12 @@ public:
         const ObjectIO& io,
         Layer* inputLayer
     );
-    void save(ObjectIO& writer) override;
+    void save(ObjectIO& writer) const override;
     void run() override;
     void renderGui() override;
+
+    static void saveUserPalettes(ObjectIO& io);
+    static void loadUserPalettes(const ObjectIO& io);
 };
 
 //----------------------------------------------------------------------------//
@@ -165,7 +191,7 @@ public:
         const ObjectIO& io,
         Layer* inputLayer
     );
-    void save(ObjectIO& writer) override;
+    void save(ObjectIO& writer) const override;
     void run() override;
     void renderGui() override;
 };
@@ -191,7 +217,7 @@ public:
         const ObjectIO& io,
         Layer* inputLayer
     );
-    void save(ObjectIO& writer) override;
+    void save(ObjectIO& writer) const override;
     void run() override;
     void renderGui() override;
 };

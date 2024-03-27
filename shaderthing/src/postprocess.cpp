@@ -17,6 +17,9 @@
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
 
+#include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
+#include "thirdparty/icons/IconsFontAwesome5.h"
+
 namespace ShaderThing
 {
 
@@ -30,6 +33,8 @@ inputLayer_(inputLayer),
 inputFramebuffer_(&inputLayer->rendering_.framebuffer)
 {}
 
+//----------------------------------------------------------------------------//
+
 PostProcess::~PostProcess()
 {
     DELETE_IF_NOT_NULLPTR(native_)
@@ -37,6 +42,8 @@ PostProcess::~PostProcess()
         *inputFramebuffer_ = 
             inputLayer_->rendering_.framebufferA;
 }
+
+//----------------------------------------------------------------------------//
 
 PostProcess* PostProcess::create
 (
@@ -55,6 +62,8 @@ PostProcess* PostProcess::create
     }
     return nullptr;
 }
+
+//----------------------------------------------------------------------------//
 
 PostProcess* PostProcess::load
 (
@@ -82,6 +91,30 @@ PostProcess* PostProcess::load
     }
 }
 
+//----------------------------------------------------------------------------//
+
+void PostProcess::loadStaticData(const ObjectIO& io)
+{
+    if (!io.hasMember("sharedPostProcessData"))
+        return;
+    auto ioPostProcess = io.readObject("sharedPostProcessData");
+
+    // Currently only QuantizationPostProcess has any data to load/save
+    QuantizationPostProcess::loadUserPalettes(ioPostProcess);
+}
+
+//----------------------------------------------------------------------------//
+
+void PostProcess::saveStaticData(ObjectIO& io)
+{
+    io.writeObjectStart("sharedPostProcessData");
+    // Currently only QuantizationPostProcess has any data to load/save
+    QuantizationPostProcess::saveUserPalettes(io);
+    io.writeObjectEnd();
+}
+
+//----------------------------------------------------------------------------//
+
 void PostProcess::overwriteInputLayerFramebuffer()
 {
     *inputFramebuffer_ = outputFramebuffer();
@@ -99,19 +132,144 @@ void PostProcess::overwriteInputLayerFramebuffer()
 
 //----------------------------------------------------------------------------//
 // QuantizationPostProcess ---------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+std::vector<QuantizationPostProcess::Palette> 
+    QuantizationPostProcess::userPalettes_ = {};
+std::vector<QuantizationPostProcess::Palette> 
+    QuantizationPostProcess::defaultPalettes_ = 
+    {
+        Palette
+        (
+            {0, 0, 0,
+            255, 255, 255,
+            136, 0, 0,
+            170, 255, 238,
+            204, 68, 204,
+            0, 204, 85,
+            0, 0, 170,
+            238, 238, 119,
+            221, 136, 85,
+            102, 68, 0,
+            255, 119, 119,
+            51, 51, 51,
+            119, 119, 119,
+            170, 255, 102,
+            0, 136, 255,
+            187, 187, 187},
+            "Commodore 64"
+        ),
+        Palette
+        (
+            {155, 188, 15,
+            139, 172, 15,
+            48, 98, 48,
+            15, 56, 15}, 
+            "Game Boy"
+        ),
+        Palette
+        (
+            {0, 0, 0,
+            27, 29, 30,
+            39, 40, 32,
+            62, 61, 50,
+            117, 113, 94,
+            248, 248, 242,
+            249, 38, 114,
+            253, 151, 31,
+            230, 218, 116,
+            102, 217, 239,
+            166, 226, 46,
+            174, 129, 255},
+            "Monokai"
+        )
+    };
+
+QuantizationPostProcess::Palette::Palette(const Palette& palette)
+{
+    nColors = palette.nColors;
+    data = new unsigned char[3*nColors];
+    for (int i=0; i<3*nColors; i++)
+        data[i] = palette.data[i];
+    name = palette.name;
+}
+
+//----------------------------------------------------------------------------//
+
+QuantizationPostProcess::Palette::Palette
+(
+    std::initializer_list<unsigned int> colors,
+    const char* nameCStr
+)
+{
+    nColors = int(colors.size()/3);
+    data = new unsigned char[3*nColors];
+    for (int i=0; i<3*nColors; i++)
+        data[i] = *(colors.begin()+i);
+    name = nameCStr;
+}
+
+//----------------------------------------------------------------------------//
+
+QuantizationPostProcess::Palette& 
+QuantizationPostProcess::Palette::operator=(const Palette& rhs)
+{
+    nColors = rhs.nColors;
+    DELETE_IF_NOT_NULLPTR(data)
+    data = new unsigned char[3*nColors];
+    for (int i=0; i<3*nColors; i++)
+        data[i] = rhs.data[i];
+    name = rhs.name;
+    return *this;
+}
+
+//----------------------------------------------------------------------------//
+
+QuantizationPostProcess::Palette::~Palette()
+{
+    clear();
+}
+
+//----------------------------------------------------------------------------//
+
+void QuantizationPostProcess::Palette::clear()
+{
+    DELETE_IF_NOT_NULLPTR(data)
+}
+
+//----------------------------------------------------------------------------//
+
+bool QuantizationPostProcess::Palette::operator==(const Palette& rhs)
+{
+    if (nColors!=rhs.nColors || data==nullptr || rhs.data==nullptr)
+        return false;
+    for (int i=0; i<3*nColors; i++)
+    {
+        if (data[i] != rhs.data[i])
+            return false;
+    }
+    return true;
+}
+
+//----------------------------------------------------------------------------//
 
 QuantizationPostProcess::QuantizationPostProcess(Layer* inputLayer) : 
 PostProcess
 (
     inputLayer,
     vir::Quantizer::create()
-){}
+)
+{
+    currentPalette_.nColors = 4;
+}
+
+//----------------------------------------------------------------------------//
 
 QuantizationPostProcess::~QuantizationPostProcess()
 {
-    DELETE_IF_NOT_NULLPTR(uIntPalette_)
-    DELETE_IF_NOT_NULLPTR(floatPalette_)
 }
+
+//----------------------------------------------------------------------------//
 
 QuantizationPostProcess* QuantizationPostProcess::load
 (
@@ -132,19 +290,19 @@ QuantizationPostProcess* QuantizationPostProcess::load
     if (!io.hasMember("paletteData"))
         return postProcess;
     unsigned int paletteSizeX3;
-    postProcess->uIntPalette_ = (unsigned char*)io.read("paletteData", true, 
-        &paletteSizeX3);
-    postProcess->paletteSize_ = paletteSizeX3/3;
-    postProcess->floatPalette_ = new float[paletteSizeX3];
-    for (int i=0; i<paletteSizeX3; i++)
-        postProcess->floatPalette_[i] = 
-            (float)postProcess->uIntPalette_[i]/255.0;
+    postProcess->currentPalette_.data = 
+        (unsigned char*)io.read("paletteData", true, &paletteSizeX3);
+    postProcess->currentPalette_.nColors = paletteSizeX3/3;
+    postProcess->currentPalette_.name = 
+        io.readOrDefault<std::string>("paletteName", Palette{}.name);
     postProcess->paletteModified_ = !postProcess->settings_.recalculatePalette;
     postProcess->settings_.reseedPalette = false;
     return postProcess;
 }
 
-void QuantizationPostProcess::save(ObjectIO& io)
+//----------------------------------------------------------------------------//
+
+void QuantizationPostProcess::save(ObjectIO& io) const
 {
     io.writeObjectStart(native_->typeName().c_str());
     io.write("active", isActive_);
@@ -153,22 +311,76 @@ void QuantizationPostProcess::save(ObjectIO& io)
     io.write("quantizationTolerance", settings_.relTol);
     io.write("transparencyCutoffThreshold", settings_.alphaCutoff);
     io.write("dynamicPalette", settings_.recalculatePalette);
-    if (uIntPalette_ != nullptr)
+    if (currentPalette_.data != nullptr)
+    {
         io.write
         (
             "paletteData", 
-            (const char*)uIntPalette_, 
-            3*paletteSize_, 
+            (const char*)currentPalette_.data, 
+            3*currentPalette_.nColors, 
             true
         );
+        io.write("paletteName", currentPalette_.name);
+    }
     io.writeObjectEnd();
 }
+
+//----------------------------------------------------------------------------//
+
+void QuantizationPostProcess::loadUserPalettes(const ObjectIO& io)
+{
+    userPalettes_.clear();
+    if (!io.hasMember("userPalettes"))
+        return;
+    auto ioPalettes = io.readObject("userPalettes");
+    for (auto paletteName : ioPalettes.members())
+    {
+        auto ioPalette = ioPalettes.readObject(paletteName);
+        auto& palette = userPalettes_.emplace_back(Palette{});
+        palette.data = 
+            (unsigned char*)ioPalette.read
+            (
+                "paletteData", 
+                true, 
+                &palette.nColors
+            );
+        palette.nColors /= 3;
+        palette.name = paletteName;
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void QuantizationPostProcess::saveUserPalettes(ObjectIO& io)
+{
+    if (userPalettes_.size() == 0)
+        return;
+    io.writeObjectStart("userPalettes");
+    for (auto& palette : userPalettes_)
+    {
+        io.writeObjectStart(palette.name.c_str());
+        io.write
+        (
+            "paletteData", 
+            (const char*)palette.data, 
+            3*palette.nColors, 
+            true
+        );
+        io.writeObjectEnd();
+    }
+    io.writeObjectEnd();
+}
+
+//----------------------------------------------------------------------------//
 
 void QuantizationPostProcess::run()
 {
     CHECK_SHOULD_RUN
     
-    settings_.paletteData = paletteModified_ ? uIntPalette_ : nullptr;
+    settings_.paletteData = 
+        paletteModified_ ? 
+        currentPalette_.data : 
+        nullptr;
     if (refreshPalette_)
         settings_.reseedPalette = true;
     if (settings_.reseedPalette)
@@ -177,7 +389,7 @@ void QuantizationPostProcess::run()
     ((nativeType*)native_)->quantize
     (
         *inputFramebuffer_,
-        paletteSize_,
+        currentPalette_.nColors,
         settings_
     );
 
@@ -188,24 +400,13 @@ void QuantizationPostProcess::run()
     }
 
     if (paletteSizeModified_)
-    {
-        if (uIntPalette_ != nullptr)
-            delete[] uIntPalette_;
-        uIntPalette_ = nullptr;
-        if (floatPalette_ != nullptr)
-            delete[] floatPalette_;
-        floatPalette_ = nullptr;
-        // Re-alloc of uIntPalette happens in quanizer_->getPalette
-        // uIntPalette_ = new unsigned char[3*paletteSize_];
-        floatPalette_ = new float[3*paletteSize_];
-    }
+        currentPalette_.clear();
+        // Re-alloc of uCharData happens in getPalette
     ((nativeType*)native_)->getPalette
     (
-        uIntPalette_, 
+        currentPalette_.data, 
         paletteSizeModified_
     );
-    for (int i = 0; i < 3*paletteSize_; i++)
-        floatPalette_[i] = uIntPalette_[i]/255.0f;
     if (settings_.reseedPalette)
         settings_.reseedPalette = false;
     if (paletteModified_)
@@ -217,11 +418,12 @@ void QuantizationPostProcess::run()
     overwriteInputLayerFramebuffer();
 }
 
+//----------------------------------------------------------------------------//
+
 void QuantizationPostProcess::renderGui()
 {    
     float fontSize(ImGui::GetFontSize());
-    float entryWidth = 12.0f*fontSize;
-
+    float entryWidth = 12.5f*fontSize;
     if 
     (
         ImGui::Button
@@ -231,7 +433,6 @@ void QuantizationPostProcess::renderGui()
         )
     )
         isActive_ = !isActive_;
-
     ImGui::Text("Transparency mode   ");
     ImGui::SameLine();
     ImGui::PushItemWidth(-1);
@@ -263,10 +464,19 @@ void QuantizationPostProcess::renderGui()
     ImGui::Text("Palette size        ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
-    auto paletteSize0(paletteSize_);
-    if (ImGui::SliderInt("##paletteSizeSlider", (int*)&paletteSize_, 2, 24))
+    auto paletteSize0(currentPalette_.nColors);
+    if 
+    (
+        ImGui::SliderInt
+        (
+            "##paletteSizeSlider", 
+            (int*)&currentPalette_.nColors, 
+            2, 
+            32
+        )
+    )
     {
-        if (paletteSize_ != paletteSize0)
+        if (currentPalette_.nColors != paletteSize0)
             paletteSizeModified_ = true;
     }
     ImGui::PopItemWidth();
@@ -345,35 +555,275 @@ void QuantizationPostProcess::renderGui()
         if (ImGui::Button("Refresh palette", ImVec2(-1, 0.0f)))
             refreshPalette_ = true;
 
-    if (floatPalette_ != nullptr)
+    if (!settings_.recalculatePalette || currentPalette_.data != nullptr)
+        ImGui::SeparatorText("Palette");
+    if (!settings_.recalculatePalette)
     {
-        ImGui::SeparatorText("Current palette");
-        for (int i=0; i<paletteSize_; i++)
+        static int selectedUserPaletteIndex = -1;
+        static int selectedDefaultPaletteIndex = -1;
+        static int deletePaletteIndex = -1;
+        static float deletePaletteTimer = 0.f;
+        bool deletePalette = false;
+        if (ImGui::Button(ICON_FA_FOLDER_OPEN, {0,0}))
+            ImGui::OpenPopup("Load palette from library");
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
         {
-            std::string id = "##paletteColorNo"+std::to_string(i);
-            if 
-            (
-                ImGui::ColorEdit3
-                (
-                    id.c_str(), 
-                    floatPalette_+3*i, 
-                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel
-                ) && !settings_.recalculatePalette
-            )
-            {
-                paletteModified_ = true;
-                uIntPalette_[3*i] = (255.0f*floatPalette_[3*i]+.5f);
-                uIntPalette_[3*i+1] = (255.0f*floatPalette_[3*i+1]+.5f);
-                uIntPalette_[3*i+2] = (255.0f*floatPalette_[3*i+2]+.5f);
-            }
-            if ((i+1) % (int)(std::ceil(std::sqrt(paletteSize_))) != 0)
-                ImGui::SameLine();
+            ImGui::Text("Load a palette from the palette library");
+            ImGui::EndTooltip();
         }
+        if (ImGui::BeginPopup("Load palette from library"))
+        {
+            auto nUserPalettes = QuantizationPostProcess::userPalettes_.size();
+            auto nDefaultPalettes = 
+                QuantizationPostProcess::defaultPalettes_.size();
+            ImGui::SeparatorText("User palettes");
+            for (int i=0; i<nUserPalettes; i++)
+            {
+                auto& palette = QuantizationPostProcess::userPalettes_[i];
+                ImGui::PushID(i);
+                // Press & hold for 1 second to actually delete to avoid
+                // having to manage modals and stuff from within a popup of a 
+                // popup to prevent accidental deletion
+                ImGui::Button(ICON_FA_TRASH);
+                bool buttonHeld = ImGui::IsItemActive();
+                if 
+                (
+                    ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                    ImGui::BeginTooltip()
+                )
+                {
+                    ImGui::Text("Hold to delete palette");
+                    ImGui::EndTooltip();
+                }
+                if (buttonHeld)
+                {
+                    deletePaletteTimer += 
+                        vir::Window::instance()->time()->outerTimestep();
+                    if (ImGui::BeginTooltip())
+                    {
+                        ImGui::ProgressBar
+                        (
+                            deletePaletteTimer/1.f, 
+                            {10*fontSize, 0}
+                        );
+                        ImGui::EndTooltip();
+                    }
+                    if (deletePaletteTimer > 1.f)
+                    {
+                        deletePalette = true;
+                        deletePaletteIndex = i;
+                        deletePaletteTimer = 0.f;
+                    }
+                }
+                ImGui::PopID();
+                ImGui::SameLine();
+                if (ImGui::Selectable(palette.name.c_str()))
+                {
+                    selectedUserPaletteIndex = i;
+                    ImGui::CloseCurrentPopup();
+                }
+                for (int j=0; j<palette.nColors; j++)
+                {
+                    float color[3] = 
+                    {
+                        palette.data[3*j]/255.0f,
+                        palette.data[3*j+1]/255.0f,
+                        palette.data[3*j+2]/255.0f
+                    };
+                    ImGui::ColorEdit3
+                    (
+                        std::to_string(i).c_str(), 
+                        color, 
+                        ImGuiColorEditFlags_NoInputs | 
+                        ImGuiColorEditFlags_NoLabel | 
+                        ImGuiColorEditFlags_NoSidePreview |
+                        ImGuiColorEditFlags_NoTooltip
+                    );
+                    if (j < palette.nColors-1)
+                        ImGui::SameLine(0, 0);
+                }
+                if (i < nUserPalettes-1)
+                    ImGui::Separator();
+            }
+            ImGui::SeparatorText("Built-in palettes");
+            for (int i=0; i<nDefaultPalettes; i++)
+            {
+                auto& palette = QuantizationPostProcess::defaultPalettes_[i];
+                if (ImGui::Selectable(palette.name.c_str()))
+                {
+                    selectedDefaultPaletteIndex = i;
+                    ImGui::CloseCurrentPopup();
+                }
+                for (int j=0; j<palette.nColors; j++)
+                {
+                    float color[3] = 
+                    {
+                        palette.data[3*j]/255.0f,
+                        palette.data[3*j+1]/255.0f,
+                        palette.data[3*j+2]/255.0f
+                    };
+                    ImGui::ColorEdit3
+                    (
+                        std::to_string(i).c_str(), 
+                        color, 
+                        ImGuiColorEditFlags_NoInputs |
+                        ImGuiColorEditFlags_NoLabel |
+                        ImGuiColorEditFlags_NoSidePreview |
+                        ImGuiColorEditFlags_NoTooltip
+                    );
+                    if (j < palette.nColors-1)
+                        ImGui::SameLine(0, 0);
+                }
+                if (i < nDefaultPalettes-1)
+                    ImGui::Separator();
+            }
+            ImGui::EndPopup();
+        }
+        if (selectedUserPaletteIndex != -1)
+        {
+            currentPalette_ = 
+                QuantizationPostProcess::userPalettes_
+                [
+                    selectedUserPaletteIndex
+                ];
+            paletteModified_ = true;
+            selectedUserPaletteIndex = -1;
+        }
+        if (selectedDefaultPaletteIndex != -1)
+        {
+            currentPalette_ = 
+                QuantizationPostProcess::defaultPalettes_
+                [
+                    selectedDefaultPaletteIndex
+                ];
+            paletteModified_ = true;
+            selectedDefaultPaletteIndex = -1;
+        }
+        else if (deletePalette)
+        {
+            QuantizationPostProcess::userPalettes_.erase
+            (
+                QuantizationPostProcess::userPalettes_.begin()+
+                deletePaletteIndex
+            );
+            deletePaletteIndex = -1;
+        }
+
+        ImGui::SameLine();
+        
+        static int foundPaletteIndex = -1;
+        if (ImGui::Button(ICON_FA_SAVE, {0,0}))
+        {
+            for (int i=0; i<QuantizationPostProcess::userPalettes_.size(); i++)
+            {
+                if 
+                (
+                    QuantizationPostProcess::userPalettes_[i].name ==
+                    currentPalette_.name
+                )
+                {
+                    foundPaletteIndex = i;
+                    break;
+                }
+            }
+            if (foundPaletteIndex != -1)
+                ImGui::OpenPopup("Palette overwrite confirmation");
+            else
+                QuantizationPostProcess::userPalettes_.emplace_back
+                (
+                    currentPalette_
+                );
+        }
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            ImGui::Text("Save palette to the palette library");
+            ImGui::EndTooltip();
+        }
+        if (ImGui::BeginPopupModal("Palette overwrite confirmation"))
+        {
+            ImGui::Text
+            (
+                "Do you want to overwrite palette '%s'?", 
+                QuantizationPostProcess::userPalettes_[foundPaletteIndex].name
+                .c_str()
+            );
+            if (ImGui::Button("Confirm"))
+            {
+                QuantizationPostProcess::userPalettes_[foundPaletteIndex] = 
+                    currentPalette_;
+                foundPaletteIndex = -1;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                foundPaletteIndex = -1;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        ImGui::InputText
+        (
+            "##currentQuantizerPaletteName",
+            &currentPalette_.name
+        );
+        ImGui::PopItemWidth();
+    }
+    if (currentPalette_.data == nullptr)
+        return;
+    ImGui::Dummy({-1, 0});
+    for (int i=0; i<currentPalette_.nColors; i++)
+    {
+        std::string id = "##paletteColorNo"+std::to_string(i);
+        float color[3] = 
+        {
+            currentPalette_.data[3*i]/255.0f,
+            currentPalette_.data[3*i+1]/255.0f,
+            currentPalette_.data[3*i+2]/255.0f
+        };
+        float availableWidth = ImGui::GetContentRegionAvail().x;
+        if 
+        (
+            ImGui::ColorEdit3
+            (
+                id.c_str(), 
+                color, 
+                ImGuiColorEditFlags_NoInputs | 
+                ImGuiColorEditFlags_NoLabel | 
+                ImGuiColorEditFlags_Uint8
+            ) && !settings_.recalculatePalette
+        )
+        {
+            paletteModified_ = true;
+            currentPalette_.data[3*i] = 
+                (unsigned char)(color[0]*255.0+.5f);
+            currentPalette_.data[3*i+1] = 
+                (unsigned char)(color[1]*255.0+.5f);
+            currentPalette_.data[3*i+2] = 
+                (unsigned char)(color[2]*255.0+.5f);
+        }
+        if 
+        (
+            //(i+1)%(int)(std::ceil(std::sqrt(currentPalette_.nColors))) != 0
+            availableWidth >= 2*fontSize
+        )
+            ImGui::SameLine(0, 0);
     }
 }
 
 //----------------------------------------------------------------------------//
 // BloomPostProcess ----------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
 BloomPostProcess::BloomPostProcess(Layer* inputLayer) : 
 PostProcess
@@ -381,6 +831,8 @@ PostProcess
     inputLayer,
     vir::Bloomer::create()
 ){}
+
+//----------------------------------------------------------------------------//
 
 BloomPostProcess* BloomPostProcess::load
 (
@@ -401,7 +853,9 @@ BloomPostProcess* BloomPostProcess::load
     return postProcess;
 }
 
-void BloomPostProcess::save(ObjectIO& io)
+//----------------------------------------------------------------------------//
+
+void BloomPostProcess::save(ObjectIO& io) const
 {
     io.writeObjectStart(native_->typeName().c_str());
     io.write("active", isActive_);
@@ -414,6 +868,8 @@ void BloomPostProcess::save(ObjectIO& io)
     io.write("reinhardWhitePoint", settings_.reinhardWhitePoint);
     io.writeObjectEnd();
 }
+
+//----------------------------------------------------------------------------//
 
 void BloomPostProcess::run()
 {
@@ -428,6 +884,8 @@ void BloomPostProcess::run()
     // Essential step
     overwriteInputLayerFramebuffer();
 }
+
+//----------------------------------------------------------------------------//
 
 void BloomPostProcess::renderGui()
 {    
@@ -565,6 +1023,7 @@ void BloomPostProcess::renderGui()
 
 //----------------------------------------------------------------------------//
 // BlurPostProcess -----------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
 BlurPostProcess::BlurPostProcess(Layer* inputLayer) : 
 PostProcess
@@ -572,6 +1031,8 @@ PostProcess
     inputLayer,
     vir::Blurrer::create()
 ){}
+
+//----------------------------------------------------------------------------//
 
 BlurPostProcess* BlurPostProcess::load(const ObjectIO& io, Layer* inputLayer)
 {
@@ -584,7 +1045,9 @@ BlurPostProcess* BlurPostProcess::load(const ObjectIO& io, Layer* inputLayer)
     return postProcess;
 }
 
-void BlurPostProcess::save(ObjectIO& io)
+//----------------------------------------------------------------------------//
+
+void BlurPostProcess::save(ObjectIO& io) const
 {
     io.writeObjectStart(native_->typeName().c_str());
     io.write("active", isActive_);
@@ -594,6 +1057,8 @@ void BlurPostProcess::save(ObjectIO& io)
     io.write("circularKernel", isKernelCircular_);
     io.writeObjectEnd();
 }
+
+//----------------------------------------------------------------------------//
 
 void BlurPostProcess::run()
 {
@@ -608,6 +1073,8 @@ void BlurPostProcess::run()
     // Essential step
     overwriteInputLayerFramebuffer();
 }
+
+//----------------------------------------------------------------------------//
 
 void BlurPostProcess::renderGui()
 {

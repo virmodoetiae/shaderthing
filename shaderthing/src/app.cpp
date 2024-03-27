@@ -24,6 +24,7 @@
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/postprocess.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/shareduniforms.h"
@@ -140,6 +141,7 @@ void App::saveProject(const std::string& filepath) const
     Layer::          save(layers_,    project);
     Resource::       save(resources_, project);
     exporter_->      save(            project);
+    PostProcess::    saveStaticData(  project);
 }
 
 //----------------------------------------------------------------------------//
@@ -152,6 +154,7 @@ void App::loadProject(const std::string& filepath)
     SharedUniforms::load   (project,           sharedUniforms_, resources_);
     Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
     Exporter::      load   (project, exporter_                            );
+    PostProcess::   loadStaticData(project);
 }
 
 //----------------------------------------------------------------------------//
@@ -162,22 +165,22 @@ void App::newProject()
     *gui_.fontScale = .6;
 
     DELETE_IF_NOT_NULLPTR(exporter_);
-    exporter_ = new Exporter();
-    
     DELETE_IF_NOT_NULLPTR(sharedUniforms_);
-    sharedUniforms_ = new SharedUniforms();
-    
     for (auto resource : resources_)
     {
         DELETE_IF_NOT_NULLPTR(resource)
     }
     resources_.clear();
-
     for (auto layer : layers_)
     {
         DELETE_IF_NOT_NULLPTR(layer)
     }
     layers_.clear();
+    
+    vir::Window::instance()->setSize(512, 512);
+
+    exporter_ = new Exporter();
+    sharedUniforms_ = new SharedUniforms();
     Layer::Rendering::sharedStorage.reset();
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     Layer::resetSharedSourceEditor();

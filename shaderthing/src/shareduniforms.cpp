@@ -33,7 +33,7 @@ SharedUniforms::SharedUniforms()
     // Init CPU block data
     static const auto window = vir::Window::instance();
     if (!window->iconified())
-        fBlock_.iResolution = {window->width(), window->height()};
+       fBlock_.iResolution = {window->width(), window->height()};
     fBlock_.iAspectRatio = fBlock_.iResolution.x/fBlock_.iResolution.y;
     for (int i=0; i<256; i++)
         fBlock_.iKeyboard[i] = glm::ivec3({0,0,0});
