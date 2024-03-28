@@ -176,6 +176,12 @@ TODO ---------------------------------------------------------------------------
     of applications (e.g., finally tallying scalar results in Monte Carlo-like
     simulations!)
 
+(X) Implement lightweight quantizer palette manager with a default palette
+    library
+
+(X) Fix quantizer not working if source framebuffer minimization filter set
+    to any of the mipmap filters
+
 (W) Expand code repository section
 
 ( ) Implement layer cloning (for convenience)

@@ -81,27 +81,35 @@ void OpenGLShader::parseCompilationErrorLog
     // The following parsing "should" work on most NVidia and Intel (integrated
     // graphics) OpenGL implementations. If the parsing fails, the whole log
     // is simply added to the error map at index 0
-    while(i < logSize) 
+    bool parsingFailed = false;
+    try
     {
-        int j = std::min(i+1, logSize-1);
-        if (readErrorIndex && log[i] == '0' && (log[j] == '(' || log[j] == ':'))
+        while(i < logSize) 
         {
+            int j = std::min(i+1, logSize-1);
+            if (readErrorIndex && log[i]=='0' && (log[j]=='(' || log[j]==':'))
+            {
+                ++i;
+                while (log[++i] != ')' && log[i] != ':')
+                    lineNo += log[i];
+                while (log[++i] == ' ' || log[i] == ':'){}
+                i0 = i;
+                readErrorIndex = false;
+            }
+            else if (lineNo.size() > 0 && log[i] == '\n')
+            {
+                errors.insert({std::stoi(lineNo), log.substr(i0, i-i0)});
+                lineNo.clear();
+                readErrorIndex = true;
+            }
             ++i;
-            while (log[++i] != ')' && log[i] != ':')
-                lineNo += log[i];
-            while (log[++i] == ' ' || log[i] == ':'){}
-            i0 = i;
-            readErrorIndex = false;
         }
-        else if (lineNo.size() > 0 && log[i] == '\n')
-        {
-            errors.insert({std::stoi(lineNo), log.substr(i0, i-i0)});
-            lineNo.clear();
-            readErrorIndex = true;
-        }
-        ++i;
     }
-    if (errors.size() == 0)
+    catch(...)
+    {
+        parsingFailed = true;
+    }
+    if (errors.size() == 0 || parsingFailed)
         errors.insert({0, log});
 }
 

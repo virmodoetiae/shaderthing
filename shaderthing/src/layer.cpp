@@ -125,7 +125,7 @@ R"(// Common source code is shared by all fragment shaders across all layers and
 #define KEY_F12 123
 
 // For convenience when importing ShaderToy shaders
-#define SHADER_TOY_MAIN void main(){mainImage(fragColor, fragCoord);}
+#define SHADERTOY_MAIN void main(){mainImage(fragColor, fragCoord);}
 vec2 fragCoord = gl_FragCoord.xy; 
 )";
 
@@ -1108,14 +1108,6 @@ void Layer::renderShader
         rendering_.target != Layer::Rendering::Target::Window
     );
     Rendering::sharedStorage->gpuMemoryBarrier();
-    
-    /*
-    Rendering::sharedStorage->buffer->fenceSync();
-    std::cout << gui_.name << " - int0  " 
-    << Rendering::sharedStorage->block.ioIntData[0] << std::endl;
-    if (Rendering::sharedStorage->block.ioIntData[0] == 9)
-        Rendering::sharedStorage->block.ioIntData[0] = 8;
-    */
 
     // Re-enable blending before either leaving or redirecting the rendered 
     // texture to the main window

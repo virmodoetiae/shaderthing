@@ -1173,44 +1173,24 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
     OpenGLWaitSync();
-    //waitSync();
-    //resetSync();    // For whatever reason, this appears to be vital to ensure
-                    // proper overwriting of mappedPaletteData
     
     if (settings_.regenerateMipmap)
     {
-        glActiveTexture(GL_TEXTURE0+settings_.inputUnit);
-        glBindTexture(GL_TEXTURE_2D, id);
+        if (settings_.overwriteInput)
+        {
+            glActiveTexture(GL_TEXTURE0+settings_.inputUnit);
+            glBindTexture(GL_TEXTURE_2D, id);
+        }
+        else
+        {
+            glActiveTexture(GL_TEXTURE0+outputDataUnit);
+            glBindTexture(GL_TEXTURE_2D, output_->colorBufferId());
+        }
         glGenerateMipmap(GL_TEXTURE_2D);
     }
 
     isFloat320 = isFloat32;
 }
-
-/*
-void OpenGLQuantizer::waitSync()
-{
-    if (firstWaitSyncCall_)
-    {   
-        dataSync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-        firstWaitSyncCall_ = false;
-    }
-    while (dataSync_)
-    {
-        GLenum wait = glClientWaitSync(dataSync_, 
-            GL_SYNC_FLUSH_COMMANDS_BIT, 1);
-        if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED)
-            break;
-    }
-}
-
-void OpenGLQuantizer::resetSync()
-{
-    if (dataSync_)
-        glDeleteSync(dataSync_);
-    dataSync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-}
-*/
 
 //----------------------------------------------------------------------------//
 // Constructor, destructor
