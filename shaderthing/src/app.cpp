@@ -50,8 +50,7 @@ App::App()
         false
     );
     
-    // Setup ImGui
-    initializeGui();
+    font_.initialize();
 
     newProject();
 
@@ -135,7 +134,7 @@ void App::update()
 void App::saveProject(const std::string& filepath) const
 {
     auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Write);
-    project.write("UIScale", *gui_.fontScale);
+    project.write("UIScale", *font_.fontScale);
     
     sharedUniforms_->save(            project);
     Layer::          save(layers_,    project);
@@ -149,7 +148,7 @@ void App::saveProject(const std::string& filepath) const
 void App::loadProject(const std::string& filepath)
 {
     auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
-    *gui_.fontScale = project.read<float>("UIScale");
+    *font_.fontScale = project.read<float>("UIScale");
     Resource::      loadAll(project,                            resources_);
     SharedUniforms::load   (project,           sharedUniforms_, resources_);
     Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
@@ -162,7 +161,7 @@ void App::loadProject(const std::string& filepath)
 void App::newProject()
 {
     project_ = {};
-    *gui_.fontScale = .6;
+    *font_.fontScale = .6;
 
     DELETE_IF_NOT_NULLPTR(exporter_);
     DELETE_IF_NOT_NULLPTR(sharedUniforms_);
@@ -235,7 +234,7 @@ void App::processProjectActions()
 
 //----------------------------------------------------------------------------//
 
-void App::initializeGui()
+void App::Font::initialize()
 {
     // Disable reading/writing from/to imgui.ini
     ImGuiIO& io = ImGui::GetIO();
@@ -244,15 +243,13 @@ void App::initializeGui()
     
     // Load ImGui font
     static bool fontLoaded(false);
-    static ImFont* font = nullptr;
-    static ImFontConfig config; 
     if (!fontLoaded)
     {
         float baseFontSize = 26.f;
-        config.PixelSnapH = true;
-        config.OversampleV = 3.0;
-        config.OversampleH = 3.0;
-        config.RasterizerMultiply = 1.0;
+        fontConfig.PixelSnapH = true;
+        fontConfig.OversampleV = 3.0;
+        fontConfig.OversampleH = 3.0;
+        fontConfig.RasterizerMultiply = 1.0;
         // The 26-36.5 ratio between Western writing systems' characters and
         // asian logograms/characters is set so that the latter are (almost)
         // exactly twice as wide as the former, for readability, valid for the
@@ -262,17 +259,17 @@ void App::initializeGui()
             (void*)ByteData::Font::CousineRegularData,
             ByteData::Font::CousineRegularSize, 
             baseFontSize,
-            &config,
+            &fontConfig,
             io.Fonts->GetGlyphRangesDefault()
         );
-        config.MergeMode = true;
-        config.RasterizerMultiply = 1.25;
+        fontConfig.MergeMode = true;
+        fontConfig.RasterizerMultiply = 1.25;
         io.Fonts->AddFontFromMemoryCompressedTTF
         (
             (void*)ByteData::Font::CousineRegularData, 
             ByteData::Font::CousineRegularSize,
             baseFontSize,
-            &config,
+            &fontConfig,
             io.Fonts->GetGlyphRangesCyrillic()
         );
         io.Fonts->AddFontFromMemoryCompressedTTF
@@ -280,7 +277,7 @@ void App::initializeGui()
             (void*)ByteData::Font::CousineRegularData, 
             ByteData::Font::CousineRegularSize,
             baseFontSize,
-            &config,
+            &fontConfig,
             io.Fonts->GetGlyphRangesGreek()
         );
 
@@ -299,11 +296,113 @@ void App::initializeGui()
             &iconConfig, 
             iconRanges
         );
-
         io.Fonts->Build();
         fontLoaded = true;
         font->Scale = 0.6;
-        gui_.fontScale = &font->Scale;
+        fontScale = &font->Scale;
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::Font::checkLoadJapaneseAndOrSimplifiedChinese()
+{
+    auto& io = ImGui::GetIO();
+    if (loadJapanese && !isJapaneseLoaded)
+    {
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        ( 
+            (void*)ByteData::Font::DroidSansFallbackData, 
+            ByteData::Font::DroidSansFallbackSize,
+            36.5,
+            &fontConfig, 
+            io.Fonts->GetGlyphRangesJapanese()
+        );
+        io.Fonts->Build();
+        vir::ImGuiRenderer::destroyDeviceObjects();
+        isJapaneseLoaded = true;
+    }
+    if (loadSimplifiedChinese && !isSimplifiedChineseLoaded)
+    {
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        ( 
+            (void*)ByteData::Font::DroidSansFallbackData, 
+            ByteData::Font::DroidSansFallbackSize,
+            36.5,
+            &fontConfig, 
+            io.Fonts->GetGlyphRangesChineseSimplifiedCommon()
+        );
+        io.Fonts->Build();
+        vir::ImGuiRenderer::destroyDeviceObjects();
+        isSimplifiedChineseLoaded = true;
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::Font::renderMenuItemGui()
+{
+    if (ImGui::BeginMenu("Font"))
+    {
+        ImGui::Text("%s", "Scale");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        ImGui::DragFloat
+        (
+            "##fontScale",
+            fontScale,
+            0.005f,
+            0.5f,
+            1.0f,
+            "%.1f"
+        );
+        ImGui::PopItemWidth();
+        ImGui::Separator();
+        if (ImGui::BeginMenu("Load character sets"))
+        {
+            bool alwaysBuiltSet(true);
+            
+            ImGui::Text("%s", "Latin            ");
+            ImGui::SameLine();
+            ImGui::BeginDisabled();
+            ImGui::Checkbox("##loadLatin", &alwaysBuiltSet);
+            ImGui::EndDisabled();
+
+            ImGui::Text("%s", "Cyrillic         ");
+            ImGui::SameLine();
+            ImGui::BeginDisabled();
+            ImGui::Checkbox("##loadCyrillic", &alwaysBuiltSet);
+            ImGui::EndDisabled();
+
+            ImGui::Text("%s", "Greek            ");
+            ImGui::SameLine();
+            ImGui::BeginDisabled();
+            ImGui::Checkbox("##loadGreek", &alwaysBuiltSet);
+            ImGui::EndDisabled();
+
+            ImGui::Text("%s", "Japanese         ");
+            ImGui::SameLine();
+            if (isJapaneseLoaded)
+                ImGui::BeginDisabled();
+            ImGui::Checkbox("##loadJapanese", &loadJapanese);
+            if (isJapaneseLoaded)
+                ImGui::EndDisabled();
+
+            ImGui::Text("%s", "Chinese (simpl.) ");
+            ImGui::SameLine();
+            if (isSimplifiedChineseLoaded)
+                ImGui::BeginDisabled();
+            ImGui::Checkbox
+            (
+                "##loadSimplifiedChinese", 
+                &loadSimplifiedChinese
+            );
+            if (isSimplifiedChineseLoaded)
+                ImGui::EndDisabled();
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenu();
     }
 }
 
@@ -311,6 +410,8 @@ void App::initializeGui()
 
 void App::renderGui()
 {
+    font_.checkLoadJapaneseAndOrSimplifiedChinese();
+    
     vir::ImGuiRenderer::newFrame();
     
     ImGui::SetNextWindowSize(ImVec2(750,900), ImGuiCond_FirstUseEver);
@@ -403,7 +504,6 @@ void App::renderMenuBarGui()
         }
     };
 
-    
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
     if (ImGui::BeginMenuBar())
@@ -432,48 +532,7 @@ void App::renderMenuBarGui()
             for (auto layer : layers_)
                 layer->renderSettingsMenuGui(resources_);
             ImGui::Separator();
-            if (ImGui::BeginMenu("Font"))
-            {
-                ImGui::Text("Scale");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(-1);
-                ImGui::DragFloat
-                (
-                    "##fontScale",
-                    gui_.fontScale,
-                    0.005f,
-                    0.5f,
-                    1.0f,
-                    "%.1f"
-                );
-                ImGui::PopItemWidth();
-                ImGui::Separator();
-                if (ImGui::BeginMenu("Load character sets"))
-                {
-                    bool alwaysBuiltSet(true);
-                    
-                    ImGui::Text("Latin    ");
-                    ImGui::SameLine();
-                    ImGui::BeginDisabled();
-                    ImGui::Checkbox("##loadLatin", &alwaysBuiltSet);
-                    ImGui::EndDisabled();
-
-                    ImGui::Text("Cyrillic ");
-                    ImGui::SameLine();
-                    ImGui::BeginDisabled();
-                    ImGui::Checkbox("##loadCyrillic", &alwaysBuiltSet);
-                    ImGui::EndDisabled();
-
-                    ImGui::Text("Greek    ");
-                    ImGui::SameLine();
-                    ImGui::BeginDisabled();
-                    ImGui::Checkbox("##loadGreek", &alwaysBuiltSet);
-                    ImGui::EndDisabled();
-
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenu();
-            }
+            font_.renderMenuItemGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Resources"))
@@ -501,17 +560,19 @@ void App::renderMenuBarGui()
             }
             if (ImGui::BeginMenu("System info"))
             {
-                ImGui::Text("Graphics card in use:");
+                ImGui::Text("%s", "Graphics card in use:");
                 ImGui::SameLine();
                 ImGui::Text
                 (
+                    "%s", 
                     vir::Renderer::instance()->
                     deviceName().c_str()
                 );
-                ImGui::Text("Graphics context:    ");
+                ImGui::Text("%s", "Graphics context:    ");
                 ImGui::SameLine();
                 ImGui::Text
                 (
+                    "%s", 
                     vir::Window::instance()->
                     context()->name().c_str()
                 );

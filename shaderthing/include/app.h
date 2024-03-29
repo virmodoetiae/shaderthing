@@ -20,6 +20,8 @@
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/filedialog.h"
 
+class ImFontConfig;
+
 namespace ShaderThing
 {
 
@@ -50,21 +52,27 @@ private:
         bool               forceSaveAs      = true;
     };
     Project                project_         = {};
-
-    struct GUI
-    {
-        float*             fontScale        = nullptr;
-    };
-    GUI                    gui_             = {};
-
     bool                   renderNextFrame_ = true;
-
     SharedUniforms*        sharedUniforms_  = nullptr;
     std::vector<Layer*>    layers_          = {};
     std::vector<Resource*> resources_       = {};
     Exporter*              exporter_        = nullptr;
-
     FileDialog             fileDialog_;
+
+    struct Font
+    {
+        ImFont*            font             = nullptr;
+        float*             fontScale        = nullptr;
+        ImFontConfig       fontConfig       = {}; 
+        bool               isJapaneseLoaded = false;
+        bool               loadJapanese     = false;
+        bool      isSimplifiedChineseLoaded = false;
+        bool      loadSimplifiedChinese     = false;
+        void      initialize();
+        void      checkLoadJapaneseAndOrSimplifiedChinese();
+        void      renderMenuItemGui();
+    };
+    Font                   font_            = {};
     
     void saveProject(const std::string& filepath) const;
     void loadProject(const std::string& filepath);
@@ -72,7 +80,6 @@ private:
     void processProjectActions();
 
     void update();
-    void initializeGui();
     void renderGui();
     void renderMenuBarGui();
     
