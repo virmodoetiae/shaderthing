@@ -24,14 +24,13 @@ namespace ShaderThing
 
 SharedStorage::SharedStorage()
 {
-    buffer_ = vir::ShaderStorageBuffer::create(Block::size);
     if 
     (
         (
             vir::Window::instance()->context()->versionMajor() == 4 &&
             vir::Window::instance()->context()->versionMinor() >= 3
         ) ||
-        vir::Window::instance()->context()->versionMajor() >= 4 // In the future
+        vir::Window::instance()->context()->versionMajor() > 4 // In the future
     )
         isSupported_ = true;
     if (isSupported_)
@@ -167,6 +166,14 @@ void SharedStorage::renderGui()
 {
     if (!gui_.isOpen)
         return;
+    if (!isSupported_)
+    {
+        ImGui::Text
+        (
+            "Not supported due to OpenGL version <= 4.2, requires >= 4.3"
+        );
+        return;
+    }
     const float fontSize = ImGui::GetFontSize();
     const float textWidth = 45.f*fontSize;
     if (gui_.isDetachedFromMenu)
@@ -344,7 +351,7 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
             std::string label = "##ioVec4DataShowCmpt"+std::to_string(i);
             ImGui::Checkbox(label.c_str(), &gui_.ioVec4DataViewComponents[i]);
             ImGui::SameLine();
-            ImGui::Text(labels[i]);
+            ImGui::Text("%s", labels[i]);
         }
 
         ImGui::EndChild();

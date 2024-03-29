@@ -12,13 +12,14 @@ file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vir vir)
 
-set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ -static -std=c++17")
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
-
 if(WIN32)
+    set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ -static -std=c++17")
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/data)
     list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/shaderthing_win32.rc)
+else()
+    set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ -std=c++17")
 endif()
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 
 add_executable(shaderthing ${SOURCE_FILES})
 

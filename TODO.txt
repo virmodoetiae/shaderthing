@@ -182,6 +182,9 @@ TODO ---------------------------------------------------------------------------
 (X) Fix quantizer not working if source framebuffer minimization filter set
     to any of the mipmap filters
 
+(X) Enable compilation and running on at least one Unix system, tested on 
+    Ubuntu 22 LTS
+
 (W) Expand code repository section
 
 ( ) Implement layer cloning (for convenience)
@@ -192,8 +195,6 @@ TODO ---------------------------------------------------------------------------
 ( ) Add example projects that can be loaded in ShaderThings as demos/tutorials
 
 ( ) Expand project README with demo images and GIFs
-
-( ) Test compilation and running on Linux systems
 
 TO-CONSIDER --------------------------------------------------------------------
 

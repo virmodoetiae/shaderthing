@@ -685,7 +685,6 @@ is currently being held down)");
             uniform->specialType == SpecialType::LayerAspectRatio ||
             uniform->specialType == SpecialType::LayerResolution
         );
-        std::cout << managed << " " << showDefaultUniforms << std::endl;
         if (managed && !showDefaultUniforms)
             return;
         bool isSharedByUser0 = uniform->isSharedByUser;
