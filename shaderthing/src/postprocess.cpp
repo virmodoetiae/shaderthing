@@ -480,7 +480,8 @@ QuantizationPostProcess* QuantizationPostProcess::load
 )
 {
     auto postProcess = new QuantizationPostProcess(inputLayer);
-    postProcess->isActive_ = io.read<bool>("active");
+    postProcess->isActive_ 
+        = io.read<bool>("active") && postProcess->canRunOnDeviceInUse();
     postProcess->settings_.ditherMode = 
         (vir::Quantizer::Settings::DitherMode)io.read<int>("ditherMode");
     postProcess->settings_.ditherThreshold = io.read<float>("ditherThreshold");
@@ -625,7 +626,6 @@ void QuantizationPostProcess::run()
     if (paletteSizeModified_)
         paletteSizeModified_ = false;
 
-    // Essential step
     overwriteInputLayerFramebuffer();
 }
 
@@ -1052,7 +1052,8 @@ BloomPostProcess* BloomPostProcess::load
 )
 {
     auto postProcess = new BloomPostProcess(inputLayer);
-    postProcess->isActive_ = io.read<bool>("active");
+    postProcess->isActive_ 
+        = io.read<bool>("active") && postProcess->canRunOnDeviceInUse();
     postProcess->settings_.mipDepth = io.read<unsigned int>("mipDepth");
     postProcess->settings_.intensity = io.read<float>("intensity");
     postProcess->settings_.threshold = io.read<float>("threshold");
@@ -1092,7 +1093,6 @@ void BloomPostProcess::run()
         settings_
     );
 
-    // Essential step
     overwriteInputLayerFramebuffer();
 }
 
@@ -1248,7 +1248,8 @@ PostProcess
 BlurPostProcess* BlurPostProcess::load(const ObjectIO& io, Layer* inputLayer)
 {
     auto postProcess = new BlurPostProcess(inputLayer);
-    postProcess->isActive_ = io.read<bool>("active");
+    postProcess->isActive_ 
+        = io.read<bool>("active") && postProcess->canRunOnDeviceInUse();
     postProcess->settings_.xRadius = io.read<unsigned int>("xRadius");
     postProcess->settings_.yRadius = io.read<unsigned int>("yRadius");
     postProcess->settings_.subSteps = io.read<unsigned int>("subSteps");
@@ -1281,7 +1282,6 @@ void BlurPostProcess::run()
         settings_
     );
 
-    // Essential step
     overwriteInputLayerFramebuffer();
 }
 
