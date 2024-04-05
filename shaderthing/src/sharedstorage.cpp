@@ -40,7 +40,8 @@ SharedStorage::SharedStorage()
         buffer_->setBindingPoint(bindingPoint_);
         block_.dataStart = buffer_->mapData();
         block_.ioIntData = (int*)block_.dataStart;
-        block_.ioVec4Data = (glm::vec4*)(block_.ioIntData+Block::arraySize);
+        block_.ioVec4Data = 
+            (glm::vec4*)(block_.ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE);
         gui_.ioVec4DataViewFormat =
         (
             "%."+
@@ -242,7 +243,11 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
             gui_.ioIntDataViewStartIndex = 
                 std::max
                 (
-                    std::min(gui_.ioIntDataViewStartIndex, Block::arraySize),
+                    std::min
+                    (
+                        gui_.ioIntDataViewStartIndex, 
+                        SHARED_STORAGE_INT_ARRAY_SIZE
+                    ),
                     0
                 );
         ImGui::PopItemWidth();
@@ -254,7 +259,11 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
             gui_.ioIntDataViewEndIndex = 
                 std::max
                 (
-                    std::min(gui_.ioIntDataViewEndIndex, Block::arraySize),
+                    std::min
+                    (
+                        gui_.ioIntDataViewEndIndex, 
+                        SHARED_STORAGE_INT_ARRAY_SIZE
+                    ),
                     0
                 );
         ImGui::PopItemWidth();
@@ -262,8 +271,6 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
         ImGui::EndChild();
     }
     ImGui::SameLine();
-    
-    
     {
         ImGui::BeginChild
         (
@@ -280,7 +287,7 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
             gui_.ioVec4DataViewStartIndex = 
                 std::max
                 (
-                    std::min(gui_.ioVec4DataViewStartIndex, Block::arraySize),
+                    std::min(gui_.ioVec4DataViewStartIndex, SHARED_STORAGE_VEC4_ARRAY_SIZE),
                     0
                 );
         ImGui::PopItemWidth();
@@ -292,7 +299,7 @@ ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
             gui_.ioVec4DataViewEndIndex = 
                 std::max
                 (
-                    std::min(gui_.ioVec4DataViewEndIndex, Block::arraySize),
+                    std::min(gui_.ioVec4DataViewEndIndex, SHARED_STORAGE_VEC4_ARRAY_SIZE),
                     0
                 );
         ImGui::PopItemWidth();

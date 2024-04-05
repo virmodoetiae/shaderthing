@@ -14,6 +14,7 @@
 */
 
 #include <algorithm>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -40,9 +41,6 @@ typedef std::string nativeReadBuffer;
 
 // Static members ------------------------------------------------------------//
 
-// Output file when using ObjectIO in Write mode
-std::ofstream ObjectIO::oFile_ = std::ofstream();
-
 // Input file when using ObjectIO in Read mode
 std::ifstream ObjectIO::iFile_ = std::ifstream();
 
@@ -55,6 +53,7 @@ ObjectIO::ObjectIO(const char* name, Mode mode, void* nativeObject) :
 name_(name),
 mode_(mode),
 isRoot_(false),
+isValid_(true),
 members_(0),
 nativeObject_(nativeObject)
 {
@@ -102,6 +101,7 @@ ObjectIO::ObjectIO(const char* filepath, Mode mode) :
 name_(filepath),
 mode_(mode),
 isRoot_(true),
+isValid_(true),
 members_(0),
 nativeObject_(nullptr)
 {
@@ -109,16 +109,6 @@ nativeObject_(nullptr)
     {
     case Mode::Write :
     {
-        oFile_.open
-        (
-            filepath, 
-            std::ios_base::out | std::ios_base::binary
-        );
-        if(!oFile_.is_open())
-            throw std::runtime_error
-            (
-                "Could not open output project file for saving data"
-            );
         nativeBuffer_ = (void*) new nativeWriteBuffer();
         nativeObject_ = (void*) new nativeWriter
         (
@@ -134,11 +124,11 @@ nativeObject_(nullptr)
             filepath, 
             std::ios_base::in | std::ios::binary
         );
-        if(!iFile_)
-            throw std::runtime_error
-            (
-                "Could not open input project file for loading data"
-            );
+        if (!iFile_)
+        {
+            isValid_ = false;
+            return;
+        }
         nativeBuffer_ = (void*) new nativeReadBuffer;
         auto* data = (nativeReadBuffer*)nativeBuffer_;
         iFile_.seekg(0, std::ios::end);
@@ -150,7 +140,8 @@ nativeObject_(nullptr)
         if (document->ParseInsitu(&((*data)[0])).HasParseError())
         {
             freeNativeMemory();
-            throw std::runtime_error("Input project file invalid or corrupted");
+            isValid_ = false;
+            return;
         }
         nativeObject_ = (void*) new nativeReader(document->GetObject());
         break;
@@ -161,25 +152,36 @@ nativeObject_(nullptr)
 
 ObjectIO::~ObjectIO()
 {
-    if (isRoot_)
-    {
-        switch (mode_)
-        {
-            case Mode::Write :
-            {
-                ((nativeWriter*)nativeObject_)->EndObject();
-                oFile_ << ((nativeWriteBuffer*)nativeBuffer_)->GetString();
-                oFile_.close();
-                break;
-            }
-            case Mode::Read :
-            {
-                iFile_.close();
-                break;
-            }
-        }
-    }
+    if (isRoot_ && mode_ == Mode::Read)
+        iFile_.close();
     freeNativeMemory();
+}
+
+bool ObjectIO::writeContentsToDisk() const
+{
+    if (!isRoot_ || mode_ != Mode::Write)
+        return false;
+    ((nativeWriter*)nativeObject_)->EndObject();
+    std::ostringstream oFileContent;
+    try 
+    {
+        oFileContent << ((nativeWriteBuffer*)nativeBuffer_)->GetString();
+    }
+    catch (...) 
+    {
+        return false;
+    }
+    std::ofstream oFile;
+    oFile.open // name_ == filepath for the root object
+    (
+        name_, 
+        std::ios_base::out | std::ios_base::binary
+    );
+    if(!oFile.is_open())
+        return false;
+    oFile << oFileContent.str();
+    oFile.close();
+    return true;
 }
 
 bool ObjectIO::hasMember(const char* key) const

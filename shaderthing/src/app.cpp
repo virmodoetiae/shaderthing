@@ -141,6 +141,9 @@ void App::saveProject(const std::string& filepath) const
     Resource::       save(resources_, project);
     exporter_->      save(            project);
     PostProcess::    saveStaticData(  project);
+
+    // TODO Could display an error via ImGui on failure
+    bool success = project.writeContentsToDisk();
 }
 
 //----------------------------------------------------------------------------//
@@ -148,6 +151,8 @@ void App::saveProject(const std::string& filepath) const
 void App::loadProject(const std::string& filepath)
 {
     auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
+    if (!project.isValid())
+        return; // TODO Could display an error via ImGui
     *font_.fontScale = project.read<float>("UIScale");
     Resource::      loadAll(project,                            resources_);
     SharedUniforms::load   (project,           sharedUniforms_, resources_);

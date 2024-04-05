@@ -498,7 +498,8 @@ QuantizationPostProcess* QuantizationPostProcess::load
     postProcess->currentPalette_.nColors = paletteSizeX3/3;
     postProcess->currentPalette_.name = 
         io.readOrDefault<std::string>("paletteName", Palette{}.name);
-    postProcess->paletteModified_ = !postProcess->settings_.recalculatePalette;
+    postProcess->paletteModified_ = true;
+    postProcess->paletteSizeModified_ = false;
     postProcess->settings_.reseedPalette = false;
     return postProcess;
 }
@@ -581,11 +582,14 @@ void QuantizationPostProcess::run()
     CHECK_SHOULD_RUN
     
     settings_.paletteData = 
-        paletteModified_ ? 
+        (paletteModified_ || !settings_.recalculatePalette) ?
         currentPalette_.data : 
         nullptr;
     if (refreshPalette_)
+    {
         settings_.reseedPalette = true;
+        settings_.paletteData = nullptr;
+    }
     if (settings_.reseedPalette)
         settings_.recalculatePalette = true;
     auto minFilterMode = (*inputFramebuffer_)->colorBufferMinFilterMode();
@@ -605,26 +609,22 @@ void QuantizationPostProcess::run()
         settings_
     );
 
+    if (paletteSizeModified_)
+        currentPalette_.clear();
+    if (refreshPalette_ || settings_.recalculatePalette || paletteSizeModified_)
+        ((nativeType*)native_)->getPalette
+        (
+            currentPalette_.data, 
+            paletteSizeModified_
+        );
     if (refreshPalette_)
     {
         refreshPalette_ = false;
         settings_.recalculatePalette = false;
     }
-
-    if (paletteSizeModified_)
-        currentPalette_.clear();
-        // Re-alloc of uCharData happens in getPalette
-    ((nativeType*)native_)->getPalette
-    (
-        currentPalette_.data, 
-        paletteSizeModified_
-    );
-    if (settings_.reseedPalette)
-        settings_.reseedPalette = false;
-    if (paletteModified_)
-        paletteModified_ = false;
-    if (paletteSizeModified_)
-        paletteSizeModified_ = false;
+    settings_.reseedPalette = false;
+    paletteModified_ = false;
+    paletteSizeModified_ = false;
 
     overwriteInputLayerFramebuffer();
 }
@@ -776,7 +776,7 @@ void QuantizationPostProcess::renderGui()
         static float deletePaletteTimer = 0.f;
         bool deletePalette = false;
         if (ImGui::Button(ICON_FA_FOLDER_OPEN, {0,0}))
-            ImGui::OpenPopup("Load palette from library");
+            ImGui::OpenPopup("##LoadPaletteFromLibrary");
         if 
         (
             ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
@@ -786,7 +786,7 @@ void QuantizationPostProcess::renderGui()
             ImGui::Text("Load a palette from the palette library");
             ImGui::EndTooltip();
         }
-        if (ImGui::BeginPopup("Load palette from library"))
+        if (ImGui::BeginPopup("##LoadPaletteFromLibrary"))
         {
             auto nUserPalettes = QuantizationPostProcess::userPalettes_.size();
             auto nDefaultPalettes = 

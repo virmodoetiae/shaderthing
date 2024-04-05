@@ -591,7 +591,7 @@ LayerResource::~LayerResource()
 //----------------------------------------------------------------------------//
 
 bool Resource::isGuiOpen = false;
-bool Resource::isGuiDetachedFromMenu = false;
+bool Resource::isGuiDetachedFromMenu = true;
 
 void Resource::renderResourcesGui
 (

@@ -39,9 +39,6 @@ public:
 
 protected:
 
-    // Output file when using ObjectIO in Write mode
-    static std::ofstream oFile_;
-
     // Input file when using ObjectIO in Read mode
     static std::ifstream iFile_;
 
@@ -57,6 +54,13 @@ protected:
 
     // True for root objects (i.e., user-created ones)
     bool isRoot_;
+
+    // False if:
+    // - failed to open a file for reading and/or writing
+    // - failed to read from an opened file
+    // - failed to write to an opened file
+    // The underlying files are never modified if such issues arise
+    bool isValid_;
 
     // List of member names within this object
     std::vector<const char*> members_;
@@ -87,6 +91,22 @@ public:
     // consists of the i/o file path. If in read mode and this object is not
     // root, it consists of the JSON sub-dict key name
     const char* name() const {return name_;}
+
+    // False if:
+    // - failed to open a file for reading and/or writing on construction
+    // - failed to read from an opened file on construction
+    //
+    // The underlying files are never modified if such issues arise
+    bool isValid() const {return isValid_;}
+
+    // If this ObjectIO object was created in write mode and if it is the root 
+    // one, save its contents to disk, namely to the filepath specified at 
+    // ObjectIO construction. Returns true on write success. Returns false if
+    // the mentioned preconditions are not met, if the ObjectIO contents are
+    // corrupted or if the output file cannot be opened for writing. In the
+    // case of corrupted data, the output file contents are not ovewritten and
+    // nothing is lost
+    bool writeContentsToDisk() const;
 
     // Get all JSON member names (i.e., keys) in this object
     const std::vector<const char*>& members() const {return members_;}

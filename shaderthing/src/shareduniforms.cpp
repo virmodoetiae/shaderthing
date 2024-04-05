@@ -552,6 +552,7 @@ void SharedUniforms::load
     auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
     su->setResolution(resolution, false);
     su->fBlock_.iTime = ioSu.read<float>("time");
+    su->flags_.resetFrameCounter = false;
     su->bounds_[Uniform::SpecialType::Time] = ioSu.read<glm::vec2>("timeBounds");
     su->fBlock_.iWASD = ioSu.read<glm::vec3>("iWASD");
     su->fBlock_.iLook = ioSu.read<glm::vec3>("iLook");

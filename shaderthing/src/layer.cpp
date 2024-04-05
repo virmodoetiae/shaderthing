@@ -800,7 +800,6 @@ void Layer::rebuildFramebuffers
             auto wrapModeY = framebuffer->colorBufferWrapMode(1);
             auto minFilterMode = framebuffer->colorBufferMinFilterMode();
             auto magFilterMode = framebuffer->colorBufferMagFilterMode();
-            auto internalFormat = framebuffer->colorBufferInternalFormat();
             
             // Preserve original framebuffer contents after resizing
             auto newFramebuffer = vir::Framebuffer::create
