@@ -51,8 +51,9 @@ private:
     {
               bool updateDataRangeII                  = false;
               bool stepToNextFrame                    = false;
+              bool stepToNextTimeStep                 = false;
               bool resetFrameCounter                  = true;
-              bool resetFrameCounterPreOrPostExport   = false;
+              bool resetFrameCounterPreOrPostExport   = true;
               bool isRenderingPaused                  = false;
               bool isTimePaused                       = false;
               bool isTimePausedBecauseRenderingPaused = false;

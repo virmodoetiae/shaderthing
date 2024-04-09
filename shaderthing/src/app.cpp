@@ -509,6 +509,12 @@ void App::renderMenuBarGui()
         }
     };
 
+    if (Helpers::isCtrlKeyPressed(ImGuiKey_R)) // Ctrl+R
+    {
+        sharedUniforms_->resetFrameCounter();
+        Layer::Flags::restartRendering = true;
+    }
+
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
     if (ImGui::BeginMenuBar())

@@ -218,6 +218,20 @@ void Uniform::renderUniformsGui
         )
             sharedUniforms.flags_.isTimePaused = 
                 !sharedUniforms.flags_.isTimePaused;
+        if (sharedUniforms.flags_.isTimePaused)
+        {
+            if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
+                sharedUniforms.flags_.stepToNextTimeStep = true;
+        }
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            ImGui::Text("Increment iTime by iTimeDelta");
+            ImGui::EndTooltip();
+        }
         NEXT_COLUMN
         ImGui::Text("iTime");
         NEXT_COLUMN
@@ -322,9 +336,11 @@ void Uniform::renderUniformsGui
         NEXT_COLUMN
         // No bounds
         NEXT_COLUMN
-        if (!sharedUniforms.flags_.isRenderingPaused)
-            ImGui::Text("%.6f s", sharedUniforms.fBlock_.iTimeDelta);
-        else
+        if 
+        (
+            sharedUniforms.flags_.isRenderingPaused || 
+            sharedUniforms.flags_.isTimePaused
+        )
         {
             ImGui::InputFloat
             (
@@ -339,6 +355,8 @@ void Uniform::renderUniformsGui
             ImGui::SameLine();
             ImGui::Text("s");
         }
+        else
+            ImGui::Text("%.6f s", sharedUniforms.fBlock_.iTimeDelta);
         END_ROW
         ImGui::Dummy({0, 0.1f*fontSize});
 

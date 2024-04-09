@@ -187,6 +187,8 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand code repository section
 
+( ) [vir & shaderthing] Implement an actual internal logging system
+
 ( ) Implement layer cloning (for convenience)
 
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
@@ -198,8 +200,6 @@ TODO ---------------------------------------------------------------------------
 
 TO-CONSIDER --------------------------------------------------------------------
 
-*   Add pivot-mode motion to iCameraDirection/iLook w.r.t. iCameraPosition/iWASD
-
 *   Add possibility of rendering to cubemaps (e.g., adding a type selector for
     any layer's internal framebuffer 'type': either a Texture2D framebuffer or
     a Cubemap framebuffer). This is probably a lot of work for a feature I don't
@@ -209,5 +209,5 @@ TO-CONSIDER --------------------------------------------------------------------
     manager and uniform system. This isn't a lot of work but it's a feature I 
     don't see very often in the shader art community
 
-*   Record video tutorial(s) of application usage, host them on YouTube, 
-    possibly find a way to add tutorial links within the application
+*   Record video tutorial(s) of program usage, host them on YouTube, 
+    possibly find a way to add tutorial links within the program

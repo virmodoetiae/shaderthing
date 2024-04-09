@@ -393,7 +393,7 @@ void SharedUniforms::update(const UpdateArgs& args)
         fBlock_.iTime += args.timeStep;
         fBlock_.iTimeDelta = args.timeStep;
     }
-    else if (flags_.stepToNextFrame)
+    else if (flags_.stepToNextFrame || flags_.stepToNextTimeStep)
         fBlock_.iTime += fBlock_.iTimeDelta;
 
     const glm::vec2& timeLoopBounds(bounds_[Uniform::SpecialType::Time]);
@@ -411,6 +411,7 @@ void SharedUniforms::update(const UpdateArgs& args)
     fBlock_.iRenderPass = 0;
 
     flags_.stepToNextFrame = false;
+    flags_.stepToNextTimeStep = false;
     if (flags_.resetFrameCounterPreOrPostExport)
     {
         fBlock_.iFrame = 0;
