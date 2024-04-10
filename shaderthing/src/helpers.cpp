@@ -73,7 +73,7 @@ std::string fileExtension(const std::string& filepath, bool toLowerCase)
 {
     std::string fileExtension = "";
     bool foundDot(false);
-    for (int i=filepath.size()-1; i>=0; i--)
+    for (int i=(int)filepath.size()-1; i>=0; i--)
     {
         const char& c(filepath[i]);
         if (c == '\\' || c == '/')
@@ -100,7 +100,7 @@ std::string filename(const std::string& filepath)
 {
     std::string filename = "";
     bool foundSlash(false);
-    for (int i=filepath.size()-1; i>=0; i--)
+    for (int i=(int)filepath.size()-1; i>=0; i--)
     {
         const char& c(filepath[i]);
         foundSlash = (c == '\\' || c == '/');
@@ -122,7 +122,7 @@ void splitFilepath
     fileExtension.clear();
     bool foundDot(false);
     int i = 0;
-    for (i=filepath.size()-1; i>=0; i--)
+    for (i=(int)filepath.size()-1; i>=0; i--)
     {
         const char& c(filepath[i]);
         if (c == '\\' || c == '/')
@@ -157,7 +157,7 @@ std::string randomString(const unsigned int size)
         "abcdefghijklmnopqrstuvwxyz";
     auto tmp = std::string();
     tmp.reserve(size);
-    for (int i = 0; i < size; ++i)
+    for (unsigned int i = 0; i < size; ++i)
         tmp += alphanum[rand() % (sizeof(alphanum) - 1)];
     return tmp;
 }
@@ -208,7 +208,6 @@ void oneLineColorfulText
 )
 {
     auto p = ImGui::GetCursorScreenPos();
-    const auto first_px = p.x, first_py = p.y;
     auto im_colors = ImGui::GetStyle().Colors;
     const auto default_color = im_colors[ImGuiCol_Text];
     std::string temp_str;
@@ -263,7 +262,7 @@ void oneLineColorfulText
     ImGui::Text(dummy.c_str());
     float dx = ImGui::CalcTextSize(dummy.c_str()).x/nChars;
     float x = p.x;
-    for (int i=0; i<texts.size(); i++)
+    for (int i=0; i<(int)texts.size(); i++)
     {
         auto& texti = texts[i];
         im_colors[ImGuiCol_Text] = texti.color;
@@ -272,35 +271,6 @@ void oneLineColorfulText
     }
     im_colors[ImGuiCol_Text] = default_color;
 }
-
-/*float parseComputeArrayExpression(const std::string& expression, float* array)
-{
-    float result = 0;
-    std::string cleanExpression = expression;
-    cleanExpression.erase
-    (
-        std::remove(cleanExpression.begin(), cleanExpression.end(), ' '), 
-        cleanExpression.end()
-    );
-    unsigned int n = cleanExpression.size();
-    unsigned int braketLevel = 0;
-    std::string number = "";
-    for (int i=0; i<n; i++)
-    {
-        const char& c0 = cleanExpression[i];
-        if (isdigit(c0))
-            number += c0;
-        else
-        {
-
-        }
-        if (i < n-1)
-        {
-            const char& c1 = cleanExpression[i+1];
-        }
-    }
-    return result;
-}*/
 
 #define RETURN_SCALAR_FORMAT                                            \
     if (value == 0)                                                     \

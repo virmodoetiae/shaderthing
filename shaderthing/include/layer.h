@@ -133,7 +133,7 @@ private:
 
     //------------------------------------------------------------------------//
 
-    static const unsigned int findFreeId(const std::vector<Layer*>& layers);
+    static unsigned int findFreeId(const std::vector<Layer*>& layers);
     static const std::string& glslVersionSource();
     static const std::string& vertexShaderSource
     (

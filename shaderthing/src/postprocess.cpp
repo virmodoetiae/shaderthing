@@ -28,9 +28,9 @@ PostProcess::PostProcess
     Layer* inputLayer,
     vir::PostProcess* native
 ):
-native_(native),
 inputLayer_(inputLayer),
-inputFramebuffer_(&inputLayer->rendering_.framebuffer)
+inputFramebuffer_(&inputLayer->rendering_.framebuffer),
+native_(native)
 {}
 
 //----------------------------------------------------------------------------//
@@ -59,6 +59,8 @@ PostProcess* PostProcess::create
             return new BloomPostProcess(inputLayer);
         case Type::Blur :
             return new BlurPostProcess(inputLayer);
+        default :
+            return nullptr;
     }
     return nullptr;
 }
@@ -72,7 +74,7 @@ PostProcess* PostProcess::load
 )
 {
     std::string typeName = io.name();
-    Type type;
+    Type type = Type::Undefined;
     for (auto kv : vir::PostProcess::typeToName)
     {
         if (kv.second == typeName)
@@ -86,9 +88,10 @@ PostProcess* PostProcess::load
             return BloomPostProcess::load(io, inputLayer);
         case Type::Blur :
             return BlurPostProcess::load(io, inputLayer);
-        default:
+        case Type::Undefined:
             return nullptr;
     }
+    return nullptr;
 }
 
 //----------------------------------------------------------------------------//
@@ -391,7 +394,7 @@ QuantizationPostProcess::Palette::Palette(const Palette& palette)
 {
     nColors = palette.nColors;
     data = new unsigned char[3*nColors];
-    for (int i=0; i<3*nColors; i++)
+    for (auto i=0u; i<3u*nColors; i++)
         data[i] = palette.data[i];
     name = palette.name;
 }
@@ -406,7 +409,7 @@ QuantizationPostProcess::Palette::Palette
 {
     nColors = int(colors.size()/3);
     data = new unsigned char[3*nColors];
-    for (int i=0; i<3*nColors; i++)
+    for (auto i=0u; i<3u*nColors; i++)
         data[i] = *(colors.begin()+i);
     name = nameCStr;
 }
@@ -419,7 +422,7 @@ QuantizationPostProcess::Palette::operator=(const Palette& rhs)
     nColors = rhs.nColors;
     DELETE_IF_NOT_NULLPTR(data)
     data = new unsigned char[3*nColors];
-    for (int i=0; i<3*nColors; i++)
+    for (auto i=0u; i<3u*nColors; i++)
         data[i] = rhs.data[i];
     name = rhs.name;
     return *this;
@@ -445,7 +448,7 @@ bool QuantizationPostProcess::Palette::operator==(const Palette& rhs)
 {
     if (nColors!=rhs.nColors || data==nullptr || rhs.data==nullptr)
         return false;
-    for (int i=0; i<3*nColors; i++)
+    for (auto i=0u; i<3u*nColors; i++)
     {
         if (data[i] != rhs.data[i])
             return false;
@@ -788,11 +791,12 @@ void QuantizationPostProcess::renderGui()
         }
         if (ImGui::BeginPopup("##LoadPaletteFromLibrary"))
         {
-            auto nUserPalettes = QuantizationPostProcess::userPalettes_.size();
-            auto nDefaultPalettes = 
+            unsigned int nUserPalettes = 
+                QuantizationPostProcess::userPalettes_.size();
+            unsigned int nDefaultPalettes = 
                 QuantizationPostProcess::defaultPalettes_.size();
             ImGui::SeparatorText("User palettes");
-            for (int i=0; i<nUserPalettes; i++)
+            for (auto i=0u; i<nUserPalettes; i++)
             {
                 auto& palette = QuantizationPostProcess::userPalettes_[i];
                 ImGui::PushID(i);
@@ -837,7 +841,7 @@ void QuantizationPostProcess::renderGui()
                     selectedUserPaletteIndex = i;
                     ImGui::CloseCurrentPopup();
                 }
-                for (int j=0; j<palette.nColors; j++)
+                for (auto j=0u; j<palette.nColors; j++)
                 {
                     float color[3] = 
                     {
@@ -861,7 +865,7 @@ void QuantizationPostProcess::renderGui()
                     ImGui::Separator();
             }
             ImGui::SeparatorText("Built-in palettes");
-            for (int i=0; i<nDefaultPalettes; i++)
+            for (auto i=0u; i<nDefaultPalettes; i++)
             {
                 auto& palette = QuantizationPostProcess::defaultPalettes_[i];
                 if (ImGui::Selectable(palette.name.c_str()))
@@ -869,7 +873,7 @@ void QuantizationPostProcess::renderGui()
                     selectedDefaultPaletteIndex = i;
                     ImGui::CloseCurrentPopup();
                 }
-                for (int j=0; j<palette.nColors; j++)
+                for (auto j=0u; j<palette.nColors; j++)
                 {
                     float color[3] = 
                     {
@@ -929,7 +933,12 @@ void QuantizationPostProcess::renderGui()
         static int foundPaletteIndex = -1;
         if (ImGui::Button(ICON_FA_SAVE, {0,0}))
         {
-            for (int i=0; i<QuantizationPostProcess::userPalettes_.size(); i++)
+            for 
+            (
+                auto i=0u; 
+                i<(unsigned int)QuantizationPostProcess::userPalettes_.size();
+                i++
+            )
             {
                 if 
                 (
@@ -993,7 +1002,7 @@ void QuantizationPostProcess::renderGui()
     if (currentPalette_.data == nullptr)
         return;
     ImGui::Dummy({-1, 0});
-    for (int i=0; i<currentPalette_.nColors; i++)
+    for (auto i=0u; i<currentPalette_.nColors; i++)
     {
         std::string id = "##paletteColorNo"+std::to_string(i);
         float color[3] = 

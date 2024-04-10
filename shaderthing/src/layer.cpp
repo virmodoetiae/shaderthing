@@ -510,7 +510,7 @@ void Layer::onReceive(vir::Event::WindowResizeEvent& event)
 
 //----------------------------------------------------------------------------//
 
-const unsigned int Layer::findFreeId(const std::vector<Layer*>& layers)
+unsigned int Layer::findFreeId(const std::vector<Layer*>& layers)
 {
     std::vector<unsigned int> ids(layers.size());
     unsigned int id(0);
@@ -959,7 +959,7 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
     }
     // Else if shader not valid
     std::map<int, std::string> sourceErrors, sharedErrors;
-    for (const auto error : shader->compilationErrors().fragmentErrors)
+    for (const auto& error : shader->compilationErrors().fragmentErrors)
     {
         int sourceLineNo(error.first - nSharedLines - nHeaderLines + 1);
         int sharedLineNo(error.first - nHeaderLines + 1);
@@ -1157,7 +1157,7 @@ void Layer::resetAfterExport()
 
 bool Layer::removeResourceFromUniforms(const Resource* resource)
 {
-    for (int i=0; i<uniforms_.size(); i++)
+    for (int i=0; i<(int)uniforms_.size(); i++)
     {
         auto uniform = uniforms_[i];
         if 
@@ -1210,7 +1210,7 @@ void Layer::renderShaders // Static
             }
         }
 
-        for (int renderPass = 0; renderPass < nRenderPasses; renderPass++)
+        for (int renderPass = 0; renderPass < (int)nRenderPasses; renderPass++)
         {
             clearTarget = true;
             if (renderPass > 0)
@@ -1579,7 +1579,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
             int iDelete = -1;
             static int iActive = -1;
             auto& postProcesses = rendering_.postProcesses;
-            for (int i = 0; i < postProcesses.size(); i++)
+            for (int i = 0; i < (int)postProcesses.size(); i++)
             {
                 PostProcess* postProcess = postProcesses[i];
                 ImGui::PushID(i);
@@ -1774,7 +1774,6 @@ void Layer::renderLayersTabBarGui // Static
     for (auto* layer : layers) // Second, render layer-specific errors in either
                                // source header or editable source -------------
     {
-        const auto& headerErrors(layer->gui_.headerErrors);
         const auto& sourceErrors(layer->gui_.sourceEditor.getErrorMarkers());
         if (sourceErrors.size() > 0 || layer->gui_.headerErrors.size() > 0)
         {
@@ -1830,7 +1829,7 @@ void Layer::renderLayersTabBarGui // Static
             layers.emplace_back(new Layer(layers, sharedUnifoms));
         auto tabBar = ImGui::GetCurrentTabBar();
         std::pair<unsigned int, unsigned int> swap {0,0};
-        for (int i = 0; i < layers.size(); i++)
+        for (int i = 0; i < (int)layers.size(); i++)
         {
             bool open = true;
             auto layer = layers[i];

@@ -368,7 +368,7 @@ bool AnimatedTexture2DResource::set
 bool AnimatedTexture2DResource::set(const std::vector<Texture2DResource*>& frames)
 {
     std::vector<vir::TextureBuffer2D*> nativeFrames(frames.size());
-    for(int i=0; i<frames.size(); i++)
+    for(int i=0; i<(int)frames.size(); i++)
         nativeFrames[i] = frames[i]->native_;
     vir::AnimatedTextureBuffer2D* native = nullptr;
     native = vir::AnimatedTextureBuffer2D::create
@@ -380,7 +380,7 @@ bool AnimatedTexture2DResource::set(const std::vector<Texture2DResource*>& frame
         return false;
     unmanagedFrames_.clear();
     unmanagedFrames_.resize(frames.size());
-    for(int i=0; i<frames.size(); i++)
+    for(int i=0; i<(int)frames.size(); i++)
         unmanagedFrames_[i] = frames[i];
     SET_NATIVE_AND_RAW_AND_RETURN(nullptr, 0)
 }
@@ -420,7 +420,7 @@ void AnimatedTexture2DResource::save(ObjectIO& io)
     else // if it is an animation constructed from other resources
     {
         std::vector<std::string> frameNames(unmanagedFrames_.size());
-        for (int i=0; i<frameNames.size(); i++)
+        for (int i=0; i<(int)frameNames.size(); i++)
             frameNames[i] = unmanagedFrames_[i]->name();
         io.write("frames", frameNames);
     }
@@ -919,7 +919,7 @@ bool LayerResource::insertInResources
     std::vector<Resource*>& resources
 )
 {
-    for (int i=0; i<resources.size(); i++)
+    for (int i=0; i<(int)resources.size(); i++)
     {
         auto resource = resources[i];
         if (resource->type() != Type::Framebuffer)
@@ -938,7 +938,7 @@ bool LayerResource::removeFromResources
     std::vector<Resource*>& resources
 )
 {
-    for (int i=0; i<resources.size(); i++)
+    for (int i=0; i<(int)resources.size(); i++)
     {
         auto resource = resources[i];
         if (resource->type() != Type::Framebuffer)
@@ -1009,8 +1009,8 @@ bool Resource::createOrEditAnimationButtonGui
 )
 {
     bool valid = false;
-    static int width(0);
-    static int height(0);
+    static unsigned int width(0);
+    static unsigned int height(0);
     static std::vector<Texture2DResource*> frames(0);
     static std::vector<std::string> orderedFrameNames(0);
     if 
@@ -1195,8 +1195,8 @@ bool Resource::createOrEditCubemapButtonGui
     {
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
     };
-    static int width = 0;
-    static int height = 0;
+    static unsigned int width = 0u;
+    static unsigned int height = 0u;
     if 
     (
         ImGui::Button
@@ -1259,7 +1259,7 @@ bool Resource::createOrEditCubemapButtonGui
                 )
             )
             {
-                for(int j=0; j<resources.size()+1 ;j++)
+                for(int j=0; j<(int)resources.size()+1 ;j++)
                 {
                     if (j==0)
                     {
@@ -1725,6 +1725,8 @@ affect any cubemaps or animations using this texture)");
                             size
                         );
                         break;
+                    default:
+                        break;
                 }
             }
             else    // No way inUseBy.size() != 0 if resource->type_ !=
@@ -1748,7 +1750,7 @@ affect any cubemaps or animations using this texture)");
                 {
                     std::string hoverText = 
 "This texture is in use by the following resources:\n";
-                    for (int i=0;i<inUseBy.size();i++)
+                    for (int i=0; i<(int)inUseBy.size(); i++)
                         hoverText += 
                         "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
                     hoverText += 
@@ -1785,7 +1787,7 @@ affect any cubemaps or animations using this texture)");
                 {
                     std::string hoverText = 
 "This texture is in use by the following resources:\n";
-                    for (int i=0;i<inUseBy.size();i++)
+                    for (int i=0; i<(int)inUseBy.size(); i++)
                         hoverText += 
                         "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
                     hoverText += 

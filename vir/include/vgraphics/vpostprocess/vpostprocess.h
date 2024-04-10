@@ -16,6 +16,7 @@ public:
 
     enum class Type
     {
+        Undefined = -1,
         Quantization = 0,
         Bloom = 1,
         Blur = 2
@@ -26,7 +27,7 @@ public:
 protected:
 
     //
-    const Type type_;
+    const Type type_ = Type::Undefined;
 
     // Output framebuffer
     Framebuffer* output_;

@@ -9,7 +9,8 @@ std::unordered_map<PostProcess::Type, std::string> PostProcess::typeToName =
 {
     {PostProcess::Type::Blur, "Blur"},
     {PostProcess::Type::Bloom, "Bloom"},
-    {PostProcess::Type::Quantization, "Quantization"}
+    {PostProcess::Type::Quantization, "Quantization"},
+    {PostProcess::Type::Undefined, "Undefined"}
 };
 
 PostProcess::PostProcess(Type type) :

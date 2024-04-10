@@ -181,7 +181,7 @@ void SharedUniforms::setResolution
 void SharedUniforms::setUserAction(bool flag)
 {
     fBlock_.iUserAction = int(flag);
-    flags_.updateDataRangeII;
+    flags_.updateDataRangeII = true;
 }
 
 //----------------------------------------------------------------------------//
@@ -350,7 +350,6 @@ void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
 {
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::InputState::instance();
-    int shaderToyKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     data.x = 0;
     data.y = 0;
     data.z = (int)inputState->keyState(event.keyCode).isToggled();

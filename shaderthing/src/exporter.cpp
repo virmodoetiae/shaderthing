@@ -48,6 +48,7 @@ Exporter::~Exporter()
 
 void Exporter::onReceive(vir::Event::WindowResizeEvent& event)
 {
+    (void)event;
     settings_.outputResolutionChanged = true;
 }
 
@@ -208,7 +209,6 @@ void Exporter::renderGui
 )
 {
     float fontSize(ImGui::GetFontSize());
-    float x0 = ImGui::GetCursorPosX();
     ImGui::Text("Export type                 ");
     ImGui::SameLine();
 
@@ -415,7 +415,6 @@ transparency)");
         ImGuiTableFlags_BordersV | 
         ImGuiTableFlags_BordersOuterH |
         ImGuiTableFlags_SizingFixedFit;
-    int deleteRow = -1;
     if (ImGui::BeginTable("##exportResolutionTable", 3, flags))
     {
         // Declare columns

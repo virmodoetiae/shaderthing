@@ -428,7 +428,7 @@ std::vector<std::string> ObjectIO::read(const char* key) const
     ASSERT_READ_MODE_OR_RETURN(std::vector<std::string>(0))
     auto a = ((nativeReader*)nativeObject_)->operator[](key).GetArray();
     std::vector<std::string> v(a.Size());
-    for (int i=0; i<a.Size(); i++)
+    for (int i=0; i<(int)a.Size(); i++)
     {
         v[i] = a[i].GetString();
     }
@@ -441,7 +441,7 @@ std::vector<const char*> ObjectIO::read(const char* key) const
     ASSERT_READ_MODE_OR_RETURN(std::vector<const char*>(0))
     auto a = ((nativeReader*)nativeObject_)->operator[](key).GetArray();
     std::vector<const char*> v(a.Size());
-    for (int i=0; i<a.Size(); i++)
+    for (int i=0; i<(int)a.Size(); i++)
     {
         // Force copy
         unsigned int srcSize = a[i].GetStringLength();
@@ -464,7 +464,7 @@ std::vector<const char*> ObjectIO::readOrDefault
     CHECK_KEY
     auto a = ((nativeReader*)nativeObject_)->operator[](key).GetArray();
     std::vector<const char*> v(a.Size());
-    for (int i=0; i<a.Size(); i++)
+    for (int i=0; i<(int)a.Size(); i++)
     {
         // Force copy
         unsigned int srcSize = a[i].GetStringLength();

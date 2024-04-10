@@ -37,6 +37,7 @@ void About::renderGui()
 
     float fontSize(ImGui::GetFontSize());
     float textWidth(40.0f*fontSize);
+    float vSpace = ImGui::GetTextLineHeightWithSpacing();
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x+textWidth);
 
     //--------------------------------------------------------------------------
@@ -48,7 +49,7 @@ void About::renderGui()
         std::to_string(VERSION_PATCH)
     );
     ImGui::Text(nameAndVersion.c_str());
-    ImGui::Text("");
+    ImGui::Dummy({-1, vSpace});
 
     //--------------------------------------------------------------------------
     ImGui::SeparatorText("Information");
@@ -94,7 +95,6 @@ void About::renderGui()
     float time = vir::Time::instance()->outerTime();
     for (int i=0; i < nv; i++)
     {
-        char& colorChar = colorChars[i%nc];
         colorDict[i].second =
             ImVec4
             {
@@ -131,7 +131,7 @@ void About::renderGui()
         ImGui::EndTooltip();
     }
     ImGui::SetCursorPos(pos1);
-    ImGui::Text("");
+    ImGui::Text(" ");
 
     //--------------------------------------------------------------------------
     ImGui::SeparatorText("License");
@@ -143,7 +143,7 @@ void About::renderGui()
 "Permission is granted to anyone to use this software for any purpose, "
 "including commercial applications, and to alter it and redistribute it "
 "freely, subject to the following restrictions:\n");
-    ImGui::Text("");
+    ImGui::Dummy({-1, vSpace});
     ImGui::Bullet();ImGui::Text(
 "The origin of this software must not be misrepresented; you must not claim "
 "that you wrote the original software. If you use this software in a product, "
@@ -154,7 +154,7 @@ void About::renderGui()
 "misrepresented as being the original software.");
     ImGui::Bullet();ImGui::Text(
 "This notice may not be removed or altered from any source distribution.");
-    ImGui::Text("");
+    ImGui::Dummy({-1, vSpace});
 
     //--------------------------------------------------------------------------
     ImGui::SeparatorText("Acknowledgements");
@@ -162,7 +162,7 @@ void About::renderGui()
 "ShaderThing would have either taken much longer to come to its present state, "
 "or it would have been impossible to develop, if it were not for the "
 "availability of the following third-party libraries & projects:");
-    ImGui::Text("");
+    ImGui::Dummy({-1, vSpace});
 
 #define ACKNOWLEDGE(lib, linkChar, linkText)                                \
 ImGui::Bullet();ImGui::Text(lib);ImGui::SameLine();ImGui::Text(linkChar);   \
@@ -188,7 +188,7 @@ if (ImGui::IsItemHovered() && ImGui::BeginTooltip()){                       \
 "PortableFileDialogs - Native OS dialogs, v0.1.0  ", "[H]", "Header-only")
     ACKNOWLEDGE(
 "RapidJSON - JSON file read/write ops., v1.1.0    ", "[H]", "Header-only")
-    ImGui::Text("");
+    ImGui::Dummy({-1, vSpace});
 
     ImGui::PopTextWrapPos();
 

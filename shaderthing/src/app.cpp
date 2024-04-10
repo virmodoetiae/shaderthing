@@ -143,7 +143,7 @@ void App::saveProject(const std::string& filepath) const
     PostProcess::    saveStaticData(  project);
 
     // TODO Could display an error via ImGui on failure
-    bool success = project.writeContentsToDisk();
+    project.writeContentsToDisk();
 }
 
 //----------------------------------------------------------------------------//
@@ -453,8 +453,6 @@ void App::renderGui()
 
 void App::renderMenuBarGui()
 {
-    float fontSize = ImGui::GetFontSize();
-
     auto setProjectAction = []
     (
         const Project::Action& action, 

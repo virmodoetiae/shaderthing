@@ -909,7 +909,6 @@ is currently being held down)");
                     bounds.x = std::min((float)value, bounds.x);
                     bounds.y = std::max((float)value, bounds.y);
                 }
-                bool input(false);
                 if 
                 (
                     ImGui::SliderInt
@@ -1391,7 +1390,9 @@ is currently being held down)");
                         }
                         uniform->setValue(value);
                         if (named)
+                        {
                             SET_UNIFORM_VALUE(Float4)
+                        }
                     }
                 }
                 else
@@ -1474,6 +1475,8 @@ is currently being held down)");
                 }
                 break;
             }
+            default:
+                break;
         }
         if (showSeparator)
             ImGui::Separator();
@@ -1680,8 +1683,10 @@ is currently being held down)");
                     if 
                     (
                         uniform->gui.markedForDeletion &&
-                        uniform->type == Type::Sampler2D ||
-                        uniform->type == Type::SamplerCube
+                        (
+                            uniform->type == Type::Sampler2D ||
+                            uniform->type == Type::SamplerCube
+                        )
                     )
                     {
                         auto resource = uniform->getValuePtr<Resource>();
@@ -1765,7 +1770,7 @@ void Uniform::loadAll
         uniform->isSharedByUser = 
             uniformData.readOrDefault<bool>("shared", false);
         uniforms.emplace_back(uniform);
-        float min, max, x, y, z, w;
+        float min = 0., max = 0.;
 
 #define SET_UNIFORM(type)                   \
     uniform->setValue<type>(uniformData.read<type>("value"));
@@ -1779,6 +1784,12 @@ void Uniform::loadAll
             {
                 SET_UNIFORM(bool)
                 uniform->gui.showBounds = false;
+                break;
+            }
+            case vir::Shader::Variable::Type::UInt :
+            {
+                SET_UNIFORM(unsigned int)
+                READ_MIN_MAX
                 break;
             }
             case vir::Shader::Variable::Type::Int :

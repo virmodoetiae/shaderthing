@@ -101,9 +101,9 @@ std::string TextEditor::getText
     auto lend = aEnd.line;
     auto istart = getCharacterIndex(aStart);
     auto iend = getCharacterIndex(aEnd);
-    size_t s = 0;
+    int s = 0;
 
-    for (size_t i = lstart; i < lend; i++)
+    for (int i = lstart; i < lend; i++)
         s += lines_[i].size();
 
     result.reserve(s + s / 8);
@@ -515,9 +515,9 @@ TextEditor::Coordinates TextEditor::findNextWordPos
 
     while (!isword || skip)
     {
-        if (at.line >= lines_.size())
+        if (at.line >= (int)lines_.size())
         {
-            auto l = std::max(0, (int) lines_.size() - 1);
+            auto l = std::max(0, (int)lines_.size()-1);
             return Coordinates(l, getLineMaxColumn(l));
         }
 
@@ -549,12 +549,12 @@ TextEditor::Coordinates TextEditor::findNextWordPos
 
 int TextEditor::getCharacterIndex(const Coordinates& aCoordinates) const
 {
-    if (aCoordinates.line >= lines_.size())
+    if (aCoordinates.line >= (int)lines_.size())
         return -1;
     auto& line = lines_[aCoordinates.line];
     int c = 0;
     int i = 0;
-    for (; i < line.size() && c < aCoordinates.column;)
+    for (; i < (int)line.size() && c < aCoordinates.column;)
     {
         if (line[i].character == '\t')
             c = (c / tabSize_) * tabSize_ + tabSize_;
@@ -567,7 +567,7 @@ int TextEditor::getCharacterIndex(const Coordinates& aCoordinates) const
 
 int TextEditor::getCharacterColumn(int aLine, int aIndex) const
 {
-    if (aLine >= lines_.size())
+    if (aLine >= (int)lines_.size())
         return 0;
     auto& line = lines_[aLine];
     int col = 0;
@@ -586,7 +586,7 @@ int TextEditor::getCharacterColumn(int aLine, int aIndex) const
 
 int TextEditor::getLineCharacterCount(int aLine) const
 {
-    if (aLine >= lines_.size())
+    if (aLine >= (int)lines_.size())
         return 0;
     auto& line = lines_[aLine];
     int c = 0;
@@ -597,7 +597,7 @@ int TextEditor::getLineCharacterCount(int aLine) const
 
 int TextEditor::getLineMaxColumn(int aLine) const
 {
-    if (aLine >= lines_.size())
+    if (aLine >= (int)lines_.size())
         return 0;
     auto& line = lines_[aLine];
     int col = 0;
@@ -983,7 +983,6 @@ void TextEditor::renderGui()
     auto scrollY = ImGui::GetScrollY();
 
     auto lineNo = (int)floor(scrollY / charAdvance_.y);
-    auto globalLineMax = (int)lines_.size();
     auto lineMax = 
         std::max
         (
@@ -1250,7 +1249,7 @@ void TextEditor::renderGui()
                 palette_[(int)PaletteIndex::Default] : 
                 getGlyphColor(line[0]);
             ImVec2 bufferOffset;
-            for (int i = 0; i < line.size();)
+            for (int i = 0; i < (int)line.size(); )
             {
                 auto& glyph = line[i];
                 auto color = getGlyphColor(glyph);
@@ -1540,7 +1539,6 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
         {
             auto start = state_.selectionStart;
             auto end = state_.selectionEnd;
-            auto originalEnd = end;
             if (start > end)
                 std::swap(start, end);
             static ImGuiIO& io = ImGui::GetIO();
@@ -1569,7 +1567,8 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
             }
             else
             {
-                int deltaStartCol, deltaEndCol;
+                int deltaStartCol = 0;
+                int deltaEndCol = 0;
                 for (int i = start.line; i <= end.line; i++)
                 {
                     int nRemovedSpaces = 0;
@@ -1797,8 +1796,6 @@ void TextEditor::setSelection
     case TextEditor::SelectionMode::Line:
     {
         const auto lineNo = state_.selectionEnd.line;
-        const auto lineSize = 
-            (size_t)lineNo < lines_.size() ? lines_[lineNo].size() : 0;
         state_.selectionStart = Coordinates(state_.selectionStart.line, 0);
         state_.selectionEnd = Coordinates(lineNo, getLineMaxColumn(lineNo));
         break;
@@ -2039,7 +2036,7 @@ void TextEditor::moveRight(int aAmount, bool aSelect, bool aWordMode)
 {
     auto oldPos = state_.cursorPosition;
 
-    if (lines_.empty() || oldPos.line >= lines_.size())
+    if (lines_.empty() || oldPos.line >= (int)lines_.size())
         return;
 
     auto cindex = getCharacterIndex(state_.cursorPosition);
@@ -2048,9 +2045,9 @@ void TextEditor::moveRight(int aAmount, bool aSelect, bool aWordMode)
         auto lindex = state_.cursorPosition.line;
         auto& line = lines_[lindex];
 
-        if (cindex >= line.size())
+        if (cindex >= (int)line.size())
         {
-            if (state_.cursorPosition.line < lines_.size() - 1)
+            if (state_.cursorPosition.line < (int)lines_.size()-1)
             {
                 state_.cursorPosition.line = std::max
                 (
@@ -2322,7 +2319,7 @@ void TextEditor::backspace()
             --u.removedStart.column;
             --state_.cursorPosition.column;
 
-            while (cindex < line.size() && cend-- > cindex)
+            while (cindex < (int)line.size() && cend-- > cindex)
             {
                 u.removed += line[cindex].character;
                 line.erase(line.begin() + cindex);
@@ -2445,7 +2442,6 @@ void TextEditor::undo(int aSteps)
 {
     while (canUndo() && aSteps-- > 0)
     {
-        auto& u(undoBuffer_[undoIndex_-1]);
         if (undoBuffer_[undoIndex_-1].propagate)
             aSteps++;
         undoBuffer_[--undoIndex_].undo(this);
@@ -2456,7 +2452,7 @@ void TextEditor::redo(int aSteps)
 {
     while (canRedo() && aSteps-- > 0)
     {
-        if (undoIndex_+1 < undoBuffer_.size())
+        if (undoIndex_+1 < (int)undoBuffer_.size())
         {
             if (undoBuffer_[undoIndex_+1].propagate)
                 aSteps++;
@@ -2743,7 +2739,7 @@ void TextEditor::colorizeInternal()
 
     if (checkComments_)
     {
-        auto endLine = lines_.size();
+        auto endLine = (int)lines_.size();
         auto endIndex = 0;
         auto commentStartLine = endLine;
         auto commentStartIndex = endIndex;
@@ -2949,7 +2945,7 @@ float TextEditor::textDistanceToLineStart(const Coordinates& aFrom) const
         nullptr
     ).x;
     int colIndex = getCharacterIndex(aFrom);
-    for (size_t it = 0u; it < line.size() && it < colIndex;)
+    for (size_t it = 0u; it < line.size() && (int)it < colIndex;)
     {
         if (line[it].character == '\t')
         {
@@ -2964,7 +2960,7 @@ float TextEditor::textDistanceToLineStart(const Coordinates& aFrom) const
             auto d = UTF8CharLength(line[it].character);
             char tempCString[7];
             int i = 0;
-            for (; i < 6 && d-- > 0 && it < (int)line.size(); i++, it++)
+            for (; i < 6 && d-- > 0 && it < line.size(); i++, it++)
                 tempCString[i] = line[it].character;
 
             tempCString[i] = '\0';
@@ -3004,7 +3000,6 @@ void TextEditor::ensureCursorVisible()
     auto right = (int)ceil((scrollX+width)/charAdvance_.x);
 
     auto pos = getActualCursorCoordinates();
-    auto len = textDistanceToLineStart(pos);
     
     // Modified horizontal scrolling behaviour
     if (pos.line < top)
@@ -3102,7 +3097,7 @@ void TextEditor::UndoRecord::redo(TextEditor * aEditor)
     aEditor->ensureCursorVisible();
 }
 
-static bool TokenizeCStyleString
+/*static bool TokenizeCStyleString
 (
     const char * inBegin, 
     const char * inEnd, 
@@ -3111,7 +3106,6 @@ static bool TokenizeCStyleString
 )
 {
     const char * p = inBegin;
-
     if (*p == '"')
     {
         p++;
@@ -3131,11 +3125,10 @@ static bool TokenizeCStyleString
             p++;
         }
     }
-
     return false;
-}
+}*/
 
-static bool TokenizeCStyleCharacterLiteral
+/*static bool TokenizeCStyleCharacterLiteral
 (
     const char * inBegin, 
     const char * inEnd, 
@@ -3144,7 +3137,6 @@ static bool TokenizeCStyleCharacterLiteral
 )
 {
     const char * p = inBegin;
-
     if (*p == '\'')
     {
         p++;
@@ -3164,11 +3156,10 @@ static bool TokenizeCStyleCharacterLiteral
             return true;
         }
     }
-
     return false;
-}
+}*/
 
-static bool TokenizeCStyleIdentifier
+/*static bool TokenizeCStyleIdentifier
 (
     const char * inBegin, 
     const char * inEnd, 
@@ -3177,7 +3168,6 @@ static bool TokenizeCStyleIdentifier
 )
 {
     const char * p = inBegin;
-
     if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || *p == '_')
     {
         p++;
@@ -3194,11 +3184,10 @@ static bool TokenizeCStyleIdentifier
         outEnd = p;
         return true;
     }
-
     return false;
-}
+}*/
 
-static bool TokenizeCStyleNumber
+/*static bool TokenizeCStyleNumber
 (
     const char * inBegin, 
     const char * inEnd, 
@@ -3298,9 +3287,9 @@ static bool TokenizeCStyleNumber
     outBegin = inBegin;
     outEnd = p;
     return true;
-}
+}*/
 
-static bool TokenizeCStylePunctuation
+/*static bool TokenizeCStylePunctuation
 (
     const char * inBegin, 
     const char * inEnd, 
@@ -3342,7 +3331,7 @@ static bool TokenizeCStylePunctuation
     }
 
     return false;
-}
+}*/
 
 const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::HLSL()
 {
@@ -3375,15 +3364,15 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::HLSL()
             "asuint", "atan", "atan2", "ceil", "CheckAccessFullyMapped", "clamp", "clip", "cos", "cosh", "countbits", "cross", "D3DCOLORtoUBYTE4", "ddx",
             "ddx_coarse", "ddx_fine", "ddy", "ddy_coarse", "ddy_fine", "degrees", "determinant", "DeviceMemoryBarrier", "DeviceMemoryBarrierWithGroupSync",
             "distance", "dot", "dst", "errorf", "EvaluateAttributeAtCentroid", "EvaluateAttributeAtSample", "EvaluateAttributeSnapped", "exp", "exp2",
-            "f16tof32", "f32tof16", "faceforward", "firstbithigh", "firstbitlow", "floor", "fma", "fmod", "frac", "frexp", "fwidth", "GetRenderTargetSampleCount",
-            "GetRenderTargetSamplePosition", "GroupMemoryBarrier", "GroupMemoryBarrierWithGroupSync", "InterlockedAdd", "InterlockedAnd", "InterlockedCompareExchange",
+            "f16tof32", "f32tof16", "faceforward", "firstbithigh", "firstbitlow", "floatBitsToInt", "floatBitsToUint", "floor", "fma", "fmod", "frac", "frexp", "fwidth", "GetRenderTargetSampleCount",
+            "GetRenderTargetSamplePosition", "GroupMemoryBarrier", "GroupMemoryBarrierWithGroupSync", "intBitsToFloat", "InterlockedAdd", "InterlockedAnd", "InterlockedCompareExchange",
             "InterlockedCompareStore", "InterlockedExchange", "InterlockedMax", "InterlockedMin", "InterlockedOr", "InterlockedXor", "isfinite", "isinf", "isnan",
             "ldexp", "length", "lerp", "lit", "log", "log10", "log2", "mad", "max", "min", "modf", "msad4", "mul", "noise", "normalize", "pow", "printf",
             "Process2DQuadTessFactorsAvg", "Process2DQuadTessFactorsMax", "Process2DQuadTessFactorsMin", "ProcessIsolineTessFactors", "ProcessQuadTessFactorsAvg",
             "ProcessQuadTessFactorsMax", "ProcessQuadTessFactorsMin", "ProcessTriTessFactorsAvg", "ProcessTriTessFactorsMax", "ProcessTriTessFactorsMin",
             "radians", "rcp", "reflect", "refract", "reversebits", "round", "rsqrt", "saturate", "sign", "sin", "sincos", "sinh", "smoothstep", "sqrt", "step",
             "tan", "tanh", "tex1D", "tex1D", "tex1Dbias", "tex1Dgrad", "tex1Dlod", "tex1Dproj", "tex2D", "tex2D", "tex2Dbias", "tex2Dgrad", "tex2Dlod", "tex2Dproj",
-            "tex3D", "tex3D", "tex3Dbias", "tex3Dgrad", "tex3Dlod", "tex3Dproj", "texCUBE", "texCUBE", "texCUBEbias", "texCUBEgrad", "texCUBElod", "texCUBEproj", "transpose", "trunc"
+            "tex3D", "tex3D", "tex3Dbias", "tex3Dgrad", "tex3Dlod", "tex3Dproj", "texCUBE", "texCUBE", "texCUBEbias", "texCUBEgrad", "texCUBElod", "texCUBEproj", "transpose", "trunc", "uintBitsToFloat",
         };
         for (auto& k : identifiers)
         {
@@ -3688,7 +3677,7 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
     if (searchedByPressingEnter)
     {
         foundTextCounter_+=1;
-        if (foundTextCounter_ >= nFound > 0 ? nFound-1 : 0)
+        if (foundTextCounter_ >= (nFound > 0 ? nFound-1 : 0))
             foundTextCounter_ = 0;
     }
     isFocusOnSearchField_ = 

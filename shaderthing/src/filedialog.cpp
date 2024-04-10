@@ -30,7 +30,7 @@ FileDialog FileDialog::instance;
 
 FileDialog::~FileDialog()
 {
-    if (isOpen_)
+    if (thread_.joinable())
         thread_.join();
 }
 
@@ -175,8 +175,22 @@ bool FileDialog::validSelection()
         if (status != std::future_status::ready)
             return false;
         isOpen_ = false;
-        thread_.join();
-        selection_ = futureSelection_.get();
+        if (thread_.joinable())
+            thread_.join();
+        if (futureSelection_.valid()) 
+        {
+            try 
+            {
+                selection_ = futureSelection_.get();
+            } 
+            catch(const std::exception& e) 
+            {
+                std::cerr 
+                    << "ShaderThing::FileDialog::validSelection(): "
+                    << e.what() << std::endl;
+                selection_.clear();
+            }
+        }
     }
     return selection_.size() > 0;
 }

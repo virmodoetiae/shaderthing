@@ -128,12 +128,12 @@ private:
         // array element at a time, medium update frequency
                     ivec3A16   iKeyboard[256] {};           // 96 - 4192     | 16*256 = 4096
 
-        static const uint32_t dataRangeISize()             {return 20;}
-        static const uint32_t dataRangeIISize()            {return 80;}
-        static const uint32_t dataRangeIIISize()           {return 96;}
-        static const uint32_t iKeyboardKeyOffset(int iKey) {return 96+iKey*16;}
-        static const uint32_t iKeyboardKeySize()           {return 16;}
-        static const uint32_t size()                       {return 4192;}
+        static      uint32_t dataRangeISize()             {return 20;}
+        static      uint32_t dataRangeIISize()            {return 80;}
+        static      uint32_t dataRangeIIISize()           {return 96;}
+        static      uint32_t iKeyboardKeyOffset(int iKey) {return 96+iKey*16;}
+        static      uint32_t iKeyboardKeySize()           {return 16;}
+        static      uint32_t size()                       {return 4192;}
         
         static constexpr const char* glslName = "sharedBlock";
         // The order of the uniforms within the block source must be the same as
@@ -160,7 +160,7 @@ R"(layout(std140) uniform sharedUniformBlock {
     struct VertexBlock
     {
         glm::mat4 iMVP = glm::mat4(0);
-        static const uint32_t size() {return 64;}
+        static uint32_t size() {return 64;}
         static constexpr const char* glslName = "vertexUniformBlock";
         static constexpr const char* glslSource =
 R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};

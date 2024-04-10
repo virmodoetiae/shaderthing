@@ -65,28 +65,28 @@ protected:
 public:
     
     virtual ~Resource();
-    static Resource*           create(const std::string& filepath);
-    static Resource*           create(const unsigned char* rawData, unsigned int size, bool gif);
-    static Resource*           create(const std::vector<Texture2DResource*>& frames);
-    static Resource*           create(const Texture2DResource* faces[6]);
-    static Resource*           create(Layer* layer);
+    static Resource*     create(const std::string& filepath);
+    static Resource*     create(const unsigned char* rawData, unsigned int size, bool gif);
+    static Resource*     create(const std::vector<Texture2DResource*>& frames);
+    static Resource*     create(const Texture2DResource* faces[6]);
+    static Resource*     create(Layer* layer);
     
-    Type                       type() const {return type_;}
-    virtual void               bind(unsigned int unit) = 0;
-    virtual void               unbind() = 0;
-    virtual const unsigned int id() const = 0;
-    virtual const unsigned int width() const = 0;
-    virtual const unsigned int height() const = 0;
-    virtual const WrapMode     wrapMode(int index) const = 0;
-    virtual const FilterMode   magFilterMode() const = 0;
-    virtual const FilterMode   minFilterMode() const = 0;
-    virtual void               setWrapMode(int index, WrapMode mode) = 0;
-    virtual void               setMagFilterMode(FilterMode mode) = 0;
-    virtual void               setMinFilterMode(FilterMode mode) = 0;
+    Type                 type() const {return type_;}
+    virtual void         bind(unsigned int unit) = 0;
+    virtual void         unbind() = 0;
+    virtual unsigned int id() const = 0;
+    virtual unsigned int width() const = 0;
+    virtual unsigned int height() const = 0;
+    virtual WrapMode     wrapMode(int index) const = 0;
+    virtual FilterMode   magFilterMode() const = 0;
+    virtual FilterMode   minFilterMode() const = 0;
+    virtual void         setWrapMode(int index, WrapMode mode) = 0;
+    virtual void         setMagFilterMode(FilterMode mode) = 0;
+    virtual void         setMinFilterMode(FilterMode mode) = 0;
 
-    std::string                name() const {return namePtr_ == nullptr? "" : *namePtr_;}
-    void                       setName(const std::string& name);
-    void                       setNamePtr(std::string* namePtr);
+    std::string          name() const {return namePtr_ == nullptr? "" : *namePtr_;}
+    void                 setName(const std::string& name);
+    void                 setNamePtr(std::string* namePtr);
 
     static bool isGuiOpen;
     static bool isGuiDetachedFromMenu;
@@ -118,7 +118,7 @@ public:
 
 private:
     
-    virtual void update(const UpdateArgs& args){};
+    virtual void update(const UpdateArgs& args){(void)args;};
     virtual void save(ObjectIO& io) = 0;
     static Resource* load
     (
@@ -162,12 +162,12 @@ private:
 #define DECLARE_OVERRIDE_VIRTUALS                                                                           \
     virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}                \
     virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};                                \
-    const unsigned int id() const override {return native_->id();}                                          \
-    const unsigned int width() const override {return native_->width();}                                    \
-    const unsigned int height() const override{return native_->height();}                                   \
-    const WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}                \
-    const FilterMode   magFilterMode() const override {return native_->magFilterMode();}                    \
-    const FilterMode   minFilterMode() const override {return native_->minFilterMode();}                    \
+    unsigned int       id() const override {return native_->id();}                                          \
+    unsigned int       width() const override {return native_->width();}                                    \
+    unsigned int       height() const override{return native_->height();}                                   \
+    WrapMode           wrapMode(int index) const override {return native_->wrapMode(index);}                \
+    FilterMode         magFilterMode() const override {return native_->magFilterMode();}                    \
+    FilterMode         minFilterMode() const override {return native_->minFilterMode();}                    \
     virtual void       setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
     virtual void       setMagFilterMode(FilterMode mode) override {native_->setMagFilterMode(mode);}        \
     virtual void       setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}
@@ -221,7 +221,7 @@ public:
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
     bool set(const std::vector<Texture2DResource*>& animationFrames);
-    const unsigned int frameId() const {return native_->frameId();}
+    unsigned int frameId() const {return native_->frameId();}
     void update(const UpdateArgs& args) override;
     DECLARE_OVERRIDE_VIRTUALS
 };
@@ -258,18 +258,18 @@ class LayerResource : public Resource
     
     DELETE_COPY_MOVE(LayerResource)
 
-    virtual void save(ObjectIO& io){}
+    virtual void save(ObjectIO& io){(void)io;}
 public:
     ~LayerResource();
     bool               set(Layer* layer);
     virtual void       bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit);unit_ = unit;}
     virtual void       unbind() override {(*native_)->unbind(); unit_ = -1;};
-    const unsigned int id() const override {return (*native_)->colorBufferId();}
-    const unsigned int width() const override {return (*native_)->width();}
-    const unsigned int height() const override{return (*native_)->height();}
-    const WrapMode     wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
-    const FilterMode   magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
-    const FilterMode   minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
+    unsigned int       id() const override {return (*native_)->colorBufferId();}
+    unsigned int       width() const override {return (*native_)->width();}
+    unsigned int       height() const override{return (*native_)->height();}
+    WrapMode           wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
+    FilterMode         magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
+    FilterMode         minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
     virtual void       setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
     virtual void       setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
     virtual void       setMinFilterMode(FilterMode mode) override{(*native_)->setColorBufferMinFilterMode(mode);}
