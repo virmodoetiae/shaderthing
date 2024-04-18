@@ -1454,7 +1454,7 @@ Ray cameraRay(vec2 uv, vec3 cp, vec3 f, float fov)
 // to said hit point, otherwise returns 0
 float rayMarch(Ray r)
 {
-    float s, ds = 0;
+    float s = 0, ds = 0;
     for (int step=0; step<MAX_STEPS; step++)
     {
         ds = sceneSDF(r.origin+r.direction*s)/SAFETY_FACTOR;
@@ -1677,7 +1677,7 @@ Ray cameraRay(vec2 qc, vec3 cp, vec3 f, float fov)
 SDM rayMarch(Ray ray, out float pn)
 {
     SDM sdm;
-    float d, dd, dd0 = MIN_DIST;
+    float d = 0, dd = 0, dd0 = MIN_DIST;
     pn = 1.;
     for (int iter = 0; iter < MAX_STEPS; iter++)
     {

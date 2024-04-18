@@ -3677,7 +3677,7 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
     if (searchedByPressingEnter)
     {
         foundTextCounter_+=1;
-        if (foundTextCounter_ >= (nFound > 0 ? nFound-1 : 0))
+        if (foundTextCounter_ > (nFound > 0 ? nFound-1 : 0))
             foundTextCounter_ = 0;
     }
     isFocusOnSearchField_ = 
