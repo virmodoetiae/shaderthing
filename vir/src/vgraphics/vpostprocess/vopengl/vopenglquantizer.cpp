@@ -1142,6 +1142,8 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     quantizeInput->use();
     quantizeInput->run(width, height, 1);
 
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
     // Copy the palette to the PBO (GPU-to-GPU) so that it can be
     // read via the permanent mapping at mappedPaletteData_
     glBindBuffer(GL_PIXEL_PACK_BUFFER, paletteDataPBO_);
@@ -1158,7 +1160,9 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
     
     // Copy the indexed texture to the PBO (GPU-to-GPU) so that it can be
-    // read via the permanent mapping at mappedIndexedData_
+    // read via the permanent mapping at mappedIndexedData_. It is vital that
+    // the pixel packing alignment is set to 1 (set in the constructor) for this
+    // to be performed correctly
     glBindBuffer(GL_PIXEL_PACK_BUFFER, indexedDataPBO_);
     glActiveTexture(GL_TEXTURE0+indexedDataUnit);
     glBindTexture(GL_TEXTURE_2D, indexedData_);
@@ -1320,6 +1324,13 @@ use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
         GL_STATIC_READ
     );
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+
+    // Finally, set pixel alignment for packing (e.g., texture->PBO transfer 
+    // operations) to 1 byte instead of the deafult 4. Without this, the
+    // packing of the indexedDataPBO will include padding values which will
+    // make it useless if the input textures have width and height that are
+    // not a power of two. Took a while to figure this one out...
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
 }
 
 OpenGLQuantizer::~OpenGLQuantizer()
@@ -1394,7 +1405,6 @@ void OpenGLQuantizer::getPalette(unsigned char*& data, bool allocate)
     if (allocate)
         data = new unsigned char[3*paletteSize];
     OpenGLWaitSync();
-    //waitSync();
     std::memcpy
     (
         data, 
@@ -1409,7 +1419,6 @@ void OpenGLQuantizer::getPalette(unsigned char*& data, bool allocate)
         data[3*paletteSize-2] = (unsigned char)0;
         data[3*paletteSize-1] = (unsigned char)0;
     }
-    //resetSync();
 }
 
 void OpenGLQuantizer::getIndexedTexture
@@ -1424,14 +1433,12 @@ void OpenGLQuantizer::getIndexedTexture
     if (allocate)
         data = new unsigned char[nPixels];
     OpenGLWaitSync();
-    //waitSync();
     std::memcpy
     (
         data, 
         (unsigned char*)mappedIndexedData_, 
         nPixels*sizeof(unsigned char)
     );
-    //resetSync();
 }
 
 }
