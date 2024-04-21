@@ -152,6 +152,9 @@ protected:
     bool                 paletteSizeModified_ = true;
     bool                 refreshPalette_      = false;
 
+    Palette  currentGlobalPalette_  = {};
+    bool     cumulateGlobalPalette_ = true;
+
 public:
     
     QuantizationPostProcess(Layer* inputLayer);

@@ -29,12 +29,18 @@ protected:
     static OpenGLComputeShader computeShader_buildClustersFromPaletteUI8;
     static OpenGLComputeShader computeShader_updatePaletteFromClustersUI8;
     static OpenGLComputeShader computeShader_quantizeInputUI8;
+    static OpenGLComputeShader computeShader_updateGlobalPalette;
 
     // R32UI Texture_2D used to store data required by the algorithm on the GPU,
     // primarily palette colors, quantization error
     GLuint paletteData_;
     GLuint paletteDataPBO_;
     GLuint paletteDataWriteOnlyPBO_;
+
+    // Number of palettes currently cumulated in the global palette
+    unsigned int globalPaletteCounter_ = 0;
+    GLuint globalPaletteData_;
+    GLuint globalPaletteDataPBO_;
 
     //
     GLuint indexedData_;
@@ -46,6 +52,7 @@ protected:
 
     // Persistently GPU-to-CPU mapped palette data and indices data
     void* mappedPaletteData_;
+    void* mappedGlobalPaletteData_;
     void* mappedIndexedData_;
 
     //
@@ -99,6 +106,13 @@ public:
     // Retrieve the palette colors and store them in the provided data array. If
     // allocate is true, the array will be re-allocated with the correct size
     void getPalette
+    (
+        unsigned char*& data, 
+        bool allocate=false
+    ) override;
+
+    //
+    void getGlobalPalette
     (
         unsigned char*& data, 
         bool allocate=false

@@ -120,6 +120,9 @@ struct Settings
     // in order to perform the quantization. Inconsequential on the quantization
     // process
     unsigned int inputUnit=0;
+
+    //
+    bool cumulateGlobalPalette = true;
 };
 
 protected:
@@ -181,6 +184,15 @@ public:
     // Retrieve the palette colors and store them in the provided data array. If
     // allocate is true, the array will be re-allocated with the correct size
     virtual void getPalette
+    (
+        unsigned char*& data, 
+        bool allocate=false
+    ) = 0;
+
+    // Retrieve the global palette colors and store them in the provided data 
+    // array. If allocate is true, the array will be re-allocated with the
+    // correct size
+    virtual void getGlobalPalette
     (
         unsigned char*& data, 
         bool allocate=false

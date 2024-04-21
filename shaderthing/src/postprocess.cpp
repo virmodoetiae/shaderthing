@@ -588,6 +588,7 @@ void QuantizationPostProcess::run()
         (paletteModified_ || !settings_.recalculatePalette) ?
         currentPalette_.data : 
         nullptr;
+    settings_.cumulateGlobalPalette = cumulateGlobalPalette_;
     if (refreshPalette_)
     {
         settings_.reseedPalette = true;
@@ -613,13 +614,28 @@ void QuantizationPostProcess::run()
     );
 
     if (paletteSizeModified_)
+    {
         currentPalette_.clear();
+        currentGlobalPalette_.clear();
+    }
     if (refreshPalette_ || settings_.recalculatePalette || paletteSizeModified_)
+    {
         ((nativeType*)native_)->getPalette
         (
             currentPalette_.data, 
             paletteSizeModified_
         );
+        if (cumulateGlobalPalette_)
+        {
+            if (currentGlobalPalette_.data == nullptr)
+                currentGlobalPalette_ = currentPalette_;
+            ((nativeType*)native_)->getGlobalPalette
+            (
+                currentGlobalPalette_.data, 
+                paletteSizeModified_
+            );
+        }
+    }
     if (refreshPalette_)
     {
         refreshPalette_ = false;
@@ -693,6 +709,7 @@ void QuantizationPostProcess::renderGui()
         if (currentPalette_.nColors != paletteSize0)
             paletteSizeModified_ = true;
     }
+    currentGlobalPalette_.nColors = currentPalette_.nColors;
     ImGui::PopItemWidth();
 
     ImGui::Text("Color dithering     ");
@@ -768,6 +785,16 @@ void QuantizationPostProcess::renderGui()
     if (!settings_.recalculatePalette)
         if (ImGui::Button("Refresh palette", ImVec2(-1, 0.0f)))
             refreshPalette_ = true;
+
+    if 
+    (
+        ImGui::Button
+        (
+            (cumulateGlobalPalette_ ? "Cumulator on" : "Cumulator off"), 
+            ImVec2(-1, 0.0f)
+        )
+    )
+        cumulateGlobalPalette_ = !cumulateGlobalPalette_;
 
     if (!settings_.recalculatePalette || currentPalette_.data != nullptr)
         ImGui::SeparatorText("Palette");
@@ -1032,6 +1059,34 @@ void QuantizationPostProcess::renderGui()
             currentPalette_.data[3*i+2] = 
                 (unsigned char)(color[2]*255.0+.5f);
         }
+        if 
+        (
+            //(i+1)%(int)(std::ceil(std::sqrt(currentPalette_.nColors))) != 0
+            availableWidth >= 2*fontSize
+        )
+            ImGui::SameLine(0, 0);
+    }
+    ImGui::Dummy({-1, 0});
+    if (currentGlobalPalette_.data == nullptr)
+        return;
+    for (auto i=0u; i<currentGlobalPalette_.nColors; i++)
+    {
+        std::string id = "##globalPaletteColorNo"+std::to_string(i);
+        float color[3] = 
+        {
+            currentGlobalPalette_.data[3*i]/255.0f,
+            currentGlobalPalette_.data[3*i+1]/255.0f,
+            currentGlobalPalette_.data[3*i+2]/255.0f
+        };
+        float availableWidth = ImGui::GetContentRegionAvail().x;
+        ImGui::ColorEdit3
+        (
+            id.c_str(), 
+            color, 
+            ImGuiColorEditFlags_NoInputs | 
+            ImGuiColorEditFlags_NoLabel | 
+            ImGuiColorEditFlags_Uint8
+        );
         if 
         (
             //(i+1)%(int)(std::ceil(std::sqrt(currentPalette_.nColors))) != 0

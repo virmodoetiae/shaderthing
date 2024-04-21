@@ -555,6 +555,62 @@ void main()
     imageStore(indexedImage, gid, uvec4(index, 0, 0, 0));
 })" );
 
+OpenGLComputeShader
+    OpenGLQuantizer::computeShader_updateGlobalPalette
+    (
+R"(#version 460 core
+uniform int globalPaletteCounter;
+uniform int paletteSize;
+layout(r32ui, binding=0) uniform uimage2D paletteData;
+layout(r32ui, binding=1) uniform uimage2D globalPaletteData;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() 
+{
+    
+    uint gid = gl_GlobalInvocationID.x;
+    uvec3 col;
+    col.r = imageLoad(paletteData, ivec2(gid*3, 1)).r;
+    col.g = imageLoad(paletteData, ivec2(gid*3+1, 1)).r;
+    col.b = imageLoad(paletteData, ivec2(gid*3+2, 1)).r;
+    uint count = imageLoad(paletteData, ivec2(gid, 2)).r;
+    col = uvec3(vec3(col)/count);
+    if (globalPaletteCounter == 0)
+    {
+        imageStore(globalPaletteData, ivec2(gid*3, 0), uvec4(col.r,0,0,0));
+        imageStore(globalPaletteData, ivec2(gid*3+1, 0), uvec4(col.g,0,0,0));
+        imageStore(globalPaletteData, ivec2(gid*3+2, 0), uvec4(col.b,0,0,0));
+        imageStore(globalPaletteData, ivec2(gid, 2), uvec4(count,0,0,0));
+        return;
+    }
+    uint index = 0;
+    int d2m = 195075; // max d2 is 3*255*255 = 195075
+    for (int i=0; i<paletteSize; i++)
+    {
+        ivec3 d = ivec3(col);
+        d.x -= int(imageLoad(globalPaletteData, ivec2(i*3,   0)).r);
+        d.y -= int(imageLoad(globalPaletteData, ivec2(i*3+1, 0)).r);
+        d.z -= int(imageLoad(globalPaletteData, ivec2(i*3+2, 0)).r);
+        int d2 = d.x*d.x + d.y*d.y + d.z*d.z;
+        if (d2 < d2m)
+        {
+            d2m = d2;
+            index = i;
+        }
+    }
+    uvec3 coli;
+    coli.r = imageLoad(globalPaletteData, ivec2(index*3,   0)).r;
+    coli.g = imageLoad(globalPaletteData, ivec2(index*3+1, 0)).r;
+    coli.b = imageLoad(globalPaletteData, ivec2(index*3+2, 0)).r;
+    uint counti = imageLoad(globalPaletteData, ivec2(index, 2)).r;
+    float f = float(count)/(count+counti);
+    float fi = float(counti)/(count+counti);
+    col = uvec3(f*vec3(col)+fi*vec3(coli));
+    memoryBarrier();
+    imageAtomicExchange(globalPaletteData, ivec2(index*3,   0), col.r);
+    imageAtomicExchange(globalPaletteData, ivec2(index*3+1, 0), col.g);
+    imageAtomicExchange(globalPaletteData, ivec2(index*3+2, 0), col.b);
+    imageAtomicAdd(globalPaletteData, ivec2(index, 2), count);
+})" );
 
 //----------------------------------------------------------------------------//
 // Private member functions
@@ -694,6 +750,12 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     glActiveTexture(GL_TEXTURE0+paletteDataUnit);
     glBindTexture(GL_TEXTURE_2D, paletteData_);
     glBindImageTexture(paletteDataUnit, paletteData_, 0, GL_FALSE, 0, 
+        GL_READ_WRITE, GL_R32UI);
+    // Global palette data texture
+    uint32_t globalPaletteDataUnit = textureUnit++;
+    glActiveTexture(GL_TEXTURE0+globalPaletteDataUnit);
+    glBindTexture(GL_TEXTURE_2D, globalPaletteData_);
+    glBindImageTexture(globalPaletteDataUnit, globalPaletteData_, 0, GL_FALSE, 0, 
         GL_READ_WRITE, GL_R32UI);
     // Indexed data texture
     uint32_t indexedDataUnit = textureUnit++;
@@ -857,6 +919,44 @@ void OpenGLQuantizer::quantizeOpenGLTexture
             WriteOnlyPBOFlags
         );
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+        //if (settings_.cumulateGlobalPalette)
+        {
+            glActiveTexture(GL_TEXTURE0+globalPaletteDataUnit);
+            glBindTexture(GL_TEXTURE_2D, globalPaletteData_);
+            glTexImage2D
+            (
+                GL_TEXTURE_2D, 
+                0, 
+                GL_R32UI, 
+                3*paletteSize, 
+                3, 
+                0, 
+                GL_RED_INTEGER, 
+                GL_UNSIGNED_INT, 
+                NULL
+            );
+            auto PBOFlags = GL_MAP_READ_BIT | GL_MAP_PERSISTENT_BIT | 
+                GL_MAP_COHERENT_BIT;
+            glDeleteBuffers(1, &globalPaletteDataPBO_);
+            glGenBuffers(1, &globalPaletteDataPBO_);
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, globalPaletteDataPBO_);
+            glBufferStorage
+            (
+                GL_PIXEL_PACK_BUFFER, 
+                3*3*paletteSize*sizeof(uint32_t),
+                NULL, 
+                PBOFlags
+            );
+            mappedGlobalPaletteData_ = glMapBufferRange
+            (
+                GL_PIXEL_PACK_BUFFER, 
+                0, 
+                3*paletteSize*sizeof(uint32_t), 
+                PBOFlags
+            );
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+        }
         
         // Reset uniforms
         findMaxSqrDistCol->setUniformInt
@@ -1026,7 +1126,38 @@ void OpenGLQuantizer::quantizeOpenGLTexture
 
             // Quantize with currently available palette on break
             if (*sqErrPtr >= (1.0f-settings_.relTol)*sqErr0)
+            {
+                if (settings_.cumulateGlobalPalette)
+                {
+                    computeShader_updateGlobalPalette.use();
+                    computeShader_updateGlobalPalette.setUniformInt
+                    (
+                        "globalPaletteCounter", 
+                        globalPaletteCounter_, 
+                        false
+                    );
+                    computeShader_updateGlobalPalette.setUniformInt
+                    (
+                        "paletteSize", 
+                        paletteSize, 
+                        false
+                    );
+                    computeShader_updateGlobalPalette.setUniformInt
+                    (
+                        "paletteData", 
+                        paletteDataUnit, 
+                        false
+                    );
+                    computeShader_updateGlobalPalette.setUniformInt
+                    (
+                        "globalPaletteData", 
+                        globalPaletteDataUnit, 
+                        false
+                    );
+                    updatePaletteFromClusters->run(paletteSize, 1, 1);
+                }
                 break;
+            }
             sqErr0 = *sqErrPtr;
             
             // Update palettes based on current clusters
@@ -1158,6 +1289,24 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         0
     );
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+    if (settings_.cumulateGlobalPalette)
+    {
+        // Copy the global palette to the PBO (GPU-to-GPU) so that it can be
+        // read via the permanent mapping at mappedGlobalPaletteData_
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, globalPaletteDataPBO_);
+        glActiveTexture(GL_TEXTURE0+globalPaletteDataUnit);
+        glBindTexture(GL_TEXTURE_2D, globalPaletteData_);
+        glGetTexImage
+        (
+            GL_TEXTURE_2D, 
+            0, 
+            GL_RED_INTEGER,
+            GL_UNSIGNED_BYTE, 
+            0
+        );
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+    }
     
     // Copy the indexed texture to the PBO (GPU-to-GPU) so that it can be
     // read via the permanent mapping at mappedIndexedData_. It is vital that
@@ -1194,6 +1343,11 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     }
 
     isFloat320 = isFloat32;
+
+    globalPaletteCounter_ = 
+        settings_.cumulateGlobalPalette? 
+        ++globalPaletteCounter_ :
+        0u;
 }
 
 //----------------------------------------------------------------------------//
@@ -1235,6 +1389,7 @@ use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
         computeShader_buildClustersFromPaletteUI8.compile();
         computeShader_updatePaletteFromClustersUI8.compile();
         computeShader_quantizeInputUI8.compile();
+        computeShader_updateGlobalPalette.compile();
         OpenGLQuantizer::computeShaderStagesCompiled = true;
     }
 
@@ -1267,6 +1422,31 @@ use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
     glGenBuffers(1, &paletteDataWriteOnlyPBO_);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, paletteDataWriteOnlyPBO_);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+    // Generate data texture (will be resized to the correct size during 
+    // quantization)
+    glGenTextures(1, &globalPaletteData_);
+    glBindTexture(GL_TEXTURE_2D, globalPaletteData_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D
+    (
+        GL_TEXTURE_2D, 
+        0, 
+        GL_R32UI, 
+        1, 
+        3, 
+        0, 
+        GL_RED_INTEGER, 
+        GL_UNSIGNED_INT, 
+        NULL
+    );
+
+    // Generate pixel buffer object (PBO) for reading global palette data from
+    // GPU to CPU
+    glGenBuffers(1, &globalPaletteDataPBO_);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, globalPaletteDataPBO_);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
     // Generete indexed input texture (will be resized to correct size during
     // quantization)
@@ -1339,6 +1519,9 @@ OpenGLQuantizer::~OpenGLQuantizer()
         return;
     glDeleteTextures(1, &paletteData_);
     glDeleteBuffers(1, &paletteDataPBO_);
+    glDeleteBuffers(1, &paletteDataWriteOnlyPBO_);
+    glDeleteTextures(1, &globalPaletteData_);
+    glDeleteBuffers(1, &globalPaletteDataPBO_);
     glDeleteTextures(1, &indexedData_);
     glDeleteBuffers(1, &indexedDataPBO_);
     glDeleteBuffers(1, &clusteringError_);
@@ -1409,6 +1592,31 @@ void OpenGLQuantizer::getPalette(unsigned char*& data, bool allocate)
     (
         data, 
         (unsigned char*)mappedPaletteData_, 
+        paletteSize_*3*sizeof(unsigned char)
+    );
+    // Add a dummy color to correspond to the alpha/delta index
+    if (nonDefaultIndexing)
+    {
+        
+        data[3*paletteSize-3] = (unsigned char)0;
+        data[3*paletteSize-2] = (unsigned char)0;
+        data[3*paletteSize-1] = (unsigned char)0;
+    }
+}
+
+void OpenGLQuantizer::getGlobalPalette(unsigned char*& data, bool allocate)
+{
+    if (!canRunOnDeviceInUse_)
+        return;
+    bool nonDefaultIndexing(settings_.indexMode != Settings::IndexMode::Default);
+    int paletteSize = nonDefaultIndexing ? paletteSize_ + 1 : paletteSize_;
+    if (allocate)
+        data = new unsigned char[3*paletteSize];
+    OpenGLWaitSync();
+    std::memcpy
+    (
+        data, 
+        (unsigned char*)mappedGlobalPaletteData_, 
         paletteSize_*3*sizeof(unsigned char)
     );
     // Add a dummy color to correspond to the alpha/delta index
