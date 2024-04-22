@@ -604,7 +604,7 @@ void QuantizationPostProcess::run()
         settings_.regenerateMipmap = true;
     else
         settings_.regenerateMipmap = false;
-    
+    //settings_.cumulatePalette = true;
     ((nativeType*)native_)->quantize
     (
         *inputFramebuffer_,
@@ -1039,6 +1039,69 @@ void QuantizationPostProcess::renderGui()
         )
             ImGui::SameLine(0, 0);
     }
+    /*
+    static Palette quantizedCumulatedPalette = {};
+    ImGui::NewLine();
+    if (ImGui::Button("Quantize cumulated palette"))
+    {
+        settings_.recalculatePalette = false;   
+        if (quantizedCumulatedPalette.data == nullptr)
+        {
+            quantizedCumulatedPalette.data = new unsigned char[1];
+        }
+        else
+        {
+            delete quantizedCumulatedPalette.data;
+            quantizedCumulatedPalette.data = new unsigned char[1];
+        }
+        ((nativeType*)native_)->getPalette
+        (
+            quantizedCumulatedPalette.data, 
+            true,
+            true
+        );
+        quantizedCumulatedPalette.nColors = currentPalette_.nColors;
+    }
+    if (quantizedCumulatedPalette.data != nullptr)
+    {
+        for (auto i=0u; i<quantizedCumulatedPalette.nColors; i++)
+        {
+            std::string id = "##quantizedPaletteColorNo"+std::to_string(i);
+            float color[3] = 
+            {
+                quantizedCumulatedPalette.data[3*i]/255.0f,
+                quantizedCumulatedPalette.data[3*i+1]/255.0f,
+                quantizedCumulatedPalette.data[3*i+2]/255.0f
+            };
+            float availableWidth = ImGui::GetContentRegionAvail().x;
+            ImGui::ColorEdit3
+            (
+                id.c_str(), 
+                color, 
+                ImGuiColorEditFlags_NoInputs | 
+                ImGuiColorEditFlags_NoLabel | 
+                ImGuiColorEditFlags_Uint8
+            );
+            if 
+            (
+                //(i+1)%(int)(std::ceil(std::sqrt(currentPalette_.nColors))) != 0
+                availableWidth >= 2*fontSize
+            )
+                ImGui::SameLine(0, 0);
+        }
+
+        ImGui::Image
+        (
+            (void*)(uintptr_t)
+            (
+                ((nativeType*)native_)->getCumulatedPaletteImageId()
+            ),
+            {256, 256},
+            {0,1},
+            {1,0}
+        );
+    }
+    */
 }
 
 //----------------------------------------------------------------------------//

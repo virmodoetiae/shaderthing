@@ -37,6 +37,11 @@ protected:
     GLuint paletteDataWriteOnlyPBO_;
 
     //
+    GLint maxNCumulatedPalettes_;
+    GLuint cumulatedPaletteData_;
+    unsigned int cumulatedPaletteRow_ = 0;
+
+    //
     GLuint indexedData_;
     GLuint indexedDataPBO_;
     
@@ -101,7 +106,8 @@ public:
     void getPalette
     (
         unsigned char*& data, 
-        bool allocate=false
+        bool allocate=false,
+        bool cumulated=false
     ) override;
 
     // Retrieve the indexed colors and store them in the provided data array. If
@@ -112,6 +118,7 @@ public:
         bool allocate=false
     ) override;
 
+    int getCumulatedPaletteImageId() const override {return cumulatedPaletteData_;}
 };
 
 }

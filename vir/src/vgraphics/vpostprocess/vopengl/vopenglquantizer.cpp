@@ -143,8 +143,11 @@ R"(#version 460 core
 layout(binding=0) uniform atomic_uint clusteringError;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(rgba32f, binding=2) uniform image2D image;
+layout(rgba8ui, binding=3) uniform uimage2D cumulatedPaletteData;
 uniform int imageWidth;
 uniform int imageHeight;
+uniform int cumulatedPaletteRow;
+uniform int cumulatePalette;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 float rand(vec2 seed)
 {
@@ -175,10 +178,12 @@ void main()
         g = col.g;
         b = col.b;
     }
-    imageAtomicExchange(paletteData, ivec2(gid*3,   0), uint(float(r)/count));
-    imageAtomicExchange(paletteData, ivec2(gid*3+1, 0), uint(float(g)/count));
-    imageAtomicExchange(paletteData, ivec2(gid*3+2, 0), uint(float(b)/count));
-    
+    uvec3 color = uvec3(vec3(r,g,b)/count);
+    imageAtomicExchange(paletteData, ivec2(gid*3,   0), color.r);
+    imageAtomicExchange(paletteData, ivec2(gid*3+1, 0), color.g);
+    imageAtomicExchange(paletteData, ivec2(gid*3+2, 0), color.b);
+    if (cumulatePalette == 1)
+        imageStore(cumulatedPaletteData,ivec2(gid,cumulatedPaletteRow),uvec4(color,255));
 })" );
 
 OpenGLComputeShader
@@ -416,8 +421,11 @@ R"(#version 460 core
 layout(binding=0) uniform atomic_uint clusteringError;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(rgba8ui, binding=2) uniform uimage2D image;
+layout(rgba8ui, binding=3) uniform uimage2D cumulatedPaletteData;
 uniform int imageWidth;
 uniform int imageHeight;
+uniform int cumulatedPaletteRow;
+uniform int cumulatePalette;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 float rand(vec2 seed)
 {
@@ -444,10 +452,12 @@ void main()
         g = col.g;
         b = col.b;
     }
-    imageAtomicExchange(paletteData, ivec2(gid*3,   0), uint(float(r)/count));
-    imageAtomicExchange(paletteData, ivec2(gid*3+1, 0), uint(float(g)/count));
-    imageAtomicExchange(paletteData, ivec2(gid*3+2, 0), uint(float(b)/count));
-    
+    uvec3 color = uvec3(vec3(r,g,b)/count);
+    imageAtomicExchange(paletteData, ivec2(gid*3,   0), color.r);
+    imageAtomicExchange(paletteData, ivec2(gid*3+1, 0), color.g);
+    imageAtomicExchange(paletteData, ivec2(gid*3+2, 0), color.b);
+    if (cumulatePalette == 1)
+        imageStore(cumulatedPaletteData,ivec2(gid,cumulatedPaletteRow),uvec4(color,255));
 })" );
 
 OpenGLComputeShader
@@ -695,6 +705,20 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     glBindTexture(GL_TEXTURE_2D, paletteData_);
     glBindImageTexture(paletteDataUnit, paletteData_, 0, GL_FALSE, 0, 
         GL_READ_WRITE, GL_R32UI);
+    // Cumulated palette data
+    uint32_t cumulatedPaletteDataUnit = textureUnit++;
+    glActiveTexture(GL_TEXTURE0+cumulatedPaletteDataUnit);
+    glBindTexture(GL_TEXTURE_2D, cumulatedPaletteData_);
+    glBindImageTexture
+    (
+        cumulatedPaletteDataUnit, 
+        cumulatedPaletteData_, 
+        0, 
+        GL_FALSE, 
+        0, 
+        GL_READ_WRITE, 
+        GL_RGBA8UI
+    );
     // Indexed data texture
     uint32_t indexedDataUnit = textureUnit++;
     glActiveTexture(GL_TEXTURE0+indexedDataUnit);
@@ -876,6 +900,24 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         );
     }
 
+    if (paletteSizeChanged)
+    {
+        glActiveTexture(GL_TEXTURE0+cumulatedPaletteDataUnit);
+        glBindTexture(GL_TEXTURE_2D, cumulatedPaletteData_);
+        glTexImage2D
+        (
+            GL_TEXTURE_2D, 
+            0, 
+            GL_RGBA8, 
+            paletteSize, 
+            maxNCumulatedPalettes_, 
+            0, 
+            GL_RGBA, 
+            GL_UNSIGNED_BYTE, 
+            NULL
+        );
+    }
+
     // If provided, upload the palette to the GPU and use it instead of running
     // the KMeans
     if (settings_.paletteData != nullptr)
@@ -1004,6 +1046,34 @@ void OpenGLQuantizer::quantizeOpenGLTexture
             mHeight, 
             false
         );
+        if (settings_.cumulatePalette)
+        {
+            updatePaletteFromClusters->setUniformInt
+            (
+                "cumulatePalette", 
+                1,
+                false
+            );
+            updatePaletteFromClusters->setUniformInt
+            (
+                "cumulatedPaletteData", 
+                cumulatedPaletteDataUnit,
+                false
+            );
+            updatePaletteFromClusters->setUniformInt
+            (
+                "cumulatedPaletteRow", 
+                cumulatedPaletteRow_,
+                false
+            );
+        }
+        else
+            updatePaletteFromClusters->setUniformInt
+            (
+                "cumulatePalette", 
+                0,
+                false
+            );
 
         // Run K-Means
         float sqErr0 = 3.0f*255.0f*255.0f*mWidth*mHeight;
@@ -1035,6 +1105,13 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         }
         delete sqErrPtr;
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+        
+        cumulatedPaletteRow_ = 
+            settings_.cumulatePalette ? 
+            (
+                ++cumulatedPaletteRow_ < maxNCumulatedPalettes_ ? 
+                cumulatedPaletteRow_ : 0u 
+            ) : 0u;
     }
 
     // Bind quantizer inputs
@@ -1194,6 +1271,8 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     }
 
     isFloat320 = isFloat32;
+
+    std::cout << cumulatedPaletteRow_ << std::endl;
 }
 
 //----------------------------------------------------------------------------//
@@ -1268,6 +1347,25 @@ use ()"+deviceName+R"() only supports OpenGL up to version )"+glVersion;
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, paletteDataWriteOnlyPBO_);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
+    // Generate cumulated palettes texture
+    glGenTextures(1, &cumulatedPaletteData_);
+    glBindTexture(GL_TEXTURE_2D, cumulatedPaletteData_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D
+    (
+        GL_TEXTURE_2D, 
+        0, 
+        GL_RGBA8, 
+        1, 
+        1, 
+        0, 
+        GL_RGBA, 
+        GL_UNSIGNED_BYTE, 
+        NULL
+    );
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxNCumulatedPalettes_);
+
     // Generete indexed input texture (will be resized to correct size during
     // quantization)
     glGenTextures(1, &indexedData_);
@@ -1339,6 +1437,8 @@ OpenGLQuantizer::~OpenGLQuantizer()
         return;
     glDeleteTextures(1, &paletteData_);
     glDeleteBuffers(1, &paletteDataPBO_);
+    glDeleteBuffers(1, &paletteDataWriteOnlyPBO_);
+    glDeleteBuffers(1, &cumulatedPaletteData_);
     glDeleteTextures(1, &indexedData_);
     glDeleteBuffers(1, &indexedDataPBO_);
     glDeleteBuffers(1, &clusteringError_);
@@ -1396,10 +1496,43 @@ void OpenGLQuantizer::quantize
     );
 }
 
-void OpenGLQuantizer::getPalette(unsigned char*& data, bool allocate)
+void OpenGLQuantizer::getPalette
+(
+    unsigned char*& data, 
+    bool allocate, 
+    bool cumulated
+)
 {
     if (!canRunOnDeviceInUse_)
         return;
+    // Requesting the cumulated palette amounts to:
+    // 1) quantizing the cumulated palette image
+    // 2) returning the resulting quantization palette, which can be interpreted
+    //    as a global palette best representing all palettes that have been 
+    //    stored in cumulatedPaletteData_ up to this point
+    // If no palettes have been stored in the cumulated palette data (i.e., if
+    // cumulatedPaletteRow_ == 0) the latest quantizer palette is returned.
+    // Please also note that retrieving the quantization palette reset the
+    // cumulatedPaletteRow_ to 0
+    if (cumulated && cumulatedPaletteRow_ > 0)
+    {
+        Settings settings = {};
+        settings.fastKMeans = false;
+        settings.recalculatePalette = true;
+        settings.regenerateMipmap = false;
+        settings.reseedPalette = true;
+        quantizeOpenGLTexture
+        (
+            cumulatedPaletteData_,
+            paletteSize_,
+            cumulatedPaletteRow_,
+            paletteSize_,
+            settings,
+            false
+        );
+        getPalette(data, allocate, false);
+        return;
+    }
     bool nonDefaultIndexing(settings_.indexMode != Settings::IndexMode::Default);
     int paletteSize = nonDefaultIndexing ? paletteSize_ + 1 : paletteSize_;
     if (allocate)

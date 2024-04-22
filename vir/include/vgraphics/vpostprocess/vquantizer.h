@@ -120,6 +120,10 @@ struct Settings
     // in order to perform the quantization. Inconsequential on the quantization
     // process
     unsigned int inputUnit=0;
+
+    // If true, the palette computed from this quantization call will
+    // be appended to a texture of palettes
+    bool cumulatePalette=false;
 };
 
 protected:
@@ -183,7 +187,8 @@ public:
     virtual void getPalette
     (
         unsigned char*& data, 
-        bool allocate=false
+        bool allocate=false,
+        bool cumulated=false
     ) = 0;
 
     // Retrieve the indexed colors and store them in the provided data array. If
@@ -193,6 +198,9 @@ public:
         unsigned char*& data, 
         bool allocate=false
     ) = 0;
+
+    //...
+    virtual int getCumulatedPaletteImageId() const = 0;
 };
 
 }
