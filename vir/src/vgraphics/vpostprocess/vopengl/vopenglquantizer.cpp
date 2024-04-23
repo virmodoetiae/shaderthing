@@ -1219,7 +1219,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     quantizeInput->use();
     quantizeInput->run(width, height, 1);
 
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    OpenGLWaitSync();
 
     // Copy the palette to the PBO (GPU-to-GPU) so that it can be
     // read via the permanent mapping at mappedPaletteData_
@@ -1252,8 +1252,6 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         0
     );
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-
-    OpenGLWaitSync();
     
     if (settings_.regenerateMipmap)
     {
@@ -1271,8 +1269,6 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     }
 
     isFloat320 = isFloat32;
-
-    std::cout << cumulatedPaletteRow_ << std::endl;
 }
 
 //----------------------------------------------------------------------------//

@@ -1637,11 +1637,9 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                 postProcesses.erase(postProcesses.begin()+iDelete);
             }
             
-            
-            // Selector for adding a new post-processing effect with the constraint
-            // that each layer may have at most one post-processing effect of each
-            // type
-            
+            // Selector for adding a new post-processing effect with the 
+            // constraint that each layer may have at most one 
+            // tpost-processing effect of each ype
             ImGui::PushItemWidth(-1);
             if 
             (
@@ -1655,9 +1653,15 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                 static std::vector<vir::PostProcess::Type> allAvailableTypes(0);
                 if (allAvailableTypes.size() == 0)
                 {
-                    allAvailableTypes.reserve(vir::PostProcess::typeToName.size());
+                    allAvailableTypes.reserve
+                    (
+                        vir::PostProcess::typeToName.size()
+                    );
                     for (auto kv : vir::PostProcess::typeToName)
-                        allAvailableTypes.push_back(kv.first);
+                    {
+                        if (kv.first != vir::PostProcess::Type::Undefined)
+                            allAvailableTypes.push_back(kv.first);
+                    }
                 }
                 std::vector<vir::PostProcess::Type> 
                     availableTypes(allAvailableTypes);
