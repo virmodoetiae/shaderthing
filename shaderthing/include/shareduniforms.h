@@ -256,6 +256,7 @@ public:
     void nextRenderPass();
     void prepareForExport(float exportStartTime, bool resumeTime);
     void resetAfterExport(bool resetFrameCounter = true);
+    void resetTimeAndFrame(float time=0);
 
     void renderWindowResolutionMenuGui();
 

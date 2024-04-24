@@ -477,13 +477,20 @@ void SharedUniforms::nextRenderPass()
 
 //----------------------------------------------------------------------------//
 
+void SharedUniforms::resetTimeAndFrame(float time)
+{
+    flags_.resetFrameCounterPreOrPostExport = true;
+    fBlock_.iTime = time;
+}
+
+//----------------------------------------------------------------------------//
+
 void SharedUniforms::prepareForExport(float exportStartTime, bool resumeTime)
 {
     if (resumeTime && flags_.isTimePaused)
         flags_.isTimePaused = false;
-    flags_.resetFrameCounterPreOrPostExport = true; //true;
     exportData_.originalTime = fBlock_.iTime;
-    fBlock_.iTime = exportStartTime;
+    resetTimeAndFrame(exportStartTime);
     exportData_.originalResolution = fBlock_.iResolution;
     setResolution(exportData_.resolution, false, true);
 

@@ -118,23 +118,37 @@ void Exporter::update
                     vir::Quantizer::Settings::IndexMode::Default
             );
     }
-    else if (frame_ == nFrames_-1) // Terminate
+    else if (frame_ == nFrames_-1) // Terminate (or end palette cumulation)
     {
-        isRunning_ = false;
         frame_ = 0;
-        
-        DELETE_IF_NOT_NULLPTR(framebuffer_)
-        DELETE_IF_NOT_NULLPTR(framebufferData_)
-
-        if (gifEncoder_->isFileOpen())
-            gifEncoder_->closeFile();
-
-        sharedUniforms.resetAfterExport
+        if 
         (
-            settings_.resetFrameCounterAfterExport
-        );
-        for (auto layer : layers)
-            layer->resetAfterExport();
+            settings_.gifPaletteMode == PaletteMode::StaticAveraged && 
+            !isAveragedPaletteReady_
+        )
+        {
+            sharedUniforms.resetTimeAndFrame(settings_.startTime);
+            isAveragedPaletteReady_ = true;
+        }
+        else
+        {
+            isRunning_ = false;
+            
+            DELETE_IF_NOT_NULLPTR(framebuffer_)
+            DELETE_IF_NOT_NULLPTR(framebufferData_)
+
+            if (gifEncoder_->isFileOpen())
+                gifEncoder_->closeFile();
+
+            sharedUniforms.resetAfterExport
+            (
+                settings_.resetFrameCounterAfterExport
+            );
+            for (auto layer : layers)
+                layer->resetAfterExport();
+            isAveragedPaletteReady_ = false;
+        }
+        
     }
     else
         ++frame_;
@@ -184,17 +198,24 @@ void Exporter::writeOutput()
         }
         case (ExportType::GIF) :
         {
-            gifEncoder_->encodeFrame
+            if 
             (
-                framebuffer_,
-                {   // Encoding options
-                    std::max(int(100.0f/settings_.fps), 1), // fps
-                    true,                                   // flip Y
-                    settings_.gifDitherMode,                // 
-                    0,                                      // Dither thres.
-                    (int)settings_.gifAlphaCutoff
-                }
-            );
+                settings_.gifPaletteMode == PaletteMode::StaticAveraged &&
+                !isAveragedPaletteReady_
+            )
+                gifEncoder_->cumulatePaletteForAveraging(framebuffer_);
+            else
+                gifEncoder_->encodeFrame
+                (
+                    framebuffer_,
+                    {   // Encoding options
+                        std::max(int(100.0f/settings_.fps), 1), // fps
+                        true,                                   // flip Y
+                        settings_.gifDitherMode,                // 
+                        0,                                      // Dither thres.
+                        (int)settings_.gifAlphaCutoff
+                    }
+                );
             break;
         }
     }
@@ -333,7 +354,7 @@ R"(Determines the GIF palette size. The number of colors in the palette is
                 if (dynamic)
                     settings_.gifPaletteMode = PaletteMode::Dynamic;
                 else
-                    settings_.gifPaletteMode = PaletteMode::StaticFirstFrame;
+                    settings_.gifPaletteMode = PaletteMode::StaticAveraged;
             }
             
             ImGui::Text("Transparency cutoff         ");
