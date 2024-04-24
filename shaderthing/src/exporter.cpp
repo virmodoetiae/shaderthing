@@ -112,6 +112,7 @@ void Exporter::update
                 sharedUniforms.exportData().resolution.x, 
                 sharedUniforms.exportData().resolution.y, 
                 settings_.gifPaletteBitDepth,
+                settings_.gifPaletteMode,
                 settings_.gifAlphaCutoff > 0 ?
                     vir::Quantizer::Settings::IndexMode::Alpha :
                     vir::Quantizer::Settings::IndexMode::Default
@@ -191,8 +192,7 @@ void Exporter::writeOutput()
                     true,                                   // flip Y
                     settings_.gifDitherMode,                // 
                     0,                                      // Dither thres.
-                    (int)settings_.gifAlphaCutoff,          //
-                    settings_.isGifPaletteDynamic           //
+                    (int)settings_.gifAlphaCutoff
                 }
             );
             break;
@@ -320,11 +320,21 @@ R"(Determines the GIF palette size. The number of colors in the palette is
 
             ImGui::Text("Update palette every frame  ");
             ImGui::SameLine();
-            ImGui::Checkbox
+            bool dynamic = settings_.gifPaletteMode == PaletteMode::Dynamic;
+            if 
             (
-                "##exporterIsGifPaletteDynamic", 
-                &settings_.isGifPaletteDynamic
-            );
+                ImGui::Checkbox
+                (
+                    "##exporterIsGifPaletteDynamic", 
+                    &dynamic
+                )
+            )
+            {
+                if (dynamic)
+                    settings_.gifPaletteMode = PaletteMode::Dynamic;
+                else
+                    settings_.gifPaletteMode = PaletteMode::StaticFirstFrame;
+            }
             
             ImGui::Text("Transparency cutoff         ");
             if 
@@ -690,7 +700,7 @@ void Exporter::save(ObjectIO& io)
     io.write("startTime", settings_.startTime);
     io.write("endTime", settings_.endTime);
     io.write("fps", settings_.fps);
-    io.write("isGifPaletteDynamic", settings_.isGifPaletteDynamic);
+    io.write("isGifPaletteDynamic", settings_.gifPaletteMode == PaletteMode::Dynamic);
     io.write("gifPaletteBitDepth", settings_.gifPaletteBitDepth);
     io.write("gifAlphaCutoff", settings_.gifAlphaCutoff);
     io.write("gifDitherMode", (int)settings_.gifDitherMode);
@@ -723,7 +733,7 @@ void Exporter::load(const ObjectIO& io, Exporter*& exporter)
     READ_SETTINGS_ITEM(startTime, float)
     READ_SETTINGS_ITEM(endTime, float)
     READ_SETTINGS_ITEM(fps, float)
-    READ_SETTINGS_ITEM(isGifPaletteDynamic, bool)
+    //READ_SETTINGS_ITEM(isGifPaletteDynamic, bool)
     READ_SETTINGS_ITEM(gifPaletteBitDepth, int)
     READ_SETTINGS_ITEM(gifAlphaCutoff, int)
     READ_SETTINGS_ITEM2(gifDitherMode, int, DitherMode)

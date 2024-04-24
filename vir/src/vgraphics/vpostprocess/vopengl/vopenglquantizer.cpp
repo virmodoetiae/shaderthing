@@ -1209,7 +1209,6 @@ void OpenGLQuantizer::quantizeOpenGLTexture
             GL_WRITE_ONLY, 
             isFloat32 ? GL_RGBA32F : GL_RGBA8UI
         );
-        
     }
     quantizeInput->setUniformInt
     (

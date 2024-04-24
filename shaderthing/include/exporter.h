@@ -31,6 +31,7 @@ class Layer;
 class ObjectIO;
 
 typedef vir::Quantizer::Settings::DitherMode DitherMode;
+typedef vir::GifEncoder::PaletteMode PaletteMode;
 
 class Exporter : vir::Event::Receiver
 {
@@ -47,38 +48,39 @@ private:
 
     struct Settings
     {
-        std::string   outputFilepath;
-        glm::vec2     outputResolution                = {0, 0};
-        bool          outputResolutionChanged         = false;
-        unsigned int  nRenderPasses                   = 1;
-        bool          areRenderPassesOnFirstFrameOnly = false;
-        bool          resetFrameCounterAfterExport    = true;
-        float         startTime                       = 0.f;
-        float         endTime                         = 1.f;
-        float         fps                             = 60.f;
-        bool          isGifPaletteDynamic             = true;
-        unsigned int  gifPaletteBitDepth              = 8;
-        unsigned int  gifAlphaCutoff                  = 255;
-        DitherMode    gifDitherMode                   = DitherMode::None;
+        std::string    outputFilepath;
+        glm::vec2      outputResolution                = {0, 0};
+        bool           outputResolutionChanged         = false;
+        unsigned int   nRenderPasses                   = 1;
+        bool           areRenderPassesOnFirstFrameOnly = false;
+        bool           resetFrameCounterAfterExport    = true;
+        float          startTime                       = 0.f;
+        float          endTime                         = 1.f;
+        float          fps                             = 60.f;
+        PaletteMode    gifPaletteMode                  = PaletteMode::Dynamic;
+        unsigned int   gifPaletteBitDepth              = 8;
+        unsigned int   gifAlphaCutoff                  = 255;
+        DitherMode     gifDitherMode                   = DitherMode::None;
     };
-    Settings          settings_                       = {};
+    Settings           settings_                       = {};
 
     struct Cache
     {
-        std::string   outputFilepathExtended;
+        std::string    outputFilepathExtended;
     };
-    Cache             cache_                          = {};
+    Cache              cache_                          = {};
 
-    ExportType        exportType_                     = ExportType::Image;
-    vir::Framebuffer* framebuffer_                    = nullptr;
-    unsigned char*    framebufferData_                = nullptr;
-    vir::GifEncoder*  gifEncoder_                     = nullptr;
-    FileDialog        fileDialog_;
+    ExportType         exportType_                     = ExportType::Image;
+    vir::Framebuffer*  framebuffer_                    = nullptr;
+    unsigned char*     framebufferData_                = nullptr;
+    vir::GifEncoder*   gifEncoder_                     = nullptr;
+    FileDialog         fileDialog_;
 
-    bool              isRunning_                      = false;
-    unsigned int      frame_                          = 0;
-    unsigned int      nFrames_                        = 0;
-    double            timeStep_                       = 0.f;
+    bool               isRunning_                      = false;
+    bool               isAveragedPaletteReady_         = false;
+    unsigned int       frame_                          = 0;
+    unsigned int       nFrames_                        = 0;
+    double             timeStep_                       = 0.f;
 
     void exportButtonGui(bool disabled = false);
 

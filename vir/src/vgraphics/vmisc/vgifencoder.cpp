@@ -12,6 +12,48 @@ void GifEncoder::encodeIndexedFrame
     bool flipVertically
 )
 {
+    if (firstFrame_)
+    {
+        // Here we gooo, have a read at 
+        // https://www.w3.org/Graphics/GIF/spec-gif89a.txt
+
+        fputs("GIF89a", file_);
+
+        // Screen descriptor
+        fputc(width_ & 0xff, file_);
+        fputc((width_ >> 8) & 0xff, file_);
+        fputc(height_ & 0xff, file_);
+        fputc((height_ >> 8) & 0xff, file_);
+        
+        //   Reverted back to including a dummy global color table even if not used
+        //   at all, mainly for compatibility with some GIF decoders
+        // - first bit is global color table yet/no (here is yes)
+        // - bits 2,3,4 are the the number of bits -1 per primary color of the 
+        //   incoming frames, here set to 111 = 7, i.e. 7+1=8 bit depth
+        // - bit 5 signals whether the global color table is sorted by frequency 
+        //   or not (here is no)
+        // - bits 6,7,8 should be equal to log2(size global color table-1), set to
+        //   0 if no global color table. In this case, the global color table has
+        //   2 dummy colors, hence the last three bytes represent log2(2-1) = 0
+        fputc(0b11110000, file_);
+        fputc(0, file_);     // Background color index (forced to have this even if
+                            // table-on-off bit (bit 1) were the were to be 0)
+        fputc(0, file_);     // Square pixel aspect ratio
+        for (int i=0; i<6; i++) // Write r,g,b, components of the two dummy colors
+            fputc(0, file_);
+
+        // Animation header
+        fputc(0x21, file_); // Extension
+        fputc(0xff, file_); // Application specific
+        fputc(11, file_); // Length 11
+        fputs("NETSCAPE2.0", file_);
+        fputc(3, file_); // 3 bytes of NETSCAPE2.0 data
+        fputc(1, file_); // Looping info
+        fputc(0, file_); // Loop infinitely (byte 0)
+        fputc(0, file_); // Loop infinitely (byte 1)
+        fputc(0, file_); // Block terminator
+    }
+
     // Graphics control extension
     fputc(0x21, file_);
     fputc(0xf9, file_);
@@ -196,9 +238,12 @@ void GifEncoder::encodeIndexedFrame
 GifEncoder::GifEncoder():
     file_(nullptr),
     firstFrame_(false),
+    firstCumulation_(false),
     width_(0),
     height_(0),
     paletteSize_(0),
+    frameCounter_(0),
+    paletteMode_(PaletteMode::Dynamic),
     indexMode_(IndexMode::Default)
 {
     quantizer_ = Quantizer::create();
@@ -215,18 +260,27 @@ bool GifEncoder::openFile
     uint32_t width, 
     uint32_t height, 
     uint32_t paletteBitDepth,
+    PaletteMode paletteMode,
     IndexMode indexMode
 )
 {
-    if (paletteBitDepth < 2 || width*height == 0)
+    #if defined(_MSC_VER) && (_MSC_VER >= 1400)
+	    file_ = 0;
+        fopen_s(&file_, filepath.c_str(), "wb");
+    #else
+        file_ = fopen(filepath.c_str(), "wb");
+    #endif
+    if(!file_ || paletteBitDepth < 1 || width*height == 0) 
         return false;
 
     width_ = width;
     height_ = height;
     firstFrame_ = true;
-
+    firstCumulation_ = true;
     paletteBitDepth_ = paletteBitDepth;
+    paletteMode_ = paletteMode;
     paletteSize_ = (1<<paletteBitDepth);
+
     // I need to reserve one color as the 'transparent' color for delta or alpha
     // encoding only if my paletteSize is already at max capacity, i.e. 256 (due 
     // to the GIF format limitations)
@@ -238,137 +292,16 @@ bool GifEncoder::openFile
             paletteSize_ -= 1;
     }
 
-    #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-	    file_ = 0;
-        fopen_s(&file_, filepath.c_str(), "wb");
-    #else
-        file_ = fopen(filepath.c_str(), "wb");
-    #endif
-    if(!file_) 
-        return false;
-
-    // Here we gooo, have a read at 
-    // https://www.w3.org/Graphics/GIF/spec-gif89a.txt
-
-    fputs("GIF89a", file_);
-
-    // Screen descriptor
-    fputc(width & 0xff, file_);
-    fputc((width >> 8) & 0xff, file_);
-    fputc(height & 0xff, file_);
-    fputc((height >> 8) & 0xff, file_);
-    
-    //   Reverted back to including a dummy global color table even if not used
-    //   at all, mainly for compatibility with some GIF decoders
-    // - first bit is global color table yet/no (here is yes)
-    // - bits 2,3,4 are the the number of bits -1 per primary color of the 
-    //   incoming frames, here set to 111 = 7, i.e. 7+1=8 bit depth
-    // - bit 5 signals whether the global color table is sorted by frequency 
-    //   or not (here is no)
-    // - bits 6,7,8 should be equal to log2(size global color table-1), set to
-    //   0 if no global color table. In this case, the global color table has
-    //   2 dummy colors, hence the last three bytes represent log2(2-1) = 0
-    fputc(0b11110000, file_);
-    fputc(0, file_);     // Background color index (forced to have this even if
-                         // table-on-off bit (bit 1) were the were to be 0)
-    fputc(0, file_);     // Square pixel aspect ratio
-    for (int i=0; i<6; i++) // Write r,g,b, components of the two dummy colors
-        fputc(0, file_);
-
-    // Animation header
-    fputc(0x21, file_); // Extension
-    fputc(0xff, file_); // Application specific
-    fputc(11, file_); // Length 11
-    fputs("NETSCAPE2.0", file_);
-    fputc(3, file_); // 3 bytes of NETSCAPE2.0 data
-    fputc(1, file_); // Looping info
-    fputc(0, file_); // Loop infinitely (byte 0)
-    fputc(0, file_); // Loop infinitely (byte 1)
-    fputc(0, file_); // Block terminator
-
     return true;
-}
-
-void GifEncoder::encodeFrame
-(
-    TextureBuffer2D* frame,
-    const EncodingOptions& options
-)
-{
-    if (file_ == nullptr)
-        return;
-    Quantizer::Settings quantizerOptions = {};
-    quantizerOptions.ditherMode = options.ditherMode;
-    quantizerOptions.ditherThreshold = options.ditherThreshold;
-    quantizerOptions.indexMode = indexMode_;
-    quantizerOptions.reseedPalette = firstFrame_;
-    quantizerOptions.recalculatePalette = options.updatePalette;
-    quantizerOptions.relTol = 0.0f;
-    quantizerOptions.alphaCutoff = options.alphaCutoff;
-    quantizerOptions.regenerateMipmap = true;
-    quantizerOptions.fastKMeans = true;
-    quantizerOptions.overwriteInput = true;
-    quantizer_->quantize
-    (
-        frame, 
-        paletteSize_, 
-        quantizerOptions
-    );
-    quantizer_->getIndexedTexture(indexedTexture_, firstFrame_);
-    quantizer_->getPalette(palette_, firstFrame_);
-    if (firstFrame_)
-        firstFrame_ = false;
-    encodeIndexedFrame
-    (
-        options.delay, 
-        options.flipVertically
-    );
-}
-
-void GifEncoder::encodeFrame
-(
-    Framebuffer* frame,
-    const EncodingOptions& options
-)
-{
-    if (file_ == nullptr)
-        return;
-    Quantizer::Settings quantizerOptions = {};
-    quantizerOptions.ditherMode = options.ditherMode;
-    quantizerOptions.ditherThreshold = options.ditherThreshold;
-    quantizerOptions.indexMode = indexMode_;
-    quantizerOptions.reseedPalette = firstFrame_;
-    quantizerOptions.recalculatePalette = options.updatePalette;
-    quantizerOptions.relTol = 0.0f;
-    quantizerOptions.alphaCutoff = options.alphaCutoff;
-    quantizerOptions.regenerateMipmap = true;
-    quantizerOptions.fastKMeans = true;
-    quantizerOptions.overwriteInput = true;
-    quantizer_->quantize
-    (
-        frame, 
-        paletteSize_, 
-        quantizerOptions
-    );
-    quantizer_->getIndexedTexture(indexedTexture_, firstFrame_);
-    quantizer_->getPalette(palette_, firstFrame_);
-    if (firstFrame_)
-        firstFrame_ = false;
-    encodeIndexedFrame
-    (
-        options.delay, 
-        options.flipVertically
-    );
 }
 
 bool GifEncoder::closeFile()
 {
-    if (file_==nullptr)
+    if (file_ == nullptr)
         return false;
     fputc(0x3b, file_); 
     fclose(file_);
     file_ = nullptr;
-    firstFrame_ = false;
     width_ = 0;
     height_ = 0;
     paletteSize_ = 0;

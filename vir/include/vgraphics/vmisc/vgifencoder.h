@@ -9,9 +9,6 @@ class GifFileType;
 namespace vir
 {
 
-class TextureBuffer2D;
-class Framebuffer;
-
 class GifEncoder
 {
 public:
@@ -21,23 +18,18 @@ public:
 
     struct EncodingOptions
     {
-        // Delay between frames in hundredths of a second
-        int delay = 4;
+        int        delay           = 4;
+        bool       flipVertically  = false;
+        DitherMode ditherMode      = DitherMode::None;
+        float      ditherThreshold = 0;
+        int        alphaCutoff     = -1;
+    };
 
-        // 
-        bool flipVertically = false;
-
-        //
-        DitherMode ditherMode = DitherMode::None;
-        
-        // 
-        float ditherThreshold = 0;
-
-        //
-        int alphaCutoff = -1;
-        
-        //
-        bool updatePalette = true;
+    enum class PaletteMode
+    {
+        StaticAveraged,
+        StaticFirstFrame,
+        Dynamic
     };
 
 protected:
@@ -52,20 +44,21 @@ protected:
     // one bit at a time
     typedef struct
     {
-        uint8_t bitIndex;
-        uint8_t byte;      
+        uint8_t  bitIndex;
+        uint8_t  byte;      
         uint32_t chunkIndex;
-        uint8_t chunk[256];
+        uint8_t  chunk[256];
     } GifBitStatus;
 
-    FILE* file_ = nullptr;
-    bool firstFrame_;
-    uint32_t width_, height_, paletteBitDepth_, paletteSize_;
+    FILE*          file_ = nullptr;
+    bool           firstFrame_, firstCumulation_;
+    uint32_t       width_, height_, paletteBitDepth_, paletteSize_, frameCounter_;
     unsigned char* indexedTexture_;
     unsigned char* palette_;
-    IndexMode indexMode_;
+    PaletteMode    paletteMode_;
+    IndexMode      indexMode_;
 
-    Quantizer* quantizer_;
+    Quantizer*     quantizer_;
     
     void encodeIndexedFrame(int delay, bool flipVertically);
 
@@ -84,25 +77,41 @@ public:
         uint32_t width, 
         uint32_t height, 
         uint32_t paletteBitDepth=8,
+        PaletteMode paletteMode=PaletteMode::Dynamic,
         IndexMode indexMode=IndexMode::Default
     );
-    
-    void encodeFrame
-    (
-        TextureBuffer2D* frame,
-        const EncodingOptions& options
-    );
-    
-    void encodeFrame
-    (
-        Framebuffer* frame,
-        const EncodingOptions& options
-    );
-    
+
     bool closeFile();
 
+    template
+    <
+        typename FrameType/*, 
+        typename = typename std::enable_if
+        <
+            std::is_same<FrameType, vir::Framebuffer>::value || 
+            std::is_same<FrameType, vir::TextureBuffer2D>::value
+        >*/
+    >
+    void cumulatePaletteForAveraging(FrameType* frame);
+
+    template 
+    <
+        typename FrameType/*, 
+        typename = typename std::enable_if
+        <
+            std::is_same<FrameType, vir::Framebuffer>::value || 
+            std::is_same<FrameType, vir::TextureBuffer2D>::value
+        >*/
+    >
+    void encodeFrame
+    (
+        FrameType* frame,
+        const EncodingOptions& options
+    );
 };
 
 }
+
+#include "vgraphics/vmisc/vgifencoder_impl.h"
 
 #endif
