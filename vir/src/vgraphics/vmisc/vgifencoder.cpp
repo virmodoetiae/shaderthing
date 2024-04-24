@@ -4,6 +4,14 @@
 namespace vir
 {
 
+std::map<GifEncoder::PaletteMode, const char*>
+GifEncoder::paletteModeToName = 
+{
+    {GifEncoder::PaletteMode::Dynamic, "Dynamic"},
+    {GifEncoder::PaletteMode::StaticAveraged, "Static (averaged)"},
+    {GifEncoder::PaletteMode::StaticFirstFrame, "Static (1st frame)"}
+};
+
 // Protected functions -------------------------------------------------------//
 
 void GifEncoder::encodeIndexedFrame

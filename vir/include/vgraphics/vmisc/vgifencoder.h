@@ -2,6 +2,7 @@
 #define V_GIF_ENCODER_H
 
 #include <string>
+#include <map>
 #include "vgraphics/vpostprocess/vquantizer.h"
 
 class GifFileType;
@@ -27,10 +28,12 @@ public:
 
     enum class PaletteMode
     {
-        StaticAveraged,
-        StaticFirstFrame,
-        Dynamic
+        Dynamic = 0,
+        StaticAveraged = 1,
+        StaticFirstFrame = 2
     };
+
+    static std::map<PaletteMode, const char*> paletteModeToName;
 
 protected:
 

@@ -334,28 +334,31 @@ R"(Determines the GIF palette size. The number of colors in the palette is
             (
                 "##exporterGifPaletteBitDepth", 
                 (int*)&settings_.gifPaletteBitDepth, 
-                2, 
+                1, 
                 8
             );
             ImGui::PopItemWidth();
 
-            ImGui::Text("Update palette every frame  ");
+            ImGui::Text("Palette mode                ");
             ImGui::SameLine();
-            bool dynamic = settings_.gifPaletteMode == PaletteMode::Dynamic;
+            ImGui::PushItemWidth(-1);
             if 
             (
-                ImGui::Checkbox
+                ImGui::BeginCombo
                 (
-                    "##exporterIsGifPaletteDynamic", 
-                    &dynamic
+                    "##paletteModeSelector", 
+                    vir::GifEncoder::paletteModeToName[settings_.gifPaletteMode]
                 )
             )
             {
-                if (dynamic)
-                    settings_.gifPaletteMode = PaletteMode::Dynamic;
-                else
-                    settings_.gifPaletteMode = PaletteMode::StaticAveraged;
+                for(auto e : vir::GifEncoder::paletteModeToName)
+                {
+                    if (ImGui::Selectable(e.second))
+                        settings_.gifPaletteMode = e.first;
+                }
+                ImGui::EndCombo();
             }
+            ImGui::PopItemWidth();
             
             ImGui::Text("Transparency cutoff         ");
             if 
@@ -695,7 +698,20 @@ void Exporter::exportButtonGui(bool disable)
 {
     if (isRunning_ || disable)
         ImGui::BeginDisabled();
-    if (ImGui::Button(isRunning_ ? "Exporting..." : "Export", {-1,0}))
+    if 
+    (
+        ImGui::Button
+        (
+            isRunning_ ? 
+            (
+                settings_.gifPaletteMode == PaletteMode::StaticAveraged && 
+                !isAveragedPaletteReady_ ?
+                "Computing averaged palette..." :
+                "Exporting..." 
+            ) : 
+            "Export", 
+            {-1,0}
+        ))
     {
         std::vector<std::string> filters;
         if (exportType_ == ExportType::GIF)
@@ -721,7 +737,7 @@ void Exporter::save(ObjectIO& io)
     io.write("startTime", settings_.startTime);
     io.write("endTime", settings_.endTime);
     io.write("fps", settings_.fps);
-    io.write("isGifPaletteDynamic", settings_.gifPaletteMode == PaletteMode::Dynamic);
+    io.write("gifPaletteMode", (int)settings_.gifPaletteMode);
     io.write("gifPaletteBitDepth", settings_.gifPaletteBitDepth);
     io.write("gifAlphaCutoff", settings_.gifAlphaCutoff);
     io.write("gifDitherMode", (int)settings_.gifDitherMode);
@@ -754,7 +770,7 @@ void Exporter::load(const ObjectIO& io, Exporter*& exporter)
     READ_SETTINGS_ITEM(startTime, float)
     READ_SETTINGS_ITEM(endTime, float)
     READ_SETTINGS_ITEM(fps, float)
-    //READ_SETTINGS_ITEM(isGifPaletteDynamic, bool)
+    READ_SETTINGS_ITEM2(gifPaletteMode, int, PaletteMode)
     READ_SETTINGS_ITEM(gifPaletteBitDepth, int)
     READ_SETTINGS_ITEM(gifAlphaCutoff, int)
     READ_SETTINGS_ITEM2(gifDitherMode, int, DitherMode)
