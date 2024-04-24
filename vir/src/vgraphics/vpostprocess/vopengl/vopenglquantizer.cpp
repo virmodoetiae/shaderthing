@@ -1433,7 +1433,7 @@ OpenGLQuantizer::~OpenGLQuantizer()
     glDeleteTextures(1, &paletteData_);
     glDeleteBuffers(1, &paletteDataPBO_);
     glDeleteBuffers(1, &paletteDataWriteOnlyPBO_);
-    glDeleteBuffers(1, &cumulatedPaletteData_);
+    glDeleteTextures(1, &cumulatedPaletteData_);
     glDeleteTextures(1, &indexedData_);
     glDeleteBuffers(1, &indexedDataPBO_);
     glDeleteBuffers(1, &clusteringError_);

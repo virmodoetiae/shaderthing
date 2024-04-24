@@ -470,12 +470,6 @@ PostProcess
 
 //----------------------------------------------------------------------------//
 
-QuantizationPostProcess::~QuantizationPostProcess()
-{
-}
-
-//----------------------------------------------------------------------------//
-
 QuantizationPostProcess* QuantizationPostProcess::load
 (
     const ObjectIO& io,

@@ -156,8 +156,6 @@ public:
     
     QuantizationPostProcess(Layer* inputLayer);
 
-    ~QuantizationPostProcess();
-
     static QuantizationPostProcess* load
     (
         const ObjectIO& io,
