@@ -59,7 +59,7 @@ private:
         float          fps                             = 60.f;
         PaletteMode    gifPaletteMode                  = PaletteMode::Dynamic;
         unsigned int   gifPaletteBitDepth              = 8;
-        unsigned int   gifAlphaCutoff                  = 255;
+        unsigned int   gifAlphaCutoff                  = 0;
         DitherMode     gifDitherMode                   = DitherMode::None;
     };
     Settings           settings_                       = {};

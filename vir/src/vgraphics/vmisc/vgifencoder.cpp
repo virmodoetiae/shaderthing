@@ -14,100 +14,10 @@ GifEncoder::paletteModeToName =
 
 // Protected functions -------------------------------------------------------//
 
-void GifEncoder::encodeIndexedFrame
-(
-    int delay, 
-    bool flipVertically
-)
+void GifEncoder::writePaletteData()
 {
-    if (firstFrame_)
-    {
-        // Here we gooo, have a read at 
-        // https://www.w3.org/Graphics/GIF/spec-gif89a.txt
-
-        fputs("GIF89a", file_);
-
-        // Screen descriptor
-        fputc(width_ & 0xff, file_);
-        fputc((width_ >> 8) & 0xff, file_);
-        fputc(height_ & 0xff, file_);
-        fputc((height_ >> 8) & 0xff, file_);
-        
-        //   Reverted back to including a dummy global color table even if not used
-        //   at all, mainly for compatibility with some GIF decoders
-        // - first bit is global color table yet/no (here is yes)
-        // - bits 2,3,4 are the the number of bits -1 per primary color of the 
-        //   incoming frames, here set to 111 = 7, i.e. 7+1=8 bit depth
-        // - bit 5 signals whether the global color table is sorted by frequency 
-        //   or not (here is no)
-        // - bits 6,7,8 should be equal to log2(size global color table-1), set to
-        //   0 if no global color table. In this case, the global color table has
-        //   2 dummy colors, hence the last three bytes represent log2(2-1) = 0
-        fputc(0b11110000, file_);
-        fputc(0, file_);     // Background color index (forced to have this even if
-                            // table-on-off bit (bit 1) were the were to be 0)
-        fputc(0, file_);     // Square pixel aspect ratio
-        for (int i=0; i<6; i++) // Write r,g,b, components of the two dummy colors
-            fputc(0, file_);
-
-        // Animation header
-        fputc(0x21, file_); // Extension
-        fputc(0xff, file_); // Application specific
-        fputc(11, file_); // Length 11
-        fputs("NETSCAPE2.0", file_);
-        fputc(3, file_); // 3 bytes of NETSCAPE2.0 data
-        fputc(1, file_); // Looping info
-        fputc(0, file_); // Loop infinitely (byte 0)
-        fputc(0, file_); // Loop infinitely (byte 1)
-        fputc(0, file_); // Block terminator
-    }
-
-    // Graphics control extension
-    fputc(0x21, file_);
-    fputc(0xf9, file_);
-    fputc(0x04, file_);
-    switch(indexMode_)
-    {
-        case Quantizer::Settings::IndexMode::Default :
-            fputc(0b00001000, file_);   // Old frame reset to no color,
-                                        // no transparency
-            break;
-        case Quantizer::Settings::IndexMode::Alpha :
-            fputc(0b00001001, file_);   // Old frame reset to no color, 
-                                        // enable transparency
-            break;
-        case Quantizer::Settings::IndexMode::Delta :
-            fputc(0b00000101, file_);   // Old frame left in place, 
-                                        // enable transparency
-            break;
-    }
-    fputc(delay & 0xff, file_);
-    fputc((delay >> 8) & 0xff, file_);
-    //if (indexMode_ != Quantizer::Settings::IndexMode::Default)
-    fputc(0, file_); // Transparent color index (Apparently I need this 
-                     // regardless of the transparency color flag, in
-                     // spite of the GIF89a specs, or the GIF, while 
-                     // renderable, cannot be properly read by either
-                     // stbi or online GIF editing tools...)
-    fputc(0, file_); // Block terminator
-
-    // Image descriptor block
-    fputc(0x2c, file_); 
-
-    // Write image corner w.r.t. canvas, i.e., 0,0
-    fputc(0 & 0xff, file_);
-    fputc((0 >> 8) & 0xff, file_);
-    fputc(0 & 0xff, file_);
-    fputc((0 >> 8) & 0xff, file_);
-
-    // Write image width, height
-    fputc(width_ & 0xff, file_);
-    fputc((width_ >> 8) & 0xff, file_);
-    fputc(height_ & 0xff, file_);
-    fputc((height_ >> 8) & 0xff, file_);
-
-    // Local color table, 2^paletteBitDepth_ entries
-    fputc(0x80 + paletteBitDepth_-1, file_);
+    if (file_ == nullptr || palette_ == nullptr)
+        return;
     
     // Write dummy color which will be used for transparency only
     if (indexMode_ != Quantizer::Settings::IndexMode::Default)
@@ -137,11 +47,152 @@ void GifEncoder::encodeIndexedFrame
         fputc(0, file_);
         ++ps;
     }
+}
+
+void GifEncoder::encodeIndexedFrame
+(
+    int delay, 
+    bool flipVertically
+)
+{
+    if (firstFrame_)
+    {
+        // Comments are referred to the different sections in the latest GIF
+        // specification at https://www.w3.org/Graphics/GIF/spec-gif89a.txt
+
+        // 17. HEADER, bytes 0-2 "GIF", bytes 3-5 "89a" ------------------------
+        fputs("GIF89a", file_);
+
+        // 18. LOGICAL SCREEN DESCRIPTOR, bytes 0-3 ----------------------------
+        fputc(width_ & 0xff, file_);
+        fputc((width_ >> 8) & 0xff, file_);
+        fputc(height_ & 0xff, file_);
+        fputc((height_ >> 8) & 0xff, file_);
+        
+        // Byte 4 of LOGICAL SCREEN DESCRIPTOR
+        uint8_t packedFields = 0;
+        packedFields |= (1 << 7); // Bit 7, global color table always is present
+        packedFields |= (7 << 4); // Bits 6,5,4 equal to number of bits per 
+                                  // primary color minus one (always 7 in our 
+                                  // case)
+        if (paletteMode_ != PaletteMode::Dynamic) // Bits 2,1,0 equal to 
+                                                  // log2(paletteSize)-1 of
+                                                  // global palette
+            packedFields |= (paletteBitDepth_-1 << 0);
+
+        fputc(packedFields, file_);
+        fputc(0, file_); // Byte 5, background color index (always 0 in my
+                         // setup)
+        fputc(0, file_); // Byte 6, '0' means square pixel aspect ratio
+        
+        // 19. GLOBAL COLOR TABLE ----------------------------------------------
+        if (paletteMode_ != PaletteMode::Dynamic)
+            writePaletteData();
+        else // If bits 2,1,0 of byte 4 of the logical screen descriptor are set
+             // to 0, that still corresponds to a global color table with two
+             // colors. Thus, put two dummy colorsin such case (with 3 
+             // components each, so 6 values in total). I might have set bit 7
+             // to the appropriate state if no global color table is present,
+             // but I noticed that that prevents the resulting GIFs to be read
+             // correctly by various pieces of software (they still render ok 
+             // though). So I keep the global color table just in case
+        {
+            for (int i=0; i<6; i++)
+                fputc(0, file_);
+        }
+
+        // 26. APPLICATION EXTENSION -------------------------------------------
+        fputc(0x21, file_); // EXTENSION INTRODUCER (fixed value, 0x21)
+        fputc(0xff, file_); // EXTENSION LABEL (fixed value, 0xff)
+        fputc(11, file_); // EXTENSION SIZE (fixed value, 11)
+        fputs("ANIMEXTS1.0", file_); // APPLICATION IDENTIFIER (ANIMEXTS) and
+                                     // AUTHENTICATION CODE for animated GIFs,
+                                     // (same as NETSCAPE2.0)
+        fputc(3, file_); // Size of ANIMEXTS1 APPLICATION DATA (3 bytes)
+        fputc(1, file_); // Byte 0 of ANIMEXTS data, 1 -> looping on
+        fputc(0, file_); // Bytes 1,2 of ANIMEXTS data, 00 -> loop infinitely
+        fputc(0, file_);
+        fputc(0, file_); // Block terminator
+    }
+
+    // 23. GRAPHIC CONTROL EXTENSION preceeding the image descriptor -----------
+    fputc(0x21, file_); // Byte 0, EXTENSION INTRODUCER (fixed value)
+    fputc(0xf9, file_); // Byte 1, GRAPHIC CONTROL LABEL (fixed value)
+                        // Byte 2, BLOCK SIZE
+    if (indexMode_ != Quantizer::Settings::IndexMode::Default)
+        fputc(0x04, file_); 
+    else
+        fputc(0x03, file_); 
+
+    // Byte 3 - packed data
+    switch(indexMode_)
+    {
+        case Quantizer::Settings::IndexMode::Default :
+            fputc(0b00001000, file_);   // Old frame reset to no color,
+                                        // no transparency
+            break;
+        case Quantizer::Settings::IndexMode::Alpha :
+            fputc(0b00001001, file_);   // Old frame reset to no color, 
+                                        // enable transparency
+            break;
+        case Quantizer::Settings::IndexMode::Delta :
+            fputc(0b00000101, file_);   // Old frame left in place, 
+                                        // enable transparency
+            break;
+    }
     
+    // Bytes 4,5 - delay
+    fputc(delay & 0xff, file_);
+    fputc((delay >> 8) & 0xff, file_);
+    
+    // Byte 6 (if present) - transparent color palette index
+    if (indexMode_ != Quantizer::Settings::IndexMode::Default)
+        fputc(0, file_);
+    
+    fputc(0, file_); // Block terminator for GRAPHIC CONTROL EXTENSION
+
+    // 20. IMAGE DESCRIPTOR BLOCK ----------------------------------------------
+    // A lot of optimizations might be implemented acting here, as I could e.g.,
+    // only write the actual region of the GIF which has been updated, compared
+    // to the previous frame. I am not doing this, presently
+
+    fputc(0x2c, file_); // IMAGE SEPARATOR (fixed value, 0x2c)
+    fputc(0 & 0xff, file_); // IMAGE POSITION (i.e., coordinates of the top-left
+                            // image corner with respect to an origin at the 
+                            // top-left GIF corder; bytes 0,1 are for the 
+                            // horizontal offset, bytes 2,3 for the vertical one
+    fputc((0 >> 8) & 0xff, file_);
+    fputc(0 & 0xff, file_);
+    fputc((0 >> 8) & 0xff, file_);
+
+    fputc(width_ & 0xff, file_); // IMAGE WIDTH (bytes 4-5)
+    fputc((width_ >> 8) & 0xff, file_);
+    fputc(height_ & 0xff, file_); // IMAGE HEIGHT (bytes 6-7)
+    fputc((height_ >> 8) & 0xff, file_);
+
+    uint8_t packedFields = 0;
+    if (paletteMode_ == PaletteMode::Dynamic)
+    {
+        packedFields |= (1 << 7); // Bit 7 == 1 means local palette present
+                                  // Bits 6,5 control interlacing, sort, all set
+                                  // to OFF, while bits 4,3 are reserved and
+                                  // should not be set
+        packedFields += paletteBitDepth_-1;// Bits 2,1,0 are log2(paletteSize)-1
+        fputc(packedFields, file_);
+        // 21. LOCAL COLOR TABLE -----------------------------------------------
+        writePaletteData();
+    }
+    else
+        fputc(packedFields, file_); // No local color table
+
     const int minCodeSize = paletteBitDepth_;
     const uint32_t clearCode = 1 << paletteBitDepth_;
     fputc(paletteBitDepth_, file_);
     
+    // 22. TABLE BASED IMAGE DATA ----------------------------------------------
+    // This is pure magic I took from https://github.com/charlietangora/gif-h,
+    // much appreciated (licensed under the "Unlicense" license)
+
     GifLZWNode* codetree = (GifLZWNode*)malloc(sizeof(GifLZWNode)*4096);
     memset(codetree, 0, sizeof(GifLZWNode)*4096);
     int32_t curCode = -1;
@@ -192,7 +243,6 @@ void GifEncoder::encodeIndexedFrame
         }
     };
 
-    // Start fresh LZW dictionary
     GifWriteCode(file_, &stat, clearCode, codeSize);
     for(uint32_t y=0; y<height_; ++y)
     {
@@ -236,7 +286,7 @@ void GifEncoder::encodeIndexedFrame
     while( stat.bitIndex ) GifWriteBit(&stat, 0);
     if( stat.chunkIndex ) GifWriteChunk(file_, &stat);
 
-    // Image block terminator
+    // Image block terminator for TABLE BASED IMAGE DATA
     fputc(0, file_); 
     free(codetree);
 }
@@ -307,8 +357,12 @@ bool GifEncoder::closeFile()
 {
     if (file_ == nullptr)
         return false;
-    fputc(0x3b, file_); 
+
+    // https://www.w3.org/Graphics/GIF/spec-gif89a.txt
+    // 27. TRAILER
+    fputc(0x3b, file_); // END OF GIF (fixed value, 0x3b) 
     fclose(file_);
+    
     file_ = nullptr;
     width_ = 0;
     height_ = 0;

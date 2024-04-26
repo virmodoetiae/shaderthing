@@ -63,6 +63,7 @@ protected:
 
     Quantizer*     quantizer_;
     
+    void writePaletteData();
     void encodeIndexedFrame(int delay, bool flipVertically);
 
 public:
