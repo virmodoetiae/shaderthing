@@ -612,9 +612,8 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     }
 
     // Cache for possibly re-initializing buffers
-    static bool isFloat320(isFloat32);
     bool paletteSizeChanged(paletteSize_ != paletteSize);
-    bool internalFormatChanged(isFloat320 != isFloat32);
+    bool internalFormatChanged(isFloat320_ != isFloat32);
     
     // Cache settings
     settings_ = settings;
@@ -1267,7 +1266,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         glGenerateMipmap(GL_TEXTURE_2D);
     }
 
-    isFloat320 = isFloat32;
+    isFloat320_ = isFloat32;
 }
 
 //----------------------------------------------------------------------------//

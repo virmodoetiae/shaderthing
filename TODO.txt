@@ -185,7 +185,20 @@ TODO ---------------------------------------------------------------------------
 (X) Enable compilation and running on at least one Unix system, tested on 
     Ubuntu 22 LTS
 
+(X) Fix GIF exporting when either width or height are not a power of 2
+
+(X) Implement whole-animation averaged palette calculation as additional option
+    when exporting GIFs
+
 (W) Expand code repository section
+
+(X) Fix Animation2D-type resource internal time not being managed correctly
+    during exports | Currently, only animations whose timing is bound to iTime
+    will be handled properly during exports (i.e., their time will be set to 
+    the export start time)
+
+(X) Fix quantization issues when exporting a GIF of a layer which already
+    includes quantization
 
 ( ) [vir & shaderthing] Implement an actual internal logging system
 

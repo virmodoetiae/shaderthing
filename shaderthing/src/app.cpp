@@ -94,7 +94,7 @@ App::~App()
 
 void App::update()
 {
-    exporter_->update(*sharedUniforms_, layers_);
+    exporter_->update(*sharedUniforms_, layers_, resources_);
 
     float timeStep = exporter_->isRunning() ?
         exporter_->timeStep() :

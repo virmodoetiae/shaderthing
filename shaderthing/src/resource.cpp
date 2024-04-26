@@ -252,6 +252,66 @@ void Resource::loadAll
     }
 }
 
+void Resource::resetAnimationsTime
+(
+    const std::vector<Resource*>& resources, 
+    float time
+)
+{
+    for (auto resource : resources)
+    {
+        if (resource->type() != Resource::Type::AnimatedTexture2D)
+            continue;
+        auto animation = (AnimatedTexture2DResource*)resource;
+        if (!animation->isAnimationBoundToGlobalTime_)
+            continue;
+        if (animation->isAnimationPaused_)
+            continue;
+        animation->native_->setTime(time);
+    }
+}
+
+void Resource::prepareAnimationsForExport
+(
+    const std::vector<Resource*>& resources,
+    float startTime, 
+    bool forceResumeTime,
+    bool cacheTime
+)
+{
+    for (auto resource : resources)
+    {
+        if (resource->type() != Resource::Type::AnimatedTexture2D)
+            continue;
+        auto animation = (AnimatedTexture2DResource*)resource;
+        if (!animation->isAnimationBoundToGlobalTime_)
+            continue;
+        if (animation->isAnimationPaused_ && !forceResumeTime)
+            continue;
+        if (cacheTime)
+            animation->cachedTime_ = animation->native_->time();
+        animation->native_->setTime(startTime);
+    }
+}
+
+void Resource::resetAnimationsAfterExport
+(
+    const std::vector<Resource*>& resources
+)
+{
+    for (auto resource : resources)
+    {
+        if (resource->type() != Resource::Type::AnimatedTexture2D)
+            continue;
+        auto animation = (AnimatedTexture2DResource*)resource;
+        if (!animation->isAnimationBoundToGlobalTime_)
+            continue;
+        if (animation->isAnimationPaused_)
+            continue;
+        animation->native_->setTime(animation->cachedTime_);
+    }
+}
+
 //----------------------------------------------------------------------------//
 
 #define SET_NATIVE_AND_RAW_AND_RETURN(data, size)                           \

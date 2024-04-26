@@ -115,6 +115,22 @@ public:
         const ObjectIO& io,
         std::vector<Resource*>& resources
     );
+    static void resetAnimationsTime
+    (
+        const std::vector<Resource*>& resources, 
+        float time=0.f
+    );
+    static void prepareAnimationsForExport
+    (
+        const std::vector<Resource*>& resources,
+        float startTime, 
+        bool forceResumeTime,
+        bool cacheTime=false
+    );
+    static void resetAnimationsAfterExport
+    (
+        const std::vector<Resource*>& resources
+    );
 
 private:
     
@@ -206,6 +222,7 @@ class AnimatedTexture2DResource : public Resource
     std::vector<Texture2DResource*> unmanagedFrames_;
     bool                            isAnimationPaused_            = false;
     bool                            isAnimationBoundToGlobalTime_ = false;
+    float                           cachedTime_ = 0.f;
     
     AnimatedTexture2DResource():Resource(Type::AnimatedTexture2D){}
     DELETE_COPY_MOVE(AnimatedTexture2DResource)

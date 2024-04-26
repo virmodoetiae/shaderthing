@@ -26,9 +26,10 @@
 namespace ShaderThing
 {
 
-class SharedUniforms;
 class Layer;
 class ObjectIO;
+class Resource;
+class SharedUniforms;
 
 typedef vir::Quantizer::Settings::DitherMode DitherMode;
 typedef vir::GifEncoder::PaletteMode PaletteMode;
@@ -103,7 +104,8 @@ public:
     void update
     (
         SharedUniforms& sharedUniforms,
-        const std::vector<Layer*>& layers
+        const std::vector<Layer*>& layers,
+        const std::vector<Resource*>& resources
     );
 
     void writeOutput();

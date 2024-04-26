@@ -21,6 +21,7 @@
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/resource.h"
 #include "shaderthing/include/shareduniforms.h"
 
 #include "vir/include/vir.h"
@@ -57,7 +58,8 @@ void Exporter::onReceive(vir::Event::WindowResizeEvent& event)
 void Exporter::update
 (
     SharedUniforms& sharedUniforms,
-    const std::vector<Layer*>& layers
+    const std::vector<Layer*>& layers,
+    const std::vector<Resource*>& resources
 )
 {
     if (!isRunning_)
@@ -104,6 +106,13 @@ void Exporter::update
         );
         for (auto layer : layers)
             layer->prepareForExport();
+        Resource::prepareAnimationsForExport
+        (
+            resources,
+            settings_.startTime,
+            exportType_ != ExportType::Image,
+            true
+        );
 
         if (exportType_ == ExportType::GIF && !gifEncoder_->isFileOpen())
             gifEncoder_->openFile
@@ -128,6 +137,7 @@ void Exporter::update
         )
         {
             sharedUniforms.resetTimeAndFrame(settings_.startTime);
+            Resource::resetAnimationsTime(resources, settings_.startTime);
             isAveragedPaletteReady_ = true;
         }
         else
@@ -146,6 +156,7 @@ void Exporter::update
             );
             for (auto layer : layers)
                 layer->resetAfterExport();
+            Resource::resetAnimationsAfterExport(resources);
             isAveragedPaletteReady_ = false;
         }
         
