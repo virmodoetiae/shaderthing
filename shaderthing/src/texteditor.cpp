@@ -781,8 +781,11 @@ void TextEditor::handleKeyboardInputs()
 
         if (!isReadOnly() && ctrl && !shift && !alt && ImGui::IsKeyPressed(ImGuiKey_Z))
             undo();
-        else if (!isReadOnly() && !ctrl && !shift && alt && ImGui::IsKeyPressed(ImGuiKey_Backspace))
-            undo();
+        else if (!isReadOnly() && ImGui::IsKeyPressed(ImGuiKey_Backspace))
+        {
+            if (!alt) backspace();
+            else      undo();
+        }
         else if (!isReadOnly() && ctrl && !shift && !alt && ImGui::IsKeyPressed(ImGuiKey_Y))
             redo();
         else if (!ctrl && !alt && ImGui::IsKeyPressed(ImGuiKey_UpArrow))
@@ -807,8 +810,6 @@ void TextEditor::handleKeyboardInputs()
             moveEnd(shift);
         else if (!isReadOnly() && !ctrl && !shift && !alt && ImGui::IsKeyPressed(ImGuiKey_Delete))
             remove();
-        else if (!isReadOnly() && !ctrl && !shift && !alt && ImGui::IsKeyPressed(ImGuiKey_Backspace))
-            backspace();
         else if (!ctrl && !shift && !alt && ImGui::IsKeyPressed(ImGuiKey_Insert))
             overwrite_ ^= true;
         else if (ctrl && !shift && !alt && ImGui::IsKeyPressed(ImGuiKey_Insert))
