@@ -110,13 +110,28 @@ void App::update()
 
     sharedUniforms_->update(             {                          timeStep});
     Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
+    
+    // Auto-save if applicable
+    if 
+    (
+        project_.isAutoSaveEnabled && 
+        project_.filepath.size() > 0 && 
+        !exporter_->isRunning()
+    )
+    {
+        if (project_.timeSinceLastSave > project_.autoSaveInterval)
+            saveProject(project_.filepath+".bak");
+        else
+            project_.timeSinceLastSave += 
+                vir::Window::instance()->time()->smoothOuterTimestep();
+    }
 
     // Compute FPS and set in window title
     static float fps(60.0f);
     static int elapsedFrames(0);
     static float elapsedTime(0);
     elapsedFrames++;
-    elapsedTime +=vir::Window::instance()->time()->smoothOuterTimestep();
+    elapsedTime += vir::Window::instance()->time()->smoothOuterTimestep();
     if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
     {
         fps = elapsedFrames/elapsedTime;
@@ -134,7 +149,10 @@ void App::update()
 void App::saveProject(const std::string& filepath) const
 {
     auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Write);
+    
     project.write("UIScale", *font_.fontScale);
+    project.write("autoSaveEnabled", project_.isAutoSaveEnabled);
+    project.write("autoSaveInterval", project_.autoSaveInterval);
     
     sharedUniforms_->save(            project);
     Layer::          save(layers_,    project);
@@ -144,6 +162,8 @@ void App::saveProject(const std::string& filepath) const
 
     // TODO Could display an error via ImGui on failure
     project.writeContentsToDisk();
+
+    project_.timeSinceLastSave = 0;
 }
 
 //----------------------------------------------------------------------------//
@@ -153,7 +173,19 @@ void App::loadProject(const std::string& filepath)
     auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
     if (!project.isValid())
         return; // TODO Could display an error via ImGui
+    
     *font_.fontScale = project.read<float>("UIScale");
+    project_.isAutoSaveEnabled = project.readOrDefault<bool>
+    (
+        "autoSaveEnabled", 
+        Project{}.isAutoSaveEnabled
+    );
+    project_.autoSaveInterval = project.readOrDefault<float>
+    (
+        "autoSaveInterval", 
+        Project{}.autoSaveInterval
+    );
+    
     Resource::      loadAll(project,                            resources_);
     SharedUniforms::load   (project,           sharedUniforms_, resources_);
     Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
@@ -165,7 +197,7 @@ void App::loadProject(const std::string& filepath)
 
 void App::newProject()
 {
-    project_ = {};
+    project_ = Project{};
     *font_.fontScale = .6;
 
     DELETE_IF_NOT_NULLPTR(exporter_);
@@ -207,19 +239,28 @@ void App::processProjectActions()
             project_.action = Project::Action::None;
             break;
         case Project::Action::Load :
+        {
             if (!fileDialog_.validSelection())
             {
                 if (!fileDialog_.isOpen())
                     project_.action = Project::Action::None;
                 break;
             }
-            project_.filepath = fileDialog_.selection().front();
-            project_.filename = Helpers::filename(project_.filepath);
+            auto filepath = fileDialog_.selection().front();
             project_.forceSaveAs = true;
-            loadProject(project_.filepath);
+            loadProject(filepath);
+            project_.filepath = // Trim .bak if applicable
+                (
+                    filepath.size() >= 4 && 
+                    filepath.substr(filepath.size() - 4) == ".bak"
+                ) ? 
+                filepath.substr(0, filepath.size() - 4) : 
+                filepath;
+            project_.filename = Helpers::filename(project_.filepath);
             fileDialog_.clearSelection();
             project_.action = Project::Action::None;
             break;
+        }
         case Project::Action::SaveAs :
             if (!fileDialog_.validSelection())
             {
@@ -234,6 +275,71 @@ void App::processProjectActions()
             fileDialog_.clearSelection();
             project_.action = Project::Action::None;
             break;
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::Project::renderAutoSaveMenuItemGui()
+{
+    if (ImGui::BeginMenu("Auto-save"))
+    {
+        bool canBeEnabled = filepath.size() > 0;
+        if (!canBeEnabled)
+            ImGui::BeginDisabled();
+        ImGui::Text("Enabled  ");
+        ImGui::SameLine();
+        if (!canBeEnabled)
+        {
+            bool flag(false);
+            ImGui::Checkbox("##checkAutoSave", &flag);
+            if 
+            (
+                !canBeEnabled && 
+                ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && 
+                ImGui::BeginTooltip()
+            )
+            {
+                ImGui::EndDisabled();
+                ImGui::Text
+                (
+R"(The auto-save feature can be enabled only once the
+project has been manually saved for the first time)"
+                );
+                ImGui::BeginDisabled();
+                ImGui::EndTooltip();
+            }
+        }
+        else
+            ImGui::Checkbox("##checkAutoSave", &isAutoSaveEnabled);
+        if (canBeEnabled && !isAutoSaveEnabled)
+            ImGui::BeginDisabled();
+        ImGui::Text("Interval ");
+        ImGui::SameLine();
+        static int index(1);
+        static float intervals[5] {.5f, 1.f, 2.f, 5.f, 10.f};
+        if (int(intervals[index]*60) != int(autoSaveInterval))
+        {
+            for (index=0; index<5; index++)
+            {
+                if (autoSaveInterval <= intervals[index]*60.f)
+                    break;
+            }
+        }
+        if (ImGui::SmallButton(ICON_FA_MINUS))
+            index = std::max(index-1, 0);
+        ImGui::SameLine();
+        if (ImGui::SmallButton(ICON_FA_PLUS))
+            index = std::min(index+1, 4);
+        ImGui::SameLine();
+        if (index == 0)
+            ImGui::Text("30 sec");
+        else
+            ImGui::Text("%d min", int(intervals[index]));
+        autoSaveInterval = intervals[index]*60.f;
+        if (!canBeEnabled || !isAutoSaveEnabled)
+            ImGui::EndDisabled();
+        ImGui::EndMenu();
     }
 }
 
@@ -469,7 +575,7 @@ void App::renderMenuBarGui()
                 fileDialog.runOpenFileDialog
                 (
                     "Open project",
-                    {"ShaderThing file (*.stf)", "*.stf"},
+                    {"ShaderThing file (*.stf)", "*.stf *.stf.bak"},
                     ".",
                     false
                 );
@@ -535,13 +641,11 @@ void App::renderMenuBarGui()
             }
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Settings"))
+        if (ImGui::BeginMenu("Properties"))
         {
             sharedUniforms_->renderWindowResolutionMenuGui();
             for (auto layer : layers_)
-                layer->renderSettingsMenuGui(resources_);
-            ImGui::Separator();
-            font_.renderMenuItemGui();
+                layer->renderPropertiesMenuGui(resources_);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Resources"))
@@ -553,6 +657,12 @@ void App::renderMenuBarGui()
         if (ImGui::BeginMenu("Find"))
         {
             TextEditor::renderFindReplaceToolMenuGui();
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Preferences"))
+        {
+            font_.renderMenuItemGui();
+            project_.renderAutoSaveMenuItemGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Help"))

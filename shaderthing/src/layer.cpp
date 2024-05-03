@@ -1273,7 +1273,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderFramebufferSettingsGui()
+void Layer::renderFramebufferPropertiesGui()
 {
     const float entryWidth(14*ImGui::GetFontSize());
     ImGui::Text("Internal data format ");
@@ -1438,7 +1438,7 @@ void Layer::renderFramebufferSettingsGui()
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderSettingsMenuGui(std::vector<Resource*>& resources)
+void Layer::renderPropertiesMenuGui(std::vector<Resource*>& resources)
 {
     if (ImGui::BeginMenu(("Layer ["+gui_.name+"]").c_str()))
     {
@@ -1573,7 +1573,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         if (rendering_.target != Rendering::Target::Window)
         {
             ImGui::SeparatorText("Framebuffer settings");
-            renderFramebufferSettingsGui();
+            renderFramebufferPropertiesGui();
 
             ImGui::SeparatorText("Post-processing effects");
             int iDelete = -1;

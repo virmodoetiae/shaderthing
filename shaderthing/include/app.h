@@ -50,8 +50,12 @@ private:
         std::string        filepath         = "";
         std::string        filename         = "untitled.stf";
         bool               forceSaveAs      = true;
+        bool               isAutoSaveEnabled = true;
+        float              timeSinceLastSave = 0.f;
+        float              autoSaveInterval = 60.f;
+        void               renderAutoSaveMenuItemGui();
     };
-    Project                project_         = {};
+    mutable Project        project_         = {};
     bool                   renderNextFrame_ = true;
     SharedUniforms*        sharedUniforms_  = nullptr;
     std::vector<Layer*>    layers_          = {};

@@ -1866,7 +1866,7 @@ affect any cubemaps or animations using this texture)");
             ImGui::OpenPopup("##layerFramebufferSettings");
         if (ImGui::BeginPopup("##layerFramebufferSettings"))
         {
-            ((LayerResource*)resource)->layer_->renderFramebufferSettingsGui();
+            ((LayerResource*)resource)->layer_->renderFramebufferPropertiesGui();
             ImGui::EndPopup();
         }
     }

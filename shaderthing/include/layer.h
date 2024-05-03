@@ -216,8 +216,8 @@ public:
         const bool renderNextFrame = true
     );
 
-    void renderFramebufferSettingsGui();
-    void renderSettingsMenuGui(std::vector<Resource*>& resources);
+    void renderFramebufferPropertiesGui();
+    void renderPropertiesMenuGui(std::vector<Resource*>& resources);
     void renderTabBarGui
     (
         const std::vector<Layer*>& layers,
