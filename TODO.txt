@@ -202,6 +202,8 @@ TODO ---------------------------------------------------------------------------
 
 (X) Solve time getting reset on Image-type export
 
+(X) Implement customizable ShaderThing project auto-save feature
+
 ( ) [vir & shaderthing] Implement an actual internal logging system
 
 ( ) Implement layer cloning (for convenience)
