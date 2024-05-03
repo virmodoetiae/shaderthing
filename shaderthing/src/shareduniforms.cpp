@@ -490,7 +490,8 @@ void SharedUniforms::prepareForExport(float exportStartTime, bool resumeTime)
     if (resumeTime && flags_.isTimePaused)
         flags_.isTimePaused = false;
     exportData_.originalTime = fBlock_.iTime;
-    resetTimeAndFrame(exportStartTime);
+    if (resumeTime)
+        resetTimeAndFrame(exportStartTime);
     exportData_.originalResolution = fBlock_.iResolution;
     setResolution(exportData_.resolution, false, true);
 

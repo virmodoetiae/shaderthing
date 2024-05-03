@@ -200,6 +200,8 @@ TODO ---------------------------------------------------------------------------
 (X) Fix quantization issues when exporting a GIF of a layer which already
     includes quantization
 
+(X) Solve time getting reset on Image-type export
+
 ( ) [vir & shaderthing] Implement an actual internal logging system
 
 ( ) Implement layer cloning (for convenience)

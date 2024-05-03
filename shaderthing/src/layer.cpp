@@ -1619,14 +1619,9 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                         ImGui::PopTextWrapPos();
                     }
                     else
-                    {
-                        //*(postProcess->isGuiOpenPtr()) = true;
                         postProcess->renderGui();
-                    }
                     ImGui::EndMenu();
                 }
-                //else
-                //    *(postProcess->isGuiOpenPtr()) = false;
                 ImGui::PopID();
             }
             if (iDelete != -1)

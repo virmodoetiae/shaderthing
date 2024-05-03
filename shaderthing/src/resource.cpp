@@ -290,7 +290,8 @@ void Resource::prepareAnimationsForExport
             continue;
         if (cacheTime)
             animation->cachedTime_ = animation->native_->time();
-        animation->native_->setTime(startTime);
+        if (forceResumeTime)
+            animation->native_->setTime(startTime);
     }
 }
 
