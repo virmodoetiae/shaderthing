@@ -28,6 +28,14 @@ enum class opt : uint8_t;
 namespace ShaderThing
 {
 
+// Weird crashes can happen (rarely) when optimization > O0 are tunred on,
+// hence I am forcing some of the member functions to be compiled without
+// optimizations. This is all on me, but I could not figure out what is
+// happening, so this is just a poor man's patch to fix the issue. This class,
+// which is basically just a multi-threaded wrapper around 
+// portable-file-dialogs, will have to be revisted at some point
+
+//
 class FileDialog
 {
 private:
@@ -52,7 +60,7 @@ private:
     );
 public:
     static FileDialog instance;
-    ~FileDialog();
+    ~FileDialog(); 
     void runOpenFileDialog
     (
         const std::string&              title = "Open file",
@@ -60,17 +68,18 @@ public:
         const std::string&              defaultPath = ".",
         const bool                      multipleSelection = false,
         const bool                      blocking = false
-    );
+    ) __attribute__((optimize("O0")));
     void runSaveFileDialog
     (
         const std::string&              title = "Save file",
         const std::vector<std::string>& filters = {"All files", "*"}, 
         const std::string&              defaultPath = ".",
         const bool                      blocking = false
-    );
-    bool isOpen() const {return isOpen_;}
-    bool validSelection();
+    ) __attribute__((optimize("O0")));
+    bool validSelection() __attribute__((optimize("O0")));
+    
     void clearSelection() {selection_.clear();}
+    bool isOpen() const {return isOpen_;}
     const std::vector<std::string>& selection() const {return selection_;}
 };
     

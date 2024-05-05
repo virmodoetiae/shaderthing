@@ -137,7 +137,13 @@ void App::update()
         fps = elapsedFrames/elapsedTime;
         vir::Window::instance()->setTitle
         (
-            "ShaderThing ("+Helpers::format(fps, 1)+" FPS) - "+project_.filename
+            "ShaderThing ("+Helpers::format(fps,1)+" FPS) - "+project_.filename+
+            (
+                !project_.forceSaveAs && 
+                project_.timeSinceLastSave > 0 && 
+                project_.timeSinceLastSave < 2 ?
+                " (saved!)" : ""
+            )
         );
         elapsedFrames = 0;
         elapsedTime = 0;
