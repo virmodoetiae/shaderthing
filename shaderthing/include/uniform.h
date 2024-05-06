@@ -74,6 +74,9 @@ public:
         // Type::Bool, Type::Sampler2D, Type::Cubemap, and not necessarily used
         // by uniforms which have a specialType
         glm::vec2 bounds = {0.f, 1.f};
+
+        //
+        float dragStep = 1.;
         
         // True if this uniform's bounds are to be displayed in the GUI
         bool showBounds = true;

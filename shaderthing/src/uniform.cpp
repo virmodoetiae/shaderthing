@@ -56,7 +56,7 @@ void Uniform::renderUniformsGui
 
     //--------------------------------------------------------------------------
     auto renderEditUniformBoundsButtonGui =
-    [&fontSize](Type type, glm::vec2& bounds)
+    [&fontSize](Type type, glm::vec2& bounds, float* dragStep = nullptr)
     {
         if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
             ImGui::OpenPopup("##uniformBounds");
@@ -66,7 +66,7 @@ void Uniform::renderUniformsGui
             glm::vec2 bounds0(bounds);
             if (type == vir::Shader::Variable::Type::UInt)
                 bounds.x = std::max(bounds.x, 0.0f);
-            ImGui::Text("Minimum value ");
+            ImGui::Text("Minimum value   ");
             ImGui::SameLine();
             float inputWidth = 6*fontSize;
             auto minf = Helpers::getFormat(bounds0.x);
@@ -79,7 +79,7 @@ void Uniform::renderUniformsGui
                 minf.c_str()
             );
             ImGui::PopItemWidth();
-            ImGui::Text("Maximum value ");
+            ImGui::Text("Maximum value   ");
             ImGui::SameLine();
             ImGui::PushItemWidth(inputWidth);
             ImGui::InputFloat
@@ -89,6 +89,35 @@ void Uniform::renderUniformsGui
                 maxf.c_str()
             );
             ImGui::PopItemWidth();
+            if 
+            (
+                (type == Type::Int2 || type == Type::Float2) && 
+                dragStep != nullptr
+            )
+            {
+                auto format = Helpers::getFormat(*dragStep);
+                ImGui::Text("Mouse drag step ");
+                ImGui::SameLine();
+                ImGui::PushItemWidth(inputWidth);
+                if (type == Type::Int2)
+                {
+                    int iDragStep = (int)(*dragStep);
+                    ImGui::InputInt
+                    (
+                        "##dragStepSize", 
+                        &iDragStep, 0.f, 0.f
+                    );
+                    *dragStep = (float)iDragStep;
+                }
+                else
+                    ImGui::InputFloat
+                    (
+                        "##dragStepSize", 
+                        dragStep, 0.f, 0.f,
+                        format.c_str()
+                    );
+                ImGui::PopItemWidth();
+            }
             ImGui::EndPopup();
             return (bounds != bounds0); 
         }
@@ -829,8 +858,9 @@ is currently being held down)");
         {
             boundsChanged = renderEditUniformBoundsButtonGui
             (
-                uniform->type, 
-                bounds
+                uniform->type,
+                bounds,
+                &(uniform->gui.dragStep)
             );
         }
         if (showSeparator)
@@ -937,6 +967,7 @@ is currently being held down)");
             case vir::Shader::Variable::Type::Int2 : //-------------------------
             {
                 auto value = uniform->getValue<glm::ivec2>();
+                static auto valuei0(value);
                 if (!boundsChanged)
                 {
                     bounds.x = std::min(value.x, (int)bounds.x);
@@ -965,28 +996,14 @@ is currently being held down)");
                         int maxRes = std::max(monitor.x, monitor.y);
                         bounds.x = std::min(bounds.x, -bounds.y);
                         bounds.y = std::max(-bounds.x, bounds.y);
-                        value.x = 
-                            std::max
-                            (
-                                std::min
-                                (
-                                    (float)(4*delta.x*bounds.y)/maxRes, 
-                                    bounds.y
-                                ),
-                                bounds.x
-                            );
-                        value.y = 
-                            std::max
-                            (
-                                std::min
-                                (
-                                    (float)(4*delta.y*bounds.y)/maxRes, 
-                                    bounds.y
-                                ),
-                                bounds.x
-                            );
+                        value.x = valuei0.x + 
+                            (float)(10.f*delta.x*uniform->gui.dragStep)/maxRes;
+                        value.y = valuei0.y + 
+                            (float)(10.f*delta.y*uniform->gui.dragStep)/maxRes;
                         input = true;
                     }
+                    else
+                        valuei0 = value;
                     bool input2 = ImGui::SliderInt2
                     (
                         "##i2Slider", 
@@ -1148,6 +1165,7 @@ is currently being held down)");
             case vir::Shader::Variable::Type::Float2 : //-----------------------
             {
                 auto value = uniform->getValue<glm::vec2>();
+                static auto valuef0(value);
                 if (!boundsChanged)
                 {
                     bounds.x = std::min(value.x, bounds.x);
@@ -1192,28 +1210,14 @@ is currently being held down)");
                         int maxRes = std::max(monitor.x, monitor.y);
                         bounds.x = std::min(bounds.x, -bounds.y);
                         bounds.y = std::max(-bounds.x, bounds.y);
-                        value.x = 
-                            std::max
-                            (
-                                std::min
-                                (
-                                    (float)(4*delta.x*bounds.y)/maxRes, 
-                                    bounds.y
-                                ),
-                                bounds.x
-                            );
-                        value.y = 
-                            std::max
-                            (
-                                std::min
-                                (
-                                    (float)(4*delta.y*bounds.y)/maxRes, 
-                                    bounds.y
-                                ),
-                                bounds.x
-                            );
+                        value.x = valuef0.x + 
+                            (float)(10.f*delta.x*uniform->gui.dragStep)/maxRes;
+                        value.y = valuef0.y + 
+                            (float)(10.f*delta.y*uniform->gui.dragStep)/maxRes;
                         input = true;
                     }
+                    else
+                        valuef0 = value;
                     std::string format = Helpers::getFormat(value);
                     bool input2 = ImGui::SliderFloat2
                     (
@@ -1802,6 +1806,8 @@ void Uniform::loadAll
             {
                 SET_UNIFORM(glm::ivec2)
                 READ_MIN_MAX
+                uniform->gui.dragStep = 
+                    uniformData.readOrDefault<float>("dragStep", 1.f);
                 break;
             }
             case vir::Shader::Variable::Type::Int3 :
@@ -1826,6 +1832,8 @@ void Uniform::loadAll
             {
                 SET_UNIFORM(glm::vec2)
                 READ_MIN_MAX
+                uniform->gui.dragStep = 
+                    uniformData.readOrDefault<float>("dragStep", 1.f);
                 break;
             }
             case vir::Shader::Variable::Type::Float3 :
@@ -1891,7 +1899,7 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
         io.write("type", vir::Shader::uniformTypeToName[u->type].c_str());
         io.write("shared", u->isSharedByUser);
 
-#define WRITE_MIN_MAX               \
+#define WRITE_MIN_MAX           \
         io.write("min", min);   \
         io.write("max", max);   \
 
@@ -1912,6 +1920,7 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
             {
                 io.write("value", u->getValue<glm::ivec2>());
                 WRITE_MIN_MAX
+                io.write("dragStep", u->gui.dragStep);
                 break;
             }
             case vir::Shader::Variable::Type::Int3 :
@@ -1936,6 +1945,7 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
             {
                 io.write("value", u->getValue<glm::vec2>());
                 WRITE_MIN_MAX
+                io.write("dragStep", u->gui.dragStep);
                 break;
             }
             case vir::Shader::Variable::Type::Float3 :
