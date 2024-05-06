@@ -1422,8 +1422,13 @@ void TextEditor::renderGui
         ImGuiWindowFlags_HorizontalScrollbar | 
         ImGuiWindowFlags_NoMove | 
         ImGuiWindowFlags_NoNavInputs;
+    float lh = ImGui::GetTextLineHeightWithSpacing();
     if (!ignoreImGuiChild_)
-        ImGui::BeginChild(aTitle, aSize, aBorder, windowFlags);
+    {
+        ImVec2 size = {aSize.x, aSize.y - 1.25*lh}; // Some space reserved for
+                                                    // line, column cursor coord
+        ImGui::BeginChild(aTitle, size, aBorder, windowFlags);
+    }
 
     if (handleKeyboardInputs_)
     {
@@ -1442,6 +1447,52 @@ void TextEditor::renderGui
 
     if (!ignoreImGuiChild_)
         ImGui::EndChild();
+
+    // Print line/column cursor coordinates (and selected text size, if
+    // applicable) to the bottom-right of the editor
+    ImGui::Separator();
+    ImGui::Dummy({0, .3*lh});
+    auto cursor = getCursorPosition();
+    auto imGuiCursor = ImGui::GetCursorScreenPos();
+    static thread_local char buf[48];
+    int selectionSize = 0;
+    if (hasSelection())
+    {
+        for (int i=state_.selectionStart.line; i<state_.selectionEnd.line; i++)
+            selectionSize += lines_[i].size() + 1; // +1 for new line chars
+        selectionSize += 
+            state_.selectionEnd.column - state_.selectionStart.column;
+    }
+    if (selectionSize > 0)
+        snprintf
+        (
+            buf, 
+            48, 
+            "ln %d, col %d (%d selected)", 
+            cursor.line+1, cursor.column+1, selectionSize
+        );
+    else
+        snprintf(buf, 48, "ln %d, col %d", cursor.line+1, cursor.column+1);
+    auto lineNoWidth = 
+        ImGui::GetFont()->CalcTextSizeA
+        (
+            ImGui::GetFontSize(), 
+            FLT_MAX, 
+            -1.0f, 
+            buf, 
+            nullptr, 
+            nullptr
+        ).x;
+    ImGui::GetWindowDrawList()->AddText
+    (
+        ImVec2
+        (
+            imGuiCursor.x + ImGui::GetContentRegionAvail().x - lineNoWidth,
+            imGuiCursor.y
+        ), 
+        palette_[(int)PaletteIndex::Default],
+        buf
+    );
 
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();

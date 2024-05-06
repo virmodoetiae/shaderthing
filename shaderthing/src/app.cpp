@@ -531,7 +531,7 @@ void App::renderGui()
     
     vir::ImGuiRenderer::newFrame();
     
-    ImGui::SetNextWindowSize(ImVec2(750,900), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(750,750), ImGuiCond_FirstUseEver);
     static ImGuiWindowFlags flags
     (
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
