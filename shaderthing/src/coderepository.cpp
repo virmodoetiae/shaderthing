@@ -1214,22 +1214,22 @@ R"(float torusSDF(vec3 p, float ro, float ri)
             CODE_ENTRY(
 "Rectangular cuboid",
 "Signed distance of 'p' from the surface of a rectangular cuboid with side "
-"lenghts lx, ly, lz",
-R"(float rectCuboidSDF(vec3 p, float lx, float ly, float lz)
+"lenghts 'l' = vec3(lx, ly, lz)",
+R"(float rectCuboidSDF(vec3 p, vec3 l)
 {
-    vec3 q = abs(p)-vec(lx,ly,lz);
+    vec3 q = abs(p)-l/2.;
     return length(max(q,0.0))+min(max(q.x,max(q.y,q.z)),0.0);
 })")
 
             CODE_ENTRY(
 "Rectangular cuboid frame",
 "Signed distance of 'p' from the surface of the frame of a rectangular cuboid "
-"with side lenghts lx, ly, lz, with a square beam cross-section of side length"
-" s",
-R"(float frameSDF(vec3 p, float lx, float ly, float lz, float s)
+"with side lenghts 'l' = vec3(lx, ly, lz), with a square beam cross-section of "
+"side length 's'",
+R"(float frameSDF(vec3 p, vec3 l, float s)
 {
-    p = abs(p)-b;
-    vec3 q = abs(p+l)-l;
+    p = abs(p)-l/2.;
+    vec3 q = abs(p+s)-s;
     return min(min(
         length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
         length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
