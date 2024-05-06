@@ -10,8 +10,8 @@
 IDI_ICON1   ICON    "icon.ico"
 
 1 VERSIONINFO
-FILEVERSION     1,0,1,0
-PRODUCTVERSION  1,0,1,0
+FILEVERSION     1,0,2,0
+PRODUCTVERSION  1,0,2,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -19,12 +19,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "Virmodoetiae Software"
       VALUE "FileDescription", "ShaderThing"
-      VALUE "FileVersion", "1.0.1.0"
+      VALUE "FileVersion", "1.0.2.0"
       VALUE "InternalName", "ShaderThing"
       VALUE "LegalCopyright", "Stefan Radman"
       VALUE "OriginalFilename", "shaderthing.exe"
       VALUE "ProductName", "ShaderThing"
-      VALUE "ProductVersion", "1.0.1.0"
+      VALUE "ProductVersion", "1.0.2.0"
     END
   END
   BLOCK "VarFileInfo"
