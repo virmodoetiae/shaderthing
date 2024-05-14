@@ -43,16 +43,18 @@ private:
             None,
             New,
             Load,
+            LoadExample,
             Save,
             SaveAs
         };
-        Action             action           = Action::None;
-        std::string        filepath         = "";
-        std::string        filename         = "untitled.stf";
-        bool               forceSaveAs      = true;
+        Action             action            = Action::None;
+        std::string        filepath          = "";
+        std::string        filename          = "untitled.stf";
+        const std::string* exampleToBeLoaded = nullptr;
+        bool               forceSaveAs       = true;
         bool               isAutoSaveEnabled = true;
         float              timeSinceLastSave = 0.f;
-        float              autoSaveInterval = 60.f;
+        float              autoSaveInterval  = 60.f;
         void               renderAutoSaveMenuItemGui();
     };
     mutable Project        project_         = {};
@@ -79,7 +81,7 @@ private:
     Font                   font_            = {};
     
     void saveProject(const std::string& filepath) const;
-    void loadProject(const std::string& filepath);
+    void loadProject(const std::string& filepathOrData, bool fromMemory=false);
     void newProject();
     void processProjectActions();
 

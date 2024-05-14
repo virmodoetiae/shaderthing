@@ -20,6 +20,7 @@
 #include "shaderthing/include/about.h"
 #include "shaderthing/include/bytedata.h"
 #include "shaderthing/include/coderepository.h"
+#include "shaderthing/include/examples.h"
 #include "shaderthing/include/exporter.h"
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
@@ -174,9 +175,12 @@ void App::saveProject(const std::string& filepath) const
 
 //----------------------------------------------------------------------------//
     
-void App::loadProject(const std::string& filepath)
+void App::loadProject(const std::string& filepathOrData, bool fromMemory)
 {
-    auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Read);
+    auto project = 
+        fromMemory ? 
+        ObjectIO(filepathOrData) : 
+        ObjectIO(filepathOrData.c_str(), ObjectIO::Mode::Read);
     if (!project.isValid())
         return; // TODO Could display an error via ImGui
     
@@ -267,6 +271,14 @@ void App::processProjectActions()
             project_.action = Project::Action::None;
             break;
         }
+        case Project::Action::LoadExample :
+            project_.forceSaveAs = true;
+            project_.filepath = Project{}.filepath;
+            project_.filename = Project{}.filename;
+            loadProject(*project_.exampleToBeLoaded, true);
+            project_.exampleToBeLoaded = nullptr;
+            project_.action = Project::Action::None;
+            break;
         case Project::Action::SaveAs :
             if (!fileDialog_.validSelection())
             {
@@ -587,6 +599,9 @@ void App::renderMenuBarGui()
                 );
                 project.action = Project::Action::Load;
                 break;
+            case Project::Action::LoadExample :
+                project.action = Project::Action::LoadExample;
+                break;
             case Project::Action::Save :
                 if (project.filepath.size() == 0 || project.forceSaveAs)
                 {
@@ -674,11 +689,11 @@ void App::renderMenuBarGui()
         if (ImGui::BeginMenu("Help"))
         {
             CodeRepository::renderMenuItemGui();
-            /*if (ImGui::BeginMenu("Code repository"))
+            if (ImGui::BeginMenu("Examples"))
             {
-                CodeRepository::renderGui();
+                Examples::renderGui(project_.exampleToBeLoaded);
                 ImGui::EndMenu();
-            }*/
+            }
             if (ImGui::BeginMenu("About ShaderThing"))
             {
                 About::renderGui();
@@ -715,6 +730,9 @@ void App::renderMenuBarGui()
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
     
+    if (project_.exampleToBeLoaded != nullptr)
+        project_.action = Project::Action::LoadExample;
+
     if (project_.action == Project::Action::None)
     {
         if (Helpers::isCtrlKeyPressed(ImGuiKey_N) && !windowIconified)

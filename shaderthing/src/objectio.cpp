@@ -52,6 +52,7 @@ void* ObjectIO::nativeBuffer_ = nullptr;
 ObjectIO::ObjectIO(const char* name, Mode mode, void* nativeObject) :
 name_(name),
 mode_(mode),
+isReadingFromMemory_(false),
 isRoot_(false),
 isValid_(true),
 members_(0),
@@ -100,6 +101,7 @@ void ObjectIO::freeNativeMemory()
 ObjectIO::ObjectIO(const char* filepath, Mode mode) :
 name_(filepath),
 mode_(mode),
+isReadingFromMemory_(false),
 isRoot_(true),
 isValid_(true),
 members_(0),
@@ -150,9 +152,33 @@ nativeObject_(nullptr)
     findMembers();
 }
 
+ObjectIO::ObjectIO(const std::string& json) :
+name_(""),
+mode_(Mode::Read),
+isReadingFromMemory_(true),
+isRoot_(true),
+isValid_(true),
+members_(0),
+nativeObject_(nullptr)
+{
+    nativeBuffer_ = (void*) new nativeReadBuffer;
+    auto* data = (nativeReadBuffer*)nativeBuffer_;
+    data->resize(json.size());
+    std::memcpy(&((*data)[0]), json.c_str(), json.size());
+    rapidjson::Document* document = new rapidjson::Document;
+    if (document->ParseInsitu(&((*data)[0])).HasParseError())
+    {
+        freeNativeMemory();
+        isValid_ = false;
+        return;
+    }
+    nativeObject_ = (void*) new nativeReader(document->GetObject());
+    findMembers();
+}
+
 ObjectIO::~ObjectIO()
 {
-    if (isRoot_ && mode_ == Mode::Read)
+    if (isRoot_ && mode_ == Mode::Read && isReadingFromMemory_)
         iFile_.close();
     freeNativeMemory();
 }

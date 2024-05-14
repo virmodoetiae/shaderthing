@@ -52,6 +52,9 @@ protected:
     // Mode (Read or Write)
     Mode mode_;
 
+    //
+    bool isReadingFromMemory_;
+
     // True for root objects (i.e., user-created ones)
     bool isRoot_;
 
@@ -79,6 +82,9 @@ protected:
     void freeNativeMemory();
     
 public:
+
+    // Construct from in-memory JSON (Read-only mode)
+    ObjectIO(const std::string& json);
 
     // Construct from input/output filepath and mode (either Read or Write)
     ObjectIO(const char* filepath, Mode mode);
