@@ -190,8 +190,6 @@ TODO ---------------------------------------------------------------------------
 (X) Implement whole-animation averaged palette calculation as additional option
     when exporting GIFs
 
-(W) Expand code repository section
-
 (X) Fix Animation2D-type resource internal time not being managed correctly
     during exports | Currently, only animations whose timing is bound to iTime
     will be handled properly during exports (i.e., their time will be set to 
@@ -204,14 +202,17 @@ TODO ---------------------------------------------------------------------------
 
 (X) Implement customizable ShaderThing project auto-save feature
 
+(W) Add example projects that can be loaded in ShaderThings as demos/tutorials.
+    This is currently being implemented under Help->Examples
+
+(W) Expand the Help->Code Repository section
+
 ( ) [vir & shaderthing] Implement an actual internal logging system
 
 ( ) Implement layer cloning (for convenience)
 
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
-
-( ) Add example projects that can be loaded in ShaderThings as demos/tutorials
 
 ( ) Expand project README with demo images and GIFs
 
