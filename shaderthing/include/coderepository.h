@@ -21,6 +21,10 @@ namespace ShaderThing
 namespace CodeRepository
 {
 
+extern bool isOpen;
+extern bool isDetachedFromMenu;
+
+void renderMenuItemGui();
 void renderGui();
 
 }

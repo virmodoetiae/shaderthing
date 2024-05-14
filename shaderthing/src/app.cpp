@@ -673,11 +673,12 @@ void App::renderMenuBarGui()
         }
         if (ImGui::BeginMenu("Help"))
         {
-            if (ImGui::BeginMenu("Code repository"))
+            CodeRepository::renderMenuItemGui();
+            /*if (ImGui::BeginMenu("Code repository"))
             {
                 CodeRepository::renderGui();
                 ImGui::EndMenu();
-            }
+            }*/
             if (ImGui::BeginMenu("About ShaderThing"))
             {
                 About::renderGui();
@@ -711,6 +712,8 @@ void App::renderMenuBarGui()
         Resource::renderResourcesGui(resources_, layers_);
     if (Layer::Rendering::sharedStorage->isGuiDetachedFromMenu())
         Layer::Rendering::sharedStorage->renderGui();
+    if (CodeRepository::isDetachedFromMenu)
+        CodeRepository::renderGui();
     
     if (project_.action == Project::Action::None)
     {

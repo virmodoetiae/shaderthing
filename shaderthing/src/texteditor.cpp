@@ -1425,7 +1425,7 @@ void TextEditor::renderGui
     float lh = ImGui::GetTextLineHeightWithSpacing();
     if (!ignoreImGuiChild_)
     {
-        ImVec2 size = {aSize.x, aSize.y - 1.25*lh}; // Some space reserved for
+        ImVec2 size = {aSize.x, aSize.y - 1.25f*lh}; // Some space reserved for
                                                     // line, column cursor coord
         ImGui::BeginChild(aTitle, size, aBorder, windowFlags);
     }
@@ -1451,7 +1451,7 @@ void TextEditor::renderGui
     // Print line/column cursor coordinates (and selected text size, if
     // applicable) to the bottom-right of the editor
     ImGui::Separator();
-    ImGui::Dummy({0, .3*lh});
+    ImGui::Dummy({0, .3f*lh});
     auto cursor = getCursorPosition();
     auto imGuiCursor = ImGui::GetCursorScreenPos();
     static thread_local char buf[48];

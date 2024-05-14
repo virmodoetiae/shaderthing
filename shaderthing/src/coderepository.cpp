@@ -17,26 +17,95 @@
 
 #include "shaderthing/include/coderepository.h"
 
+#include "shaderthing/include/bytedata.h"
+#include "shaderthing/include/helpers.h"
+
 #include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/imgui_internal.h"
+#include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 
 namespace ShaderThing
 {
 
+bool CodeRepository::isOpen = false;
+bool CodeRepository::isDetachedFromMenu = true;
+
 namespace CodeRepository
 {
 
+void renderMenuItemGui()
+{
+    if 
+    (
+        ImGui::SmallButton
+        (
+            CodeRepository::isDetachedFromMenu ? 
+            ICON_FA_WINDOW_MAXIMIZE : 
+            ICON_FA_ARROW_RIGHT
+        )
+    )
+        CodeRepository::isDetachedFromMenu=!CodeRepository::isDetachedFromMenu;
+    ImGui::SameLine();
+    if (!CodeRepository::isDetachedFromMenu)
+    {
+        if (ImGui::BeginMenu("Code repository"))
+        {
+            CodeRepository::isOpen = true;
+            CodeRepository::renderGui();
+            ImGui::EndMenu();
+        }
+        else
+            CodeRepository::isOpen = false;
+        return;
+    }
+    ImGui::MenuItem("Code repository", NULL, & CodeRepository::isOpen);
+}
+
 void renderGui()
 {
+    if (!CodeRepository::isOpen)
+        return;
     float fontSize(ImGui::GetFontSize());
     float textWidth(46.0f*fontSize);
-    auto codeColor =ImVec4(.15f, .6f, 1.f, 1.f);
     auto codeHighlightColor = ImVec4(1.f, 1.f, .0f, 1.f);
-    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + textWidth);
 
+    if (CodeRepository::isDetachedFromMenu)
+    {
+        ImGui::SetNextWindowSize(ImVec2(600,300), ImGuiCond_FirstUseEver);
+        static ImGuiWindowFlags windowFlags(ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Code repository", &CodeRepository::isOpen, windowFlags);
+
+        // Refresh icon if needed
+        static bool isIconSet(false);
+        static bool isWindowDocked(ImGui::IsWindowDocked());
+        if (!isIconSet || isWindowDocked != ImGui::IsWindowDocked())
+        {
+            isIconSet = vir::ImGuiRenderer::setWindowIcon
+            (
+                "Code repository", 
+                ByteData::Icon::sTIconData, 
+                ByteData::Icon::sTIconSize,
+                false
+            );
+            isWindowDocked = ImGui::IsWindowDocked();
+        }
+        
+    }
+    else
+        ImGui::Dummy({textWidth, 0});
+
+    float textWrapWidth = 
+        CodeRepository::isDetachedFromMenu ? 
+        ImGui::GetContentRegionAvail().x : textWidth;
+
+    ;
+
+    ImGui::PushTextWrapPos(textWrapWidth);
     ImGui::Text(
 "This is a repository of helpful GLSL functions that can be copy-pasted into "
 "any fragment shader"
     );
+    ImGui::PopTextWrapPos();
     ImGui::Separator();
 
 #define CODE_ENTRY(name, description, code)                                 \
@@ -45,16 +114,45 @@ if (ImGui::TreeNode(name))                                                  \
     ImGui::SameLine();                                                      \
     bool textCopied = ImGui::SmallButton("Copy to clipboard");              \
     bool isCopyClicked = ImGui::IsItemActive();                             \
+    bool textWrapPosPushed = false;                                         \
+    if (true)                                                               \
+    {                                                                       \
+        textWrapPosPushed = true;                                           \
+        ImGui::PushTextWrapPos(textWrapWidth);                              \
+    }                                                                       \
     ImGui::Text(description);                                               \
-    static std::string codeString(code);                                    \
-    ImGui::TextColored(                                                     \
-        textCopied || isCopyClicked ?                                       \
-            codeHighlightColor:                                             \
-            codeColor,                                                      \
-        codeString.c_str()                                                  \
+    if (textWrapPosPushed)                                                  \
+        ImGui::PopTextWrapPos();                                            \
+    static std::string name0;                                               \
+    static std::string label0;                                              \
+    static std::string code0;                                               \
+    static int hsize(0);                                                    \
+    if (name0 != name)                                                      \
+    {                                                                       \
+        name0 = name;                                                       \
+        label0 = "##"+name0;                                                \
+        code0 = code;                                                       \
+        hsize = Helpers::countNewLines(code);                               \
+        hsize = hsize > 6 ? 0 : 1.5*hsize*ImGui::GetFontSize();             \
+    }                                                                       \
+    if (textCopied || isCopyClicked)                                        \
+        ImGui::PushStyleColor(ImGuiCol_Text, codeHighlightColor);           \
+    ImGui::InputTextMultiline                                               \
+    (                                                                       \
+        label0.c_str(),                                                     \
+        &code0,                                                             \
+        ImVec2                                                              \
+        (                                                                   \
+            CodeRepository::isDetachedFromMenu ?                            \
+            -1 : textWidth-ImGui::GetCursorPosX(),                          \
+            hsize                                                           \
+        ),                                                                  \
+        ImGuiInputTextFlags_ReadOnly                                        \
     );                                                                      \
+    if (textCopied || isCopyClicked) ImGui::PopStyleColor();                \
     if (textCopied)                                                         \
-        ImGui::SetClipboardText(codeString.c_str());                        \
+        ImGui::SetClipboardText(code0.c_str());                             \
+    ImGui::Separator();                                                     \
     ImGui::TreePop();                                                       \
 }
 
@@ -231,8 +329,7 @@ void main()
 "target texture2D uniform via the FXAA 3.11 algorithm. The target texture "
 "needs to be added as a layer uniform and needs to be named 'target'. Please "
 "note that the original texture is not modified, and the anti-aliased texture "
-"is the output of this shader. Please also note that this code snipped is too "
-"long to be viewed in its entirety, but it can be copied entirely to clipoboard",
+"is the output of this shader",
 R"(/*--------------------------------------------------------------------------*\
   FXAA 3.11 Implementation by effendiian & cleanup by virmodoetiae
   ---------------------------------------------------------------------------
@@ -803,7 +900,7 @@ void main()
 "This complete shader applies a Sobel filter to an input texture 'target', "
 "which needs to be added to the layer uniforms list via the 'Uniforms' tab. "
 "Please note that the original texture is not modified, and that the Sobel-"
-"filtered texture is the output of this shader.",
+"filtered texture is the output of this shader",
 R"(void make_kernel(inout vec4 n[9], sampler2D src, vec2 uv)
 {
     float w = 1.0/iTargetResolution.x;
@@ -1375,8 +1472,8 @@ R"(vec3 sceneNormal(vec3 p, float h)
             CODE_ENTRY(
 "Four-point surface normal",
 "Advanced 4-point-based calculation of a scene SDF surface normal at a point"
-"'p'. The infinitesimal step 'h' can be either set as constant, or, to reduce"
-"artifacts, it can be set to be proportional to the distance of 'p' from the"
+"'p'. The infinitesimal step 'h' can be either set as constant, or, to reduce "
+"artifacts, it can be set to be proportional to the distance of 'p' from the "
 "camera",
 R"(vec3 sceneNormal(vec3 p, float h)
 {
@@ -1777,8 +1874,11 @@ void main(void)
 
         ImGui::TreePop();
     }
-
-    ImGui::PopTextWrapPos();
+    
+    if (CodeRepository::isDetachedFromMenu)
+    {
+        ImGui::End();
+    }
 }
 
 }
