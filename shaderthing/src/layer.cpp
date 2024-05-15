@@ -126,7 +126,12 @@ R"(// Common source code is shared by all fragment shaders across all layers and
 
 // For convenience when importing ShaderToy shaders
 #define SHADERTOY_MAIN void main(){mainImage(fragColor, fragCoord);}
-vec2 fragCoord = gl_FragCoord.xy; 
+vec2 fragCoord = gl_FragCoord.xy;
+
+#define CROSSHAIR(color)                           \
+    if(int(gl_FragCoord.x)==int(iResolution.x/2)|| \
+       int(gl_FragCoord.y)==int(iResolution.y/2))  \
+       fragColor.rgb=color;
 )";
 
 TextEditor Layer::GUI::sharedSourceEditor = 
