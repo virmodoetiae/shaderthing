@@ -128,12 +128,15 @@ void Camera::xRotateBy(float angle)
     {
         case YAxisType::Locked :
         {
-            float theta = glm::acos(glm::dot(z_, y_)) + angle;
-            constexpr float piMinus = PI-0.005f;
-            constexpr float zeroPlus = 0.005f;
-            if (theta > piMinus || theta < zeroPlus)
-                return;
-            z_ = glm::rotate(z_, angle, x_);
+            float zDoty(glm::dot(z_, y_));
+            float theta0 = glm::acos(zDoty);
+            if (theta0 + angle < 1e-4f)
+                angle = theta0;
+            if (theta0 + angle > PI-1e-4f)
+                angle = PI-1e-4f-theta0;
+            glm::vec3 z = glm::rotate(z_, angle, x_);
+            if (glm::dot(z, z_-y_*zDoty) > 0)
+                z_ = z;
             break;
         }
         case YAxisType::Free :

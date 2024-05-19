@@ -67,16 +67,16 @@ public:
         const std::vector<std::string>& filters = {"All files", "*"}, 
         const std::string&              defaultPath = ".",
         const bool                      multipleSelection = false,
-        const bool                      blocking = false
-    ) __attribute__((optimize("O0")));
+        const bool                      blocking = true
+    );
     void runSaveFileDialog
     (
         const std::string&              title = "Save file",
         const std::vector<std::string>& filters = {"All files", "*"}, 
         const std::string&              defaultPath = ".",
-        const bool                      blocking = false
-    ) __attribute__((optimize("O0")));
-    bool validSelection() __attribute__((optimize("O0")));
+        const bool                      blocking = true
+    );
+    bool validSelection();
     
     void clearSelection() {selection_.clear();}
     bool isOpen() const {return isOpen_;}
