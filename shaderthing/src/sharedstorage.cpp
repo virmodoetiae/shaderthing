@@ -111,7 +111,12 @@ SharedStorage* SharedStorage::load(const ObjectIO& io)
         );
     for (int i=0; i<4; i++)
         gui.ioVec4DataViewComponents[i] = bool(values[i]);
-
+    gui.ioVec4DataViewFormat =
+    (
+        "%."+
+        std::to_string(gui.ioVec4DataViewPrecision)+
+        (gui.ioVec4DataViewExponentialFormat ? "e" : "f")
+    );
     sharedStorage->gui_ = gui;
     return sharedStorage;
 }
@@ -181,52 +186,25 @@ void SharedStorage::renderGui()
     {
         ImGui::SetNextWindowSize(ImVec2(600,300), ImGuiCond_FirstUseEver);
         static ImGuiWindowFlags windowFlags(ImGuiWindowFlags_NoCollapse);
-        ImGui::Begin("Shared storage viewer", &gui_.isOpen, windowFlags);
+        ImGui::Begin("Shared storage view", &gui_.isOpen, windowFlags);
 
         // Refresh icon if needed
-        static bool isIconSet(false);
-        static bool isWindowDocked(ImGui::IsWindowDocked());
-        if (!isIconSet || isWindowDocked != ImGui::IsWindowDocked())
+        if (!gui_.isIconSet || gui_.isDocked != ImGui::IsWindowDocked())
         {
-            isIconSet = vir::ImGuiRenderer::setWindowIcon
+            gui_.isIconSet = vir::ImGuiRenderer::setWindowIcon
             (
-                "Shared storage viewer", 
+                "Shared storage view", 
                 ByteData::Icon::sTIconData, 
                 ByteData::Icon::sTIconSize,
                 false
             );
-            isWindowDocked = ImGui::IsWindowDocked();
+            gui_.isDocked = ImGui::IsWindowDocked();
         }
     }
     else
         ImGui::Dummy({textWidth, 0});
 
-    /*ImGui::PushTextWrapPos
-    (
-        ImGui::GetCursorPos().x + 
-        gui_.isDetachedFromMenu ? 
-        ImGui::GetContentRegionAvail().x : 
-        textWidth
-    );
-    ImGui::Text(
-ICON_FA_EXCLAMATION_TRIANGLE " - While this panel is open, there is a minor "
-"performance loss due to the need to sync GPU and CPU read/write operations, "
-"which are required to show the values stored in these shared storage block "
-"arrays"
-    );
-    ImGui::PopTextWrapPos();
-    ImGui::Dummy
-    (
-        {
-            gui_.isDetachedFromMenu ? 
-            ImGui::GetContentRegionAvail().x : 
-            textWidth, 
-            0
-        }
-    );*/
-
     float controlsHeight = 8*ImGui::GetTextLineHeightWithSpacing();
-
     {
         ImGui::BeginChild
         (
@@ -533,7 +511,7 @@ void SharedStorage::renderMenuItemGui()
             gui_.isOpen = false;
         return;
     }
-    ImGui::MenuItem("Shared storage viewer", NULL, & gui_.isOpen);
+    ImGui::MenuItem("Shared storage viewer", NULL, &gui_.isOpen);
 }
 
 }

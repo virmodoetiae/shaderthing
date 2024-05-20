@@ -57,6 +57,8 @@ class SharedStorage
 
     struct GUI
     {
+        bool isIconSet                       = false;
+        bool isDocked                        = false;
         bool isOpen                          = false;
         bool isDetachedFromMenu              = true;
         bool isVec4DataAlsoShownAsColor      = false;
