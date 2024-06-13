@@ -119,10 +119,7 @@ void GifEncoder::encodeIndexedFrame
     fputc(0x21, file_); // Byte 0, EXTENSION INTRODUCER (fixed value)
     fputc(0xf9, file_); // Byte 1, GRAPHIC CONTROL LABEL (fixed value)
                         // Byte 2, BLOCK SIZE
-    if (indexMode_ != Quantizer::Settings::IndexMode::Default)
-        fputc(0x04, file_); 
-    else
-        fputc(0x03, file_); 
+    fputc(0x04, file_); 
 
     // Byte 3 - packed data
     switch(indexMode_)
@@ -145,9 +142,8 @@ void GifEncoder::encodeIndexedFrame
     fputc(delay & 0xff, file_);
     fputc((delay >> 8) & 0xff, file_);
     
-    // Byte 6 (if present) - transparent color palette index
-    if (indexMode_ != Quantizer::Settings::IndexMode::Default)
-        fputc(0, file_);
+    // Byte 6 - transparent color palette index (even if not applicable)
+    fputc(0, file_);
     
     fputc(0, file_); // Block terminator for GRAPHIC CONTROL EXTENSION
 
