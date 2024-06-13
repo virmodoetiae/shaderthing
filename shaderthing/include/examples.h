@@ -22,6 +22,7 @@ namespace Examples
 {
 
 extern const std::string rayMarching0;
+extern const std::string pathMarching0;
 
 void renderGui(const std::string*& selection);
 
