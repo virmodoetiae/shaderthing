@@ -350,6 +350,7 @@ void main()
 OpenGLBloomer::OpenGLBloomer() :
 bloom_(nullptr)
 {
+    CHECK_OPENGL_COMPUTE_SHADERS_AVAILABLE   
     if (computeShaderStagesCompiled_)
         return;
     brightnessMask_.compile();

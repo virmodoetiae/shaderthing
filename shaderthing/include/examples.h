@@ -21,6 +21,7 @@ namespace ShaderThing
 namespace Examples
 {
 
+extern const std::string bloom0;
 extern const std::string rayMarching0;
 extern const std::string pathMarching0;
 

@@ -24,6 +24,127 @@ namespace ShaderThing
 
 //----------------------------------------------------------------------------//
 
+const std::string Examples::bloom0 = 
+R"({
+    "UIScale": 0.6000000238418579,
+    "autoSaveEnabled": true,
+    "autoSaveInterval": 60.0,
+    "sharedUniforms": {
+        "windowResolution": [
+            512.0,
+            512.0
+        ],
+        "exportWindowResolutionScale": 1.0,
+        "time": 767.4207153320313,
+        "timePaused": false,
+        "timeLooped": false,
+        "timeBounds": [
+            0.0,
+            1204.28955078125
+        ],
+        "randomGeneratorPaused": false,
+        "iWASD": [
+            0.0,
+            0.0,
+            -1.0
+        ],
+        "iWASDSensitivity": 10.0,
+        "iWASDInputEnabled": true,
+        "iLook": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "iLookSensitivity": 0.20000000298023224,
+        "iLookInputEnabled": true,
+        "iMouseInputEnabled": true,
+        "iKeyboardInputEnabled": true,
+        "smoothTimeDelta": false,
+        "resetTimeOnFrameCounterReset": true,
+        "vSyncEnabled": true,
+        "uniforms": {}
+    },
+    "sharedStorage": {
+        "ioIntDataViewStartIndex": 0,
+        "ioIntDataViewEndIndex": 7,
+        "ioVec4DataViewEndIndex": 7,
+        "ioVec4DataViewStartIndex": 0,
+        "isVec4DataAlsoShownAsColor": false,
+        "ioVec4DataViewPrecision": 3,
+        "ioVec4DataViewExponentialFormat": false,
+        "ioVec4DataViewComponents": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    "layers": {
+        "Layer 0": {
+            "renderTarget": 2,
+            "resolution": [
+                512,
+                512
+            ],
+            "resolutionRatio": [
+                1.0,
+                1.0
+            ],
+            "isAspectRatioBoundToWindow": true,
+            "rescaleWithWindow": false,
+            "depth": 0.0,
+            "internalFramebuffer": {
+                "format": 9,
+                "wrapModes": [
+                    0,
+                    0
+                ],
+                "magFilterMode": 0,
+                "minFilterMode": 1,
+                "exportClearPolicy": 0
+            },
+            "exportData": {
+                "resolutionScale": 1.0,
+                "rescaleWithOutput": true,
+                "windowResolutionScale": 1.0
+            },
+            "shader": {
+                "fragmentSourceSize": 904,
+                "fragmentSource": "// Simple example showcasing the bloom post-processing effect, applicable to any\n// internal-framebuffer-rendered layer (even if directly re-directed to the main\n// window, as is the case here).\n// The bloom affects all pixels in the scene whose luminosity exceeds certain\n// thresholds as specified in the bloom settings (go to 'Properties' -> \n// 'Layer 0' > '1 - Bloom'). In this scene, the intensity of the small circle\n// fragColor was set as time dependent, affecting the resulting bloom\n\nvoid main()\n{\n    fragColor.rgb = vec3(0.);\n    \n    float small = length(qc-.25*vec2(-sin(iTime), cos(iTime)));\n    if (small < 1e-1)\n    {\n        float intensity = (1+4*(.5+.5*sin(.5*iTime)));\n        fragColor.rgb = intensity*vec3(.7, .2, .1);\n    }\n        \n    float large = length(qc-.1*vec2(sin(iTime), cos(iTime)));\n    if (large < 2e-1)\n        fragColor.rgb = vec3(.1);\n    \n    fragColor.a = 1.;\n}",
+                "uniforms": {}
+            },
+            "postProcesses": {
+                "Bloom": {
+                    "active": true,
+                    "mipDepth": 8,
+                    "intensity": 1.0,
+                    "threshold": 1.4589999914169312,
+                    "knee": 0.824999988079071,
+                    "haze": 0.46000000834465027,
+                    "toneMap": 2,
+                    "reinhardWhitePoint": 0.44999998807907104
+                }
+            }
+        }
+    },
+    "resources": {},
+    "exporter": {
+        "type": 0,
+        "outputFilepath": "",
+        "nRenderPasses": 1,
+        "areRenderPassesOnFirstFrameOnly": false,
+        "resetFrameCounterAfterExport": true,
+        "startTime": 0.0,
+        "endTime": 1.0,
+        "fps": 60.0,
+        "gifPaletteMode": 0,
+        "gifPaletteBitDepth": 8,
+        "gifAlphaCutoff": 255,
+        "gifDitherMode": 0
+    },
+    "sharedPostProcessData": {}
+})";
+
 const std::string Examples::rayMarching0 = 
 R"({
     "UIScale": 0.6,
@@ -321,7 +442,44 @@ edited and used for learning purposes or as starting points for other projects)"
     ImGui::Separator();
 
     int id = 0;
+
+    //--------------------------------- Bloom
+    ImGui::PushID(id++);
+    static std::string errorMessage;
+    static auto canRunOnDeviceInUse = [&errorMessage]() -> bool
+    {
+        auto nativeBloom = vir::Bloomer::create();
+        bool result = nativeBloom->canRunOnDeviceInUse();
+        errorMessage = std::string(nativeBloom->errorMessage());
+        delete nativeBloom;
+        return result;
+    };
+    static bloom(canRunOnDeviceInUse());
+    if (!bloom)
+        ImGui::BeginDisabled();
+    if (ImGui::Button("Load"))
+    {
+        loadExampleConfirmation = true;
+        tmpSelection = &Examples::bloom0;
+    }
+    if (!bloom)
+    {
+        ImGui::EndDisabled();
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            ImGui::Text(errorMessage.c_str());
+            ImGui::EndTooltip();
+        }
+    }
+    ImGui::PopID();
+    ImGui::SameLine();
+    ImGui::Text("Bloom (post-processing effect)");
     
+    //--------------------------------- Ray marching
     ImGui::PushID(id++);
     if (ImGui::Button("Load"))
     {
@@ -330,8 +488,9 @@ edited and used for learning purposes or as starting points for other projects)"
     }
     ImGui::PopID();
     ImGui::SameLine();
-    ImGui::Text("Ray marcher I");
+    ImGui::Text("Ray marcher (basic)");
 
+    //--------------------------------- Path marching
     ImGui::PushID(id++);
     if (ImGui::Button("Load"))
     {
@@ -340,8 +499,9 @@ edited and used for learning purposes or as starting points for other projects)"
     }
     ImGui::PopID();
     ImGui::SameLine();
-    ImGui::Text("Path marcher I");
+    ImGui::Text("Monte-carlo path marcher (advanced)");
 
+    //--------------------------------------------------------------------------
     if (loadExampleConfirmation)
         ImGui::OpenPopup("Load example project confirmation");
     if 

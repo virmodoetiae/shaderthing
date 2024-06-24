@@ -82,6 +82,7 @@ void main()
 OpenGLBlurrer::OpenGLBlurrer() :
 buffer_(nullptr)
 {
+    CHECK_OPENGL_COMPUTE_SHADERS_AVAILABLE
     if (computeShaderStagesCompiled_)
         return;
     blurrerSF32_.compile();

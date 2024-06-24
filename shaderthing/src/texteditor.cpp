@@ -1594,8 +1594,7 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
             if (start > end)
                 std::swap(start, end);
             static ImGuiIO& io = ImGui::GetIO();
-            bool shift = io.KeyShift;
-            if (!shift)
+            if (!aShift)
             {
                 for (int i = start.line; i <= end.line; i++)
                 {
@@ -1716,12 +1715,38 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
             int n = tabSize_-coord.column%tabSize_;
             u.propagate = false;
             u.before = state_;
-            for (int i=0;i<n;i++)
-                enterCharacter(' ', aShift, false);
-            u.added = std::string(n, ' ');
-            u.addedEnd = getActualCursorCoordinates();
-            u.after = state_;
-            addUndo(u);
+            if (!aShift)
+            {
+                for (int i=0;i<n;i++)
+                    enterCharacter(' ', aShift, false);
+                u.added = std::string(n, ' ');
+                u.addedEnd = getActualCursorCoordinates();
+                u.after = state_;
+                addUndo(u);
+            }
+            else
+            {
+                auto& line = lines_[coord.line];
+                bool allSpaces = true;
+                for (int i=0; i<coord.column; i++)
+                {
+                    if (line[i].character != ' ')
+                    {
+                        allSpaces = false;
+                        break;
+                    }
+                }
+                if (allSpaces)
+                {
+                    deleteRange({coord.line, coord.column-n}, coord);
+                    u.removed = std::string(n, ' ');
+                    u.removedStart = {coord.line, coord.column-n};
+                    u.removedEnd = coord;
+                    setCursorPosition({coord.line, coord.column-n});
+                    u.after = state_;
+                    addUndo(u);
+                }
+            }
             return;
         }
         char buf[7];
