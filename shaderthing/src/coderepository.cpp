@@ -964,195 +964,186 @@ R"(vec3 rotate(vec3 v, float t, vec3 a)
     //------------------------------------------------------------------------//
     if (ImGui::TreeNode("Noise"))
     {
-
-        //--------------------------------------------------------------------//
-        if (ImGui::TreeNode("2D"))
-        {
+            CODE_ENTRY(
+"Pseudo-random number generator suite",
+"Collection of useful pseudo-random number functions (based on a single "
+"generator) for various input (i.e., seed) -> output combinations, inclusive "
+"of no input (stateful, global state in gSeed). Regardless of dimensionality, "
+"the output is uniformly distributed in [0, 1], and is generated via a "
+"simplified version of the Murmur1 algorithm",
+R"(uint gSeed = floatBitsToUint(1.389*qc.x) +
+             floatBitsToUint(1.918*qc.y) +
+             0x13891918u*iFrame;
+float prng(inout uint seed) // [Stateless] uint seed -> float in [0, 1]
+{
+    uint m = 0x5bd1e995u, r = seed ^ 4u;
+    seed *= m; seed ^= seed >> 24u; seed*= m;
+    r *= m; r ^= seed; r ^= r >> 11u; r *= m;
+    return float(r)/0xffffffffu;
+}
+float prng12(vec2 p) // [Stateless] vec2 seed 'p' -> float in [0, 1]
+{
+    uint seed = floatBitsToUint(1.389*p.x) + floatBitsToUint(1.918*p.y);
+    return prng(seed);
+}
+vec2 prng22(vec2 p)  // [Stateless] vec2 seed 'p' -> vec2  in [0, 1]
+{
+    uint seed = floatBitsToUint(1.389*p.x) + floatBitsToUint(1.918*p.y);
+    return vec2(prng(seed), prng(seed));
+}
+float prng13(vec3 p) // [Stateless] vec3 seed 'p' -> float in [0, 1]
+{
+    uint seed = floatBitsToUint(1.389*p.x) +
+                floatBitsToUint(1.918*p.y) +
+                floatBitsToUint(0.127*p.z);
+    return prng(seed);
+}
+vec3 prng33(vec3 p)  // [Stateless] vec3 seed 'p' -> vec3  in [0, 1]
+{
+    uint seed = floatBitsToUint(1.389*p.x) +
+                floatBitsToUint(1.918*p.y) +
+                floatBitsToUint(0.127*p.z);
+    return vec3(prng(seed), prng(seed), prng(seed));
+}
+// [Stateful] Generate next float in [0, 1] and update state
+float prng1() {return prng(gSeed);}
+// [Stateful] Generate next vec2  in [0, 1] and update state
+vec2 prng2() {return vec2(prng1(), prng1());}
+// [Stateful] Generate next vec3  in [0, 1] and update state
+vec3 prng3() {return vec3(prng1(), prng1(), prng1());}
+)")
 
             CODE_ENTRY(
-"Pseudo-random number generator",
-"Returns a pseudo-random float given an input vec2 seed 'x', e.g., the default"
-"quad coordinate 'qc' or texture coordinate 'tc'",
-R"(float random2D(vec2 x)
+"Value noise (2D)",
+"Returns a pseudo-random float representative of a single octave of value noise "
+"at 2D coordinates 'p', e.g., the default quad coordinate 'qc' or texture "
+"coordinate 'tc'. A 'prng12' function should be defined as well, e.g., the one "
+"provided in Code repository -> Noise -> 2D -> Pseudo-random number generator "
+"suite",
+R"(float noise2D(vec2 p)
 {
-    return fract(138912*sin(dot(x, vec2(138.9, 191.2))));
-})")
-
-            CODE_ENTRY(
-"Perlin noise",
-"Returns a pseudo-random float representative of a single octave of Perlin-like"
-"noise at 2D coordinates 'x', e.g., the default quad coordinate 'qc' or texture"
-"coordinate 'tc'. A 'random2D' function should be defined as well, e.g., the "
-"one provided in Code repository -> Noise -> 2D -> Pseudo-random number "
-"generator",
-R"(float noise2D(vec2 x)
-{
-    vec2 l = floor(x);
-    vec2 r = fract(x);
-    vec2 e = vec2(1.,0.);
-    vec2 f = r*r*(3.-2.*r);
+    vec2 l = floor(p), r = fract(p), f = r*r*(3.-2.*r);
     return mix
     (
-        mix(random2D(l),     random2D(l+e.xy),f.x),
-        mix(random2D(l+e.yx),random2D(l+e.xx),f.x),
+        mix(prng12(l),             prng12(l+vec2(1.,0.)), f.x),
+        mix(prng12(l+vec2(0.,1.)), prng12(l+vec2(1.,1.)), f.x),
         f.y
     );
 })")
 
             CODE_ENTRY(
-"Three-point noise",
-"A more efficient implementation of Perlin-like noise (though it is not "
-"properly Perlin) which only requires sampling 3 random numbers instead of "
-"4, as seen in the Perlin noise function. Can result in performance gains in "
-"the range of 5-10%% at the expense of some noise bias. A 'random2D' function "
-"should be defined as well, e.g., the one provided in Code repository -> "
-"Noise -> 2D -> Pseudo-random number generator",
-R"(float noise2D(vec2 x)
+"Three-point value noise (2D)",
+"A more performant implementation of value noise which only requires sampling "
+"three random numbers instead of four. A 'prng12' function should be defined "
+"as well, e.g., the one provided in Code repository -> Noise -> Pseudo-random "
+"number generator suite",
+R"(float noise2D(vec2 p)
 {
-    vec2 l = floor(x);
-    vec2 r = fract(x);
+    p += vec2(-.57735*p.y, .1547*p.y);
+    vec2 l = floor(p), r = fract(p), e = vec2(1.,0.);
     float s = float(int(r.x+r.y > 1.));
-    vec2 e = vec2(1.,0.);
     r.y = s+r.y*(1.-2.*s);
     r.x = (r.x-s*r.y)/(1.-r.y);
     r *= r*(3.-2.*r);
     return 
         mix
         (
-            mix(random2D(l+s*e.yx), random2D(l+s*e.yx+e.xy), r.x), 
-            random2D(l+s*e.xy+(1.-s)*e.yx), 
+            mix(prng12(l+s*e.yx), prng12(l+s*e.yx+e.xy), r.x), 
+            prng12(l+s*e.xy+(1.-s)*e.yx), 
             r.y
         );
 })")
 
             CODE_ENTRY(
-"Fractional noise",
+"Fractional noise (2D)",
 "Returns a pseudo-random float representative of 'o' octaves of fractional "
-"noise at 2D coordinates 'x', e.g., the default quad coordinate 'qc' or "
+"noise at 2D coordinates 'p', e.g., the default quad coordinate 'qc' or "
 "texture coordinate 'tc'. A 'noise2D' function should be defined as well, "
-"e.g., the one provided in Code repository -> Noise -> 2D -> Perlin noise. The "
-"fractional noise is smoother for increasing values of the 'h' parameter. In "
-"particular: h=0 for Pink noise; h=0.5 for Brown noise; h=1.0 for the most "
-"common implementation referred to as 'fractional brownian motion'",
-R"(float fractionalNoise2D(vec2 x, float h, uint o)
+"e.g., those provided in Code repository -> Noise. The fractional noise is "
+"smoother for increasing values of the 'h' parameter. In particular: h=0 for "
+"pink noise; h=0.5 for brown noise; h=1.0 for the most common implementation "
+"referred to as 'fractional brownian motion'",
+R"(float fractionalNoise2D(vec2 p, float h, uint o)
 {
-    float n = 0.;
-    float s = exp2(-h);
-    float A = 0.;
+    float n = 0., A = 0., s = exp2(-h);
     vec2 af = vec2(1., 1.);
     for (int i=0; i<o; i++)
     {
-        n += af.x*noise2D(af.y*x);
+        n += af.x*noise2D(af.y*p);
         A += af.x;
         af *= vec2(s, 2.);
     }
     return n/A;
 })")
-            ImGui::TreePop();
-        }
-
-        //--------------------------------------------------------------------//
-        if (ImGui::TreeNode("3D"))
-        {
-            CODE_ENTRY(
-"Pseudo-random number generator",
-"Returns a pseudo-random float given an input vec3 seed 'x'",
-R"(float random3D(vec3 x)
-{
-    return fract(138912*sin(dot(x, vec3(138.9, 191.2, 695.7))));
-})")
 
             CODE_ENTRY(
-"Perlin noise",
-"Returns a pseudo-random float representative of a single octave of Perlin-like "
-"noise at 3D coordinates 'x'. A 'random3D' function should be defined as well, "
-"e.g., the one provided in Code repository -> Noise -> 3D -> Pseudo-random "
-"number generator",
-R"(float noise3D(vec3 x)
+"Value noise (3D)",
+"Returns a pseudo-random float representative of a single octave of value "
+"noise at 3D coordinates 'p'. A 'prng13' function should be defined as well, "
+"e.g., the one provided in Code repository -> Noise -> Pseudo-random generator "
+"suite",
+R"(float noise3D(vec3 p)
 {
-    vec3 l = floor(x);
-    vec3 r = fract(x);
+    vec3 l = floor(p), r = fract(p), f = r*r*(3.-2.*r);
     vec2 e = vec2(1.,0.);
-    vec3 f = r*r*(3.-2.*r);
     return 
-        mix
-        (
-            mix
-            (
-                mix(random3D(l),      random3D(l+e.xyy),f.x),
-                mix(random3D(l+e.yxy),random3D(l+e.xxy),f.x),
-                f.y
-            ),
-            mix
-            (
-                mix(random3D(l+e.yyx),random3D(l+e.xyx),f.x),
-                mix(random3D(l+e.yxx),random3D(l+e.xxx),f.x),
-                f.y
-            ),
-            f.z
-        );
+        mix(mix(
+                mix(prng13(l),       prng13(l+e.xyy),f.x),
+                mix(prng13(l+e.yxy), prng13(l+e.xxy),f.x),
+                f.y),
+            mix(
+                mix(prng13(l+e.yyx), prng13(l+e.xyx),f.x),
+                mix(prng13(l+e.yxx), prng13(l+e.xxx),f.x),
+                f.y),
+            f.z);
 })")
 
             CODE_ENTRY(
-"Six-point noise",
-"A more efficient implementation of Perlin-like noise (though it is not "
-"properly Perlin) which only requires sampling 6 random numbers instead of "
-"8, as seen in the Perlin noise function. Can result in performance gains in "
-"the range of 10-20%% at the expense of some noise bias. A 'random3D' function "
-"should be defined as well, e.g., the one provided in Code repository -> "
-"Noise -> 3D -> Pseudo-random number generator",
-R"(float noise3D(vec3 x)
+"Six-point value noise (3D)",
+"A more performant implementation of value noise which only requires sampling "
+"six random numbers instead of eight. A 'prng13' function should be defined "
+"as well, e.g., the one provided in Code repository -> Noise -> Pseudo-random "
+"number generator suite",
+R"(float noise3D(vec3 p)
 {
-    vec3 l = floor(x);
-    vec3 r = fract(x);
+    p.rg += vec2(-.57735*p.y, .1547*p.y);
+    vec3 l = floor(p), r = fract(p), e = vec2(1.,0.);
     float s = float(int(r.x+r.y > 1.));
-    vec2 e = vec2(1.,0.);
     r.y = s+r.y*(1.-2.*s);
     r.x = (r.x-s*r.y)/(1.-r.y);
     r *= r*(3.-2.*r);
     return 
-        mix
-        (
-            mix
-            (
-                mix(random3D(l+s*e.yxy), random3D(l+s*e.yxy+e.xyy), r.x), 
-                random3D(l+s*e.xyy+(1.-s)*e.yxy), 
-                r.y
-            ),
-            mix
-            (
-                mix(random3D(l+s*e.yxy+e.yyx),random3D(l+s*e.yxy+e.xyx),r.x),
-                random3D(l+s*e.xyy+(1.-s)*e.yxy+e.yyx), 
-                r.y
-            ),
+        mix(mix(
+                mix(prng13(l+s*e.yxy),       prng13(l+s*e.yxy+e.xyy), r.x), 
+                prng13(l+s*e.xyy+(1.-s)*e.yxy), 
+                r.y),
+            mix(mix(prng13(l+s*e.yxy+e.yyx), prng13(l+s*e.yxy+e.xyx), r.x),
+                prng13(l+s*e.xyy+(1.-s)*e.yxy+e.yyx), 
+                r.y),
             r.z
         );
 })")
 
             CODE_ENTRY(
-"Fractional noise",
+"Fractional noise (3D)",
 "Returns a pseudo-random float representative of 'o' octaves of fractional "
-"noise at 3D coordinates 'x'. A 'noise3D' function should be defined as well, "
-"e.g., the one provided in Code repository -> Noise -> 3D -> Perlin noise. The "
-"fractional noise is smoother for increasing values of the 'h' parameter. In "
-"particular: h=0 for Pink noise; h=0.5 for Brown noise; h=1.0 for the most "
+"noise at 3D coordinates 'p'. A 'noise3D' function should be defined as well, "
+"e.g., such as the value noise functions provided in Code repository -> Noise. "
+"The fractional noise is smoother for increasing values of the 'h' parameter. "
+"In particular: h=0 for pink noise; h=0.5 for brown noise; h=1.0 for the most "
 "common implementation referred to as 'fractional brownian motion'",
-R"(float fractionalNoise3D(vec2 x, float h, uint o)
+R"(float fractionalNoise3D(vec2 p, float h, uint o)
 {
-    float n = 0.;
-    float s = exp2(-h);
-    float A = 0.;
+    float n = 0., A = 0., s = exp2(-h);
     vec2 af = vec2(1., 1.);
     for (int i=0; i<o; i++)
     {
-        n += af.x*noise3D(af.y*x);
+        n += af.x*noise3D(af.y*p);
         A += af.x;
         af *= vec2(s, 2.);
     }
     return n/A;
 })")
-            ImGui::TreePop();
-        }
 
         ImGui::TreePop();
     }
