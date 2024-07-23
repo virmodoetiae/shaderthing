@@ -42,6 +42,7 @@ public :
 
     struct UpdateArgs
     {
+        const bool advanceFrame;
         const float timeStep;
     };
 
@@ -253,8 +254,8 @@ public:
 
     void bindShader(vir::Shader* shader) const;
     void update(const UpdateArgs& args);
-    void nextRenderPass();
-    void prepareForExport(float exportStartTime, bool resumeTime);
+    void nextRenderPass(unsigned int nMaxRenderPasses=1);
+    void prepareForExport(bool setTime, float exportStartTime);
     void resetAfterExport(bool resetFrameCounter = true);
     void resetTimeAndFrame(float time=0);
 

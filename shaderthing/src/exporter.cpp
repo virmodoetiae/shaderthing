@@ -101,8 +101,8 @@ void Exporter::update
 
         sharedUniforms.prepareForExport
         (
-            settings_.startTime, 
-            exportType_ != ExportType::Image
+            exportType_ != ExportType::Image,
+            settings_.startTime
         );
         for (auto layer : layers)
             layer->prepareForExport();
@@ -127,7 +127,7 @@ void Exporter::update
                     vir::Quantizer::Settings::IndexMode::Default
             );
     }
-    else if (frame_ == nFrames_-1) // Terminate (or end palette cumulation)
+    else if (frame_ == nFrames_) // Terminate (or end palette cumulation)
     {
         frame_ = 0;
         if 
@@ -159,10 +159,7 @@ void Exporter::update
             Resource::resetAnimationsAfterExport(resources);
             isAveragedPaletteReady_ = false;
         }
-        
     }
-    else
-        ++frame_;
 }
 
 //----------------------------------------------------------------------------//
@@ -171,6 +168,7 @@ void Exporter::writeOutput()
 {
     if (!isRunning_)
         return;
+    ++frame_;
     switch (exportType_)
     {
         case (ExportType::Image) :
@@ -430,7 +428,7 @@ transparency)");
     ImGui::PushItemWidth(-1);
     ImGui::InputInt("##nRenderPasses", (int*)&settings_.nRenderPasses);
     settings_.nRenderPasses = 
-        std::min(std::max(1u, settings_.nRenderPasses), 1000u);
+        std::min(std::max(1u, settings_.nRenderPasses), 32768);
     ImGui::PopItemWidth();
     if (settings_.nRenderPasses > 1 && exportType_ != ExportType::Image)
     {
@@ -696,11 +694,31 @@ ICON_FA_LOCK_OPEN " - The layer resolution will not rescale\nwith the output "
     ImGui::Separator();
     exportButtonGui(sharedUniforms.isRenderingPaused());
     if (isRunning_)
+    {   
+        float progress = 
+            (
+                (float)frame_ +
+                (float)sharedUniforms.iRenderPass()/settings_.nRenderPasses
+            )/std::max(nFrames_, 1u);
+        float rate = 
+            1./
+            nFrames_/
+            settings_.nRenderPasses/
+            std::max
+            (
+                vir::Window::instance()->time()->smoothOuterTimestep(), 
+                1e-4f
+            );
+        std::string text = 
+            Helpers::format(100.f*progress, 1)+" % | "+
+            Helpers::format((1.-progress)/rate, 1)+" s left";
         ImGui::ProgressBar
         (
-            (float)frame_/std::max(nFrames_, 1u), 
-            ImVec2(-1, 0.0f)
+            progress, 
+            ImVec2(-1, 0.0f),
+            text.c_str()
         );
+    }
 }
 
 //----------------------------------------------------------------------------//

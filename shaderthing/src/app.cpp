@@ -61,7 +61,8 @@ App::App()
         processProjectActions();
         renderGui();
         update();
-        Layer::renderShaders
+
+        unsigned int iRenderPass = Layer::renderShaders
         (
             layers_, 
             exporter_->isRunning() ? exporter_->framebuffer() : nullptr, 
@@ -69,9 +70,14 @@ App::App()
             exporter_->isRunning() ? exporter_->nRenderPasses() : 1,
             renderNextFrame_
         );
-        window->update(renderNextFrame_);
-        if (exporter_->isRunning())
+        if 
+        (
+            exporter_->isRunning() && 
+            iRenderPass == exporter_->nRenderPasses()-1
+        )
             exporter_->writeOutput();
+
+        window->update(renderNextFrame_);
     }
 }
 
@@ -97,19 +103,34 @@ void App::update()
 {
     exporter_->update(*sharedUniforms_, layers_, resources_);
 
-    float timeStep = exporter_->isRunning() ?
-        exporter_->timeStep() :
-        (
-            sharedUniforms_->isTimeDeltaSmooth() ?
+    bool advanceFrame;
+    float timeStep;
+    if (exporter_->isRunning())
+    {
+        if (sharedUniforms_->iRenderPass() == exporter_->nRenderPasses()-1)
+        {
+            advanceFrame = true;
+            timeStep = exporter_->timeStep();
+        }
+        else
+        {
+            advanceFrame = false;
+            timeStep = 0;
+        }
+    }
+    else
+    {
+        advanceFrame = true;
+        timeStep = sharedUniforms_->isTimeDeltaSmooth() ?
             vir::Window::instance()->time()->smoothOuterTimestep() : 
-            vir::Window::instance()->time()->outerTimestep()
-        );
+            vir::Window::instance()->time()->outerTimestep();
+    }
 
     renderNextFrame_ = 
         !sharedUniforms_->isRenderingPaused() || 
         sharedUniforms_->stepToNextFrame();
 
-    sharedUniforms_->update(             {                          timeStep});
+    sharedUniforms_->update(             {advanceFrame,             timeStep});
     Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
     
     // Auto-save if applicable

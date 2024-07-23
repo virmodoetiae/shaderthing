@@ -207,7 +207,7 @@ public:
         const bool clearTarget, 
         const SharedUniforms& sharedUniforms
     );
-    static void renderShaders
+    static unsigned int renderShaders
     (
         const std::vector<Layer*>& layers,
         vir::Framebuffer* target, 

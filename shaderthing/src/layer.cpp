@@ -1183,7 +1183,7 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderShaders // Static
+unsigned int Layer::renderShaders // Static
 (
     const std::vector<Layer*>& layers,
     vir::Framebuffer* target, 
@@ -1193,9 +1193,10 @@ void Layer::renderShaders // Static
 )
 {
     bool clearTarget = true;
+    unsigned int iRenderPass = sharedUniforms.iRenderPass();
     if (renderNextFrame)
     {
-        if (target != nullptr) // I.e., if exporting
+        if (target != nullptr && iRenderPass == 0) // I.e., if exporting
         {
             for (auto layer : layers) // Apply clear policy
             {
@@ -1208,38 +1209,34 @@ void Layer::renderShaders // Static
                         layer->clearFramebuffers();
                     break;
                 case ExportData::FramebufferClearPolicy::ClearOnEveryFrameExport:
-                    if (sharedUniforms.iRenderPass() == 0)
+                    if (iRenderPass == 0)
                         layer->clearFramebuffers();
                     break;
                 }
             }
         }
 
-        for (int renderPass = 0; renderPass < (int)nRenderPasses; renderPass++)
+        clearTarget = true;
+        for (auto layer : layers)
         {
-            clearTarget = true;
-            if (renderPass > 0)
-                sharedUniforms.nextRenderPass(); // Advance iRenderPass in 
-                                                 // sharedUniforms
-            for (auto layer : layers)
-            {
-                layer->renderShader(target, clearTarget, sharedUniforms);
-                // At the end of this loop, the status of clearTarget will 
-                // represent whether the main window has been cleared of its 
-                // contents at least once (true if never cleared at least once)
-                if 
-                (
-                    clearTarget &&
-                    layer->rendering_.target != 
-                        Layer::Rendering::Target::InternalFramebuffer
-                )
-                    clearTarget = false;
-            }
+            layer->renderShader(target, clearTarget, sharedUniforms);
+            // At the end of this loop, the status of clearRenderingTarget will 
+            // represent whether the main window has been cleared of its 
+            // contents at least once (true if never cleared at least once)
+            if 
+            (
+                clearTarget &&
+                layer->rendering_.target != 
+                    Layer::Rendering::Target::InternalFramebuffer
+            )
+                clearTarget = false;
         }
+        // Advance iRenderPass uniform, reset to 0 if it exceeds nRenderPasses-1
+        sharedUniforms.nextRenderPass(nRenderPasses);
     }
-    
+
     // If the window has not been cleared at least once, or if I am not
-    // rendering to the window at all (i.e., if target != nullptr, which is only
+    // rendering to the window at all (i.e., if renderTarget != nullptr, which is only
     // true during exports), then render a dummy/void/blank window, simply to
     // avoid visual artifacts when nothing is rendering to the main window.
     // As for the internalFramebufferShader in Layer::renderShader, the lifetime
@@ -1274,6 +1271,8 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
             blankShader.get()
         );
     }
+
+    return iRenderPass;
 }
 
 //----------------------------------------------------------------------------//

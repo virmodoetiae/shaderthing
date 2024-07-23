@@ -405,9 +405,9 @@ void SharedUniforms::update(const UpdateArgs& args)
         fBlock_.iTime = timeLoopBounds.x + duration*fraction;
     }
     
-    if (!(flags_.isRenderingPaused && !flags_.stepToNextFrame))
+    if (args.advanceFrame && !(flags_.isRenderingPaused && !flags_.stepToNextFrame))
         ++fBlock_.iFrame;
-    fBlock_.iRenderPass = 0;
+    // fBlock_.iRenderPass = 0;
 
     flags_.stepToNextFrame = false;
     flags_.stepToNextTimeStep = false;
@@ -466,12 +466,12 @@ void SharedUniforms::update(const UpdateArgs& args)
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::nextRenderPass()
-{
-    ++fBlock_.iRenderPass;
-    if (!flags_.isRandomNumberGeneratorPaused)
-        fBlock_.iRandom = random_->generateFloat(); // Also update iRandom on
-                                                    // each renderPass
+void SharedUniforms::nextRenderPass(unsigned int nMaxRenderPasses)
+{   
+    if (fBlock_.iRenderPass < nMaxRenderPasses-1)
+        ++fBlock_.iRenderPass;
+    else
+        fBlock_.iRenderPass = 0;
     fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
 }
 
@@ -485,13 +485,14 @@ void SharedUniforms::resetTimeAndFrame(float time)
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::prepareForExport(float exportStartTime, bool resumeTime)
+void SharedUniforms::prepareForExport(bool setTime, float exportStartTime)
 {
-    if (resumeTime && flags_.isTimePaused)
+    if (setTime && flags_.isTimePaused)
         flags_.isTimePaused = false;
     exportData_.originalTime = fBlock_.iTime;
-    if (resumeTime)
-        resetTimeAndFrame(exportStartTime);
+    flags_.resetFrameCounterPreOrPostExport = true;
+    if (setTime)
+        fBlock_.iTime = exportStartTime;
     exportData_.originalResolution = fBlock_.iResolution;
     setResolution(exportData_.resolution, false, true);
 
