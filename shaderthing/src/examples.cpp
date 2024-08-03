@@ -499,7 +499,7 @@ edited and used for learning purposes or as starting points for other projects)"
     }
     ImGui::PopID();
     ImGui::SameLine();
-    ImGui::Text("Monte-carlo path marcher (advanced)");
+    ImGui::Text("Monte Carlo path marcher (advanced)");
 
     //--------------------------------------------------------------------------
     if (loadExampleConfirmation)

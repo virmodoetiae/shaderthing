@@ -329,7 +329,7 @@ void SharedStorage::renderGui()
                 (gui_.ioVec4DataViewExponentialFormat ? "e" : "f");
         }
         ImGui::Text("Show components   ");
-        static const char* labels[4] = {"x, ", "y, ", "z, ", "w"};
+        static const char* labels[4] = {"x ", "y ", "z ", "w"};
         for (int i=0; i<4; i++)
         {
             ImGui::SameLine();
