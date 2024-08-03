@@ -214,7 +214,6 @@ public:
         {
         }
 
-        static const LanguageDefinition& HLSL();
         static const LanguageDefinition& GLSL();
     };
 

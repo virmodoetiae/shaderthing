@@ -3410,78 +3410,6 @@ void TextEditor::UndoRecord::redo(TextEditor * aEditor)
     return false;
 }*/
 
-const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::HLSL()
-{
-    static bool inited = false;
-    static LanguageDefinition langDef;
-    if (!inited)
-    {
-        static const char* const keywords[] = {
-            "AppendStructuredBuffer", "asm", "asm_fragment", "BlendState", "bool", "break", "Buffer", "ByteAddressBuffer", "case", "cbuffer", "centroid", "class", "column_major", "compile", "compile_fragment",
-            "CompileShader", "const", "continue", "ComputeShader", "ConsumeStructuredBuffer", "default", "DepthStencilState", "DepthStencilView", "discard", "do", "double", "DomainShader", "dword", "else",
-            "export", "extern", "false", "float", "for", "fxgroup", "GeometryShader", "groupshared", "half", "Hullshader", "if", "in", "inline", "inout", "InputPatch", "int", "interface", "line", "lineadj",
-            "linear", "LineStream", "matrix", "min16float", "min10float", "min16int", "min12int", "min16uint", "namespace", "nointerpolation", "noperspective", "NULL", "out", "OutputPatch", "packoffset",
-            "pass", "pixelfragment", "PixelShader", "point", "PointStream", "precise", "RasterizerState", "RenderTargetView", "return", "register", "row_major", "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer",
-            "RWTexture1D", "RWTexture1DArray", "RWTexture2D", "RWTexture2DArray", "RWTexture3D", "sample", "sampler", "SamplerState", "SamplerComparisonState", "shared", "snorm", "stateblock", "stateblock_state",
-            "static", "string", "struct", "switch", "StructuredBuffer", "tbuffer", "technique", "technique10", "technique11", "texture", "Texture1D", "Texture1DArray", "Texture2D", "Texture2DArray", "Texture2DMS",
-            "Texture2DMSArray", "Texture3D", "TextureCube", "TextureCubeArray", "true", "typedef", "triangle", "triangleadj", "TriangleStream", "uint", "uniform", "unorm", "unsigned", "vector", "vertexfragment",
-            "VertexShader", "void", "volatile", "while",
-            "bool1","bool2","bool3","bool4","double1","double2","double3","double4", "float1", "float2", "float3", "float4", "int1", "int2", "int3", "int4", "in", "out", "inout",
-            "uint1", "uint2", "uint3", "uint4", "dword1", "dword2", "dword3", "dword4", "half1", "half2", "half3", "half4",
-            "float1x1","float2x1","float3x1","float4x1","float1x2","float2x2","float3x2","float4x2",
-            "float1x3","float2x3","float3x3","float4x3","float1x4","float2x4","float3x4","float4x4",
-            "half1x1","half2x1","half3x1","half4x1","half1x2","half2x2","half3x2","half4x2",
-            "half1x3","half2x3","half3x3","half4x3","half1x4","half2x4","half3x4","half4x4",
-        };
-        for (auto& k : keywords)
-            langDef.keywords.insert(k);
-
-        static const char* const identifiers[] = {
-            "abort", "abs", "acos", "all", "AllMemoryBarrier", "AllMemoryBarrierWithGroupSync", "any", "asdouble", "asfloat", "asin", "asint", "asint", "asuint",
-            "asuint", "atan", "atan2", "ceil", "CheckAccessFullyMapped", "clamp", "clip", "cos", "cosh", "countbits", "cross", "D3DCOLORtoUBYTE4", "ddx",
-            "ddx_coarse", "ddx_fine", "ddy", "ddy_coarse", "ddy_fine", "degrees", "determinant", "DeviceMemoryBarrier", "DeviceMemoryBarrierWithGroupSync",
-            "distance", "dot", "dst", "errorf", "EvaluateAttributeAtCentroid", "EvaluateAttributeAtSample", "EvaluateAttributeSnapped", "exp", "exp2",
-            "f16tof32", "f32tof16", "faceforward", "firstbithigh", "firstbitlow", "floatBitsToInt", "floatBitsToUint", "floor", "fma", "fmod", "frac", "frexp", "fwidth", "GetRenderTargetSampleCount",
-            "GetRenderTargetSamplePosition", "GroupMemoryBarrier", "GroupMemoryBarrierWithGroupSync", "intBitsToFloat", "InterlockedAdd", "InterlockedAnd", "InterlockedCompareExchange",
-            "InterlockedCompareStore", "InterlockedExchange", "InterlockedMax", "InterlockedMin", "InterlockedOr", "InterlockedXor", "isfinite", "isinf", "isnan",
-            "ldexp", "length", "lerp", "lit", "log", "log10", "log2", "mad", "max", "min", "modf", "msad4", "mul", "noise", "normalize", "pow", "printf",
-            "Process2DQuadTessFactorsAvg", "Process2DQuadTessFactorsMax", "Process2DQuadTessFactorsMin", "ProcessIsolineTessFactors", "ProcessQuadTessFactorsAvg",
-            "ProcessQuadTessFactorsMax", "ProcessQuadTessFactorsMin", "ProcessTriTessFactorsAvg", "ProcessTriTessFactorsMax", "ProcessTriTessFactorsMin",
-            "radians", "rcp", "reflect", "refract", "reversebits", "round", "rsqrt", "saturate", "sign", "sin", "sincos", "sinh", "smoothstep", "sqrt", "step",
-            "tan", "tanh", "tex1D", "tex1D", "tex1Dbias", "tex1Dgrad", "tex1Dlod", "tex1Dproj", "tex2D", "tex2D", "tex2Dbias", "tex2Dgrad", "tex2Dlod", "tex2Dproj",
-            "tex3D", "tex3D", "tex3Dbias", "tex3Dgrad", "tex3Dlod", "tex3Dproj", "texCUBE", "texCUBE", "texCUBEbias", "texCUBEgrad", "texCUBElod", "texCUBEproj", "transpose", "trunc", "uintBitsToFloat",
-        };
-        for (auto& k : identifiers)
-        {
-            Identifier id;
-            id.declaration = "Built-in function";
-            langDef.identifiers.insert(std::make_pair(std::string(k), id));
-        }
-
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[ \\t]*#[ \\t]*[a-zA-Z_]+", PaletteIndex::Preprocessor));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("L?\\\"(\\\\.|[^\\\"])*\\\"", PaletteIndex::String));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("\\'\\\\?[^\\']\\'", PaletteIndex::CharLiteral));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?", PaletteIndex::Number));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[+-]?[0-9]+[Uu]?[lL]?[lL]?", PaletteIndex::Number));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("0[0-7]+[Uu]?[lL]?[lL]?", PaletteIndex::Number));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?", PaletteIndex::Number));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[a-zA-Z_][a-zA-Z0-9_]*", PaletteIndex::Identifier));
-        langDef.tokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[\\[\\]\\{\\}\\!\\%\\^\\&\\*\\(\\)\\-\\+\\=\\~\\|\\<\\>\\?\\/\\;\\,\\.]", PaletteIndex::Punctuation));
-
-        langDef.commentStart = "/*";
-        langDef.commentEnd = "*/";
-        langDef.singleLineComment = "//";
-
-        langDef.caseSensitive = true;
-        langDef.autoIndentation = true;
-
-        langDef.name = "HLSL";
-
-        inited = true;
-    }
-    return langDef;
-}
-
 const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
 {
     static bool inited = false;
@@ -3517,10 +3445,12 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
 
         static const char* const identifiers[] = {
             "abs", "acos", "acosh", "all", "any", "asin", "asinh", "atan", "atanh",
+            "atomicAdd", "atomicAnd", "atomicCompSwap", "atomicExchange", "atomicMax", "atmoicMin", 
+            "atomicOr", "atomicSub", "atomicXor", 
             "ceil", "clamp", "cos", "cosh", "cross", "determinant", "degrees", "distance",
-            "dot", "equal", "exp", "exp2", "faceforward", "floor", "fma", "fract", "frexp",
-            "greaterThan", "greaterThanEqual", "inversesqrt", "length", "lessThan", "lessThanEqual",
-            "log", "log2", "matrixCompMult", "max", "min", "mix", "mod", "modf", "normalize",
+            "dot", "equal", "exp", "exp2", "faceforward", "floatBitsToInt", "floatBitsToUint", "floor", "fma", "fract", "frexp",
+            "greaterThan", "greaterThanEqual", "intBitsToFloat", "inversesqrt", "length", "lessThan", "lessThanEqual",
+            "log", "log2", "matrixCompMult", "max", "min", "mix", "memoryBarrier", "mod", "modf", "normalize",
             "not", "notEqual", "outerProduct", "packSnorm2x16", "packSnorm4x8", "packUnorm2x16",
             "packUnorm4x8", "pow", "radians", "reflect", "refract", "round", "roundEven",
             "sign", "sin", "sinh", "smoothstep", "sqrt", "step", "tan", "tanh", "texelFetch",
@@ -3529,7 +3459,7 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
             "textureLodOffset", "textureProj", "textureProjGrad", "textureProjGradOffset",
             "textureProjLod", "textureProjLodOffset", "textureSize", "transpose",
             "trunc", "unpackSnorm2x16", "unpackSnorm4x8", "unpackUnorm2x16",
-            "unpackUnorm4x8", "uaddCarry", "umulExtended", "usubBorrow"
+            "unpackUnorm4x8", "uaddCarry", "uintBitsToFloat", "umulExtended", "usubBorrow"
         };
         for (auto& k : identifiers)
         {
