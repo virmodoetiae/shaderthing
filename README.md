@@ -1,4 +1,4 @@
-# ShaderThing
+# ShaderThing <img src=".gitassets/logo.gif" alt="Icon" style="height:64px; vertical-align:middle;"> 
 
 ShaderThing is a cross-platform GUI-based tool for live shader editing written in C++, leveraging [OpenGL](https://www.opengl.org/) for graphics and [ImGui](https://github.com/ocornut/imgui) for the UI. It can be thought of as a (much) more flexible and capable off-line version of [Shadertoy](https://www.shadertoy.com/), featuring:
 
