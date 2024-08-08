@@ -1,6 +1,6 @@
-# ShaderThing <img src=".gitassets/logo.gif" alt="Icon" style="height:64px; vertical-align:middle;"> 
+# ShaderThing <img src=".gitassets/logo.gif" alt="Icon" style="height:48px; vertical-align:middle;"> 
 
-ShaderThing is a cross-platform GUI-based tool for live shader editing written in C++, leveraging [OpenGL](https://www.opengl.org/) for graphics and [ImGui](https://github.com/ocornut/imgui) for the UI. It can be thought of as a (much) more flexible and capable off-line version of [Shadertoy](https://www.shadertoy.com/), featuring:
+ShaderThing is a cross-platform GUI-based tool for live [GLSL](https://www.khronos.org/opengl/wiki/Core_Language_(GLSL)) shader editing written in C++, leveraging [OpenGL](https://www.opengl.org/) for graphics and [ImGui](https://github.com/ocornut/imgui) for the UI. It can be thought of as a (much) more flexible and capable off-line version of [Shadertoy](https://www.shadertoy.com/), featuring:
 
 * Layer-based shader system: each shader consists of a layer, which can render its content to:
     * the main window, with support for multiple layers rendering to the screen at the same time and transparency-based merging and blending;
@@ -16,26 +16,29 @@ Compared to Shadertoy, some features are currently missing, primarily sound inpu
 
 Whether you are merely curious about or already have solid skills in the field of shaders, give it a try! Both the source code and the [executables](https://github.com/virmodoetiae/shaderthing/releases/) are distributed under a permissive modified [zlib/linpng license](https://opensource.org/license/zlib/).
 
+<figure style="margin-left: 0px;margin-right:0px">
+  <img src=".gitassets/gui_example_0.png" alt="Example Image" style="width:100%">
+  <figcaption style="font-size: 12px;">Figure 1: Example of a Monte Carlo-based light transport simulation written in and rendered with ShaderThing. The application consists of: 1) the main rendering window on the left and 2) the ShaderThing GUI window, allowing for (but not limited to): writing and compiling the actual GLSL code, manipulating shader uniforms, loading images/textures or animated GIFs as resources for use with shaders, exporting the rendered view as either static (.png) or animated (.gif) images, and more!</figcaption>
+</figure>
+
 # Requirements for running
 
-ShaderThing does not directly deal with OpenGL code, that is what the vir library is for (it can be thought of as a (fairly) rudimentary "engine"). Nonetheless, the only graphics API currently supported by the vir library is OpenGL.
+ShaderThing requires a GPU supporting at least **OpenGL v3.3**, which is the case for virtually all consumer GPUs built since its release in 2010. Please consider, howerever, that OpenGL v4.3 or greater is required in order to use the GIF exporter tool or any of the layer post-processing effects, since these are all based on [compute shaders](https://www.khronos.org/opengl/wiki/Compute_Shader). If a version of OpenGL greater than or equal to 4.3 is not available, said features will be disabled without affecting any other functionality.
 
-As of the latest release, ShaderThing requires a GPU supporting at least **OpenGL v3.3**, which is the case for virtually all consumer GPUs built in the last decade (as of early-mid 2024). Please consider, howerever, that OpenGL v4.3 or greater is recommended for access to the GIF exporter tool and all of the layer post-processing effects, since they are all based on compute shaders. If a version of OpenGL >=v4.3 is not available, the code will run as expected but said features will be unavailable.
+While ShaderThing runs on OpenGL, it does not directly deal with OpenGL code, but leverages a custom-written rundimentary graphics engine (the 'vir' library). It is the latter that deals with OpenGL, yet is structured in a way to (hopefully) enable the addition of further graphics APIs (e.g. Vulkan, though no such plans exist for now) in the future.
 
 # Repository structure
 
 This repository consists of:
 * the top-level ShaderThing app (in shaderthing/);
-* the vir library (a high-level wrapper for graphics, window & input management, in vir/);
+* the vir library (a higher-level wrapper for graphics, window & input management, in vir/);
 * a collection of third-party libraries (ranging from [GLFW](https://www.glfw.org/) to ImGui), compiled into a single one.
 
-The vir and third-party libraries are statically linked to the final ShaderThing executable, making it stand-alone. 
-
-The vir library (whose development both predates and partially led to the development of ShaderThing) currently only wraps OpenGL (for graphics management) and GLFW (for window & input management), but it is structured to possibly accomodate for other rendering and window/input-management platforms (though no such plans exist for the time being).
+The vir and third-party libraries are statically linked to the final ShaderThing executable, making it stand-alone (except for the OpenGL library, which typically requires no special attention and is located automatically).
 
 # How to compile
 
-The code base (shaderthing-proper and the vir library) and related third-party libraries are entirely cross-platform and *should* compile on most platforms. Currently, only compilation on Windows 10 (Windows 10 Pro, build 19045) and Ubuntu 24.04 LTS (running on WSL) have been tested so far with the GNU GCC compiler (v12.2.0 for Windows, via [MinGW](https://www.mingw-w64.org/)). Regardless of the platform, the intended compilation approach is via [cmake](https://cmake.org). 
+The code base (ShaderThing-proper and the vir library) and related third-party libraries are cross-platform and *should* compile on most platforms. Compilation on Windows 10 (Windows 10 Pro, build 19045) and Ubuntu 24.04 LTS (running on [WSL](https://ubuntu.com/desktop/wsl)) has been tested so far with the GNU GCC compiler (v12.2.0 for Windows, via [MinGW](https://www.mingw-w64.org/)). Regardless of the platform, the intended compilation approach is via [cmake](https://cmake.org). 
 
 ## On Windows 10
 
@@ -51,7 +54,7 @@ Depending on your cmake configuration (see [cmake-generators](https://cmake.org/
 cmake -S shaderthing/ -B shaderthing/build -DCMAKE_BUILD_TYPE=Release -G "MinGW Makefiles"
 ~~~
 
-Once the build files have been built, compile by running:
+Once the build files have been built, compile the project by running:
 
 ~~~
 cmake --build shaderthing/build --parallel N
