@@ -18,8 +18,11 @@ Whether you are merely curious about or already have solid skills in the field o
 
 <figure style="margin-left: 0px;margin-right:0px">
   <img src=".gitassets/gui_example_0.png" alt="Example Image" style="width:100%">
-  <figcaption style="font-size: 12px;">Figure 1: Example of a Monte Carlo-based light transport simulation written in and rendered with ShaderThing. The application consists of: 1) the main rendering window on the left and 2) the ShaderThing GUI window, allowing for (but not limited to): writing and compiling the actual GLSL code, manipulating shader uniforms, loading images/textures or animated GIFs as resources for use with shaders, exporting the rendered view as either static (.png) or animated (.gif) images, and more!</figcaption>
+  <figcaption style="font-size: 12px;"></figcaption>
 </figure>
+<span style="font-size:0.5em;">
+*__Figure 1__: Example of a Monte Carlo-based light transport simulation written in and rendered with ShaderThing. The application consists of: 1) the main rendering window on the left and 2) the ShaderThing GUI window, allowing for (but not limited to): writing and compiling the actual GLSL code, manipulating shader uniforms, loading images/textures or animated GIFs as resources for use with shaders, exporting the rendered view as either static (.png) or animated (.gif) images, and more!*
+</span>
 
 # Requirements for running
 
