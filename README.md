@@ -18,15 +18,17 @@ Whether you are merely curious about or already have solid skills in the field o
 
 # Gallery
 
-<figure style="margin-left: 0px;margin-right:0px">
+<p align="center">
   <img src=".gitassets/gui_example_0.png" alt="Example Image" style="width:100%">
-</figure>
+</p>
 
 ***Figure 1:*** *Example of a Monte Carlo-based light transport simulation of a scene described by a signed distance field, written in and rendered with ShaderThing. The application consists of: 1) the main rendering window on the left and 2) the ShaderThing GUI window on the right, allowing for (but not limited to): writing and compiling the actual GLSL shader code, manipulating shader uniforms, loading images/textures or animated GIFs as resources for use with shaders, exporting the rendered view as either static (.png) or animated (.gif) images, and more!*
 
-<figure style="margin-left: 0px;">
-  <img src=".gitassets/light_transport.gif" alt="Example Image" style="height:408px">
-</figure>
+---
+
+<p align="center">
+  <img src=".gitassets/light_transport.gif" style="width:75%">
+</p>
 
 ***Figure 2:*** *Monte Carlo-based light transport simulation of a scene described by a time-dependent signed distance field, written in and rendered with ShaderThing. This GIF has been created directly by ShaderThing, and it consists of 25 frames of a resolution of 512 x 512 pixels, rendered with 4096 photons per pixel per frame. The overall rendering and export duration was 7 minutes and 15 seconds on an Nvidia GTX 1080 Ti graphics card. The animation noise is due to the relatively small photon count of the simulation.*
 
