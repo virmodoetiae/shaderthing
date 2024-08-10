@@ -184,11 +184,31 @@ Layer::Layer
     (
 R"(void main()
 {
+/*  Quick description of some important shader inputs and uniforms:
+
+    >>  qc (quad coordinates) represents the coordinates of the current pixel
+        (i.e., fragment) in a Euclidian reference frame with the origin at the 
+        window center. The magnitude of qc varies from -0.5 to 0.5 along the 
+        longest side of the window
+    
+    >>  tc (texture coordinates) represents the coordinates of the current pixel
+        (i.e., fragment) in an affine reference frame with the origin at the
+        window bottom-left corner, and where (1, 1) is always at the window top-
+        right corner, regardless of the current window size or aspect ratio
+
+    >>  iTime is the elapsed wall time. It can be modified in the 'Uniforms' tab
+    
+    >>  for a full list of all available uniforms, expand the shader 'Header'
+        at the top of the source code. This is inclusive of user-created 
+        uniforms in the 'Uniforms' tab*/
+
+    // Output pixel color (all components are in the [0, 1] range)
     fragColor = vec4
-    (
-        .5+.25*sin(2*(qc+iTime)),
-        .75,
-        1.
+    ( 
+        .4+.250*sin(2.*(qc.x+iTime)), // Red
+        .5+.125*cos(3.*(tc.y+iTime)), // Green
+        .75,                          // Blue
+        1.                            // Alpha (transparency)
     );
 })"
     );
