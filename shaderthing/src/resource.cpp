@@ -40,7 +40,7 @@ std::map<Resource::Type, const char*> Resource::typeToName_ =
     {Resource::Type::Framebuffer,       "Layer"}
 };
 
-void Resource::save(const std::vector<Resource*>& resources, ObjectIO& io)
+void Resource::saveAll(const std::vector<Resource*>& resources, ObjectIO& io)
 {
     io.writeObjectStart("resources");
     for (auto* resource : resources)

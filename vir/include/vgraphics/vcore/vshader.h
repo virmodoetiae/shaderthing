@@ -155,6 +155,12 @@ protected:
     uint32_t id_;
     std::unordered_map<std::string, uint32_t> uniformMap_;
     CompilationErrors compilationErrors_;
+    // Map of all extensions supported by the graphics context to their 
+    // respective status in the shading language, i.e., is said extension
+    // included in the shading language directives returned by 
+    // shadingLanguageDirectives()? Only useful for OpenGL (as far as I know)
+    static std::unordered_map<std::string, bool> 
+        currentContextExtensionsStatusMap_;
 public:
     static Shader* create
     (
@@ -201,6 +207,19 @@ public:
         return compilationErrors_;
     }
     bool valid() const {return compilationErrors_.size() == 0;}
+
+    static std::string currentContextShadingLanguageDirectives();
+    static bool setExtensionStatusInCurrentContextShadingLanguageDirectives
+    (
+        const std::string& extensionName,
+        bool status
+    );
+    static bool isExtensionInCurrentContextShadingLanguageDirectives
+    (
+        const std::string& extensionName
+    );
+    static std::vector<std::string> 
+        extensionsInCurrentContextShadingLanguageDirectives();
 };
 
 }

@@ -20,6 +20,8 @@
 #include "shaderthing/include/bytedata.h"
 #include "shaderthing/include/helpers.h"
 
+#include "vir/include/vir.h"
+
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/imgui_internal.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"

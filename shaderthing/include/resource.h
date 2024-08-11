@@ -105,7 +105,7 @@ public:
         std::vector<Resource*>& resources,
         const UpdateArgs& args
     );
-    static void save
+    static void saveAll
     (
         const std::vector<Resource*>& resources,
         ObjectIO& io

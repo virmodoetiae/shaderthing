@@ -122,6 +122,15 @@ OpenGLShader::OpenGLShader
     OpenGLShader::ConstructFrom cf
 )
 {
+    static bool currentContextExtensionStatusMapInitialized = false;
+    if (!currentContextExtensionStatusMapInitialized)
+    {
+        static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();
+        for (const auto& extension : context->supportedExtensions())
+            currentContextExtensionsStatusMap_.insert({extension, false});
+        currentContextExtensionStatusMapInitialized = true;
+    }
+
     unsigned int vertexShader;
     unsigned int fragmentShader;
     switch(cf)
@@ -328,6 +337,39 @@ void OpenGLShader::bindShaderStorageBlock
     if (location == -1)
         return;
     glShaderStorageBlockBinding(id_, location, bindingPoint);
+}
+
+std::string OpenGLShader::currentContextShadingLanguageDirectives()
+{
+    static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();
+    std::string version = 
+        std::to_string(context->versionMajor()) +
+        std::to_string(context->versionMinor()) +
+        "0";
+    std::string directives =
+        "#version "+version+" core\n";
+    for (auto item : currentContextExtensionsStatusMap_)
+    {
+        if (!item.second)
+            continue;
+        directives += 
+            "#ifdef "+item.first+"\n#extension "+item.first+
+            " : enable\n#endif\n";
+    }
+    return directives;
+}
+
+bool OpenGLShader::setExtensionStatusInCurrentContextShadingLanguageDirectives
+(
+    const std::string& extensionName,
+    bool status
+)
+{
+    static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();
+    if (!context->isExtensionSupported(extensionName))
+        return false;
+    currentContextExtensionsStatusMap_[extensionName] = status;
+    return true;
 }
 
 }

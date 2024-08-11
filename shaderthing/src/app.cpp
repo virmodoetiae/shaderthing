@@ -182,10 +182,10 @@ void App::saveProject(const std::string& filepath) const
     project.write("autoSaveEnabled", project_.isAutoSaveEnabled);
     project.write("autoSaveInterval", project_.autoSaveInterval);
     
-    sharedUniforms_->save(            project);
-    Layer::          save(layers_,    project);
-    Resource::       save(resources_, project);
-    exporter_->      save(            project);
+    Resource::       saveAll(resources_, project);
+    sharedUniforms_->save   (            project);
+    Layer::          saveAll(layers_,    project);
+    exporter_->      save   (            project);
     PostProcess::    saveStaticData(  project);
 
     // TODO Could display an error via ImGui on failure
@@ -688,6 +688,12 @@ void App::renderMenuBarGui()
             sharedUniforms_->renderWindowResolutionMenuGui();
             for (auto layer : layers_)
                 layer->renderPropertiesMenuGui(resources_);
+            ImGui::Separator();
+            Layer::renderShaderLanguangeExtensionsMenuGui
+            (
+                layers_, 
+                *sharedUniforms_
+            );
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Resources"))

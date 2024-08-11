@@ -26,10 +26,14 @@ void OpenGLContext::initialize(void* nativeWindow)
     glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
     versionMajor_ = int(majorVersion);
     versionMinor_ = int(minorVersion);
-    shadingLanguageVersion_ = 
-        std::to_string(versionMajor_) +
-        std::to_string(versionMinor_) +
-        "0";
+    GLint nExtensions;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &nExtensions);
+    supportedExtensions_.resize(nExtensions);
+    for (GLint i = 0; i < nExtensions; ++i)
+    {
+        std::string extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
+        supportedExtensions_[i] = extension;
+    }
 }
 
 void OpenGLContext::printErrors() const

@@ -134,8 +134,8 @@ private:
     //------------------------------------------------------------------------//
 
     static unsigned int findFreeId(const std::vector<Layer*>& layers);
-    static const std::string& glslVersionSource();
-    static const std::string& vertexShaderSource
+    static std::string glslDirectives();
+    static std::string vertexShaderSource
     (
         const SharedUniforms& sharedUniforms
     );
@@ -184,7 +184,7 @@ public:
     );
     ~Layer();
     
-    static void save(const std::vector<Layer*>& layers, ObjectIO& io);
+    static void saveAll(const std::vector<Layer*>& layers, ObjectIO& io);
     static void loadAll
     (
         const ObjectIO& io,
@@ -221,17 +221,23 @@ public:
     void renderTabBarGui
     (
         const std::vector<Layer*>& layers,
-        SharedUniforms& sharedUnifoms,
+        SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
     static void renderLayersTabBarGui
     (
         std::vector<Layer*>& layers,
-        SharedUniforms& sharedUnifoms,
+        SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
 
     static void resetSharedSourceEditor();
+
+    static void renderShaderLanguangeExtensionsMenuGui
+    (
+        const std::vector<Layer*>& layers,
+        SharedUniforms& sharedUniforms
+    );
 
     const std::string& name() const {return gui_.name;}
     const glm::ivec2& resolution() const {return resolution_;}

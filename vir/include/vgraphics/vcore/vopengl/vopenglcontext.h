@@ -15,7 +15,7 @@ protected:
     GLFWwindow* glfwWindow_;
 public:
     OpenGLContext() = default;
-    Type type() const override {return Type::OpenGL;} 
+    Type type() const override {return Type::OpenGL;}
     GLFWwindow* glfwWindow(){return glfwWindow_;}
     void initialize(void* nativeWindow) override;
     void printErrors() const override;

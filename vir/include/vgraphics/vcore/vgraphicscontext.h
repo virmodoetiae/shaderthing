@@ -18,7 +18,7 @@ protected:
     std::string name_;
     int versionMajor_;
     int versionMinor_;
-    std::string shadingLanguageVersion_;
+    std::vector<std::string> supportedExtensions_;
 public:
     GraphicsContext() = default;
     virtual ~GraphicsContext(){}
@@ -26,11 +26,19 @@ public:
     const std::string& name() const {return name_;}
     int versionMajor() const {return versionMajor_;}
     int versionMinor() const {return versionMinor_;}
-    const std::string& shadingLanguageVersion() const 
+    const std::vector<std::string>& supportedExtensions() const
     {
-        return shadingLanguageVersion_;
+        return supportedExtensions_;
     }
-
+    bool isExtensionSupported(const std::string& extensionName) const
+    {
+        return std::find
+        (
+            supportedExtensions_.begin(),
+            supportedExtensions_.end(),
+            extensionName
+        ) != supportedExtensions_.end();
+    }
     virtual Type type() const = 0;
     virtual void initialize(void* nativeWindow) = 0;
     virtual void printErrors() const = 0;

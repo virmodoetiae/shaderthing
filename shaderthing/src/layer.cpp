@@ -235,7 +235,7 @@ R"(void main()
         vir::Shader::create
         (
             vertexShaderSource(sharedUniforms),
-            glslVersionSource()+
+            glslDirectives()+
 R"(out  vec4      fragColor;
 in      vec2      qc;
 in      vec2      tc;
@@ -332,9 +332,13 @@ void Layer::save(ObjectIO& io) const
 
 //----------------------------------------------------------------------------//
 
-void Layer::save(const std::vector<Layer*>& layers, ObjectIO& io)
+void Layer::saveAll(const std::vector<Layer*>& layers, ObjectIO& io)
 {
     auto sharedSource = Layer::GUI::sharedSourceEditor.getText();
+    auto enabledExtensions = 
+        vir::Shader::extensionsInCurrentContextShadingLanguageDirectives();
+    if (enabledExtensions.size() > 0)
+        io.write("graphicsExtensions", enabledExtensions);
     if (Layer::GUI::defaultSharedSource != sharedSource)
         io.write
         (
@@ -413,7 +417,7 @@ Layer* Layer::load
             vir::Shader::create
                 (
                     vertexShaderSource(sharedUniforms),
-                    glslVersionSource()+
+                    glslDirectives()+
 R"(out vec4 fragColor;
 in     vec2 qc;
 in     vec2 tc;
@@ -479,7 +483,20 @@ void Layer::loadAll
     for (auto layer : layers)
         delete layer;
     layers.clear();
-    
+
+    if (io.hasMember("graphicsExtensions"))
+    {
+        std::vector<std::string> enabledExtensions = 
+            io.read<std::vector<std::string>>("graphicsExtensions");
+        for (auto& extension : enabledExtensions)
+            vir::Shader::
+            setExtensionStatusInCurrentContextShadingLanguageDirectives
+            (
+                extension, 
+                true
+            );
+    }
+
     if (io.hasMember("sharedFragmentSource"))
     {
         Layer::GUI::sharedSourceEditor.setText
@@ -552,26 +569,22 @@ unsigned int Layer::findFreeId(const std::vector<Layer*>& layers)
 
 //----------------------------------------------------------------------------//
 
-const std::string& Layer::glslVersionSource()
+std::string Layer::glslDirectives()
 {
-    static const auto window = vir::Window::instance();
-    static const std::string version
-    (
-        "#version "+window->context()->shadingLanguageVersion()+" core\n"
-    );
-    return version;
+    return vir::Shader::currentContextShadingLanguageDirectives();
 }
 
 //----------------------------------------------------------------------------//
 
-const std::string& Layer::vertexShaderSource
+std::string Layer::vertexShaderSource
 (
     const SharedUniforms& sharedUniforms
 )
 {
-    static const std::string vertexSource
+    static const auto window = vir::Window::instance();
+    std::string vertexSource
     (
-        glslVersionSource()+
+        glslDirectives()+
 R"(layout (location=0) in vec3 iqc;
 layout (location=1) in vec2 itc;
 out vec2 qc;
@@ -596,7 +609,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
 {
     std::string header
     (
-        glslVersionSource()+
+        glslDirectives()+
         "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n" +
         Rendering::sharedStorage->glslBlockSource() +
         sharedUniforms.glslFragmentBlockSource() +
@@ -1273,7 +1286,7 @@ unsigned int Layer::renderShaders // Static
                 vir::Shader::create
                 (
                     vertexShaderSource(sharedUniforms),
-                    glslVersionSource()+
+                    glslDirectives()+
 R"(out vec4 fragColor;
 in     vec2 qc;
 in     vec2 tc;
@@ -2061,6 +2074,153 @@ void Layer::resetSharedSourceEditor()
 {
     Layer::GUI::sharedSourceEditor.setText(Layer::GUI::defaultSharedSource);
     Layer::GUI::sharedSourceEditor.resetTextChanged();
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::renderShaderLanguangeExtensionsMenuGui
+(
+    const std::vector<Layer*>& layers,
+    SharedUniforms& sharedUniforms
+)
+{
+    if (ImGui::BeginMenu("OpenGL extensions"))
+    {
+        static auto* context = 
+            vir::GlobalPtr<vir::Window>::instance()->context();
+        float fontSize(ImGui::GetFontSize());
+        float textWidth(40.0f*fontSize);
+        float vSpace = ImGui::GetTextLineHeightWithSpacing();
+        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x+textWidth);
+        ImGui::Text(
+"List of all OpenGL extensions supported by your system. To enable or disable "
+"an extension, click on its checkbox. Please note that: ");
+        ImGui::Dummy(ImVec2(-1, vSpace));
+        ImGui::Bullet();ImGui::Text(
+"Some of the listed extensions may only affect the back-end API and not expose "
+"new features at the GLSL level;");
+        ImGui::Bullet();ImGui::Text(
+"Some of the listed extensions may expose new features at the GLSL level, but "
+"not at the fragment shader stage level, which is the only stage over which "
+"ShaderThing gives you control;");
+        ImGui::Bullet();ImGui::Text(
+"Some of the listed extensions may already be enabled by default by your current "
+"context (%s), yet their status is never correctly reported and there is no "
+"possibility of disabling them: enabling/disabling such extensions from here is "
+"inconsequential.", 
+        context->name().c_str());
+        ImGui::Dummy(ImVec2(-1, vSpace));
+        ImGui::Text(
+"The previously listed issues are due to the impossibility to query the "
+"graphics driver for detail extension status information. The user is directed "
+"to the KhronosOpenGL Registry for further information regarding specific "
+"extensions");
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(-1, vSpace));
+
+        static std::string filter = "";
+        static bool caseSensitive = false;
+        const auto& supportedExtensions = 
+            context->supportedExtensions();
+        static std::vector<std::string> filteredExtensions = 
+            supportedExtensions;
+
+        ImGui::Text("Filter extensions by name");
+        ImGui::SameLine();
+        bool caseSensitiveChanged = false;
+        if 
+        (
+            ImGui::SmallButton
+            (
+                caseSensitive ? ICON_FA_CHECK " Aa" : ICON_FA_BAN " Aa"
+            )
+        )
+        {
+            caseSensitive = !caseSensitive;
+            caseSensitiveChanged = true;
+        }
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            if (caseSensitive)
+                ImGui::Text("Filter is case-sensitive");
+            else
+                ImGui::Text("Filter is not case-sensitive");
+            ImGui::EndTooltip();
+        }
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        if 
+        (
+            ImGui::InputText("##extensionFilter", &filter) || 
+            caseSensitiveChanged
+        )
+        {
+            filteredExtensions.clear();
+            if (filter.size() > 0)
+            {
+                std::string lFilter = filter;
+                if (!caseSensitive)
+                    std::transform
+                    (
+                        lFilter.begin(), 
+                        lFilter.end(), 
+                        lFilter.begin(), 
+                        ::tolower
+                    );
+                for (const auto extension : supportedExtensions)
+                {
+                    std::string lExtension = extension;
+                    if (!caseSensitive)
+                        std::transform
+                        (
+                            lExtension.begin(), 
+                            lExtension.end(), 
+                            lExtension.begin(), 
+                            ::tolower
+                        );
+                    if (lExtension.find(lFilter) != std::string::npos)
+                        filteredExtensions.push_back(extension);
+                }
+            }
+            else
+                filteredExtensions = supportedExtensions;
+        }
+        ImGui::PopItemWidth();
+        ImGui::PopTextWrapPos();
+        ImGui::BeginChild
+        (
+            "##graphicsContextExtensionManager", 
+            ImVec2(0, 12*vSpace),
+            true
+        );
+        
+        int id = 0;
+        for (auto extension : filteredExtensions)
+        {
+            bool status = 
+                vir::Shader::
+                isExtensionInCurrentContextShadingLanguageDirectives
+                (
+                    extension
+                );
+            ImGui::PushID(id++);
+            if (ImGui::Checkbox("##extensionStatus", &status))
+            {
+                vir::Shader::
+                setExtensionStatusInCurrentContextShadingLanguageDirectives
+                (
+                    extension, status
+                );
+                for (auto* layer : layers)
+                    layer->compileShader(sharedUniforms);
+            }
+            ImGui::PopID();
+            ImGui::SameLine();
+            ImGui::Text(extension.c_str());
+        }
+        ImGui::EndChild();
+        ImGui::EndMenu();
+    }
 }
 
 }

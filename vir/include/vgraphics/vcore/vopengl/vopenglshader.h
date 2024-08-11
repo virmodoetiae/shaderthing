@@ -51,6 +51,13 @@ public:
 
     GLint getUniformLocation(const std::string&);
     GLint getUniformBlockIndex(const std::string&);
+
+    static std::string currentContextShadingLanguageDirectives();
+    static bool setExtensionStatusInCurrentContextShadingLanguageDirectives
+    (
+        const std::string& extensionName,
+        bool status
+    );
 };
 
 }

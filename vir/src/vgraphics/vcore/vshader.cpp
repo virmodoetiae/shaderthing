@@ -96,6 +96,9 @@ std::vector<std::string> Shader::uniformNames =
     "cubemap"
 };
 
+std::unordered_map<std::string, bool> 
+    Shader::currentContextExtensionsStatusMap_ = {};
+
 Shader::Uniform::~Uniform()
 {
     resetValue();
@@ -174,6 +177,67 @@ Shader* Shader::create
             return new OpenGLShader(vs, fs, cf);
     }
     return nullptr;
+}
+
+std::string Shader::currentContextShadingLanguageDirectives()
+{
+    static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();
+    switch (context->type())
+    {
+    case GraphicsContext::Type::OpenGL :
+        return OpenGLShader::currentContextShadingLanguageDirectives();
+    default:
+        return "";
+    }
+}
+
+bool Shader::setExtensionStatusInCurrentContextShadingLanguageDirectives
+(
+    const std::string& extensionName,
+    bool status
+)
+{
+    static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();
+    switch (context->type())
+    {
+    case GraphicsContext::Type::OpenGL :
+        return OpenGLShader::
+               setExtensionStatusInCurrentContextShadingLanguageDirectives
+        (
+            extensionName,
+            status
+        );
+    default:
+        return false;
+    }
+}
+
+bool Shader::isExtensionInCurrentContextShadingLanguageDirectives
+(
+    const std::string& extensionName
+)
+{
+    if 
+    (
+        currentContextExtensionsStatusMap_.find
+        (
+            extensionName
+        ) != currentContextExtensionsStatusMap_.end()
+    )
+        return currentContextExtensionsStatusMap_.at(extensionName);
+    return false;
+}
+
+std::vector<std::string> 
+Shader::extensionsInCurrentContextShadingLanguageDirectives()
+{
+    std::vector<std::string> extensions(0);
+    for (const auto& item : currentContextExtensionsStatusMap_)
+    {
+        if (item.second)
+            extensions.push_back(item.first);
+    }
+    return extensions;
 }
 
 }
