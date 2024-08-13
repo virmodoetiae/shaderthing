@@ -615,79 +615,67 @@ Layer::fragmentShaderHeaderSourceAndLineCount
         sharedUniforms.glslFragmentBlockSource() +
         "\n"
     );
-    auto nLines = Helpers::countNewLines(header);
+    unsigned int nLines = Helpers::countNewLines(header);
 
-    for (auto* u : sharedUniforms.userUniforms())
-    {
-        // If the uniform has no name, I can't add it to the source
-        if (u->name.size() == 0)
-            continue;
-        // All names in uniformTypeToName map 1:1 to GLSL uniform names, except
-        // for sampler2D (which maps to texture2D) and samplerCube (which maps
-        // to cubemap). I should re-organize the mappings a bit
-        std::string typeName; 
-        bool isSampler2D(false);
-        switch (u->type)
-        {
-            case vir::Shader::Variable::Type::Sampler2D :
-                isSampler2D = true;
-                typeName = "sampler2D";
-                break;
-            case vir::Shader::Variable::Type::SamplerCube :
-                typeName = "samplerCube";
-                break;
-            default :
-                typeName = vir::Shader::uniformTypeToName[u->type];
-                break;
-        }
-        header += 
-            "uniform "+typeName+" "+u->name+";\n";
-        ++nLines;
-        // Automatically managed sampler2D resolution and aspect-ratio uniforms
-        if (isSampler2D)
-        {
-            header += "uniform float "+u->name+"AspectRatio;\n";
-            ++nLines;
-            header += "uniform vec2 "+u->name+"Resolution;\n";
-            ++nLines;
-        }
-    }
+    unsigned int imageBindingPoint = 0;
 
-    for (auto* u : uniforms_)
+    auto writeUniformsToHeader = []
+    (
+        const std::vector<Uniform*> uniforms, 
+        std::string& header,
+        unsigned int& nLines,
+        unsigned int& imageBindingPoint
+    )
     {
-        // If the uniform has no name, I can't add it to the source
-        if (u->name.size() == 0)
-            continue;
-        // All names in uniformTypeToName map 1:1 to GLSL uniform names, except
-        // for sampler2D (which maps to texture2D) and samplerCube (which maps
-        // to cubemap). I should re-organize the mappings a bit
-        std::string typeName; 
-        bool isSampler2D(false);
-        switch (u->type)
+        for (auto* u : uniforms)
         {
-            case vir::Shader::Variable::Type::Sampler2D :
-                isSampler2D = true;
-                typeName = "sampler2D";
-                break;
-            case vir::Shader::Variable::Type::SamplerCube :
-                typeName = "samplerCube";
-                break;
-            default :
-                typeName = vir::Shader::uniformTypeToName[u->type];
-                break;
-        }
-        header += 
-            "uniform "+typeName+" "+u->name+";\n";
-        ++nLines;
-        // Automatically managed sampler2D resolution and aspect-ratio uniforms
-        if (isSampler2D)
-        {
-            header += "uniform float "+u->name+"AspectRatio;\n";
+            // If the uniform has no name, I can't add it to the source
+            if (u->name.size() == 0)
+                continue;
+            switch (u->type)
+            {
+                case vir::Shader::Variable::Type::Image2D :
+                case vir::Shader::Variable::Type::ImageCube :
+                {
+                    auto resource = u->getValuePtr<Resource>();
+                    header += 
+                        "layout(binding="+std::to_string(imageBindingPoint++)+
+                        ", "+resource->internalFormatName()+") ";
+                }
+                default :
+                    break;
+            }
+            header += 
+                "uniform "+vir::Shader::uniformTypeToName[u->type]+" "+
+                u->name+";\n";
             ++nLines;
-            header += "uniform vec2 "+u->name+"Resolution;\n";
-            ++nLines;
+            // Automatically managed sampler2D or image2D resolution and aspect
+            // ratio uniforms
+            if (u->type == vir::Shader::Variable::Type::Sampler2D || 
+                u->type == vir::Shader::Variable::Type::Image2D)
+            {
+                header += "uniform float "+u->name+"AspectRatio;\n";
+                ++nLines;
+                header += "uniform vec2 "+u->name+"Resolution;\n";
+                ++nLines;
+            }
         }
-    }
+    };
+
+    writeUniformsToHeader
+    (
+        sharedUniforms.userUniforms(),
+        header,
+        nLines,
+        imageBindingPoint
+    );
+    writeUniformsToHeader
+    (
+        uniforms_,
+        header,
+        nLines,
+        imageBindingPoint
+    );
 
     return {header, nLines};
 }
@@ -1030,6 +1018,13 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
 
 //----------------------------------------------------------------------------//
 
+// TODO : modify so that layers that render both to their internal framebuffer 
+// and the screen have their framebuffers rendered to screen only AFTER all
+// of the layer shaders have been rendered (as, given the new functionality
+// introduced by image2D support, some later render calls to other layers
+// may actively overwrite the framebuffer of already rendered layers, so we
+// want to delay the rendering of the framebuffers to screen at the very last,
+// after all layer shaders have been executed)
 void Layer::renderShader
 (
     vir::Framebuffer* target,
@@ -1040,31 +1035,38 @@ void Layer::renderShader
     // Set sampler-type uniforms found in both this layer's uniforms as well
     // as the shared user-added uniforms
     rendering_.shader->bind();
-    unsigned int unit = 0; 
+    unsigned int textureUnit = 0; 
+    unsigned int imageUnit = 0; 
 
     auto setSamplerUniforms = []
     (
         const std::vector<Uniform*>& uniforms,
         Layer* layer, 
-        unsigned int& unit
+        unsigned int& textureUnit,
+        unsigned int& imageUnit
     )
     {
         vir::Shader* shader(layer->rendering_.shader);
         for (auto u : uniforms)
         {
+            bool isSampler
+            (
+                u->type == vir::Shader::Variable::Type::Sampler2D ||
+                u->type == vir::Shader::Variable::Type::SamplerCube
+            );
+            bool isImage
+            (
+                u->type == vir::Shader::Variable::Type::Image2D ||
+                u->type == vir::Shader::Variable::Type::ImageCube
+            );
             if 
             (
-
                 u->specialType != Uniform::SpecialType::None ||
-                u->name.size() == 0 || 
-                (
-                    u->type != vir::Shader::Variable::Type::Sampler2D &&
-                    u->type != vir::Shader::Variable::Type::SamplerCube
-                )
+                u->name.size() == 0 || !(isSampler || isImage)
             )
                 continue;
             
-            // Sampler case
+            // Sampler or image case
             auto resource = u->getValuePtr<Resource>();
             if (resource == nullptr)
                 continue;
@@ -1088,16 +1090,36 @@ void Layer::renderShader
                     )
                         sourceFramebuffer = postProcess->outputFramebuffer();
                 }
-                sourceFramebuffer->bindColorBuffer(unit);
+                if (isSampler)
+                    sourceFramebuffer->bindColorBuffer(textureUnit++);
+                else if (isImage)
+                    sourceFramebuffer->bindColorBufferToImage
+                    (
+                        imageUnit++, 
+                        0, 
+                        vir::TextureBuffer::ImageBindMode::ReadWrite
+                    );
             }
             else
-                resource->bind(unit);
-            shader->setUniformInt(u->name, unit);
-            unit++;
-            // Set the (automatically managed) sampler2D resolution uniform 
-            // value. Should find a better way rather than setting this every
-            // render call
-            if (u->type == vir::Shader::Variable::Type::Sampler2D)
+            {
+                if (isSampler)
+                    resource->bind(textureUnit++);
+                else if (isImage)
+                    resource->bindImage
+                    (
+                        imageUnit++, 
+                        0, 
+                        vir::TextureBuffer::ImageBindMode::ReadWrite
+                    );
+            }
+            // Set the (automatically managed) sampler2D/image2D resolution
+            // uniform value. Should find a better way rather than setting this 
+            // every render call
+            if 
+            (
+                u->type == vir::Shader::Variable::Type::Sampler2D ||
+                u->type == vir::Shader::Variable::Type::Image2D
+            )
             {
                 shader->setUniformFloat
                 (
@@ -1112,8 +1134,8 @@ void Layer::renderShader
             }
         }
     };
-    setSamplerUniforms(sharedUniforms.userUniforms(), this, unit);
-    setSamplerUniforms(uniforms_, this, unit);
+    setSamplerUniforms(sharedUniforms.userUniforms(), this, textureUnit, imageUnit);
+    setSamplerUniforms(uniforms_, this, textureUnit, imageUnit);
 
     // Flip buffers
     rendering_.framebuffer = 
@@ -1195,23 +1217,28 @@ void Layer::resetAfterExport()
 
 bool Layer::removeResourceFromUniforms(const Resource* resource)
 {
+    bool result = false;
     for (int i=0; i<(int)uniforms_.size(); i++)
     {
         auto uniform = uniforms_[i];
         if 
         (
             uniform->type != Uniform::Type::Sampler2D &&
-            uniform->type != Uniform::Type::SamplerCube
+            uniform->type != Uniform::Type::SamplerCube && 
+            uniform->type != Uniform::Type::Image2D &&
+            uniform->type != Uniform::Type::ImageCube
         )
             continue;
         auto uResource = uniform->getValuePtr<const Resource>();
         if (resource->id() == uResource->id())
         {
-            uniforms_.erase(uniforms_.begin()+i);
-            return true;
+            uniforms_.erase(uniforms_.begin()+i--);
+            result = true;
         }
     }
-    return false;
+    if (result)
+        flags_.uncompiledChanges = true;
+    return result;
 }
 
 //----------------------------------------------------------------------------//

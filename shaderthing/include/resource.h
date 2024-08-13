@@ -22,8 +22,10 @@
 namespace ShaderThing
 {
 
-typedef vir::TextureBuffer::WrapMode   WrapMode;
-typedef vir::TextureBuffer::FilterMode FilterMode;
+typedef vir::TextureBuffer::WrapMode      WrapMode;
+typedef vir::TextureBuffer::FilterMode    FilterMode;
+typedef vir::TextureBuffer::InternalFormat InternalFormat;
+typedef vir::TextureBuffer::ImageBindMode ImageBindMode;
 
 class Layer;
 class ObjectIO;
@@ -52,7 +54,8 @@ protected:
     Type                          type_;
     bool                          isNameManaged_ = true;
     std::string*                  namePtr_       = nullptr;
-    int                           unit_          = -1;
+    int                           textureUnit_          = -1;
+    int                           imageUnit_            = -1;
 
     static std::map<Resource::Type, const char*> typeToName_;
     static FileDialog                            fileDialog_;
@@ -73,13 +76,16 @@ public:
     
     Type                 type() const {return type_;}
     virtual void         bind(unsigned int unit) = 0;
+    virtual void         bindImage(unsigned int unit, unsigned int level, ImageBindMode bindMode) = 0;
     virtual void         unbind() = 0;
+    virtual void         unbindImage() = 0;
     virtual unsigned int id() const = 0;
     virtual unsigned int width() const = 0;
     virtual unsigned int height() const = 0;
     virtual WrapMode     wrapMode(int index) const = 0;
     virtual FilterMode   magFilterMode() const = 0;
     virtual FilterMode   minFilterMode() const = 0;
+    virtual std::string  internalFormatName() const = 0;
     virtual void         setWrapMode(int index, WrapMode mode) = 0;
     virtual void         setMagFilterMode(FilterMode mode) = 0;
     virtual void         setMinFilterMode(FilterMode mode) = 0;
@@ -175,18 +181,21 @@ private:
     );
 };
 
-#define DECLARE_OVERRIDE_VIRTUALS                                                                           \
-    virtual void       bind(unsigned int unit) override {native_->bind(unit); unit_ = unit;}                \
-    virtual void       unbind() override {native_->unbind(-1); unit_ = -1;};                                \
-    unsigned int       id() const override {return native_->id();}                                          \
-    unsigned int       width() const override {return native_->width();}                                    \
-    unsigned int       height() const override{return native_->height();}                                   \
-    WrapMode           wrapMode(int index) const override {return native_->wrapMode(index);}                \
-    FilterMode         magFilterMode() const override {return native_->magFilterMode();}                    \
-    FilterMode         minFilterMode() const override {return native_->minFilterMode();}                    \
-    virtual void       setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
-    virtual void       setMagFilterMode(FilterMode mode) override {native_->setMagFilterMode(mode);}        \
-    virtual void       setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}
+#define DECLARE_OVERRIDE_VIRTUALS                                                                     \
+    void         bind(unsigned int unit) override {native_->bind(unit); textureUnit_ = unit;}         \
+    void         unbind() override {native_->unbind(); textureUnit_ = -1;};                           \
+    void         bindImage(unsigned int unit, unsigned int level, ImageBindMode bindMode) override {native_->bindImage(unit, level, bindMode); imageUnit_ = unit;} \
+    void         unbindImage() override {native_->unbindImage(); imageUnit_ = -1;};                   \
+    unsigned int id() const override {return native_->id();}                                          \
+    unsigned int width() const override {return native_->width();}                                    \
+    unsigned int height() const override{return native_->height();}                                   \
+    WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}                \
+    FilterMode   magFilterMode() const override {return native_->magFilterMode();}                    \
+    FilterMode   minFilterMode() const override {return native_->minFilterMode();}                    \
+    std::string  internalFormatName() const override {return vir::TextureBuffer::internalFormatToShortName.at(native_->internalFormat());} \
+    void         setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
+    void         setMagFilterMode(FilterMode mode) override {native_->setMagFilterMode(mode);}        \
+    void         setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}
 
 class Texture2DResource : public Resource
 {
@@ -269,8 +278,8 @@ class Layer;
 class LayerResource : public Resource
 {
     friend Resource;
-    Layer*                layer_  = nullptr;
-    vir::Framebuffer**    native_ = nullptr;
+    Layer*             layer_  = nullptr;
+    vir::Framebuffer** native_ = nullptr;
     LayerResource():Resource(Type::Framebuffer){isNameManaged_=false;}
     
     DELETE_COPY_MOVE(LayerResource)
@@ -278,18 +287,21 @@ class LayerResource : public Resource
     virtual void save(ObjectIO& io){(void)io;}
 public:
     ~LayerResource();
-    bool               set(Layer* layer);
-    virtual void       bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit);unit_ = unit;}
-    virtual void       unbind() override {(*native_)->unbind(); unit_ = -1;};
-    unsigned int       id() const override {return (*native_)->colorBufferId();}
-    unsigned int       width() const override {return (*native_)->width();}
-    unsigned int       height() const override{return (*native_)->height();}
-    WrapMode           wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
-    FilterMode         magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
-    FilterMode         minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
-    virtual void       setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
-    virtual void       setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
-    virtual void       setMinFilterMode(FilterMode mode) override{(*native_)->setColorBufferMinFilterMode(mode);}
+    bool         set(Layer* layer);
+    void         bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit); textureUnit_=unit;}
+    void         unbind() override {(*native_)->unbindColorBuffer(); textureUnit_=-1;};
+    void         bindImage(unsigned int unit, unsigned int level, ImageBindMode mode) override {(*native_)->bindColorBufferToImage(unit, level, mode); imageUnit_=unit;}
+    void         unbindImage() override {(*native_)->unbindColorBufferFromImage(); imageUnit_=-1;};
+    unsigned int id() const override {return (*native_)->colorBufferId();}
+    unsigned int width() const override {return (*native_)->width();}
+    unsigned int height() const override{return (*native_)->height();}
+    WrapMode     wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
+    FilterMode   magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
+    FilterMode   minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
+    std::string  internalFormatName() const override {return vir::TextureBuffer::internalFormatToShortName.at((*native_)->colorBufferInternalFormat());}
+    void         setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
+    void         setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
+    void         setMinFilterMode(FilterMode mode) override{(*native_)->setColorBufferMinFilterMode(mode);}
 
     static bool insertInResources
     (

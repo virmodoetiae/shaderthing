@@ -43,7 +43,9 @@ public:
             Mat3,
             Mat4,
             Sampler2D,
-            SamplerCube
+            SamplerCube,
+            Image2D,
+            ImageCube
         };
         uint32_t size;
         uint32_t nCmpts;
@@ -75,6 +77,8 @@ public:
     DEFINE_SHADER_VARIABLE(Mat4,        float,    16)
     DEFINE_SHADER_VARIABLE(Sampler2D,   uint32_t, 1)
     DEFINE_SHADER_VARIABLE(SamplerCube, uint32_t, 1)
+    DEFINE_SHADER_VARIABLE(Image2D, uint32_t, 1)
+    DEFINE_SHADER_VARIABLE(ImageCube, uint32_t, 1)
     
     static std::unordered_map<std::string, Variable::Type> 
         valueTypeToUniformTypeMap;

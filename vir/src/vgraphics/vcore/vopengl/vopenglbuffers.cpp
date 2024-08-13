@@ -77,6 +77,20 @@ GLint OpenGLType(TextureBuffer::InternalFormat internalFormat)
     return 0;
 }
 
+GLint OpenGLImageBindMode(TextureBuffer::ImageBindMode mode)
+{
+    switch (mode)
+    {
+        case TextureBuffer::ImageBindMode::ReadOnly :
+            return GL_READ_ONLY;
+        case TextureBuffer::ImageBindMode::WriteOnly :
+            return GL_WRITE_ONLY;
+        case TextureBuffer::ImageBindMode::ReadWrite :
+            return GL_READ_WRITE;
+    }
+    return 0;
+}
+
 const std::unordered_map<TextureBuffer::WrapMode, GLint> wrapModeToGLint_ = 
 {
     {TextureBuffer::WrapMode::ClampToBorder, GL_CLAMP_TO_BORDER},
@@ -244,10 +258,42 @@ void OpenGLTextureBuffer2D::bind(uint32_t unit)
     glBindTexture(GL_TEXTURE_2D, id_);
 }
 
-void OpenGLTextureBuffer2D::unbind(uint32_t unit)
+void OpenGLTextureBuffer2D::bindImage
+(
+    uint32_t unit, 
+    uint32_t level, 
+    ImageBindMode mode
+)
 {
-    glActiveTexture(GL_TEXTURE0+unit);
+    glBindImageTexture
+    (
+        unit, 
+        id_, 
+        level, 
+        GL_FALSE, 
+        0, 
+        OpenGLImageBindMode(mode), 
+        OpenGLInternalFormat(internalFormat_)
+    );
+}
+
+void OpenGLTextureBuffer2D::unbind()
+{
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void OpenGLTextureBuffer2D::unbindImage()
+{
+    glBindImageTexture
+    (
+        0, 
+        id_, 
+        0, 
+        GL_FALSE, 
+        0, 
+        GL_READ_WRITE, 
+        OpenGLInternalFormat(internalFormat_)
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -345,7 +391,26 @@ void OpenGLAnimatedTextureBuffer2D::bind(uint32_t unit)
     frame_->bind(unit);
 }
 
-void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
+void OpenGLAnimatedTextureBuffer2D::bindImage
+(
+    uint32_t unit, 
+    uint32_t level, 
+    ImageBindMode mode
+)
+{
+    glBindImageTexture
+    (
+        unit, 
+        id_, 
+        level, 
+        GL_FALSE, 
+        0, 
+        OpenGLImageBindMode(mode), 
+        OpenGLInternalFormat(internalFormat_)
+    );
+}
+
+void OpenGLAnimatedTextureBuffer2D::unbind()
 {
     if (frame_ == nullptr)
         return;
@@ -355,11 +420,25 @@ void OpenGLAnimatedTextureBuffer2D::unbind(uint32_t unit)
     // is no way around this for now, but whatever
     try
     {
-        frame_->unbind(unit);
+        frame_->unbind();
     }
     catch(...)
     {
     }
+}
+
+void OpenGLAnimatedTextureBuffer2D::unbindImage()
+{
+    glBindImageTexture
+    (
+        0, 
+        id_, 
+        0, 
+        GL_FALSE, 
+        0, 
+        GL_READ_WRITE, 
+        OpenGLInternalFormat(internalFormat_)
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -437,10 +516,42 @@ void OpenGLCubeMapBuffer::bind(uint32_t unit)
     glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
 }
 
-void OpenGLCubeMapBuffer::unbind(uint32_t unit)
+void OpenGLCubeMapBuffer::bindImage
+(
+    uint32_t unit, 
+    uint32_t level, 
+    ImageBindMode mode
+)
 {
-    glActiveTexture(GL_TEXTURE0+unit);
+    glBindImageTexture
+    (
+        unit, 
+        id_, 
+        level, 
+        GL_FALSE, 
+        0, 
+        OpenGLImageBindMode(mode), 
+        OpenGLInternalFormat(internalFormat_)
+    );
+}
+
+void OpenGLCubeMapBuffer::unbind()
+{
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+}
+
+void OpenGLCubeMapBuffer::unbindImage()
+{
+    glBindImageTexture
+    (
+        0, 
+        id_, 
+        0, 
+        GL_FALSE, 
+        0, 
+        GL_READ_WRITE, 
+        OpenGLInternalFormat(internalFormat_)
+    );
 }
 
 void OpenGLCubeMapBuffer::setWrapMode
@@ -597,6 +708,26 @@ void OpenGLFramebuffer::unbind()
 void OpenGLFramebuffer::bindColorBuffer(uint32_t unit)
 {
     colorBuffer_->bind(unit);
+}
+
+void OpenGLFramebuffer::bindColorBufferToImage
+(
+    uint32_t unit, 
+    uint32_t level, 
+    TextureBuffer::ImageBindMode mode
+)
+{
+    colorBuffer_->bindImage(unit, level, mode);
+}
+
+void OpenGLFramebuffer::unbindColorBuffer()
+{
+    colorBuffer_->unbind();
+}
+
+void OpenGLFramebuffer::unbindColorBufferFromImage()
+{
+    colorBuffer_->unbindImage();
 }
 
 void OpenGLFramebuffer::bindDepthBuffer(uint32_t unit)

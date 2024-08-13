@@ -339,6 +339,8 @@ void OpenGLShader::bindShaderStorageBlock
     glShaderStorageBlockBinding(id_, location, bindingPoint);
 }
 
+//----------------------------------------------------------------------------//
+
 std::string OpenGLShader::currentContextShadingLanguageDirectives()
 {
     static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();

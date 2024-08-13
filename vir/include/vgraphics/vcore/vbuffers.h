@@ -51,8 +51,16 @@ public:
         NearestMipmapLinear = 4,
         LinearMipmapLinear = 5
     };
+    enum class ImageBindMode
+    {
+        ReadOnly = 0,
+        WriteOnly = 1,
+        ReadWrite = 2
+    };
     static const std::unordered_map<InternalFormat, std::string> 
         internalFormatToName;
+    static const std::unordered_map<InternalFormat, std::string>
+        internalFormatToShortName;
     static const std::unordered_map<WrapMode, std::string> wrapModeToName;
     static const std::unordered_map<FilterMode, std::string> filterModeToName;
 protected:
@@ -82,8 +90,10 @@ public:
     WrapMode wrapMode(uint32_t index) const {return wrapModes_[index];}
     FilterMode magFilterMode() const {return magFilterMode_;}
     FilterMode minFilterMode() const {return minFilterMode_;}
-    virtual void bind(uint32_t) = 0;
-    virtual void unbind(uint32_t) = 0;
+    virtual void bind(uint32_t  unit) = 0;
+    virtual void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode)=0;
+    virtual void unbind() = 0;
+    virtual void unbindImage() = 0;
     virtual void setWrapMode
     (
         uint32_t index,
@@ -346,8 +356,16 @@ public:
     static Framebuffer*& activeOne(){return activeOne_;}
     virtual void bind() = 0;
     virtual void unbind() = 0;
-    virtual void bindColorBuffer(uint32_t) = 0;
+    virtual void bindColorBuffer(uint32_t unit) = 0;
+    virtual void bindColorBufferToImage
+    (
+        uint32_t unit, 
+        uint32_t level, 
+        TextureBuffer::ImageBindMode bindMode
+    ) = 0;
     virtual void bindDepthBuffer(uint32_t) = 0;
+    virtual void unbindColorBuffer() = 0;
+    virtual void unbindColorBufferFromImage() = 0;
     virtual void colorBufferData(unsigned char*, bool yFlip=false) = 0;
     virtual void clearColorBuffer(float r=0,float g=0,float b=0,float a=0)=0;
     virtual void updateColorBufferMipmap() = 0;

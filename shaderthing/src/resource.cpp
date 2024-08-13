@@ -355,7 +355,10 @@ Texture2DResource::~Texture2DResource()
 {
     if (native_ != nullptr)
     {
-        this->unbind();
+        if (textureUnit_ != -1)
+            this->unbind();
+        if (imageUnit_ != -1)
+            this->unbindImage();
         delete native_;
     }
     if (rawData_ != nullptr) 
@@ -450,7 +453,10 @@ AnimatedTexture2DResource::~AnimatedTexture2DResource()
 {
     if (native_ != nullptr)
     {
-        this->unbind();
+        if (textureUnit_ != -1)
+            this->unbind();
+        if (imageUnit_ != -1)
+            this->unbindImage();
         delete native_;
     }
     if (rawData_ != nullptr)
@@ -581,7 +587,10 @@ CubemapResource::~CubemapResource()
 {
     if (native_ != nullptr)
     {
-        this->unbind();
+        if (textureUnit_ != -1)
+            this->unbind();
+        if (imageUnit_ != -1)
+            this->unbindImage();
         delete native_;
     }
 }
@@ -644,7 +653,12 @@ bool LayerResource::set(Layer* layer)
 LayerResource::~LayerResource()
 {
     if (native_ != nullptr)
-        this->unbind();
+    {
+        if (textureUnit_ != -1)
+            this->unbind();
+        if (imageUnit_ != -1)
+            this->unbindImage();
+    }
 }
 
 //----------------------------------------------------------------------------//

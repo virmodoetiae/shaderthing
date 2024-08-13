@@ -38,8 +38,10 @@ public:
     ) override;
     void setMagFilterMode(FilterMode mode) override;
     void setMinFilterMode(FilterMode mode) override;
-    void bind(uint32_t) override;
-    void unbind(uint32_t) override;
+    void bind(uint32_t unit) override;
+    void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
+    void unbind() override;
+    void unbindImage() override;
 };
 
 class OpenGLAnimatedTextureBuffer2D : public AnimatedTextureBuffer2D
@@ -71,7 +73,9 @@ public:
     void setMagFilterMode(FilterMode mode) override;
     void setMinFilterMode(FilterMode mode) override;
     void bind(uint32_t) override;
-    void unbind(uint32_t) override;
+    void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
+    void unbind() override;
+    void unbindImage() override;
 };
 
 class OpenGLCubeMapBuffer : public CubeMapBuffer
@@ -93,7 +97,9 @@ public:
     void setMagFilterMode(FilterMode mode) override;
     void setMinFilterMode(FilterMode mode) override;
     void bind(uint32_t) override;
-    void unbind(uint32_t) override;
+    void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
+    void unbind() override;
+    void unbindImage() override;
 };
 
 class OpenGLFramebuffer : public Framebuffer
@@ -109,7 +115,15 @@ public:
     void bind() override;
     void unbind() override;
     void bindColorBuffer(uint32_t) override;
+    void bindColorBufferToImage
+    (
+        uint32_t unit, 
+        uint32_t level, 
+        TextureBuffer::ImageBindMode mode
+    ) override;
     void bindDepthBuffer(uint32_t) override;
+    void unbindColorBuffer() override;
+    void unbindColorBufferFromImage() override;
     void colorBufferData(unsigned char*, bool yFlip=false) override;
     void clearColorBuffer(float r=0,float g=0,float b=0,float a=0) override;
     void updateColorBufferMipmap() override;

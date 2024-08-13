@@ -27,6 +27,21 @@ const std::unordered_map<TextureBuffer::InternalFormat, std::string>
     {TextureBuffer::InternalFormat::RGBA_SF_32, "RGBA float 32-bit"},
 };
 
+const std::unordered_map<TextureBuffer::InternalFormat, std::string> 
+    TextureBuffer::internalFormatToShortName =
+{
+    {TextureBuffer::InternalFormat::Undefined, "undefined"},
+    {TextureBuffer::InternalFormat::R_UNI_8, "r8"},
+    {TextureBuffer::InternalFormat::R_UI_8, "r8ui"},
+    {TextureBuffer::InternalFormat::RG_UNI_8, "rg8"},
+    {TextureBuffer::InternalFormat::RG_UI_8, "rg8ui"},
+    {TextureBuffer::InternalFormat::RGB_UNI_8, "rgb8"},
+    {TextureBuffer::InternalFormat::RGB_UI_8, "rgb8ui"},
+    {TextureBuffer::InternalFormat::RGBA_UNI_8, "rgba8"},
+    {TextureBuffer::InternalFormat::RGBA_UI_8, "rgba8ui"},
+    {TextureBuffer::InternalFormat::RGBA_SF_32, "rgba32f"},
+};
+
 const std::unordered_map<TextureBuffer::WrapMode, std::string> 
     TextureBuffer::wrapModeToName =
 {

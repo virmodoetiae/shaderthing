@@ -37,8 +37,10 @@ std::unordered_map<Shader::Variable::Type, std::string>
     {Shader::Variable::Type::Float4, "vec4"},
     {Shader::Variable::Type::Mat3, "mat3"},
     {Shader::Variable::Type::Mat4, "mat4"},
-    {Shader::Variable::Type::Sampler2D, "texture2D"},
-    {Shader::Variable::Type::SamplerCube, "cubemap"}
+    {Shader::Variable::Type::Sampler2D, "sampler2D"},
+    {Shader::Variable::Type::SamplerCube, "samplerCube"},
+    {Shader::Variable::Type::Image2D, "image2D"},
+    {Shader::Variable::Type::ImageCube, "imageCube"}
 };
 
 std::unordered_map<std::string, Shader::Variable::Type> 
@@ -56,8 +58,10 @@ std::unordered_map<std::string, Shader::Variable::Type>
     {"vec4", Shader::Variable::Type::Float4},
     {"mat3", Shader::Variable::Type::Mat3},
     {"mat4", Shader::Variable::Type::Mat4},
-    {"texture2D", Shader::Variable::Type::Sampler2D},
-    {"cubemap", Shader::Variable::Type::SamplerCube}
+    {"sampler2D", Shader::Variable::Type::Sampler2D},
+    {"samplerCube", Shader::Variable::Type::SamplerCube},
+    {"image2D", Shader::Variable::Type::Image2D},
+    {"imageCube", Shader::Variable::Type::ImageCube}
 };
 
 std::vector<Shader::Variable::Type> Shader::uniformTypes = 
@@ -75,7 +79,9 @@ std::vector<Shader::Variable::Type> Shader::uniformTypes =
     Shader::Variable::Type::Mat3,
     Shader::Variable::Type::Mat4,
     Shader::Variable::Type::Sampler2D,
-    Shader::Variable::Type::SamplerCube
+    Shader::Variable::Type::SamplerCube,
+    Shader::Variable::Type::Image2D,
+    Shader::Variable::Type::ImageCube
 };
 
 std::vector<std::string> Shader::uniformNames = 
@@ -92,8 +98,10 @@ std::vector<std::string> Shader::uniformNames =
     "vec4",
     "mat3",
     "mat4",
-    "texture2D",
-    "cubemap"
+    "sampler2D",
+    "samplerCube",
+    "image2D",
+    "imageCube"
 };
 
 std::unordered_map<std::string, bool> 
@@ -152,10 +160,13 @@ void Shader::Uniform::resetValue()
             delete static_cast<glm::mat4*>(value_);
             break;
         case Variable::Type::Sampler2D :
+        case Variable::Type::Image2D :
             delete static_cast<TextureBuffer2D*>(value_);
             break;
         case Variable::Type::SamplerCube :
+        case Variable::Type::ImageCube :
             delete static_cast<CubeMapBuffer*>(value_);
+        
             break;
     }
     value_=nullptr;
@@ -178,6 +189,8 @@ Shader* Shader::create
     }
     return nullptr;
 }
+
+//----------------------------------------------------------------------------//
 
 std::string Shader::currentContextShadingLanguageDirectives()
 {

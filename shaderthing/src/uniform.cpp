@@ -699,7 +699,7 @@ is currently being held down)");
     }; // End of renderSharedUniformsGui lambda
 
     // -------------------------------------------------------------------------
-    static std::string supportedUniformTypeNames[11]
+    static std::string supportedUniformTypeNames[13]
     {
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Bool],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int],
@@ -711,7 +711,9 @@ is currently being held down)");
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float3],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float4],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Sampler2D],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube]
+        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube],
+        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Image2D],
+        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::ImageCube]
     };
     auto renderUniformGui = 
     [&fontSize, &renderEditUniformBoundsButtonGui]
@@ -841,7 +843,11 @@ is currently being held down)");
                             selectedType != 
                                 vir::Shader::Variable::Type::Sampler2D &&
                             selectedType != 
-                                vir::Shader::Variable::Type::SamplerCube
+                                vir::Shader::Variable::Type::SamplerCube &&
+                            selectedType != 
+                                vir::Shader::Variable::Type::Image2D &&
+                            selectedType != 
+                                vir::Shader::Variable::Type::ImageCube
                         );
                     }
                 }
@@ -1423,10 +1429,9 @@ is currently being held down)");
                     }
                 }
                 break;
-                // Missing Sampler2D/Cubemap, will be added once I implement 
-                // the Resource class
             }
             case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::Image2D :
             {
                 auto resource = 
                     uniform->getValuePtr<Resource>();
@@ -1456,6 +1461,7 @@ is currently being held down)");
                 break;
             }
             case vir::Shader::Variable::Type::SamplerCube :
+            case vir::Shader::Variable::Type::ImageCube :
             {
                 auto resource = 
                     uniform->getValuePtr<Resource>();
@@ -1614,8 +1620,8 @@ is currently being held down)");
     {
         ImGui::TableSetupColumn("##actions", 0, 4*fontSize);
         ImGui::TableSetupColumn("Name", 0, 10*fontSize);
-        ImGui::TableSetupColumn("Type", 0, 5*fontSize);
-        ImGui::TableSetupColumn("Bounds", 0, 4*fontSize);
+        ImGui::TableSetupColumn("Type", 0, 7*fontSize);
+        ImGui::TableSetupColumn("Bounds", 0, 3.5*fontSize);
         ImGui::TableSetupColumn
         (
             "Value", 
@@ -1689,7 +1695,9 @@ is currently being held down)");
                         uniform->gui.markedForDeletion &&
                         (
                             uniform->type == Type::Sampler2D ||
-                            uniform->type == Type::SamplerCube
+                            uniform->type == Type::SamplerCube ||
+                            uniform->type == Type::Image2D ||
+                            uniform->type == Type::ImageCube
                         )
                     )
                     {
@@ -1769,8 +1777,13 @@ void Uniform::loadAll
     {
         auto uniformData = uniformsData.readObject(uniformName);
         auto uniform = new Uniform{};
-        uniform->type = vir::Shader::uniformNameToType[
-            uniformData.read<std::string>("type")];
+        // Mapping for compatibility with previous version .stf files
+        std::string typeName = uniformData.read<std::string>("type");
+        if (typeName == "texture2D")
+            typeName = "sampler2D";
+        else if (typeName == "cubemap")
+            typeName = "samplerCube";
+        uniform->type = vir::Shader::uniformNameToType[typeName];
         uniform->isSharedByUser = 
             uniformData.readOrDefault<bool>("shared", false);
         uniforms.emplace_back(uniform);
@@ -1856,6 +1869,8 @@ void Uniform::loadAll
             }
             case vir::Shader::Variable::Type::Sampler2D :
             case vir::Shader::Variable::Type::SamplerCube :
+            case vir::Shader::Variable::Type::Image2D :
+            case vir::Shader::Variable::Type::ImageCube :
             {
                 std::string resourceName = uniformData.read("value", false);
                 uniform->gui.showBounds = false;
@@ -1963,6 +1978,8 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
             }
             case vir::Shader::Variable::Type::Sampler2D :
             case vir::Shader::Variable::Type::SamplerCube :
+            case vir::Shader::Variable::Type::Image2D :
+            case vir::Shader::Variable::Type::ImageCube :
             {
                 auto r = u->getValuePtr<Resource>();
                 io.write("value", r->name().c_str());
