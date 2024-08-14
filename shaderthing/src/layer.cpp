@@ -149,7 +149,8 @@ std::unique_ptr<SharedStorage> Layer::Rendering::sharedStorage     = nullptr;
 Layer::Layer
 (
     const std::vector<Layer*>& layers,
-    const SharedUniforms& sharedUniforms
+    const SharedUniforms& sharedUniforms,
+    const bool compileShader
 ) :
     id_(findFreeId(layers))
 {
@@ -219,7 +220,8 @@ R"(void main()
         Rendering::sharedStorage = std::make_unique<SharedStorage>();
 
     // Compile shader
-    compileShader(sharedUniforms);
+    if (compileShader)
+        this->compileShader(sharedUniforms);
 
     // Set depth (also inits rendering quad on first call)
     setDepth((float)layers.size()/Layer::nMaxLayers);
@@ -364,7 +366,7 @@ Layer* Layer::load
     std::vector<Resource*>& resources
 )
 {
-    auto layer = new Layer(layers, sharedUniforms);
+    auto layer = new Layer(layers, sharedUniforms, false);
 
     layer->setName(io.name());
     layer->flags_.rename = true; // <- hack to prevent layer tab bar re-ordering
@@ -407,24 +409,8 @@ Layer* Layer::load
     layer->gui_.sourceEditor.setText(fragmentSource);
     layer->gui_.sourceEditor.resetTextChanged();
 
-    // If the project was saved in a state such that the shader has compilation
-    // errors, then initialize the shader with the blank shader source (back-end
-    // -only, the user will still see the source of the saved shader with the 
-    // usual list of compilation errors and markers)
-    if (!layer->compileShader(sharedUniforms))
-    {
-        layer->rendering_.shader = 
-            vir::Shader::create
-                (
-                    vertexShaderSource(sharedUniforms),
-                    glslDirectives()+
-R"(out vec4 fragColor;
-in     vec2 qc;
-in     vec2 tc;
-void main(){fragColor = vec4(0, 0, 0, .5);})",
-                    vir::Shader::ConstructFrom::SourceCode
-                );
-    }
+    // Layer shaders not compiled here, but in loadAll, after the 
+    // re-establishment of possible layer resource dependencies
 
     auto framebufferData = io.readObject("internalFramebuffer");
     auto internalFormat = 
@@ -540,6 +526,29 @@ void Layer::loadAll
     // Same exact thing as what has been done for the layer uniforms, but here
     // done for shared user-custom uniforms
     sharedUniforms.postLoadProcessCachedResourceLayers(resources);
+
+    // Compile all layer shaders after dependencies have been re-established
+    for (auto* layer : layers)
+    {
+        // If the project was saved in a state such that the shader has compilation
+        // errors, then initialize the shader with the blank shader source (back-end
+        // -only, the user will still see the source of the saved shader with the 
+        // usual list of compilation errors and markers)
+        if (!layer->compileShader(sharedUniforms))
+        {
+            layer->rendering_.shader = 
+                vir::Shader::create
+                    (
+                        vertexShaderSource(sharedUniforms),
+                        glslDirectives()+
+    R"(out vec4 fragColor;
+    in     vec2 qc;
+    in     vec2 tc;
+    void main(){fragColor = vec4(0, 0, 0, .5);})",
+                        vir::Shader::ConstructFrom::SourceCode
+                    );
+        }
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -649,7 +658,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                 case vir::Shader::Variable::Type::Sampler2D :
                 case vir::Shader::Variable::Type::SamplerCube :
                 {
-                     auto resource = u->getValuePtr<Resource>();
+                    auto resource = u->getValuePtr<Resource>();
                     if (resource->internalFormatName().find("ui") != std::string::npos)
                         uniformTypeName = "u"+uniformTypeName;
                     break;

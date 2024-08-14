@@ -251,7 +251,7 @@ void Resource::loadAll
         Resource* resource = nullptr;
         switch (type)
         {
-            case Type::Texture2D :
+            default :
                 continue;
             case Type::AnimatedTexture2D :
                 resource = AnimatedTexture2DResource::load(ioResource, resources);

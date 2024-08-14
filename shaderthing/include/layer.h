@@ -180,7 +180,8 @@ public:
     Layer
     (
         const std::vector<Layer*>& layers,
-        const SharedUniforms& sharedUniforms
+        const SharedUniforms& sharedUniforms,
+        const bool compileShader = true
     );
     ~Layer();
     
