@@ -153,6 +153,19 @@ Resource* Resource::create
     return nullptr;
 }
 
+Resource* Resource::create
+(
+    unsigned int width, 
+    unsigned int height, 
+    InternalFormat internalFormat
+)
+{
+    auto resource = new Texture2DResource();
+    if (resource->set(width, height, internalFormat))
+        return resource;
+    delete resource;
+}
+
 Resource* Resource::create(const std::vector<Texture2DResource*>& frames)
 {
     auto resource = new AnimatedTexture2DResource();
@@ -351,6 +364,25 @@ bool Texture2DResource::set(const unsigned char* rawData, unsigned int size)
     SET_NATIVE_AND_RAW_AND_RETURN(rawData, size)
 }
 
+bool Texture2DResource::set
+(
+    unsigned int width, 
+    unsigned int height, 
+    InternalFormat internalFormat
+)
+{
+    auto native = vir::TextureBuffer2D::create
+    (
+        nullptr, 
+        width, 
+        height, 
+        internalFormat
+    );
+    if (native == nullptr)
+        return false;
+    SET_NATIVE_AND_RAW_AND_RETURN(nullptr, 0)
+}
+
 Texture2DResource::~Texture2DResource()
 {
     if (native_ != nullptr)
@@ -372,8 +404,14 @@ void Texture2DResource::save(ObjectIO& io)
     io.write("magFilterMode", (int)magFilterMode());
     io.write("minFilterMode", (int)minFilterMode());
     io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
-    io.write("originalFileExtension", originalFileExtension_.c_str());
-    io.write("data", (const char*)rawData_, rawDataSize_, true);
+    io.write("width", native_->width());
+    io.write("height", native_->height());
+    io.write("internalFormat", (int)native_->internalFormat());
+    if (rawData_ != nullptr)
+    {
+        io.write("originalFileExtension", originalFileExtension_.c_str());
+        io.write("data", (const char*)rawData_, rawDataSize_, true);
+    }
     io.writeObjectEnd();
 }
 
@@ -381,10 +419,23 @@ Texture2DResource* Texture2DResource::load(const ObjectIO& io)
 {
     auto resource = new Texture2DResource();
     unsigned int rawDataSize;
-    const char* rawData = io.read("data", true, &rawDataSize);
-    resource->set((unsigned char*)rawData, rawDataSize);
+    if (io.hasMember("data"))
+    {
+        const char* rawData = io.read("data", true, &rawDataSize);
+        resource->set((unsigned char*)rawData, rawDataSize);
+        resource->originalFileExtension_ = 
+            io.read("originalFileExtension", false);
+    }
+    else
+    {
+        unsigned int width, height;
+        width = io.read<unsigned int>("width");
+        height = io.read<unsigned int>("height");
+        InternalFormat internalFormat = 
+            (InternalFormat)io.read<unsigned int>("internalFormat");
+        resource->set(width, height, internalFormat);
+    }
     resource->setName(io.name());
-    resource->originalFileExtension_ = io.read("originalFileExtension", false);
     resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
     resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
     auto wrapModes = io.read<glm::ivec2>("wrapModes");
@@ -797,15 +848,15 @@ void Resource::renderResourcesGui
                 ImGui::EndTooltip();
             }
         };
-        if 
+        if (resource->isInternalFormatUnsigned())
+            ImGui::Text("N/A");
+        else if 
         (
             resource->type_ == Resource::Type::Texture2D ||
             resource->type_ == Resource::Type::AnimatedTexture2D ||
             resource->type_ == Resource::Type::Framebuffer
         )
-        {
             previewTexture2D(resource, 1.4*fontSize, 1.3*fontSize);
-        }
         else if (resource->type_ == Resource::Type::Cubemap)
         {
             auto cubemap = (CubemapResource*)resource;
@@ -872,6 +923,11 @@ void Resource::renderResourcesGui
                 resource,
                 ImVec2(buttonWidth, 0),
                 true
+            );
+            Resource::createOrResizeTextureButtonGui
+            (
+                resource, 
+                ImVec2(buttonWidth, 0)
             );
             Resource::createOrEditAnimationButtonGui
             (
@@ -1072,6 +1128,183 @@ bool Resource::loadOrReplaceTextureOrAnimationButtonGui
     if (disabled)
         ImGui::EndDisabled();
     return false;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Resource::createOrResizeTextureButtonGui
+(
+    Resource*& resource,
+    const ImVec2 size
+)
+{
+    bool valid = false;
+    static glm::ivec2 resolution(1, 1);
+    static InternalFormat internalFormat = InternalFormat::RGBA_SF_32;
+    if 
+    (
+        ImGui::Button
+        (
+            resource == nullptr ? "Create texture" : "Resize/reformat",
+            size
+        )
+    )
+    {
+        ImGui::OpenPopup("##createOrResizeTexturePopup");
+        if (resource == nullptr)
+        {
+            resolution = {1,1};
+            internalFormat = InternalFormat::RGBA_SF_32;
+        }
+        else
+        {
+            resolution.x = resource->width();
+            resolution.y = resource->height();
+            internalFormat = ((Texture2DResource*)resource)->internalFormat();
+        }
+    }
+    if (ImGui::BeginPopup("##createOrResizeTexturePopup"))
+    {
+        if (resource == nullptr)
+        {
+            ImGui::Text(
+R"(Create a blank texture, useful for e.g., 
+shader data storage via imageLoad and
+imageStore operations. Data written to 
+these textures will not be saved within 
+the project)");
+            ImGui::Separator();
+        }
+        ImGui::Text("Resolution ");
+        ImGui::SameLine();
+        float itemWidth = resource == nullptr ? -1 : 12*ImGui::GetFontSize();
+        ImGui::PushItemWidth(itemWidth);
+        if 
+        (
+            ImGui::InputInt2
+            (
+                "##windowResolution", 
+                glm::value_ptr(resolution)
+            )
+        )
+        {
+            resolution.x = std::min(std::max(resolution.x, 1), 4096);
+            resolution.y = std::min(std::max(resolution.y, 1), 4096);
+        }
+        ImGui::PopItemWidth();
+        
+        ImGui::Text("Format     ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(itemWidth);
+        // RGB formats are not easy to work with due to memory-alignment 
+        // limitations so they are omitted
+        static std::vector<InternalFormat> supportedFormats = 
+        {
+            InternalFormat::R_UI_32,
+            InternalFormat::R_SF_32,
+            InternalFormat::RG_UI_32,
+            InternalFormat::RG_SF_32,
+            InternalFormat::RGBA_UI_32,
+            InternalFormat::RGBA_SF_32
+        };
+        if
+        (
+            ImGui::BeginCombo
+            (
+                "##textureFormatCombo",
+                vir::TextureBuffer2D::internalFormatToName.at
+                (
+                    internalFormat
+                ).c_str()
+            )
+        )
+        {
+            for (auto format : supportedFormats)
+            {
+                if 
+                (
+                    ImGui::Selectable
+                    (
+                        vir::TextureBuffer2D::internalFormatToName.at
+                        (
+                            format
+                        ).c_str()
+                    )
+                )
+                {
+                    internalFormat = format;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
+        bool disabled = false;
+        if (resource != nullptr)
+        {
+            if 
+            (
+                resource->width() == resolution.x && 
+                resource->height() == resolution.y && 
+                resource->internalFormat() == internalFormat
+            )
+            {
+                ImGui::BeginDisabled();
+                disabled = true;
+            }
+        }
+        if 
+        (
+            ImGui::Button
+            (
+                resource == nullptr ? "Create texture" : "Resize or reformat", 
+                ImVec2(-1, 0)
+            )
+        )
+        {
+            if (resource != nullptr)
+            {
+                auto wrapMode0 = resource->wrapMode(0);
+                auto wrapMode1 = resource->wrapMode(1);
+                auto minFilterMode = resource->minFilterMode();
+                auto magFilterMode = resource->magFilterMode();
+                if 
+                (
+                    ((Texture2DResource*)resource)->set
+                    (
+                        resolution.x, 
+                        resolution.y, 
+                        internalFormat
+                    )
+                )
+                {
+                    valid = true;
+                    resource->setWrapMode(0, wrapMode0);
+                    resource->setWrapMode(1, wrapMode1);
+                    resource->setMinFilterMode(minFilterMode);
+                    resource->setMagFilterMode(magFilterMode);
+                }
+            }
+            else
+            {
+                auto newResource = 
+                    Resource::create
+                    (
+                        resolution.x,
+                        resolution.y,
+                        internalFormat
+                    );
+                if (newResource != nullptr)
+                {
+                    resource = newResource;
+                    valid = true;
+                }
+            }
+        }
+        if (disabled)
+            ImGui::EndDisabled();
+        ImGui::EndPopup();
+    }
+    return valid;
 }
 
 //----------------------------------------------------------------------------//
@@ -1441,6 +1674,11 @@ bool Resource::exportTextureOrAnimationButtonGui
         )
     )
         return false;
+    if (auto texture2D = dynamic_cast<const Texture2DResource*>(resource))
+    {
+        if (texture2D->rawDataSize_ == 0 || texture2D->rawData_ == 0)
+            return false;
+    }
     if (ImGui::Button("Export", size))
     {
         std::string originalFileExtension = 
@@ -1755,8 +1993,17 @@ affect any cubemaps or animations using this texture)");
                 )
                 {
                     for (auto e : vir::TextureBuffer::filterModeToName)
+                    {
+                        if 
+                        (
+                            resource->isInternalFormatUnsigned() &&
+                            e.first != FilterMode::Linear && 
+                            e.first != FilterMode::Nearest
+                        )
+                            continue;
                         if (ImGui::Selectable(e.second.c_str()))
                             resource->setMinFilterMode(e.first);
+                    }
                     ImGui::EndCombo();
                 }
                 ImGui::PopItemWidth();
@@ -1774,6 +2021,16 @@ affect any cubemaps or animations using this texture)");
                             size, 
                             false
                         );
+                        if 
+                        (
+                            ((Texture2DResource*)resource)->rawData_==nullptr||
+                            ((Texture2DResource*)resource)->rawDataSize_==0
+                        )
+                            createOrResizeTextureButtonGui
+                            (
+                                resource,
+                                size
+                            );
                         break;
                     case Resource::Type::AnimatedTexture2D:
                         

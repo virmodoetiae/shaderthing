@@ -70,6 +70,7 @@ public:
     virtual ~Resource();
     static Resource*     create(const std::string& filepath);
     static Resource*     create(const unsigned char* rawData, unsigned int size, bool gif);
+    static Resource*     create(unsigned int width, unsigned int height, InternalFormat internalFormat);
     static Resource*     create(const std::vector<Texture2DResource*>& frames);
     static Resource*     create(const Texture2DResource* faces[6]);
     static Resource*     create(Layer* layer);
@@ -85,7 +86,9 @@ public:
     virtual WrapMode     wrapMode(int index) const = 0;
     virtual FilterMode   magFilterMode() const = 0;
     virtual FilterMode   minFilterMode() const = 0;
+    virtual InternalFormat internalFormat() const = 0;
     virtual std::string  internalFormatName() const = 0;
+    virtual bool         isInternalFormatUnsigned() const = 0;
     virtual void         setWrapMode(int index, WrapMode mode) = 0;
     virtual void         setMagFilterMode(FilterMode mode) = 0;
     virtual void         setMinFilterMode(FilterMode mode) = 0;
@@ -93,6 +96,8 @@ public:
     std::string          name() const {return namePtr_ == nullptr? "" : *namePtr_;}
     void                 setName(const std::string& name);
     void                 setNamePtr(std::string* namePtr);
+    unsigned int         textureUnit() const {return textureUnit_;}
+    unsigned int         imageUnit() const {return imageUnit_;}
 
     static bool isGuiOpen;
     static bool isGuiDetachedFromMenu;
@@ -155,6 +160,11 @@ private:
         const bool animation=false,
         const bool disabled=false
     );
+    static bool createOrResizeTextureButtonGui
+    (
+        Resource*& resource,
+        const ImVec2 size=ImVec2(0,0)
+    );
     static bool createOrEditAnimationButtonGui
     (
         Resource*& resource,
@@ -192,7 +202,9 @@ private:
     WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}                \
     FilterMode   magFilterMode() const override {return native_->magFilterMode();}                    \
     FilterMode   minFilterMode() const override {return native_->minFilterMode();}                    \
+    InternalFormat internalFormat() const override {return native_->internalFormat();}                \
     std::string  internalFormatName() const override {return vir::TextureBuffer::internalFormatToShortName.at(native_->internalFormat());} \
+    bool         isInternalFormatUnsigned() const override {return native_->isInternalFormatUnsigned();} \
     void         setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
     void         setMagFilterMode(FilterMode mode) override {native_->setMagFilterMode(mode);}        \
     void         setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}
@@ -217,6 +229,7 @@ public:
     ~Texture2DResource();
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
+    bool set(unsigned int width, unsigned int height, InternalFormat internalFormat);
     DECLARE_OVERRIDE_VIRTUALS
 };
 
@@ -298,7 +311,9 @@ public:
     WrapMode     wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
     FilterMode   magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
     FilterMode   minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
+    InternalFormat internalFormat() const override {return (*native_)->colorBufferInternalFormat();}
     std::string  internalFormatName() const override {return vir::TextureBuffer::internalFormatToShortName.at((*native_)->colorBufferInternalFormat());}
+    bool         isInternalFormatUnsigned() const override {return false;}
     void         setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
     void         setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
     void         setMinFilterMode(FilterMode mode) override{(*native_)->setColorBufferMinFilterMode(mode);}

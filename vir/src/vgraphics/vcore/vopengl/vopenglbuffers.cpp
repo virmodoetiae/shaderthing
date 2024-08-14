@@ -13,18 +13,32 @@ GLint OpenGLInternalFormat(TextureBuffer::InternalFormat internalFormat)
             return GL_R8;
         case TextureBuffer::InternalFormat::R_UI_8 :
             return GL_R8UI;
+        case TextureBuffer::InternalFormat::R_UI_32 :
+            return GL_R32UI;
+        case TextureBuffer::InternalFormat::R_SF_32 :
+            return GL_R32F;
         case TextureBuffer::InternalFormat::RG_UNI_8 :
             return GL_RG8;
         case TextureBuffer::InternalFormat::RG_UI_8 :
             return GL_RG8UI;
+        case TextureBuffer::InternalFormat::RG_UI_32 :
+            return GL_RG32UI;
+        case TextureBuffer::InternalFormat::RG_SF_32 :
+            return GL_RG32F;
         case TextureBuffer::InternalFormat::RGB_UNI_8 :
             return GL_RGB8;
         case TextureBuffer::InternalFormat::RGB_UI_8 :
             return GL_RGB8UI;
+        case TextureBuffer::InternalFormat::RGB_UI_32 :
+            return GL_RGB32UI;
+        case TextureBuffer::InternalFormat::RGB_SF_32 :
+            return GL_RGB32F;
         case TextureBuffer::InternalFormat::RGBA_UNI_8 :
             return GL_RGBA8;
         case TextureBuffer::InternalFormat::RGBA_UI_8 :
             return GL_RGBA8UI;
+        case TextureBuffer::InternalFormat::RGBA_UI_32 :
+            return GL_RGBA32UI;
         case TextureBuffer::InternalFormat::RGBA_SF_32 :
             return GL_RGBA32F;
     }
@@ -38,19 +52,33 @@ GLint OpenGLFormat(TextureBuffer::InternalFormat internalFormat)
         case TextureBuffer::InternalFormat::R_UNI_8 :
             return GL_RED;
         case TextureBuffer::InternalFormat::R_UI_8 :
+            return GL_RED_INTEGER;
+        case TextureBuffer::InternalFormat::R_UI_32 :
+            return GL_RED_INTEGER;
+        case TextureBuffer::InternalFormat::R_SF_32 :
             return GL_RED;
         case TextureBuffer::InternalFormat::RG_UNI_8 :
             return GL_RG;
         case TextureBuffer::InternalFormat::RG_UI_8 :
+            return GL_RG_INTEGER;
+        case TextureBuffer::InternalFormat::RG_UI_32 :
+            return GL_RG_INTEGER;
+        case TextureBuffer::InternalFormat::RG_SF_32 :
             return GL_RG;
         case TextureBuffer::InternalFormat::RGB_UNI_8 :
             return GL_RGB;
         case TextureBuffer::InternalFormat::RGB_UI_8 :
+            return GL_RGB_INTEGER;
+        case TextureBuffer::InternalFormat::RGB_UI_32 :
+            return GL_RGB_INTEGER;
+        case TextureBuffer::InternalFormat::RGB_SF_32 :
             return GL_RGB;
         case TextureBuffer::InternalFormat::RGBA_UNI_8 :
             return GL_RGBA;
         case TextureBuffer::InternalFormat::RGBA_UI_8 :
-            return GL_RGBA;
+            return GL_RGBA_INTEGER;
+        case TextureBuffer::InternalFormat::RGBA_UI_32 :
+            return GL_RGBA_INTEGER;
         case TextureBuffer::InternalFormat::RGBA_SF_32 :
             return GL_RGBA;
     }
@@ -69,8 +97,15 @@ GLint OpenGLType(TextureBuffer::InternalFormat internalFormat)
         case TextureBuffer::InternalFormat::RGB_UI_8 :
         case TextureBuffer::InternalFormat::RGBA_UNI_8 :
         case TextureBuffer::InternalFormat::RGBA_UI_8 :
-            return GL_UNSIGNED_BYTE;    // Not sure if the UIs should be 
-                                        // GL_UNSIGNED_INT instead
+            return GL_UNSIGNED_BYTE;
+        case TextureBuffer::InternalFormat::R_UI_32 :
+        case TextureBuffer::InternalFormat::RG_UI_32 :
+        case TextureBuffer::InternalFormat::RGB_UI_32 :
+        case TextureBuffer::InternalFormat::RGBA_UI_32 :
+            return GL_UNSIGNED_INT;
+        case TextureBuffer::InternalFormat::R_SF_32 :
+        case TextureBuffer::InternalFormat::RG_SF_32 :
+        case TextureBuffer::InternalFormat::RGB_SF_32 :
         case TextureBuffer::InternalFormat::RGBA_SF_32 :
             return GL_FLOAT;
     }
@@ -149,12 +184,22 @@ TextureBuffer2D(data, width, height, internalFormat)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, 
         filterModeToGLint_.at(magFilterMode_));
     // Zoom out filter
+    internalFormat_ = internalFormat;
+    if 
+    (
+        isInternalFormatUnsigned() &&
+        (
+            minFilterMode_ != TextureBuffer::FilterMode::Nearest &&
+            minFilterMode_ != TextureBuffer::FilterMode::Linear
+        )
+    )
+        minFilterMode_ = FilterMode::Linear;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, 
         filterModeToGLint_.at(minFilterMode_));
 
     // Create texture
     GLint glFormat = OpenGLFormat(internalFormat);
-    if (glFormat != GL_RGBA)
+    if (glFormat != GL_RGBA && glFormat != GL_RGBA_INTEGER)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     else
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
@@ -163,12 +208,12 @@ TextureBuffer2D(data, width, height, internalFormat)
     (
         GL_TEXTURE_2D, 
         0, 
-        glInternalFormat, 
+        glInternalFormat, // GL_RGB8UI
         width, 
         height, 
         0, 
-        glFormat, 
-        OpenGLType(internalFormat),
+        glFormat, // GL_RGBA_INTEGER
+        OpenGLType(internalFormat), // GL_UNSIGNED_BYTE
         data
     );
     
@@ -191,7 +236,6 @@ TextureBuffer2D(data, width, height, internalFormat)
     glGenerateMipmap(GL_TEXTURE_2D);
     width_ = width;
     height_ = height;
-    internalFormat_ = internalFormat;
     nChannels_ = TextureBuffer::nChannels(internalFormat);
 }
 
@@ -236,6 +280,19 @@ void OpenGLTextureBuffer2D::setMinFilterMode
     TextureBuffer::FilterMode mode
 )
 {
+    if // Setting a mipmap based filtering mode to an unsigned int texture
+       // format will render it unusable/unwritable/unreadable (as long as a
+       // mipmap based filter mode is set). Thus, prevent such filtering modes
+       // to be set in such a scenario
+    (
+        isInternalFormatUnsigned() &&
+        (
+            mode != TextureBuffer::FilterMode::Nearest &&
+            mode != TextureBuffer::FilterMode::Linear
+        )
+    )
+        return;
+
     glBindTexture(GL_TEXTURE_2D, id_);
     if 
     (
@@ -591,6 +648,18 @@ void OpenGLCubeMapBuffer::setMinFilterMode
     TextureBuffer::FilterMode mode
 )
 {
+    if // Setting a mipmap based filtering mode to an unsigned int texture
+       // format will render it unusable/unwritable/unreadable (as long as a
+       // mipmap based filter mode is set). Thus, prevent such filtering modes
+       // to be set in such a scenario
+    (
+        isInternalFormatUnsigned() &&
+        (
+            mode != TextureBuffer::FilterMode::Nearest &&
+            mode != TextureBuffer::FilterMode::Linear
+        )
+    )
+        return;
     glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
     if 
     (

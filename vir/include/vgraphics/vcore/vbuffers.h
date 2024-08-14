@@ -20,19 +20,25 @@ public:
     // - UNI, unsigned normalized integer, [0-255] but treated as [0.0-1.0]
     // - UI, unsigned integer
     // - SF, signed float
-    // The last number is the bit depth of each component.
-    // A very limited number of formats is implemented for now
+    // The last number is the bit depth of each component
     enum class InternalFormat
     {
         Undefined = 0,
         R_UNI_8 = 1,
         R_UI_8 = 2,
+        R_UI_32 = 13,
+        R_SF_32 = 10,
         RG_UNI_8 = 3,
         RG_UI_8 = 4,
+        RG_UI_32 = 14,
+        RG_SF_32 = 11,
         RGB_UNI_8 = 5,
         RGB_UI_8 = 6,
+        RGB_UI_32 = 15,
+        RGB_SF_32 = 12,
         RGBA_UNI_8 = 7,
         RGBA_UI_8 = 8,
+        RGBA_UI_32 = 16,
         RGBA_SF_32 = 9
     };
     enum class WrapMode
@@ -61,6 +67,8 @@ public:
         internalFormatToName;
     static const std::unordered_map<InternalFormat, std::string>
         internalFormatToShortName;
+    static const std::unordered_map<InternalFormat, bool> 
+        internalFormatToIsUnsigned;
     static const std::unordered_map<WrapMode, std::string> wrapModeToName;
     static const std::unordered_map<FilterMode, std::string> filterModeToName;
 protected:
@@ -90,6 +98,10 @@ public:
     WrapMode wrapMode(uint32_t index) const {return wrapModes_[index];}
     FilterMode magFilterMode() const {return magFilterMode_;}
     FilterMode minFilterMode() const {return minFilterMode_;}
+    bool isInternalFormatUnsigned() const 
+    {
+        return internalFormatToIsUnsigned.at(internalFormat_);
+    }
     virtual void bind(uint32_t  unit) = 0;
     virtual void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode)=0;
     virtual void unbind() = 0;

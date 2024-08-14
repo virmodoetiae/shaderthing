@@ -632,6 +632,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
             // If the uniform has no name, I can't add it to the source
             if (u->name.size() == 0)
                 continue;
+            std::string uniformTypeName = vir::Shader::uniformTypeToName[u->type];
             switch (u->type)
             {
                 case vir::Shader::Variable::Type::Image2D :
@@ -641,13 +642,22 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                     header += 
                         "layout(binding="+std::to_string(imageBindingPoint++)+
                         ", "+resource->internalFormatName()+") ";
+                    if (resource->internalFormatName().find("ui") != std::string::npos)
+                        uniformTypeName = "u"+uniformTypeName;
+                    break;
+                }
+                case vir::Shader::Variable::Type::Sampler2D :
+                case vir::Shader::Variable::Type::SamplerCube :
+                {
+                     auto resource = u->getValuePtr<Resource>();
+                    if (resource->internalFormatName().find("ui") != std::string::npos)
+                        uniformTypeName = "u"+uniformTypeName;
+                    break;
                 }
                 default :
                     break;
             }
-            header += 
-                "uniform "+vir::Shader::uniformTypeToName[u->type]+" "+
-                u->name+";\n";
+            header += "uniform "+uniformTypeName+" "+u->name+";\n";
             ++nLines;
             // Automatically managed sampler2D or image2D resolution and aspect
             // ratio uniforms
@@ -1018,13 +1028,6 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
 
 //----------------------------------------------------------------------------//
 
-// TODO : modify so that layers that render both to their internal framebuffer 
-// and the screen have their framebuffers rendered to screen only AFTER all
-// of the layer shaders have been rendered (as, given the new functionality
-// introduced by image2D support, some later render calls to other layers
-// may actively overwrite the framebuffer of already rendered layers, so we
-// want to delay the rendering of the framebuffers to screen at the very last,
-// after all layer shaders have been executed)
 void Layer::renderShader
 (
     vir::Framebuffer* target,
@@ -1091,26 +1094,38 @@ void Layer::renderShader
                         sourceFramebuffer = postProcess->outputFramebuffer();
                 }
                 if (isSampler)
-                    sourceFramebuffer->bindColorBuffer(textureUnit++);
+                {
+                    sourceFramebuffer->bindColorBuffer(textureUnit);
+                    shader->setUniformInt(u->name, textureUnit++);
+                }
                 else if (isImage)
+                {
                     sourceFramebuffer->bindColorBufferToImage
                     (
-                        imageUnit++, 
+                        imageUnit, 
                         0, 
                         vir::TextureBuffer::ImageBindMode::ReadWrite
                     );
+                    shader->setUniformInt(u->name, imageUnit++);
+                }
             }
             else
             {
                 if (isSampler)
-                    resource->bind(textureUnit++);
+                {
+                    resource->bind(textureUnit);
+                    shader->setUniformInt(u->name, textureUnit++);
+                }
                 else if (isImage)
+                {
                     resource->bindImage
                     (
-                        imageUnit++, 
+                        imageUnit, 
                         0, 
                         vir::TextureBuffer::ImageBindMode::ReadWrite
                     );
+                    shader->setUniformInt(u->name, imageUnit++);
+                }
             }
             // Set the (automatically managed) sampler2D/image2D resolution
             // uniform value. Should find a better way rather than setting this 
@@ -2139,9 +2154,9 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
         ImGui::Dummy(ImVec2(-1, vSpace));
         ImGui::Text(
 "The previously listed issues are due to the impossibility to query the "
-"graphics driver for detail extension status information. The user is directed "
-"to the KhronosOpenGL Registry for further information regarding specific "
-"extensions");
+"graphics driver for detailed extension status information. The user is "
+"directed to the KhronosOpenGL Registry for further information regarding "
+"specific extensions");
         ImGui::Separator();
         ImGui::Dummy(ImVec2(-1, vSpace));
 

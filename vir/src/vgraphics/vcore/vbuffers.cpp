@@ -18,12 +18,19 @@ const std::unordered_map<TextureBuffer::InternalFormat, std::string>
     {TextureBuffer::InternalFormat::Undefined, "Undefined"},
     {TextureBuffer::InternalFormat::R_UNI_8, "R uint 8-bit norm."},
     {TextureBuffer::InternalFormat::R_UI_8, "R uint 8-bit"},
+    {TextureBuffer::InternalFormat::R_UI_32, "R uint 32-bit"},
+    {TextureBuffer::InternalFormat::R_SF_32, "R float 32-bit"},
     {TextureBuffer::InternalFormat::RG_UNI_8, "RG uint 8-bit norm."},
-    {TextureBuffer::InternalFormat::RG_UI_8, "RG uint 8-bit)"},
+    {TextureBuffer::InternalFormat::RG_UI_8, "RG uint 8-bit"},
+    {TextureBuffer::InternalFormat::RG_UI_32, "RG uint 32-bit"},
+    {TextureBuffer::InternalFormat::RG_SF_32, "RG float 32-bit"},
     {TextureBuffer::InternalFormat::RGB_UNI_8, "RGB uint 8-bit norm."},
-    {TextureBuffer::InternalFormat::RGB_UI_8, "RGB uint 8-bit)"},
+    {TextureBuffer::InternalFormat::RGB_UI_8, "RGB uint 8-bit"},
+    {TextureBuffer::InternalFormat::RGB_UI_32, "RGB uint 32-bit"},
+    {TextureBuffer::InternalFormat::RGB_SF_32, "RGB float 32-bit"},
     {TextureBuffer::InternalFormat::RGBA_UNI_8, "RGBA uint 8-bit norm."},
     {TextureBuffer::InternalFormat::RGBA_UI_8, "RGBA uint 8-bit"},
+    {TextureBuffer::InternalFormat::RGBA_UI_32, "RGBA uint 32-bit"},
     {TextureBuffer::InternalFormat::RGBA_SF_32, "RGBA float 32-bit"},
 };
 
@@ -33,13 +40,42 @@ const std::unordered_map<TextureBuffer::InternalFormat, std::string>
     {TextureBuffer::InternalFormat::Undefined, "undefined"},
     {TextureBuffer::InternalFormat::R_UNI_8, "r8"},
     {TextureBuffer::InternalFormat::R_UI_8, "r8ui"},
+    {TextureBuffer::InternalFormat::R_UI_32, "r32ui"},
+    {TextureBuffer::InternalFormat::R_SF_32, "r32f"},
     {TextureBuffer::InternalFormat::RG_UNI_8, "rg8"},
     {TextureBuffer::InternalFormat::RG_UI_8, "rg8ui"},
-    {TextureBuffer::InternalFormat::RGB_UNI_8, "rgb8"},
-    {TextureBuffer::InternalFormat::RGB_UI_8, "rgb8ui"},
+    {TextureBuffer::InternalFormat::RG_UI_32, "rg32ui"},
+    {TextureBuffer::InternalFormat::RG_SF_32, "rg32f"},
+    {TextureBuffer::InternalFormat::RGB_UNI_8, "rgba8"}, // rgb8 does not exist
+    {TextureBuffer::InternalFormat::RGB_UI_8, "rgba8ui"}, // rgb8ui does not exist
+    {TextureBuffer::InternalFormat::RGB_UI_32, "rgba32ui"}, // rgb32ui does not exist
+    {TextureBuffer::InternalFormat::RGB_SF_32, "rgba32f"}, // rgb32f does not exist
     {TextureBuffer::InternalFormat::RGBA_UNI_8, "rgba8"},
     {TextureBuffer::InternalFormat::RGBA_UI_8, "rgba8ui"},
+    {TextureBuffer::InternalFormat::RGBA_UI_32, "rgba32ui"},
     {TextureBuffer::InternalFormat::RGBA_SF_32, "rgba32f"},
+};
+
+const std::unordered_map<TextureBuffer::InternalFormat, bool> 
+    TextureBuffer::internalFormatToIsUnsigned =
+{
+    {TextureBuffer::InternalFormat::Undefined, false},
+    {TextureBuffer::InternalFormat::R_UNI_8, false}, // Normalized behaves like float
+    {TextureBuffer::InternalFormat::R_UI_8, true},
+    {TextureBuffer::InternalFormat::R_UI_32, true},
+    {TextureBuffer::InternalFormat::R_SF_32, false},
+    {TextureBuffer::InternalFormat::RG_UNI_8, false}, // Normalized behaves like float
+    {TextureBuffer::InternalFormat::RG_UI_8, true},
+    {TextureBuffer::InternalFormat::RG_UI_32, true},
+    {TextureBuffer::InternalFormat::RG_SF_32, false},
+    {TextureBuffer::InternalFormat::RGB_UNI_8, false}, // Normalized behaves like float
+    {TextureBuffer::InternalFormat::RGB_UI_8, true},
+    {TextureBuffer::InternalFormat::RGB_UI_32, true},
+    {TextureBuffer::InternalFormat::RGB_SF_32, false},
+    {TextureBuffer::InternalFormat::RGBA_UNI_8, false}, // Normalized behaves like float
+    {TextureBuffer::InternalFormat::RGBA_UI_8, true},
+    {TextureBuffer::InternalFormat::RGBA_UI_32, true},
+    {TextureBuffer::InternalFormat::RGBA_SF_32, false},
 };
 
 const std::unordered_map<TextureBuffer::WrapMode, std::string> 

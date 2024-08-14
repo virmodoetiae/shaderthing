@@ -3444,22 +3444,31 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
             langDef.keywords.insert(k);
 
         static const char* const identifiers[] = {
-            "abs", "acos", "acosh", "all", "any", "asin", "asinh", "atan", "atanh",
-            "atomicAdd", "atomicAnd", "atomicCompSwap", "atomicExchange", "atomicMax", "atmoicMin", 
-            "atomicOr", "atomicSub", "atomicXor", 
-            "ceil", "clamp", "cos", "cosh", "cross", "determinant", "degrees", "distance",
-            "dot", "equal", "exp", "exp2", "faceforward", "floatBitsToInt", "floatBitsToUint", "floor", "fma", "fract", "frexp",
-            "greaterThan", "greaterThanEqual", "intBitsToFloat", "inversesqrt", "length", "lessThan", "lessThanEqual",
-            "log", "log2", "matrixCompMult", "max", "min", "mix", "memoryBarrier", "mod", "modf", "normalize",
-            "not", "notEqual", "outerProduct", "packSnorm2x16", "packSnorm4x8", "packUnorm2x16",
-            "packUnorm4x8", "pow", "radians", "reflect", "refract", "round", "roundEven",
-            "sign", "sin", "sinh", "smoothstep", "sqrt", "step", "tan", "tanh", "texelFetch",
-            "texelFetchOffset", "texture", "textureGather", "textureGatherOffset",
-            "textureGatherOffsets", "textureGrad", "textureGradOffset", "textureLod",
-            "textureLodOffset", "textureProj", "textureProjGrad", "textureProjGradOffset",
-            "textureProjLod", "textureProjLodOffset", "textureSize", "transpose",
-            "trunc", "unpackSnorm2x16", "unpackSnorm4x8", "unpackUnorm2x16",
-            "unpackUnorm4x8", "uaddCarry", "uintBitsToFloat", "umulExtended", "usubBorrow"
+            "abs", "acos", "acosh", "all", "any", "asin", "asinh", "atan", 
+            "atanh", "atomicAdd", "atomicAnd", "atomicCompSwap", 
+            "atomicExchange", "atomicMax", "atmoicMin", "atomicOr", "atomicXor",
+            "ceil", "clamp", "cos", "cosh", "cross", "determinant", "degrees", 
+            "distance", "dot", "equal", "exp", "exp2", "faceforward", 
+            "floatBitsToInt", "floatBitsToUint", "floor", "fma", "fract", 
+            "frexp", "greaterThan", "greaterThanEqual", "imageLoad", 
+            "imageSize", "imageStore", "imageAtomicAdd", "imageAtomicAnd", 
+            "imageAtomicCompSwap", "imageAtomicExchange", "imageAtomicMax", 
+            "imageAtmoicMin", "imageAtomicOr", "imageAtomicXor", 
+            "intBitsToFloat", "inversesqrt", "length", "lessThan", 
+            "lessThanEqual", "log", "log2", "matrixCompMult", "max", "min", 
+            "mix", "memoryBarrier", "mod", "modf", "normalize", "not", 
+            "notEqual", "outerProduct", "packSnorm2x16", "packSnorm4x8", 
+            "packUnorm2x16", "packUnorm4x8", "pow", "radians", "reflect", 
+            "refract", "round", "roundEven", "sign", "sin", "sinh", 
+            "smoothstep", "sqrt", "step", "tan", "tanh", "texelFetch", 
+            "texelFetchOffset", "texture", "textureGather", 
+            "textureGatherOffset", "textureGatherOffsets", "textureGrad", 
+            "textureGradOffset", "textureLod", "textureLodOffset", 
+            "textureProj", "textureProjGrad", "textureProjGradOffset", 
+            "textureProjLod", "textureProjLodOffset", "textureSize", 
+            "transpose", "trunc", "unpackSnorm2x16", "unpackSnorm4x8", 
+            "unpackUnorm2x16", "unpackUnorm4x8", "uaddCarry", 
+            "uintBitsToFloat", "umulExtended", "usubBorrow"
         };
         for (auto& k : identifiers)
         {
