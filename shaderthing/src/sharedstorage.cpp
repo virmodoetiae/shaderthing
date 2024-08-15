@@ -35,13 +35,10 @@ SharedStorage::SharedStorage()
         isSupported_ = true;
     if (isSupported_)
     {
-        buffer_ = vir::ShaderStorageBuffer::create(Block::size);
+        buffer_ = vir::ShaderStorageBuffer::create(block_.size);
         buffer_->bind();
         buffer_->setBindingPoint(bindingPoint_);
-        block_.dataStart = buffer_->mapData();
-        block_.ioIntData = (int*)block_.dataStart;
-        block_.ioVec4Data = 
-            (glm::vec4*)(block_.ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE);
+        block_.initialize(buffer_);
         gui_.ioVec4DataViewFormat =
         (
             "%."+
@@ -154,15 +151,15 @@ void SharedStorage::cpuMemoryBarrier() const
 void SharedStorage::bindShader(vir::Shader* shader)
 {
     if (isSupported_)
-        shader->bindShaderStorageBlock(Block::glslName, bindingPoint_);
+        shader->bindShaderStorageBlock(block_.glslName, bindingPoint_);
 }
 
 //----------------------------------------------------------------------------//
 
-const char* SharedStorage::glslBlockSource() const
+std::string SharedStorage::glslBlockSource() const
 {
     if (isSupported_)
-        return block_.glslSource;
+        return block_.glslSource();
     return "";
 }
 
@@ -396,7 +393,7 @@ void SharedStorage::renderGui()
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("%d", row);
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%d", block_.ioIntData[row]);
+                ImGui::Text(block_.intFormat(), block_.ioIntData[row]);
                 ImGui::PopID();
             }
             ImGui::EndTable();
@@ -446,9 +443,11 @@ void SharedStorage::renderGui()
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("%d", row);
                 ImGui::TableSetColumnIndex(1);
-                const glm::vec4& value = block_.ioVec4Data[row];
+                const auto& value = block_.ioVec4Data[row];
                 if (gui_.isVec4DataAlsoShownAsColor)
                 {
+                    // Has to be (possibly) downcasted to a float to work with 
+                    // ColorEdit4
                     glm::vec4 valueCopy(value);
                     ImGui::ColorEdit4
                     (

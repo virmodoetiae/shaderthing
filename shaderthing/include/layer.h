@@ -201,7 +201,11 @@ public:
     void resetAfterExport();
     bool removeResourceFromUniforms(const Resource* resource);
     
-    bool compileShader(const SharedUniforms& sharedUniforms);
+    bool compileShader
+    (
+        const SharedUniforms& sharedUniforms, 
+        bool setBlankShaderOnError=false
+    );
     void renderShader
     (
         vir::Framebuffer* target, 

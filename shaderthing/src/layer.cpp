@@ -221,7 +221,7 @@ R"(void main()
 
     // Compile shader
     if (compileShader)
-        this->compileShader(sharedUniforms);
+        this->compileShader(sharedUniforms, true);
 
     // Set depth (also inits rendering quad on first call)
     setDepth((float)layers.size()/Layer::nMaxLayers);
@@ -530,24 +530,12 @@ void Layer::loadAll
     // Compile all layer shaders after dependencies have been re-established
     for (auto* layer : layers)
     {
-        // If the project was saved in a state such that the shader has compilation
-        // errors, then initialize the shader with the blank shader source (back-end
-        // -only, the user will still see the source of the saved shader with the 
-        // usual list of compilation errors and markers)
-        if (!layer->compileShader(sharedUniforms))
-        {
-            layer->rendering_.shader = 
-                vir::Shader::create
-                    (
-                        vertexShaderSource(sharedUniforms),
-                        glslDirectives()+
-    R"(out vec4 fragColor;
-    in     vec2 qc;
-    in     vec2 tc;
-    void main(){fragColor = vec4(0, 0, 0, .5);})",
-                        vir::Shader::ConstructFrom::SourceCode
-                    );
-        }
+        // If the project was saved in a state such that the shader has 
+        // compilation errors, then initialize the shader with the blank shader 
+        // source (back-end-only, the user will still see the source of the 
+        // saved shader with the  usual list of compilation errors and markers).
+        // This is what the last flag is for
+        layer->compileShader(sharedUniforms, true);
     }
 }
 
@@ -910,7 +898,11 @@ void Layer::clearFramebuffers()
 
 //----------------------------------------------------------------------------//
 
-bool Layer::compileShader(const SharedUniforms& sharedUniforms)
+bool Layer::compileShader
+(
+    const SharedUniforms& sharedUniforms,
+    bool setBlankShaderOnError
+)
 {
     auto headerAndLineCount = 
         fragmentShaderHeaderSourceAndLineCount(sharedUniforms);
@@ -1032,6 +1024,24 @@ bool Layer::compileShader(const SharedUniforms& sharedUniforms)
     setEditorErrors(gui_.sourceEditor, sourceErrors);
     setEditorErrors(gui_.sharedSourceEditor, sharedErrors);
     delete shader;
+    if (setBlankShaderOnError)
+    {
+        // Initialize the shader with a blank shader source if any compilation
+        // errors are detected (back-end-only, the user will still see the 
+        // source of the failed-compilation shader with the full list of 
+        // compilation errors and markers)
+        rendering_.shader = 
+            vir::Shader::create
+                (
+                    vertexShaderSource(sharedUniforms),
+                    glslDirectives()+
+R"(out vec4 fragColor;
+in     vec2 qc;
+in     vec2 tc;
+void main(){fragColor = vec4(0, 0, 0, .5);})",
+                    vir::Shader::ConstructFrom::SourceCode
+                );
+    }
     return false;
 }
 

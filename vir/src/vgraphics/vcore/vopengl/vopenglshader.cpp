@@ -98,7 +98,11 @@ void OpenGLShader::parseCompilationErrorLog
             }
             else if (lineNo.size() > 0 && log[i] == '\n')
             {
-                errors.insert({std::stoi(lineNo), log.substr(i0, i-i0)});
+                int iLine = std::stoi(lineNo);
+                if (errors.find(iLine) == errors.end())
+                    errors.insert({iLine, log.substr(i0, i-i0)});
+                else
+                    errors[iLine] += "\n"+log.substr(i0, i-i0);
                 lineNo.clear();
                 readErrorIndex = true;
             }
@@ -110,7 +114,10 @@ void OpenGLShader::parseCompilationErrorLog
         parsingFailed = true;
     }
     if (errors.size() == 0 || parsingFailed)
+    {
+        errors.clear();
         errors.insert({0, log});
+    }
 }
 
 // Public member functions ---------------------------------------------------//
