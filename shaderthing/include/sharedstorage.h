@@ -99,7 +99,7 @@ sVec4Type+" ioVec4Data[];}; // Dynamic size up to 2097152 (==2048*1024)\n";
             dataStart = buffer->mapData();
             ioIntData = (intType*)dataStart;
             ioVec4Data = 
-                (vec4Type*)(ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE*intSize);
+                (vec4Type*)(ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE);
         }
     };
 
