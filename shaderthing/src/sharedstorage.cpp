@@ -135,7 +135,7 @@ void SharedStorage::save(ObjectIO& io) const
     io.writeObjectStart("sharedStorage");
 
     #define WRITE_GUI_ITEM(Name)             \
-        io.write(TO_STRING(Name), gui_.Name);\
+        io.write(TO_STRING(Name), gui_.Name);
 
     WRITE_GUI_ITEM(intDataViewStartIndex)
     WRITE_GUI_ITEM(intDataViewEndIndex)
@@ -148,6 +148,17 @@ void SharedStorage::save(ObjectIO& io) const
     for (int i=0; i<4; i++)
         values[i] = int(gui_.floatDataViewComponents[i]);
     io.write("floatDataViewComponents", values);
+
+    #define WRITE_BLOCK_ITEM(Name)             \
+        io.write(TO_STRING(Name), block_->Name());
+    #define WRITE_BLOCK_ITEM_AS(Name, Type)             \
+        io.write(TO_STRING(Name), (Type)block_->Name());
+    
+    WRITE_BLOCK_ITEM_AS(intType, unsigned int)
+    WRITE_BLOCK_ITEM_AS(floatType, unsigned int)
+    WRITE_BLOCK_ITEM(intDataSize)
+    WRITE_BLOCK_ITEM(floatDataSize)
+    WRITE_BLOCK_ITEM(nFloatComponents)
 
     io.writeObjectEnd();
 }
@@ -163,8 +174,8 @@ SharedStorage* SharedStorage::load(const ObjectIO& io)
     auto ioSS = io.readObject("sharedStorage");
     auto gui = GUI{};
 
-#define READ_GUI_ITEM(Name, Type)                                  \
-    gui.Name = ioSS.readOrDefault<Type>(TO_STRING(Name),gui.Name);
+#define READ_GUI_ITEM(Name, Type)                                           \
+    gui.Name = ioSS.readOrDefault<Type>(TO_STRING(Name), gui.Name);
 
     READ_GUI_ITEM(intDataViewStartIndex, int)
     READ_GUI_ITEM(intDataViewEndIndex, int)
@@ -188,6 +199,26 @@ SharedStorage* SharedStorage::load(const ObjectIO& io)
         (gui.floatDataViewExponentialFormat ? "e" : "f")
     );
     sharedStorage->gui_ = gui;
+
+#define READ_BLOCK_ITEM(Name, Type)                                         \
+    Type Name = ioSS.readOrDefault<Type>(TO_STRING(Name),                   \
+                                  (Type)sharedStorage->block_->Name());
+
+    READ_BLOCK_ITEM(intType, unsigned int)
+    READ_BLOCK_ITEM(floatType, unsigned int)
+    READ_BLOCK_ITEM(intDataSize, unsigned int)
+    READ_BLOCK_ITEM(floatDataSize, unsigned int)
+    READ_BLOCK_ITEM(nFloatComponents, unsigned int)
+
+    sharedStorage->resetBlockAndSSBO
+    (
+        (Block::IntType)intType,
+        (Block::FloatType)floatType,
+        nFloatComponents,
+        intDataSize,
+        floatDataSize
+    );
+
     return sharedStorage;
 }
 
