@@ -152,6 +152,7 @@ protected :
 public :
     OpenGLShaderStorageBuffer(uint32_t size);
     ~OpenGLShaderStorageBuffer();
+    bool canRunOnDeviceInUse() const override;
     void bind() override;
     void unbind() override;
     void setBindingPoint(uint32_t) override;

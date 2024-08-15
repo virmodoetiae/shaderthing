@@ -917,6 +917,17 @@ OpenGLShaderStorageBuffer::~OpenGLShaderStorageBuffer()
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
+bool OpenGLShaderStorageBuffer::canRunOnDeviceInUse() const
+{
+    // Requires OpenGL >= 4.3
+    return
+        (
+            Window::instance()->context()->versionMajor() == 4 &&
+            Window::instance()->context()->versionMinor() >= 3
+        ) ||
+        Window::instance()->context()->versionMajor() > 4;
+}
+
 void OpenGLShaderStorageBuffer::bind()
 {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);

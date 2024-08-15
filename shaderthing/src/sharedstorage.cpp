@@ -26,7 +26,9 @@ void SharedStorage::resetBlockAndSSBO
 (
     Block::IntType intType, 
     Block::FloatType floatType,
-    const unsigned int nFloatComponents
+    const unsigned int nFloatComponents,
+    const unsigned int intDataSize,
+    const unsigned int floatDataSize
 )
 {
     if (block_ != nullptr)
@@ -39,7 +41,7 @@ void SharedStorage::resetBlockAndSSBO
     //-------------------------------------
 #define INITIALIZE_BLOCK_AND_SSBO_0(I, F, N)                                \
 {                                                                           \
-    auto typedBlock = new TypedBlock<I, F, N>();                            \
+    auto typedBlock = new TypedBlock<I, F, N>(intDataSize, floatDataSize);  \
     buffer_ = vir::ShaderStorageBuffer::create(typedBlock->size());         \
     buffer_->bind();                                                        \
     buffer_->setBindingPoint(bindingPoint_);                                \
@@ -93,23 +95,23 @@ default :                                                                   \
 
 SharedStorage::SharedStorage()
 {
-    if 
-    (
-        (
-            vir::Window::instance()->context()->versionMajor() == 4 &&
-            vir::Window::instance()->context()->versionMinor() >= 3
-        ) ||
-        vir::Window::instance()->context()->versionMajor() > 4 // In the future
-    )
-        isSupported_ = true;
+    auto isSupported = [&]()
+    {
+        bool result = false;
+        auto* ssbo = vir::ShaderStorageBuffer::create(1);
+        result = ssbo->canRunOnDeviceInUse();
+        delete ssbo;
+        return result;
+    };
+    isSupported_ = isSupported();
     if (isSupported_)
     {
-        resetBlockAndSSBO(Block::IntType::I32, Block::FloatType::F64);
-        gui_.ioVec4DataViewFormat =
+        resetBlockAndSSBO(Block::IntType::I32, Block::FloatType::F32);
+        gui_.floatDataViewFormat =
         (
             "%."+
-            std::to_string(gui_.ioVec4DataViewPrecision)+
-            (gui_.ioVec4DataViewExponentialFormat ? "e" : "f")
+            std::to_string(gui_.floatDataViewPrecision)+
+            (gui_.floatDataViewExponentialFormat ? "e" : "f")
         );
     }
 }
@@ -135,17 +137,17 @@ void SharedStorage::save(ObjectIO& io) const
     #define WRITE_GUI_ITEM(Name)             \
         io.write(TO_STRING(Name), gui_.Name);\
 
-    WRITE_GUI_ITEM(ioIntDataViewStartIndex)
-    WRITE_GUI_ITEM(ioIntDataViewEndIndex)
-    WRITE_GUI_ITEM(ioVec4DataViewEndIndex)
-    WRITE_GUI_ITEM(ioVec4DataViewStartIndex)
-    WRITE_GUI_ITEM(isVec4DataAlsoShownAsColor)
-    WRITE_GUI_ITEM(ioVec4DataViewPrecision)
-    WRITE_GUI_ITEM(ioVec4DataViewExponentialFormat)
+    WRITE_GUI_ITEM(intDataViewStartIndex)
+    WRITE_GUI_ITEM(intDataViewEndIndex)
+    WRITE_GUI_ITEM(floatDataViewEndIndex)
+    WRITE_GUI_ITEM(floatDataViewStartIndex)
+    WRITE_GUI_ITEM(isFloatDataAlsoShownAsColor)
+    WRITE_GUI_ITEM(floatDataViewPrecision)
+    WRITE_GUI_ITEM(floatDataViewExponentialFormat)
     glm::ivec4 values(4);
     for (int i=0; i<4; i++)
-        values[i] = int(gui_.ioVec4DataViewComponents[i]);
-    io.write("ioVec4DataViewComponents", values);
+        values[i] = int(gui_.floatDataViewComponents[i]);
+    io.write("floatDataViewComponents", values);
 
     io.writeObjectEnd();
 }
@@ -164,26 +166,26 @@ SharedStorage* SharedStorage::load(const ObjectIO& io)
 #define READ_GUI_ITEM(Name, Type)                                  \
     gui.Name = ioSS.readOrDefault<Type>(TO_STRING(Name),gui.Name);
 
-    READ_GUI_ITEM(ioIntDataViewStartIndex, int)
-    READ_GUI_ITEM(ioIntDataViewEndIndex, int)
-    READ_GUI_ITEM(ioVec4DataViewEndIndex, int)
-    READ_GUI_ITEM(ioVec4DataViewStartIndex, int)
-    READ_GUI_ITEM(isVec4DataAlsoShownAsColor, bool)
-    READ_GUI_ITEM(ioVec4DataViewPrecision, int)
-    READ_GUI_ITEM(ioVec4DataViewExponentialFormat, bool)
+    READ_GUI_ITEM(intDataViewStartIndex, int)
+    READ_GUI_ITEM(intDataViewEndIndex, int)
+    READ_GUI_ITEM(floatDataViewEndIndex, int)
+    READ_GUI_ITEM(floatDataViewStartIndex, int)
+    READ_GUI_ITEM(isFloatDataAlsoShownAsColor, bool)
+    READ_GUI_ITEM(floatDataViewPrecision, int)
+    READ_GUI_ITEM(floatDataViewExponentialFormat, bool)
     glm::ivec4 values = 
         ioSS.readOrDefault<glm::ivec4>
         (
-            "ioVec4DataViewComponents", 
+            "floatDataViewComponents", 
             glm::ivec4{1, 1, 1, 1}
         );
     for (int i=0; i<4; i++)
-        gui.ioVec4DataViewComponents[i] = bool(values[i]);
-    gui.ioVec4DataViewFormat =
+        gui.floatDataViewComponents[i] = bool(values[i]);
+    gui.floatDataViewFormat =
     (
         "%."+
-        std::to_string(gui.ioVec4DataViewPrecision)+
-        (gui.ioVec4DataViewExponentialFormat ? "e" : "f")
+        std::to_string(gui.floatDataViewPrecision)+
+        (gui.floatDataViewExponentialFormat ? "e" : "f")
     );
     sharedStorage->gui_ = gui;
     return sharedStorage;
@@ -278,37 +280,37 @@ void SharedStorage::renderGui()
             ImVec2(ImGui::GetContentRegionAvail().x * 0.30f, controlsHeight),
             false
         );
-        ImGui::SeparatorText("ioIntData");
+        ImGui::SeparatorText("intData");
         
         ImGui::Text("View start ");
         ImGui::SameLine();
         ImGui::PushItemWidth(-1);
-        if (ImGui::InputInt("##intStartIndex", &gui_.ioIntDataViewStartIndex))
-            gui_.ioIntDataViewStartIndex = 
+        if (ImGui::InputInt("##intStartIndex", (int*)(&gui_.intDataViewStartIndex)))
+            gui_.intDataViewStartIndex = 
                 std::max
                 (
                     std::min
                     (
-                        gui_.ioIntDataViewStartIndex, 
-                        SHARED_STORAGE_INT_ARRAY_SIZE
+                        gui_.intDataViewStartIndex, 
+                        block_->intDataSize()
                     ),
-                    0
+                    0u
                 );
         ImGui::PopItemWidth();
         
         ImGui::Text("View end   ");
         ImGui::SameLine();
         ImGui::PushItemWidth(-1);
-        ImGui::InputInt("##intEndIndex", &gui_.ioIntDataViewEndIndex);
-            gui_.ioIntDataViewEndIndex = 
+        ImGui::InputInt("##intEndIndex", (int*)(&gui_.intDataViewEndIndex));
+            gui_.intDataViewEndIndex = 
                 std::max
                 (
                     std::min
                     (
-                        gui_.ioIntDataViewEndIndex, 
-                        SHARED_STORAGE_INT_ARRAY_SIZE
+                        gui_.intDataViewEndIndex, 
+                        block_->intDataSize()
                     ),
-                    0
+                    0u
                 );
         ImGui::PopItemWidth();
         
@@ -322,29 +324,29 @@ void SharedStorage::renderGui()
             ImVec2(0, controlsHeight),
             false
         );
-        ImGui::SeparatorText("ioVecData");
+        ImGui::SeparatorText("floatData");
 
         ImGui::Text("View start        ");
         ImGui::SameLine();
         ImGui::PushItemWidth(-1);
-        if (ImGui::InputInt("##intStartIndex", &gui_.ioVec4DataViewStartIndex))
-            gui_.ioVec4DataViewStartIndex = 
+        if (ImGui::InputInt("##intStartIndex", (int*)(&gui_.floatDataViewStartIndex)))
+            gui_.floatDataViewStartIndex = 
                 std::max
                 (
-                    std::min(gui_.ioVec4DataViewStartIndex, SHARED_STORAGE_VEC4_ARRAY_SIZE),
-                    0
+                    std::min(gui_.floatDataViewStartIndex, block_->floatDataSize()),
+                    0u
                 );
         ImGui::PopItemWidth();
         
         ImGui::Text("View end          ");
         ImGui::SameLine();
         ImGui::PushItemWidth(-1);
-        ImGui::InputInt("##intEndIndex", &gui_.ioVec4DataViewEndIndex);
-            gui_.ioVec4DataViewEndIndex = 
+        ImGui::InputInt("##intEndIndex", (int*)(&gui_.floatDataViewEndIndex));
+            gui_.floatDataViewEndIndex = 
                 std::max
                 (
-                    std::min(gui_.ioVec4DataViewEndIndex, SHARED_STORAGE_VEC4_ARRAY_SIZE),
-                    0
+                    std::min(gui_.floatDataViewEndIndex, block_->floatDataSize()),
+                    0u
                 );
         ImGui::PopItemWidth();
 
@@ -352,8 +354,8 @@ void SharedStorage::renderGui()
         ImGui::SameLine();
         ImGui::Checkbox
         (
-            "##ioVecDataShowColor", 
-            &gui_.isVec4DataAlsoShownAsColor
+            "##floatDataShowColor", 
+            &gui_.isFloatDataAlsoShownAsColor
         );
 
         ImGui::Text("Precision, format ");
@@ -363,17 +365,17 @@ void SharedStorage::renderGui()
         (
             ImGui::SliderInt
             (
-                "##ioVecDataPrecision", 
-                &gui_.ioVec4DataViewPrecision, 
+                "##floatDataPrecision", 
+                (int*)(&gui_.floatDataViewPrecision), 
                 0, 
                 15
             )
         )
         {
-            gui_.ioVec4DataViewFormat = 
+            gui_.floatDataViewFormat = 
                 "%."+
-                std::to_string(gui_.ioVec4DataViewPrecision)+
-                (gui_.ioVec4DataViewExponentialFormat ? "e" : "f");
+                std::to_string(gui_.floatDataViewPrecision)+
+                (gui_.floatDataViewExponentialFormat ? "e" : "f");
         }
         ImGui::PopItemWidth();
         ImGui::SameLine();
@@ -381,26 +383,26 @@ void SharedStorage::renderGui()
         (
             ImGui::Button
             (
-                gui_.ioVec4DataViewExponentialFormat ?
+                gui_.floatDataViewExponentialFormat ?
                 "Scientific" : "Decimal",
                 {-1, 0}
             )
         )
         {
-            gui_.ioVec4DataViewExponentialFormat = 
-                !gui_.ioVec4DataViewExponentialFormat;
-            gui_.ioVec4DataViewFormat = 
+            gui_.floatDataViewExponentialFormat = 
+                !gui_.floatDataViewExponentialFormat;
+            gui_.floatDataViewFormat = 
                 "%."+
-                std::to_string(gui_.ioVec4DataViewPrecision)+
-                (gui_.ioVec4DataViewExponentialFormat ? "e" : "f");
+                std::to_string(gui_.floatDataViewPrecision)+
+                (gui_.floatDataViewExponentialFormat ? "e" : "f");
         }
         ImGui::Text("Show components   ");
         static const char* labels[4] = {"x ", "y ", "z ", "w"};
         for (int i=0; i<block_->nFloatComponents(); i++)
         {
             ImGui::SameLine();
-            std::string label = "##ioVecDataShowCmpt"+std::to_string(i);
-            ImGui::Checkbox(label.c_str(), &gui_.ioVec4DataViewComponents[i]);
+            std::string label = "##floatDataShowCmpt"+std::to_string(i);
+            ImGui::Checkbox(label.c_str(), &gui_.floatDataViewComponents[i]);
             ImGui::SameLine();
             ImGui::Text("%s", labels[i]);
         }
@@ -452,8 +454,8 @@ void SharedStorage::renderGui()
             ImGui::TableHeadersRow();
             for 
             (
-                int row = gui_.ioIntDataViewStartIndex;
-                row <= gui_.ioIntDataViewEndIndex;
+                int row = gui_.intDataViewStartIndex;
+                row <= gui_.intDataViewEndIndex;
                 row++
             )
             {
@@ -502,8 +504,8 @@ void SharedStorage::renderGui()
             ImGui::TableHeadersRow();
             for 
             (
-                int row = gui_.ioVec4DataViewStartIndex;
-                row <= gui_.ioVec4DataViewEndIndex;
+                int row = gui_.floatDataViewStartIndex;
+                row <= gui_.floatDataViewEndIndex;
                 row++
             )
             {
@@ -512,26 +514,42 @@ void SharedStorage::renderGui()
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("%d", row);
                 ImGui::TableSetColumnIndex(1);
-                /*
-                const auto& value = block_.ioVec4Data[row];
-                if (gui_.isVec4DataAlsoShownAsColor)
+                
+                //const auto& value = block_.floatData[row];
+                if (gui_.isFloatDataAlsoShownAsColor)
                 {
-                    // Has to be (possibly) downcasted to a float to work with 
-                    // ColorEdit4
-                    glm::vec4 valueCopy(value);
-                    ImGui::ColorEdit4
-                    (
-                        "##ioVec4DataColorPicker", 
-                        &(valueCopy.x),
-                        ImGuiColorEditFlags_NoInputs
-                    );
-                    ImGui::SameLine();
-                }*/
+                    if (block_->nFloatComponents() == 4)
+                    {
+                        block_->printFloatAsColor
+                        (
+                            &ImGui::ColorEdit4, 
+                            row, 
+                            ImGuiColorEditFlags_NoInputs
+                        );
+                        ImGui::SameLine();
+                    }
+                    else if (block_->nFloatComponents() == 3)
+                    {
+                        block_->printFloatAsColor
+                        (
+                            &ImGui::ColorEdit3, 
+                            row, 
+                            ImGuiColorEditFlags_NoInputs
+                        );
+                        ImGui::SameLine();
+                    }
+                }
                 for (int i=0; i<block_->nFloatComponents(); i++)
                 {
-                    if (!gui_.ioVec4DataViewComponents[i])
+                    if (!gui_.floatDataViewComponents[i])
                         continue;
-                    block_->printVec4(&ImGui::Text, row, i, gui_.ioVec4DataViewFormat.c_str());
+                    block_->printFloat
+                    (
+                        &ImGui::Text, 
+                        row, 
+                        i, 
+                        gui_.floatDataViewFormat.c_str()
+                    );
                     if (i < block_->nFloatComponents()-1)
                         ImGui::SameLine();
                 }

@@ -65,14 +65,14 @@ R"({
         "uniforms": {}
     },
     "sharedStorage": {
-        "ioIntDataViewStartIndex": 0,
-        "ioIntDataViewEndIndex": 7,
-        "ioVec4DataViewEndIndex": 7,
-        "ioVec4DataViewStartIndex": 0,
-        "isVec4DataAlsoShownAsColor": false,
-        "ioVec4DataViewPrecision": 3,
-        "ioVec4DataViewExponentialFormat": false,
-        "ioVec4DataViewComponents": [
+        "intDataViewStartIndex": 0,
+        "intDataViewEndIndex": 7,
+        "floatDataViewEndIndex": 7,
+        "floatDataViewStartIndex": 0,
+        "isFloatDataAlsoShownAsColor": false,
+        "floatDataViewPrecision": 3,
+        "floatDataViewExponentialFormat": false,
+        "floatDataViewComponents": [
             1,
             1,
             1,
@@ -188,14 +188,14 @@ R"({
     "sharedFragmentSourceSize": 2480,
     "sharedFragmentSource": "// Common source code is shared by all fragment shaders across all layers and\n// has access to all shared in/out/uniform declarations\n\n#define IF_FRAG_X(X) if (int(gl_FragCoord.x)==X)\n#define IF_FRAG_Y(Y) if (int(gl_FragCoord.y)==Y)\n#define IF_FRAG_XY(X,Y) if (int(gl_FragCoord.x)==X && int(gl_FragCoord.y)==Y)\n\n// Keyboard defs for convenience. To access the state of a key, use the ivec3\n// iKeboard[KEY_XXX] uniform, where KEY_XXX is replaced by one of the defs here\n// below. The three components .x, .y, .z are 1 if the key is pressed (but not\n// held), held, toggled respectively, 0 otherwise\n#define KEY_TAB 9\n#define KEY_LEFT 37\n#define KEY_RIGHT 39\n#define KEY_UP 38\n#define KEY_DOWN 40\n#define KEY_DELETE 46\n#define KEY_BACKSPACE 8\n#define KEY_SPACE 32\n#define KEY_ENTER 13\n#define KEY_ESCAPE 27\n#define KEY_APOSTROPHE 222\n#define KEY_COMMA 188\n#define KEY_MINUS 189\n#define KEY_PERIOD 190\n#define KEY_SLASH 191\n#define KEY_SEMICOLON 186\n#define KEY_EQUAL 187\n#define KEY_LEFT_BRACKET 219\n#define KEY_BACKSLASH 220\n#define KEY_RIGHT_BRACKET 221\n#define KEY_GRAVE_ACCENT 192\n#define KEY_CAPS_LOCK 20\n#define KEY_LEFT_SHIFT 16\n#define KEY_LEFT_CONTROL 17\n#define KEY_LEFT_ALT 18\n#define KEY_LEFT_SUPER 91\n#define KEY_RIGHT_SHIFT 16\n#define KEY_RIGHT_CONTROL 17\n#define KEY_RIGHT_ALT 18\n#define KEY_0 48\n#define KEY_1 49\n#define KEY_2 50\n#define KEY_3 51\n#define KEY_4 52\n#define KEY_5 53\n#define KEY_6 54\n#define KEY_7 55\n#define KEY_8 56\n#define KEY_9 57\n#define KEY_A 65\n#define KEY_B 66\n#define KEY_C 67\n#define KEY_D 68\n#define KEY_E 69\n#define KEY_F 70\n#define KEY_G 71\n#define KEY_H 72\n#define KEY_I 73\n#define KEY_J 74\n#define KEY_K 75\n#define KEY_L 76\n#define KEY_M 77\n#define KEY_N 78\n#define KEY_O 79\n#define KEY_P 80\n#define KEY_Q 81\n#define KEY_R 82\n#define KEY_S 83\n#define KEY_T 84\n#define KEY_U 85\n#define KEY_V 86\n#define KEY_W 87\n#define KEY_X 88\n#define KEY_Y 89\n#define KEY_Z 90\n#define KEY_F1 112\n#define KEY_F2 113\n#define KEY_F3 114\n#define KEY_F4 115\n#define KEY_F5 116\n#define KEY_F6 117\n#define KEY_F7 118\n#define KEY_F8 119\n#define KEY_F9 120\n#define KEY_F10 121\n#define KEY_F11 122\n#define KEY_F12 123\n\n// For convenience when importing ShaderToy shaders\n#define SHADERTOY_MAIN void main(){mainImage(fragColor, fragCoord);}\nvec2 fragCoord = gl_FragCoord.xy;\n\n#define CROSSHAIR(color)                           \\\n    if(int(gl_FragCoord.x)==int(iResolution.x/2)|| \\\n       int(gl_FragCoord.y)==int(iResolution.y/2))  \\\n       fragColor.rgb=color;",
     "sharedStorage": {
-        "ioIntDataViewStartIndex": 0,
-        "ioIntDataViewEndIndex": 7,
-        "ioVec4DataViewEndIndex": 7,
-        "ioVec4DataViewStartIndex": 0,
-        "isVec4DataAlsoShownAsColor": false,
-        "ioVec4DataViewPrecision": 3,
-        "ioVec4DataViewExponentialFormat": false,
-        "ioVec4DataViewComponents": [
+        "intDataViewStartIndex": 0,
+        "intDataViewEndIndex": 7,
+        "floatDataViewEndIndex": 7,
+        "floatDataViewStartIndex": 0,
+        "isFloatDataAlsoShownAsColor": false,
+        "floatDataViewPrecision": 3,
+        "floatDataViewExponentialFormat": false,
+        "floatDataViewComponents": [
             1,
             1,
             1,
@@ -299,14 +299,14 @@ R"({
     "sharedFragmentSourceSize": 2429,
     "sharedFragmentSource": "// Common source code is shared by all fragment shaders across all layers and\n// has access to all shared in/out/uniform declarations\n\n#define IF_FRAG_X(X) if (int(gl_FragCoord.x)==X)\n#define IF_FRAG_Y(Y) if (int(gl_FragCoord.y)==Y)\n#define IF_FRAG_XY(X,Y) if (int(gl_FragCoord.x)==X && int(gl_FragCoord.y)==Y)\n\n// Keyboard defs for convenience. To access the state of a key, use the ivec3\n// iKeboard[KEY_XXX] uniform, where KEY_XXX is replaced by one of the defs here\n// below. The three components .x, .y, .z are 1 if the key is pressed (but not\n// held), held, toggled respectively, 0 otherwise\n#define KEY_TAB 9\n#define KEY_LEFT 37\n#define KEY_RIGHT 39\n#define KEY_UP 38\n#define KEY_DOWN 40\n#define KEY_DELETE 46\n#define KEY_BACKSPACE 8\n#define KEY_SPACE 32\n#define KEY_ENTER 13\n#define KEY_ESCAPE 27\n#define KEY_APOSTROPHE 222\n#define KEY_COMMA 188\n#define KEY_MINUS 189\n#define KEY_PERIOD 190\n#define KEY_SLASH 191\n#define KEY_SEMICOLON 186\n#define KEY_EQUAL 187\n#define KEY_LEFT_BRACKET 219\n#define KEY_BACKSLASH 220\n#define KEY_RIGHT_BRACKET 221\n#define KEY_GRAVE_ACCENT 192\n#define KEY_CAPS_LOCK 20\n#define KEY_LEFT_SHIFT 16\n#define KEY_LEFT_CONTROL 17\n#define KEY_LEFT_ALT 18\n#define KEY_LEFT_SUPER 91\n#define KEY_RIGHT_SHIFT 16\n#define KEY_RIGHT_CONTROL 17\n#define KEY_RIGHT_ALT 18\n#define KEY_0 48\n#define KEY_1 49\n#define KEY_2 50\n#define KEY_3 51\n#define KEY_4 52\n#define KEY_5 53\n#define KEY_6 54\n#define KEY_7 55\n#define KEY_8 56\n#define KEY_9 57\n#define KEY_A 65\n#define KEY_B 66\n#define KEY_C 67\n#define KEY_D 68\n#define KEY_E 69\n#define KEY_F 70\n#define KEY_G 71\n#define KEY_H 72\n#define KEY_I 73\n#define KEY_J 74\n#define KEY_K 75\n#define KEY_L 76\n#define KEY_M 77\n#define KEY_N 78\n#define KEY_O 79\n#define KEY_P 80\n#define KEY_Q 81\n#define KEY_R 82\n#define KEY_S 83\n#define KEY_T 84\n#define KEY_U 85\n#define KEY_V 86\n#define KEY_W 87\n#define KEY_X 88\n#define KEY_Y 89\n#define KEY_Z 90\n#define KEY_F1 112\n#define KEY_F2 113\n#define KEY_F3 114\n#define KEY_F4 115\n#define KEY_F5 116\n#define KEY_F6 117\n#define KEY_F7 118\n#define KEY_F8 119\n#define KEY_F9 120\n#define KEY_F10 121\n#define KEY_F11 122\n#define KEY_F12 123\n\n#define CROSSHAIR if(int(fragCoord.x) == int(iResolution.x/2) || int(fragCoord.y) == int(iResolution.y/2)){fragColor = vec4(1,0,0,1);}\n\n// For convenience when importing ShaderToy shaders\n#define SHADERTOY_MAIN void main(){mainImage(fragColor, fragCoord);}\nvec2 fragCoord = gl_FragCoord.xy; ",
     "sharedStorage": {
-        "ioIntDataViewStartIndex": 0,
-        "ioIntDataViewEndIndex": 7,
-        "ioVec4DataViewEndIndex": 50,
-        "ioVec4DataViewStartIndex": 0,
-        "isVec4DataAlsoShownAsColor": false,
-        "ioVec4DataViewPrecision": 6,
-        "ioVec4DataViewExponentialFormat": false,
-        "ioVec4DataViewComponents": [
+        "intDataViewStartIndex": 0,
+        "intDataViewEndIndex": 7,
+        "floatDataViewEndIndex": 50,
+        "floatDataViewStartIndex": 0,
+        "isFloatDataAlsoShownAsColor": false,
+        "floatDataViewPrecision": 6,
+        "floatDataViewExponentialFormat": false,
+        "floatDataViewComponents": [
             1,
             1,
             1,
