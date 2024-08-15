@@ -22,6 +22,70 @@
 namespace ShaderThing
 {
 
+void SharedStorage::resetBlockAndSSBO
+(
+    Block::IntType intType, 
+    Block::FloatType floatType
+)
+{
+    if (block_ != nullptr)
+        delete block_;
+    if (buffer_ != nullptr)
+        delete buffer_;
+
+#define INITIALIZE_BLOCK_AND_SSBO(block, ssbo, bindPoint, intType, floatType) \
+{                                                                             \
+    auto typedBlock = new TypedBlock<intType, floatType>();                   \
+    ssbo = vir::ShaderStorageBuffer::create(typedBlock->size());              \
+    ssbo->bind();                                                             \
+    ssbo->setBindingPoint(bindPoint);                                         \
+    typedBlock->initialize(ssbo);                                             \
+    block = typedBlock;                                                       \
+    break;                                                                    \
+}
+    switch(floatType)
+    {
+    case Block::FloatType::F32 :
+    {
+        switch(intType)
+        {
+        case Block::IntType::I32 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            int32_t, float)
+        case Block::IntType::I64 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            int64_t, float)
+        case Block::IntType::UI32 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            uint32_t, float)
+        case Block::IntType::UI64 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            uint64_t, float)
+        }
+        break;
+    }
+    case Block::FloatType::F64 :
+    {
+        switch(intType)
+        {
+        case Block::IntType::I32 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            int32_t, double)
+        case Block::IntType::I64 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            int64_t, double)
+        case Block::IntType::UI32 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            uint32_t, double)
+        case Block::IntType::UI64 :
+            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
+            uint64_t, double)
+        }
+        break;
+    }
+    }
+}
+
 SharedStorage::SharedStorage()
 {
     if 
@@ -35,10 +99,7 @@ SharedStorage::SharedStorage()
         isSupported_ = true;
     if (isSupported_)
     {
-        buffer_ = vir::ShaderStorageBuffer::create(block_.size);
-        buffer_->bind();
-        buffer_->setBindingPoint(bindingPoint_);
-        block_.initialize(buffer_);
+        resetBlockAndSSBO(Block::IntType::I32, Block::FloatType::F64);
         gui_.ioVec4DataViewFormat =
         (
             "%."+
@@ -52,7 +113,12 @@ SharedStorage::SharedStorage()
 
 SharedStorage::~SharedStorage()
 {
-    DELETE_IF_NOT_NULLPTR(buffer_)
+    if (buffer_ != nullptr)
+    {
+        buffer_->unbind();
+        delete buffer_;
+    }
+    DELETE_IF_NOT_NULLPTR(block_)
 }
 
 //----------------------------------------------------------------------------//
@@ -125,9 +191,7 @@ void SharedStorage::clear()
     if (!isSupported_)
         return;
     buffer_->fenceSync();
-    auto dataStart = (unsigned char*)block_.dataStart;
-    for (int i=0; i<block_.size; i++)
-        *(dataStart+i) = 0;
+    block_->clear();
 }
 
 //----------------------------------------------------------------------------//
@@ -151,7 +215,7 @@ void SharedStorage::cpuMemoryBarrier() const
 void SharedStorage::bindShader(vir::Shader* shader)
 {
     if (isSupported_)
-        shader->bindShaderStorageBlock(block_.glslName, bindingPoint_);
+        shader->bindShaderStorageBlock(block_->glslName, bindingPoint_);
 }
 
 //----------------------------------------------------------------------------//
@@ -159,7 +223,7 @@ void SharedStorage::bindShader(vir::Shader* shader)
 std::string SharedStorage::glslBlockSource() const
 {
     if (isSupported_)
-        return block_.glslSource();
+        return block_->glslSource();
     return "";
 }
 
@@ -393,7 +457,7 @@ void SharedStorage::renderGui()
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("%d", row);
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text(block_.intFormat(), block_.ioIntData[row]);
+                block_->printInt(&ImGui::Text, row);
                 ImGui::PopID();
             }
             ImGui::EndTable();
@@ -443,6 +507,7 @@ void SharedStorage::renderGui()
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("%d", row);
                 ImGui::TableSetColumnIndex(1);
+                /*
                 const auto& value = block_.ioVec4Data[row];
                 if (gui_.isVec4DataAlsoShownAsColor)
                 {
@@ -456,16 +521,17 @@ void SharedStorage::renderGui()
                         ImGuiColorEditFlags_NoInputs
                     );
                     ImGui::SameLine();
-                }
+                }*/
                 for (int i=0; i<4; i++)
                 {
                     if (!gui_.ioVec4DataViewComponents[i])
                         continue;
-                    ImGui::Text
+                    block_->printVec4(&ImGui::Text, row, i, gui_.ioVec4DataViewFormat.c_str());
+                    /*ImGui::Text
                     (
                         gui_.ioVec4DataViewFormat.c_str(),
-                        value[i]
-                    );
+                        (const void*)value[i]
+                    );*/
                     if (i < 3)
                         ImGui::SameLine();
                 }

@@ -32,8 +32,47 @@ class ObjectIO;
 
 class SharedStorage
 {
-    template<typename intType, typename floatType>
     struct Block
+    {
+    public:
+        enum class IntType
+        {
+            I32 = 0,
+            I64 = 1,
+            UI32 = 2,
+            UI64 = 3
+        };
+        enum class FloatType
+        {
+            F32 = 0,
+            F64 = 1 // I.e., double
+        };
+    protected:
+        IntType iType_ = IntType::I32;
+        FloatType fType_ = FloatType::F64;
+    public:
+        virtual ~Block() = default;
+        virtual unsigned int size() const = 0;
+        virtual const char* intFormat() const = 0;
+        virtual std::string glslSource() const = 0;
+        virtual void printInt
+        (
+            void (*func)(const char* fmt, ...), 
+            unsigned int index
+        ) const = 0;
+        virtual void printVec4
+        (
+            void (*func)(const char* fmt, ...), 
+            unsigned int index, 
+            unsigned int cmpt, 
+            const char* format
+        ) const = 0;
+        virtual void clear() = 0;
+        static constexpr const char* glslName = "sharedStorageBlock";
+    };
+
+    template<typename intType, typename floatType>
+    struct TypedBlock : public Block
     {
         typedef glm::vec<4, floatType, glm::packed_highp> vec4Type;
         #define                      SHARED_STORAGE_INT_ARRAY_SIZE 2048
@@ -42,14 +81,13 @@ class SharedStorage
         const void*                  dataStart  = nullptr;
         const intType*               ioIntData  = nullptr;
         const vec4Type*              ioVec4Data = nullptr;
-        static constexpr const int   size       = SHARED_STORAGE_INT_ARRAY_SIZE
+
+        static constexpr const char* glslName   = "sharedStorageBlock";
+        unsigned int size() const override {return SHARED_STORAGE_INT_ARRAY_SIZE
                                                   *sizeof(intType)+
                                                   SHARED_STORAGE_VEC4_ARRAY_SIZE
-                                                  *sizeof(vec4Type);
-        static constexpr const int   intSize    = sizeof(intType);
-        static constexpr const int   vec4Size   = sizeof(vec4Type);
-        static constexpr const char* glslName   = "sharedStorageBlock";
-        static constexpr const char* intFormat()
+                                                  *sizeof(vec4Type);}
+        const char* intFormat() const override
         {
             if (std::is_same<intType, int32_t>::value)
                 return "%d";
@@ -66,7 +104,7 @@ class SharedStorage
         //  Using std430 to avoid packing problems, plus, if ShaderThing is running on a
         //  computer with an OpenGL version < 4.3, the SSBO is not available anyway, so
         //  no real compatibility breaking
-        static constexpr std::string glslSource() 
+        std::string glslSource() const override
         {
             std::string sIntType;
             if (std::is_same<intType, int32_t>::value)
@@ -94,12 +132,35 @@ class SharedStorage
 sIntType+" ioIntData["TO_STRING(SHARED_STORAGE_INT_ARRAY_SIZE)"];\n        "+
 sVec4Type+" ioVec4Data[];}; // Dynamic size up to 2097152 (==2048*1024)\n";
         }
+        void printInt
+        (
+            void (*func)(const char* fmt, ...), 
+            unsigned int index
+        ) const override
+        {
+            func(intFormat(), ioIntData[index]);
+        }
+        void printVec4
+        (
+            void (*func)(const char* fmt, ...), 
+            unsigned int index, 
+            unsigned int cmpt, 
+            const char* format
+        ) const override
+        {
+            func(format, ioVec4Data[index][cmpt]);
+        }
+        void clear() override
+        {
+            auto dataStart = (unsigned char*)dataStart;
+            for (int i=0; i<size(); i++)
+                *(dataStart+i) = 0;
+        }
         void initialize(vir::ShaderStorageBuffer* buffer)
         {
             dataStart = buffer->mapData();
             ioIntData = (intType*)dataStart;
-            ioVec4Data = 
-                (vec4Type*)(ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE);
+            ioVec4Data = (vec4Type*)(ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE);
         }
     };
 
@@ -120,7 +181,7 @@ sVec4Type+" ioVec4Data[];}; // Dynamic size up to 2097152 (==2048*1024)\n";
         std::string ioVec4DataViewFormat;
     };
     
-    Block<uint32_t, float>    block_        = {};
+    Block*                    block_        = nullptr;
     vir::ShaderStorageBuffer* buffer_       = nullptr;
     GUI                       gui_          = {};
     bool                      isSupported_  = false;
@@ -131,6 +192,12 @@ public:
     SharedStorage();
     ~SharedStorage();
     
+    void resetBlockAndSSBO
+    (
+        Block::IntType intType, 
+        Block::FloatType floatType
+    );
+
     void save(ObjectIO& io) const;
     static SharedStorage* load(const ObjectIO& io);
     
