@@ -25,7 +25,8 @@ namespace ShaderThing
 void SharedStorage::resetBlockAndSSBO
 (
     Block::IntType intType, 
-    Block::FloatType floatType
+    Block::FloatType floatType,
+    const unsigned int nFloatComponents
 )
 {
     if (block_ != nullptr)
@@ -33,57 +34,61 @@ void SharedStorage::resetBlockAndSSBO
     if (buffer_ != nullptr)
         delete buffer_;
 
-#define INITIALIZE_BLOCK_AND_SSBO(block, ssbo, bindPoint, intType, floatType) \
-{                                                                             \
-    auto typedBlock = new TypedBlock<intType, floatType>();                   \
-    ssbo = vir::ShaderStorageBuffer::create(typedBlock->size());              \
-    ssbo->bind();                                                             \
-    ssbo->setBindingPoint(bindPoint);                                         \
-    typedBlock->initialize(ssbo);                                             \
-    block = typedBlock;                                                       \
-    break;                                                                    \
+    // Preprocessor madness to have dynamic types for the TypedBlock (4*2*4 = 32
+    // different combinations)
+    //-------------------------------------
+#define INITIALIZE_BLOCK_AND_SSBO_0(I, F, N)                                \
+{                                                                           \
+    auto typedBlock = new TypedBlock<I, F, N>();                            \
+    buffer_ = vir::ShaderStorageBuffer::create(typedBlock->size());         \
+    buffer_->bind();                                                        \
+    buffer_->setBindingPoint(bindingPoint_);                                \
+    typedBlock->initialize(buffer_);                                        \
+    block_ = typedBlock;                                                    \
+    break;                                                                  \
 }
-    switch(floatType)
-    {
-    case Block::FloatType::F32 :
-    {
-        switch(intType)
-        {
-        case Block::IntType::I32 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            int32_t, float)
-        case Block::IntType::I64 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            int64_t, float)
-        case Block::IntType::UI32 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            uint32_t, float)
-        case Block::IntType::UI64 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            uint64_t, float)
-        }
-        break;
-    }
-    case Block::FloatType::F64 :
-    {
-        switch(intType)
-        {
-        case Block::IntType::I32 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            int32_t, double)
-        case Block::IntType::I64 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            int64_t, double)
-        case Block::IntType::UI32 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            uint32_t, double)
-        case Block::IntType::UI64 :
-            INITIALIZE_BLOCK_AND_SSBO(block_, buffer_, bindingPoint_, 
-            uint64_t, double)
-        }
-        break;
-    }
-    }
+    //-------------------------------------
+#define INITIALIZE_BLOCK_AND_SSBO_1(I, F, N)                                \
+switch(I)                                                                   \
+{                                                                           \
+case Block::IntType::I32 :                                                  \
+    INITIALIZE_BLOCK_AND_SSBO_0(int32_t, F, N)                              \
+case Block::IntType::I64 :                                                  \
+    INITIALIZE_BLOCK_AND_SSBO_0(int64_t, F, N)                              \
+case Block::IntType::UI32 :                                                 \
+    INITIALIZE_BLOCK_AND_SSBO_0(uint32_t, F, N)                             \
+case Block::IntType::UI64 :                                                 \
+    INITIALIZE_BLOCK_AND_SSBO_0(uint64_t, F, N)                             \
+}                                                                           \
+break;
+    //-------------------------------------
+#define INITIALIZE_BLOCK_AND_SSBO_2(I, F, N)                                \
+switch(F)                                                                   \
+{                                                                           \
+case Block::FloatType::F32 :                                                \
+    INITIALIZE_BLOCK_AND_SSBO_1(I, float, N)                                \
+case Block::FloatType::F64 :                                                \
+    INITIALIZE_BLOCK_AND_SSBO_1(I, double, N)                               \
+}                                                                           \
+break;
+    //-------------------------------------
+#define INITIALIZE_BLOCK_AND_SSBO(I, F, N)                                  \
+switch(N)                                                                   \
+{                                                                           \
+case 1 :                                                                    \
+    INITIALIZE_BLOCK_AND_SSBO_2(I, F, 1)                                    \
+case 2 :                                                                    \
+    INITIALIZE_BLOCK_AND_SSBO_2(I, F, 2)                                    \
+case 3 :                                                                    \
+    INITIALIZE_BLOCK_AND_SSBO_2(I, F, 3)                                    \
+case 4 :                                                                    \
+    INITIALIZE_BLOCK_AND_SSBO_2(I, F, 4)                                    \
+default :                                                                   \
+    break;                                                                  \
+}                                                                           \
+    //-------------------------------------
+    
+    INITIALIZE_BLOCK_AND_SSBO(intType, floatType, nFloatComponents)
 }
 
 SharedStorage::SharedStorage()
@@ -313,11 +318,11 @@ void SharedStorage::renderGui()
     {
         ImGui::BeginChild
         (
-            "##sharedStorageVec4ControlsChild", 
+            "##sharedStorageVecControlsChild", 
             ImVec2(0, controlsHeight),
             false
         );
-        ImGui::SeparatorText("ioVec4Data");
+        ImGui::SeparatorText("ioVecData");
 
         ImGui::Text("View start        ");
         ImGui::SameLine();
@@ -347,7 +352,7 @@ void SharedStorage::renderGui()
         ImGui::SameLine();
         ImGui::Checkbox
         (
-            "##ioVec4DataShowColor", 
+            "##ioVecDataShowColor", 
             &gui_.isVec4DataAlsoShownAsColor
         );
 
@@ -358,7 +363,7 @@ void SharedStorage::renderGui()
         (
             ImGui::SliderInt
             (
-                "##ioVec4DataPrecision", 
+                "##ioVecDataPrecision", 
                 &gui_.ioVec4DataViewPrecision, 
                 0, 
                 15
@@ -391,10 +396,10 @@ void SharedStorage::renderGui()
         }
         ImGui::Text("Show components   ");
         static const char* labels[4] = {"x ", "y ", "z ", "w"};
-        for (int i=0; i<4; i++)
+        for (int i=0; i<block_->nFloatComponents(); i++)
         {
             ImGui::SameLine();
-            std::string label = "##ioVec4DataShowCmpt"+std::to_string(i);
+            std::string label = "##ioVecDataShowCmpt"+std::to_string(i);
             ImGui::Checkbox(label.c_str(), &gui_.ioVec4DataViewComponents[i]);
             ImGui::SameLine();
             ImGui::Text("%s", labels[i]);
@@ -468,7 +473,7 @@ void SharedStorage::renderGui()
     {
         ImGui::BeginChild
         (
-            "##sharedStorageVec4RangeViewerChild", 
+            "##sharedStorageVecRangeViewerChild", 
             ImVec2(0, rangeViewerHeight),
             false
         );
@@ -476,7 +481,7 @@ void SharedStorage::renderGui()
         (
             ImGui::BeginTable
             (
-                "##sharedStorageVec4DataTable", 
+                "##sharedStorageVecDataTable", 
                 2, 
                 ImGuiTableFlags_BordersV | 
                 ImGuiTableFlags_BordersH |
@@ -522,17 +527,12 @@ void SharedStorage::renderGui()
                     );
                     ImGui::SameLine();
                 }*/
-                for (int i=0; i<4; i++)
+                for (int i=0; i<block_->nFloatComponents(); i++)
                 {
                     if (!gui_.ioVec4DataViewComponents[i])
                         continue;
                     block_->printVec4(&ImGui::Text, row, i, gui_.ioVec4DataViewFormat.c_str());
-                    /*ImGui::Text
-                    (
-                        gui_.ioVec4DataViewFormat.c_str(),
-                        (const void*)value[i]
-                    );*/
-                    if (i < 3)
+                    if (i < block_->nFloatComponents()-1)
                         ImGui::SameLine();
                 }
                 ImGui::PopID();

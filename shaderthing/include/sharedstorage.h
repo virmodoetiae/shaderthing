@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "thirdparty/glm/glm.hpp"
 
 #include "shaderthing/include/macros.h"
@@ -54,6 +56,7 @@ class SharedStorage
         virtual ~Block() = default;
         virtual unsigned int size() const = 0;
         virtual const char* intFormat() const = 0;
+        virtual unsigned int nFloatComponents() const = 0;
         virtual std::string glslSource() const = 0;
         virtual void printInt
         (
@@ -71,22 +74,28 @@ class SharedStorage
         static constexpr const char* glslName = "sharedStorageBlock";
     };
 
-    template<typename intType, typename floatType>
+    template<typename intType, typename floatType, unsigned int nFloatCmpts>
     struct TypedBlock : public Block
     {
-        typedef glm::vec<4, floatType, glm::packed_highp> vec4Type;
+        using vecType = typename std::conditional
+        <
+            (nFloatCmpts > 1),
+            glm::vec<nFloatCmpts, floatType, glm::packed_highp>,
+            floatType
+        >::type;
+
         #define                      SHARED_STORAGE_INT_ARRAY_SIZE 2048
                                                                  // 2048*1024
         #define                      SHARED_STORAGE_VEC4_ARRAY_SIZE 2097152
         const void*                  dataStart  = nullptr;
         const intType*               ioIntData  = nullptr;
-        const vec4Type*              ioVec4Data = nullptr;
+        const vecType*               ioVecData = nullptr;
 
         static constexpr const char* glslName   = "sharedStorageBlock";
         unsigned int size() const override {return SHARED_STORAGE_INT_ARRAY_SIZE
                                                   *sizeof(intType)+
                                                   SHARED_STORAGE_VEC4_ARRAY_SIZE
-                                                  *sizeof(vec4Type);}
+                                                  *sizeof(vecType);}
         const char* intFormat() const override
         {
             if (std::is_same<intType, int32_t>::value)
@@ -101,36 +110,42 @@ class SharedStorage
 "SharedStorge::Block - First template argument must be a 32- or 64-bit signed"
 "or unsigned integer type");
         }
-        //  Using std430 to avoid packing problems, plus, if ShaderThing is running on a
-        //  computer with an OpenGL version < 4.3, the SSBO is not available anyway, so
-        //  no real compatibility breaking
+        virtual unsigned int nFloatComponents() const override
+        {
+            return nFloatCmpts;
+        }
         std::string glslSource() const override
         {
             std::string sIntType;
             if (std::is_same<intType, int32_t>::value)
-                sIntType = "int     ";
+                sIntType = "int      ";
             else if (std::is_same<intType, int64_t>::value)
-                sIntType = "int64_t ";
+                sIntType = "int64_t  ";
             else if (std::is_same<intType, uint32_t>::value)
-                sIntType = "uint    ";
+                sIntType = "uint     ";
             else if (std::is_same<intType, uint64_t>::value)
-                sIntType = "uint64_t";
+                sIntType = "uint64_t ";
             else
                 throw std::logic_error(
 "SharedStorge::Block - First template argument must be a 32- or 64-bit signed"
 "or unsigned integer type");
-            std::string sVec4Type;
+            std::string sVecType;
             if (std::is_same<floatType, float>::value)
-                sVec4Type = "vec4    ";
+                sVecType = nFloatComponents() > 1 ? " vec" : "float ";
             else if (std::is_same<floatType, double>::value)
-                sVec4Type = "dvec4   ";
+                sVecType = nFloatComponents() > 1 ? "dvec" : "double";
             else
                 throw std::logic_error(
 "SharedStorge::Block - Second template argument must be a float or double type");
+            if (nFloatComponents() > 1)
+                sVecType += std::to_string(nFloatComponents())+"    ";
+            //  Using std430 to avoid packing problems, plus, if ShaderThing is
+            //  running on a computer with an OpenGL version < 4.3, the SSBO is
+            //  not available anyway, so no real compatibility breaking
             return
 "layout(std430) coherent buffer sharedStorageBlock {\n        "+
 sIntType+" ioIntData["TO_STRING(SHARED_STORAGE_INT_ARRAY_SIZE)"];\n        "+
-sVec4Type+" ioVec4Data[];}; // Dynamic size up to 2097152 (==2048*1024)\n";
+sVecType+" ioVec4Data[];}; // Dynamic size up to 2097152 (==2048*1024)\n";
         }
         void printInt
         (
@@ -148,19 +163,22 @@ sVec4Type+" ioVec4Data[];}; // Dynamic size up to 2097152 (==2048*1024)\n";
             const char* format
         ) const override
         {
-            func(format, ioVec4Data[index][cmpt]);
+            if constexpr (nFloatCmpts > 1)
+                func(format, ioVecData[index][cmpt]);
+            else
+                func(format, ioVecData[index]);
         }
         void clear() override
         {
             auto dataStart = (unsigned char*)dataStart;
-            for (int i=0; i<size(); i++)
+            for (unsigned int i=0; i<size(); i++)
                 *(dataStart+i) = 0;
         }
         void initialize(vir::ShaderStorageBuffer* buffer)
         {
             dataStart = buffer->mapData();
             ioIntData = (intType*)dataStart;
-            ioVec4Data = (vec4Type*)(ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE);
+            ioVecData = (vecType*)(ioIntData+SHARED_STORAGE_INT_ARRAY_SIZE);
         }
     };
 
@@ -195,7 +213,8 @@ public:
     void resetBlockAndSSBO
     (
         Block::IntType intType, 
-        Block::FloatType floatType
+        Block::FloatType floatType,
+        unsigned int nFloatComponents=4
     );
 
     void save(ObjectIO& io) const;
