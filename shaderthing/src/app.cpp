@@ -663,6 +663,7 @@ void App::renderMenuBarGui()
 
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
+    bool shadersRequireRecompilation = false;
     if (ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("Project"))
@@ -699,7 +700,8 @@ void App::renderMenuBarGui()
         if (ImGui::BeginMenu("Resources"))
         {
             Resource::renderResourcesMenuItemGui(resources_, layers_);
-            Layer::Rendering::sharedStorage->renderMenuItemGui();
+            shadersRequireRecompilation = 
+                Layer::Rendering::sharedStorage->renderMenuItemGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
@@ -753,7 +755,8 @@ void App::renderMenuBarGui()
     if (Resource::isGuiDetachedFromMenu)
         Resource::renderResourcesGui(resources_, layers_);
     if (Layer::Rendering::sharedStorage->isGuiDetachedFromMenu())
-        Layer::Rendering::sharedStorage->renderGui();
+        shadersRequireRecompilation = 
+            Layer::Rendering::sharedStorage->renderGui();
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
     
@@ -770,6 +773,14 @@ void App::renderMenuBarGui()
             setProjectAction(Project::Action::Save, project_, fileDialog_);
         else if (Helpers::isCtrlShiftKeyPressed(ImGuiKey_S))
             setProjectAction(Project::Action::SaveAs, project_, fileDialog_);
+    }
+
+    if (shadersRequireRecompilation)
+    {
+        for (auto layer : layers_)
+        {
+            layer->compileShader(*sharedUniforms_);
+        }
     }
 
     if (newProjectConfirmation)

@@ -242,9 +242,7 @@ class SharedStorage
         
         void clear() override
         {
-            auto dataStart = (unsigned char*)dataStart;
-            for (unsigned int i=0; i<size(); i++)
-                *(dataStart+i) = 0;
+            std::memset((void*)dataStart, 0, size());
         }
     };
 
@@ -257,11 +255,11 @@ class SharedStorage
         bool isOpen                          = false;
         bool isDetachedFromMenu              = true;
         bool isFloatDataAlsoShownAsColor     = false;
-        unsigned int intDataViewStartIndex   = 0;
-        unsigned int intDataViewEndIndex     = 7;
-        unsigned int floatDataViewStartIndex = 0;
-        unsigned int floatDataViewEndIndex   = 7;
-        unsigned int floatDataViewPrecision  = 3;
+        int intDataViewStartIndex            = 0;
+        int intDataViewEndIndex              = 5;
+        int floatDataViewStartIndex          = 0;
+        int floatDataViewEndIndex            = 5;
+        int floatDataViewPrecision           = 3;
         bool floatDataViewExponentialFormat  = false;
         bool floatDataViewComponents[4]      = {true, true, true, true};
         std::string floatDataViewFormat;
@@ -307,8 +305,8 @@ public:
 
     std::string glslBlockSource() const;
 
-    void renderGui();
-    void renderMenuItemGui();
+    bool renderGui();
+    bool renderMenuItemGui();
 
     bool isGuiOpen() const {return gui_.isOpen;};
     bool isGuiDetachedFromMenu() const {return gui_.isDetachedFromMenu;};

@@ -267,23 +267,24 @@ std::string SharedStorage::glslBlockSource() const
 
 //----------------------------------------------------------------------------//
 
-void SharedStorage::renderGui()
+bool SharedStorage::renderGui()
 {
     if (!gui_.isOpen)
-        return;
+        return false;
     if (!isSupported_)
     {
         ImGui::Text
         (
             "Not supported due to OpenGL version <= 4.2, requires >= 4.3"
         );
-        return;
+        return false;
     }
+    bool shadersRequireRecompilation = false;
     const float fontSize = ImGui::GetFontSize();
     const float textWidth = 45.f*fontSize;
     if (gui_.isDetachedFromMenu)
     {
-        ImGui::SetNextWindowSize(ImVec2(600,300), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(768, 512), ImGuiCond_FirstUseEver);
         static ImGuiWindowFlags windowFlags(ImGuiWindowFlags_NoCollapse);
         ImGui::Begin("Shared storage view", &gui_.isOpen, windowFlags);
 
@@ -303,6 +304,131 @@ void SharedStorage::renderGui()
     else
         ImGui::Dummy({textWidth, 0});
 
+    static const std::unordered_map<Block::IntType, const char*> 
+        intTypeToName =
+        {
+            {Block::IntType::UI64, "Uint 64-bit"},
+            {Block::IntType::UI32, "Uint 32-bit"},
+            {Block::IntType::I64, "Int 64-bit"},
+            {Block::IntType::I32, "Int 32-bit"},
+        };
+    static auto intType = block_->intType();
+    static auto floatType = block_->floatType();
+    static auto nFloatComponents = block_->nFloatComponents();
+    static auto intDataSize = block_->intDataSize();
+    static auto floatDataSize = block_->floatDataSize();
+    ImGui::Text("ssiData type       ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-1);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##ssiDataTypeCombo", 
+            intTypeToName.at(intType)
+        )
+    )
+    {
+        for (const auto& item : intTypeToName)
+        {
+            if (ImGui::Selectable(item.second))
+                intType = item.first;
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+    ImGui::Text("ssiData size       ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-1);
+    if (ImGui::InputInt("##ssiDataSize", (int*)(&intDataSize)))
+        intDataSize = std::min(std::max(intDataSize, 1u), 4096u);
+    ImGui::PopItemWidth();
+
+    static const std::unordered_map<Block::FloatType, const char*> 
+        floatTypeToName =
+        {
+            {Block::FloatType::F64, "Float 64-bit"},
+            {Block::FloatType::F32, "Float 32-bit"}
+        };
+    ImGui::Text("ssfData type       ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-1);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##ssfDataTypeCombo", 
+            floatTypeToName.at(floatType)
+        )
+    )
+    {
+        for (const auto& item : floatTypeToName)
+        {
+            if (ImGui::Selectable(item.second))
+                floatType = item.first;
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+    ImGui::Text("ssfData size       ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-1);
+    if (ImGui::InputInt("##ssfDataSize", (int*)(&floatDataSize)))
+        floatDataSize = std::min(std::max(floatDataSize, 1u), 4194304u);
+    ImGui::PopItemWidth();
+    ImGui::Text("ssfData components ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-1);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##ssfDataNComponentsCombo", 
+            std::to_string(nFloatComponents).c_str()
+        )
+    )
+    {
+        for (unsigned int nCmpts = 1; nCmpts <= 4; nCmpts++)
+        {
+            if (ImGui::Selectable(std::to_string(nCmpts).c_str()))
+                nFloatComponents = nCmpts;
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    bool disabled = true;
+    if 
+    (
+        intType != block_->intType() ||
+        intDataSize != block_->intDataSize() ||
+        floatType != block_->floatType() ||
+        floatDataSize != block_->floatDataSize() ||
+        nFloatComponents != block_->nFloatComponents()
+    )
+        disabled = false;
+    if (disabled)
+        ImGui::BeginDisabled();
+    if (ImGui::Button("Update shared storage buffer", {-1, 0}))
+    {
+        shadersRequireRecompilation = true;
+        resetBlockAndSSBO
+        (
+            intType,
+            floatType,
+            nFloatComponents,
+            intDataSize,
+            floatDataSize
+        );
+        intType = block_->intType();
+        floatType = block_->floatType();
+        nFloatComponents = block_->nFloatComponents();
+        intDataSize = block_->intDataSize();
+        floatDataSize = block_->floatDataSize();
+    }
+    if (disabled)
+        ImGui::EndDisabled();
+
     float controlsHeight = 8*ImGui::GetTextLineHeightWithSpacing();
     {
         ImGui::BeginChild
@@ -311,7 +437,7 @@ void SharedStorage::renderGui()
             ImVec2(ImGui::GetContentRegionAvail().x * 0.30f, controlsHeight),
             false
         );
-        ImGui::SeparatorText("intData");
+        ImGui::SeparatorText("ssiData");
         
         ImGui::Text("View start ");
         ImGui::SameLine();
@@ -323,9 +449,9 @@ void SharedStorage::renderGui()
                     std::min
                     (
                         gui_.intDataViewStartIndex, 
-                        block_->intDataSize()
+                        gui_.intDataViewEndIndex
                     ),
-                    0u
+                    0
                 );
         ImGui::PopItemWidth();
         
@@ -339,9 +465,9 @@ void SharedStorage::renderGui()
                     std::min
                     (
                         gui_.intDataViewEndIndex, 
-                        block_->intDataSize()
+                        (int)block_->intDataSize()-1
                     ),
-                    0u
+                    gui_.intDataViewStartIndex
                 );
         ImGui::PopItemWidth();
         
@@ -355,7 +481,7 @@ void SharedStorage::renderGui()
             ImVec2(0, controlsHeight),
             false
         );
-        ImGui::SeparatorText("floatData");
+        ImGui::SeparatorText("ssfData");
 
         ImGui::Text("View start        ");
         ImGui::SameLine();
@@ -364,8 +490,12 @@ void SharedStorage::renderGui()
             gui_.floatDataViewStartIndex = 
                 std::max
                 (
-                    std::min(gui_.floatDataViewStartIndex, block_->floatDataSize()),
-                    0u
+                    std::min
+                    (
+                        gui_.floatDataViewStartIndex, 
+                        gui_.floatDataViewEndIndex
+                    ),
+                    0
                 );
         ImGui::PopItemWidth();
         
@@ -376,8 +506,12 @@ void SharedStorage::renderGui()
             gui_.floatDataViewEndIndex = 
                 std::max
                 (
-                    std::min(gui_.floatDataViewEndIndex, block_->floatDataSize()),
-                    0u
+                    std::min
+                    (
+                        gui_.floatDataViewEndIndex, 
+                        (int)block_->floatDataSize()-1
+                    ),
+                    gui_.floatDataViewStartIndex
                 );
         ImGui::PopItemWidth();
 
@@ -427,16 +561,21 @@ void SharedStorage::renderGui()
                 std::to_string(gui_.floatDataViewPrecision)+
                 (gui_.floatDataViewExponentialFormat ? "e" : "f");
         }
-        ImGui::Text("Show components   ");
-        static const char* labels[4] = {"x ", "y ", "z ", "w"};
-        for (int i=0; i<block_->nFloatComponents(); i++)
+        if (block_->nFloatComponents() > 1)
         {
-            ImGui::SameLine();
-            std::string label = "##floatDataShowCmpt"+std::to_string(i);
-            ImGui::Checkbox(label.c_str(), &gui_.floatDataViewComponents[i]);
-            ImGui::SameLine();
-            ImGui::Text("%s", labels[i]);
+            ImGui::Text("Show components   ");
+            static const char* labels[4] = {"x ", "y ", "z ", "w"};
+            for (int i=0; i<block_->nFloatComponents(); i++)
+            {
+                ImGui::SameLine();
+                std::string label = "##floatDataShowCmpt"+std::to_string(i);
+                ImGui::Checkbox(label.c_str(), &gui_.floatDataViewComponents[i]);
+                ImGui::SameLine();
+                ImGui::Text("%s", labels[i]);
+            }
         }
+        else
+            gui_.floatDataViewComponents[0] = true;
 
         ImGui::EndChild();
     }
@@ -594,12 +733,14 @@ void SharedStorage::renderGui()
         clear();
     if (gui_.isDetachedFromMenu)
         ImGui::End();
+    return shadersRequireRecompilation;
 }
 
 //----------------------------------------------------------------------------//
 
-void SharedStorage::renderMenuItemGui()
+bool SharedStorage::renderMenuItemGui()
 {
+    bool shadersRequireRecompilation = false;
     ImGui::PushID(0);
     if 
     (
@@ -618,14 +759,17 @@ void SharedStorage::renderMenuItemGui()
         if (ImGui::BeginMenu("Shared storage viewer"))
         {
             gui_.isOpen = true;
-            renderGui();
+            shadersRequireRecompilation = renderGui();
+            if (shadersRequireRecompilation)
+                int breakpoint = 0;
             ImGui::EndMenu();
         }
         else
             gui_.isOpen = false;
-        return;
+        return shadersRequireRecompilation;
     }
     ImGui::MenuItem("Shared storage viewer", NULL, &gui_.isOpen);
+    return shadersRequireRecompilation;
 }
 
 }
