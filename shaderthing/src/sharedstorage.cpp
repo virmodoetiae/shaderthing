@@ -428,7 +428,34 @@ bool SharedStorage::renderGui()
     }
     if (disabled)
         ImGui::EndDisabled();
-
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        std::cout << "A" << std::endl;
+        double vSpace = ImGui::GetTextLineHeightWithSpacing();
+        ImGui::Text("Important notes and tips:");
+        ImGui::Dummy({-1, .25*vSpace});
+        ImGui::Bullet(); ImGui::Text(
+"updating the storage buffer automatically recompiles all layers;");
+        ImGui::Dummy({-1, .25*vSpace});
+        ImGui::Bullet(); ImGui::Text(
+R"(using 64-bit types may require enabling additional OpenGL extensions from 
+'Properties' -> 'OpenGL extensions'. The specific extension(s) to be enabled,
+if any, will be dispalyed in the layer compilation error messages on storage
+buffer update;)");
+        ImGui::Dummy({-1, .25*vSpace});
+        ImGui::Bullet(); ImGui::Text(
+R"(in GLSL, 64-bit floating point numbers should be declared with the 'lf' 
+suffix (e.g., 'double x = 1.389lf;'), else they might be interpreted as 32-
+bit floating point numbers. Similarly, 64-bit signed and unsigned integers
+should be suffixed by 'l' and 'ul' respectively (e.g., 'uint64_t x = 1389l;',
+'int64_t x = 1389ul;'))");
+        ImGui::EndTooltip();
+    }
+    
     float controlsHeight = 8*ImGui::GetTextLineHeightWithSpacing();
     {
         ImGui::BeginChild
@@ -760,8 +787,6 @@ bool SharedStorage::renderMenuItemGui()
         {
             gui_.isOpen = true;
             shadersRequireRecompilation = renderGui();
-            if (shadersRequireRecompilation)
-                int breakpoint = 0;
             ImGui::EndMenu();
         }
         else

@@ -1891,6 +1891,8 @@ void Uniform::loadAll
                     );
                 break;
             }
+            default:
+                break;
         }
         uniform->gui.bounds = {min, max};
         uniform->name = uniformName;

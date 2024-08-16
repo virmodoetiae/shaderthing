@@ -280,9 +280,9 @@ public:
     (
         Block::IntType intType, 
         Block::FloatType floatType,
-        const unsigned int nFloatComponents=4,
-        const unsigned int intDataSize = 2048,
-        const unsigned int floatDataSize = 2097152
+        const unsigned int nFloatComponents = 4,
+        const unsigned int intDataSize = 16,
+        const unsigned int floatDataSize = 256
     );
 
     void save(ObjectIO& io) const;

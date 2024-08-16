@@ -17,6 +17,8 @@
 
 #include "shaderthing/include/examples.h"
 
+#include "vir/include/vir.h"
+
 #include "thirdparty/imgui/imgui.h"
 
 namespace ShaderThing
@@ -446,15 +448,15 @@ edited and used for learning purposes or as starting points for other projects)"
     //--------------------------------- Bloom
     ImGui::PushID(id++);
     static std::string errorMessage;
-    static auto canRunOnDeviceInUse = [&errorMessage]() -> bool
+    static auto canRunOnDeviceInUse = []() -> bool
     {
-        auto nativeBloom = vir::Bloomer::create();
+        auto* nativeBloom = vir::Bloomer::create();
         bool result = nativeBloom->canRunOnDeviceInUse();
         errorMessage = std::string(nativeBloom->errorMessage());
         delete nativeBloom;
         return result;
     };
-    static bloom(canRunOnDeviceInUse());
+    static bool bloom(canRunOnDeviceInUse());
     if (!bloom)
         ImGui::BeginDisabled();
     if (ImGui::Button("Load"))

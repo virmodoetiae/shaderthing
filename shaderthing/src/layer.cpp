@@ -578,7 +578,6 @@ std::string Layer::vertexShaderSource
     const SharedUniforms& sharedUniforms
 )
 {
-    static const auto window = vir::Window::instance();
     std::string vertexSource
     (
         glslDirectives()+
@@ -639,7 +638,13 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                     header += 
                         "layout(binding="+std::to_string(imageBindingPoint++)+
                         ", "+resource->internalFormatName()+") ";
-                    if (resource->internalFormatName().find("ui") != std::string::npos)
+                    // This logic should be handled different at the vir:: 
+                    // level and exposed via Resource::, not here
+                    if 
+                    (
+                        resource->internalFormatName().find("ui") != 
+                        std::string::npos
+                    )
                         uniformTypeName = "u"+uniformTypeName;
                     break;
                 }
@@ -647,7 +652,13 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                 case vir::Shader::Variable::Type::SamplerCube :
                 {
                     auto resource = u->getValuePtr<Resource>();
-                    if (resource->internalFormatName().find("ui") != std::string::npos)
+                    // This logic should be handled different at the vir:: 
+                    // level and exposed via Resource::, not here
+                    if 
+                    (
+                        resource->internalFormatName().find("ui") != 
+                        std::string::npos
+                    )
                         uniformTypeName = "u"+uniformTypeName;
                     break;
                 }
@@ -2151,21 +2162,23 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
             vir::GlobalPtr<vir::Window>::instance()->context();
         float fontSize(ImGui::GetFontSize());
         float textWidth(40.0f*fontSize);
-        float vSpace = ImGui::GetTextLineHeightWithSpacing();
+        float vSpace = .25*ImGui::GetTextLineHeightWithSpacing();
         ImGui::PushTextWrapPos(ImGui::GetCursorPos().x+textWidth);
         ImGui::Text(
 "List of all OpenGL extensions supported by your system. To enable or disable "
 "an extension, click on its checkbox. Please note that: ");
         ImGui::Dummy(ImVec2(-1, vSpace));
         ImGui::Bullet();ImGui::Text(
-"Some of the listed extensions may only affect the back-end API and not expose "
+"some of the listed extensions may only affect the back-end API and not expose "
 "new features at the GLSL level;");
+        ImGui::Dummy(ImVec2(-1, vSpace));
         ImGui::Bullet();ImGui::Text(
-"Some of the listed extensions may expose new features at the GLSL level, but "
+"some of the listed extensions may expose new features at the GLSL level, but "
 "not at the fragment shader stage level, which is the only stage over which "
 "ShaderThing gives you control;");
+        ImGui::Dummy(ImVec2(-1, vSpace));
         ImGui::Bullet();ImGui::Text(
-"Some of the listed extensions may already be enabled by default by your current "
+"some of the listed extensions may already be enabled by default by your current "
 "context (%s), yet their status is never correctly reported and there is no "
 "possibility of disabling them: enabling/disabling such extensions from here is "
 "inconsequential.", 
@@ -2228,7 +2241,7 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
                         lFilter.begin(), 
                         ::tolower
                     );
-                for (const auto extension : supportedExtensions)
+                for (const auto& extension : supportedExtensions)
                 {
                     std::string lExtension = extension;
                     if (!caseSensitive)
@@ -2251,7 +2264,7 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
         ImGui::BeginChild
         (
             "##graphicsContextExtensionManager", 
-            ImVec2(0, 12*vSpace),
+            ImVec2(0, 12*4*vSpace),
             true
         );
         

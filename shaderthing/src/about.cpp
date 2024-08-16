@@ -37,7 +37,7 @@ void About::renderGui()
 
     float fontSize(ImGui::GetFontSize());
     float textWidth(40.0f*fontSize);
-    float vSpace = ImGui::GetTextLineHeightWithSpacing();
+    float vSpace = .25*ImGui::GetTextLineHeightWithSpacing();
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x+textWidth);
 
     //--------------------------------------------------------------------------
@@ -131,30 +131,36 @@ void About::renderGui()
         ImGui::EndTooltip();
     }
     ImGui::SetCursorPos(pos1);
-    ImGui::Text(" ");
+    ImGui::Dummy({-1, 4*vSpace});
 
     //--------------------------------------------------------------------------
     ImGui::SeparatorText("License");
     ImGui::Text(
-"Copyright © 2024 Stefan Radman (Стефан Радман, a.k.a., virmodoetiae)\n\n"
+"Copyright © 2024 Stefan Radman (Стефан Радман, a.k.a., virmodoetiae)");
+    ImGui::Dummy({-1, vSpace});
+    ImGui::Text(
 "This software is provided \"as-is\", without any express or implied warranty. "
 "In no event will the author be held liable for any damages arising from the "
-"use of this software.\n\n"
+"use of this software.");
+    ImGui::Dummy({-1, vSpace});
+    ImGui::Text(
 "Permission is granted to anyone to use this software for any purpose, "
 "including commercial applications, and to alter it and redistribute it "
-"freely, subject to the following restrictions:\n");
+"freely, subject to the following restrictions:");
     ImGui::Dummy({-1, vSpace});
-    ImGui::Bullet();ImGui::Text(
+    ImGui::Bullet(); ImGui::Text(
 "The origin of this software must not be misrepresented; you must not claim "
 "that you wrote the original software. If you use this software in a product, "
 "an acknowledgment in the product documentation would be appreciated but is "
 "not required.");
-    ImGui::Bullet();ImGui::Text(
+    ImGui::Dummy({-1, vSpace});
+    ImGui::Bullet(); ImGui::Text(
 "Altered source versions must be plainly marked as such, and must not be "
 "misrepresented as being the original software.");
-    ImGui::Bullet();ImGui::Text(
-"This notice may not be removed or altered from any source distribution.");
     ImGui::Dummy({-1, vSpace});
+    ImGui::Bullet(); ImGui::Text(
+"This notice may not be removed or altered from any source distribution.");
+    ImGui::Dummy({-1, 4*vSpace});
 
     //--------------------------------------------------------------------------
     ImGui::SeparatorText("Acknowledgements");

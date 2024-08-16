@@ -164,6 +164,7 @@ Resource* Resource::create
     if (resource->set(width, height, internalFormat))
         return resource;
     delete resource;
+    return nullptr;
 }
 
 Resource* Resource::create(const std::vector<Texture2DResource*>& frames)

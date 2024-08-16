@@ -1593,7 +1593,6 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
             auto end = state_.selectionEnd;
             if (start > end)
                 std::swap(start, end);
-            static ImGuiIO& io = ImGui::GetIO();
             if (!aShift)
             {
                 for (int i = start.line; i <= end.line; i++)
