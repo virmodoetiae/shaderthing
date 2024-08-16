@@ -434,7 +434,6 @@ bool SharedStorage::renderGui()
         ImGui::BeginTooltip()
     )
     {
-        std::cout << "A" << std::endl;
         double vSpace = ImGui::GetTextLineHeightWithSpacing();
         ImGui::Text("Important notes and tips:");
         ImGui::Dummy({-1, .25*vSpace});
