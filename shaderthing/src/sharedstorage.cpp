@@ -91,6 +91,10 @@ default :                                                                   \
     //-------------------------------------
     
     INITIALIZE_BLOCK_AND_SSBO(intType, floatType, nFloatComponents)
+    
+    // Changing type and/or resizing may turn some of the data in memory
+    // into garbage, so make sure to clean up the storage
+    block_->clear();
 }
 
 SharedStorage::SharedStorage()
@@ -455,7 +459,9 @@ should be suffixed by 'l' and 'ul' respectively (e.g., 'uint64_t x = 1389l;',
         ImGui::EndTooltip();
     }
     
-    float controlsHeight = 8*ImGui::GetTextLineHeightWithSpacing();
+    float controlsHeight = 8.*ImGui::GetTextLineHeightWithSpacing();
+    if (block_->nFloatComponents() == 1)
+        controlsHeight *= .8;
     {
         ImGui::BeginChild
         (
