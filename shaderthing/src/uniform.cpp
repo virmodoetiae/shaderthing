@@ -1605,6 +1605,9 @@ is currently being held down)");
         )
     )
         showDefaultUniforms = !showDefaultUniforms;
+
+    ImGui::BeginChild("##uniformsFrame", ImVec2(-1, -1), false);
+
     int nColumns = 5;
     if 
     (
@@ -1760,6 +1763,8 @@ is currently being held down)");
             }
         uniform->hasSharedByUserChanged = false;
     }
+
+    ImGui::EndChild();
 }
 
 void Uniform::loadAll

@@ -79,7 +79,6 @@ public:
                TextEditor               sourceEditor;
         static std::string              defaultSharedSource;
         static TextEditor               sharedSourceEditor;
-        
     };
     struct Flags
     {

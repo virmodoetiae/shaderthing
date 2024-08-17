@@ -1886,7 +1886,7 @@ void Layer::renderLayersTabBarGui // Static
         if (sourceErrors.size() > 0 || layer->gui_.headerErrors.size() > 0)
         {
             compilationErrors = true;
-            ImGui::Bullet();ImGui::Text(layer->gui_.name.c_str());
+            ImGui::Bullet(); ImGui::Text(layer->gui_.name.c_str());
             if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
             {
                 if (layer->gui_.headerErrors.size() > 0)
