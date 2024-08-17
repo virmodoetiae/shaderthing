@@ -74,6 +74,8 @@ case Block::FloatType::F64 :                                                \
 }                                                                           \
 break;
     //-------------------------------------
+    // No 3-component variant because of memory alignment issues: it would
+    // occupy as much space a 4-component-based array, so just use that instead
 #define INITIALIZE_BLOCK_AND_SSBO(I, F, N)                                  \
 switch(N)                                                                   \
 {                                                                           \
@@ -81,8 +83,6 @@ case 1 :                                                                    \
     INITIALIZE_BLOCK_AND_SSBO_2(I, F, 1)                                    \
 case 2 :                                                                    \
     INITIALIZE_BLOCK_AND_SSBO_2(I, F, 2)                                    \
-case 3 :                                                                    \
-    INITIALIZE_BLOCK_AND_SSBO_2(I, F, 3)                                    \
 case 4 :                                                                    \
     INITIALIZE_BLOCK_AND_SSBO_2(I, F, 4)                                    \
 default :                                                                   \
@@ -321,6 +321,17 @@ bool SharedStorage::renderGui()
     static auto nFloatComponents = block_->nFloatComponents();
     static auto intDataSize = block_->intDataSize();
     static auto floatDataSize = block_->floatDataSize();
+    if (newInstance_)
+    {
+        intType = block_->intType();
+        floatType = block_->floatType();
+        nFloatComponents = block_->nFloatComponents();
+        intDataSize = block_->intDataSize();
+        floatDataSize = block_->floatDataSize();
+        newInstance_ = false; // Stupid, ugly trick to avoid having these
+                              // static values not resetting on project reset/
+                              // reload
+    }
     ImGui::Text("ssiData type       ");
     ImGui::SameLine();
     ImGui::PushItemWidth(-1);
@@ -394,6 +405,12 @@ bool SharedStorage::renderGui()
     {
         for (unsigned int nCmpts = 1; nCmpts <= 4; nCmpts++)
         {
+            // Memory alignment issues when using a 3-component vector, it
+            // would required further dynamic typing shenanigans to address,
+            // and it would still occupy as much space in memory as a 4-
+            // component array so... just use that instead
+            if (nCmpts == 3)
+                continue;
             if (ImGui::Selectable(std::to_string(nCmpts).c_str()))
                 nFloatComponents = nCmpts;
         }
@@ -717,29 +734,19 @@ should be suffixed by 'l' and 'ul' respectively (e.g., 'uint64_t x = 1389l;',
                 ImGui::Text("%d", row);
                 ImGui::TableSetColumnIndex(1);
                 
-                //const auto& value = block_.floatData[row];
-                if (gui_.isFloatDataAlsoShownAsColor)
+                if 
+                (
+                    gui_.isFloatDataAlsoShownAsColor &&
+                    block_->nFloatComponents() == 4
+                )
                 {
-                    if (block_->nFloatComponents() == 4)
-                    {
-                        block_->printFloatAsColor
-                        (
-                            &ImGui::ColorEdit4, 
-                            row, 
-                            ImGuiColorEditFlags_NoInputs
-                        );
-                        ImGui::SameLine();
-                    }
-                    else if (block_->nFloatComponents() == 3)
-                    {
-                        block_->printFloatAsColor
-                        (
-                            &ImGui::ColorEdit3, 
-                            row, 
-                            ImGuiColorEditFlags_NoInputs
-                        );
-                        ImGui::SameLine();
-                    }
+                    block_->printFloatAsColor
+                    (
+                        &ImGui::ColorEdit4, 
+                        row, 
+                        ImGuiColorEditFlags_NoInputs
+                    );
+                    ImGui::SameLine();
                 }
                 for (int i=0; i<block_->nFloatComponents(); i++)
                 {

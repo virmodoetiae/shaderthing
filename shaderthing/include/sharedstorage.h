@@ -233,10 +233,19 @@ class SharedStorage
             int flags
         ) const override
         {
-            if constexpr (T_NFloatCmpts > 2)
+            if constexpr (T_NFloatCmpts == 4)
             {
-                T_VecType value(floatData[index]);
-                func("##floatDataColorViewer", (float*)(&(value.x)), flags);
+                if constexpr (std::is_same<T_FloatType, float>::value)
+                {
+                    T_VecType value(floatData[index]);
+                    func("##floatDataColorViewer", (float*)(&(value.x)), flags);
+                }
+                else if constexpr (std::is_same<T_FloatType, double>::value)
+                {
+                    T_VecType value(floatData[index]);
+                    float color[4] = {value.x, value.y, value.z, value.w};
+                    func("##floatDataColorViewer", (float*)(&color), flags);
+                }
             }
         }
         
@@ -270,6 +279,7 @@ class SharedStorage
     GUI                       gui_           = {};
     bool                      isSupported_   = false;
     const unsigned int        bindingPoint_  = 0;
+    bool                      newInstance_   = true;
 
 public:
     
