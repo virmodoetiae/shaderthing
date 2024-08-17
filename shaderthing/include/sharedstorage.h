@@ -243,7 +243,13 @@ class SharedStorage
                 else if constexpr (std::is_same<T_FloatType, double>::value)
                 {
                     T_VecType value(floatData[index]);
-                    float color[4] = {value.x, value.y, value.z, value.w};
+                    float color[4] = 
+                    {
+                        (float)(value.x),
+                        (float)(value.y),
+                        (float)(value.z),
+                        (float)(value.w)
+                    };
                     func("##floatDataColorViewer", (float*)(&color), flags);
                 }
             }

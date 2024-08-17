@@ -107,7 +107,7 @@ void App::update()
     float timeStep;
     if (exporter_->isRunning())
     {
-        if (sharedUniforms_->iRenderPass() == exporter_->nRenderPasses()-1)
+        if (sharedUniforms_->iRenderPass() == (int)exporter_->nRenderPasses()-1)
         {
             advanceFrame = true;
             timeStep = exporter_->timeStep();

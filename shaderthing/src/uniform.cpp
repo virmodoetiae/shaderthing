@@ -1982,6 +1982,7 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
                 io.write("value", u->getValue<glm::vec4>());
                 WRITE_MIN_MAX
                 io.write("usesColorPicker", u->gui.usesColorPicker);
+                break;
             }
             case vir::Shader::Variable::Type::Sampler2D :
             case vir::Shader::Variable::Type::SamplerCube :

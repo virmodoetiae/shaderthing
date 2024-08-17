@@ -1244,8 +1244,8 @@ the project)");
         {
             if 
             (
-                resource->width() == resolution.x && 
-                resource->height() == resolution.y && 
+                (int)resource->width() == resolution.x && 
+                (int)resource->height() == resolution.y && 
                 resource->internalFormat() == internalFormat
             )
             {

@@ -468,7 +468,7 @@ void SharedUniforms::update(const UpdateArgs& args)
 
 void SharedUniforms::nextRenderPass(unsigned int nMaxRenderPasses)
 {   
-    if (fBlock_.iRenderPass < nMaxRenderPasses-1)
+    if (fBlock_.iRenderPass < (int)nMaxRenderPasses-1)
         ++fBlock_.iRenderPass;
     else
         fBlock_.iRenderPass = 0;

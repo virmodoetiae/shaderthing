@@ -455,18 +455,18 @@ bool SharedStorage::renderGui()
         ImGui::BeginTooltip()
     )
     {
-        double vSpace = ImGui::GetTextLineHeightWithSpacing();
+        float vSpace = ImGui::GetTextLineHeightWithSpacing();
         ImGui::Text("Important notes and tips:");
-        ImGui::Dummy({-1, .25*vSpace});
+        ImGui::Dummy({-1, .25f*vSpace});
         ImGui::Bullet(); ImGui::Text(
 "updating the storage buffer automatically recompiles all layers;");
-        ImGui::Dummy({-1, .25*vSpace});
+        ImGui::Dummy({-1, .25f*vSpace});
         ImGui::Bullet(); ImGui::Text(
 R"(using 64-bit types may require enabling additional OpenGL extensions from 
 'Properties' -> 'OpenGL extensions'. The specific extension(s) to be enabled,
 if any, will be dispalyed in the layer compilation error messages on storage
 buffer update;)");
-        ImGui::Dummy({-1, .25*vSpace});
+        ImGui::Dummy({-1, .25f*vSpace});
         ImGui::Bullet(); ImGui::Text(
 R"(in GLSL, 64-bit floating point numbers should be declared with the 'lf' 
 suffix (e.g., 'double x = 1.389lf;'), else they might be interpreted as 32-
@@ -614,7 +614,7 @@ should be suffixed by 'l' and 'ul' respectively (e.g., 'uint64_t x = 1389l;',
         {
             ImGui::Text("Show components   ");
             static const char* labels[4] = {"x ", "y ", "z ", "w"};
-            for (int i=0; i<block_->nFloatComponents(); i++)
+            for (unsigned int i=0; i<block_->nFloatComponents(); i++)
             {
                 ImGui::SameLine();
                 std::string label = "##floatDataShowCmpt"+std::to_string(i);
@@ -748,7 +748,7 @@ should be suffixed by 'l' and 'ul' respectively (e.g., 'uint64_t x = 1389l;',
                     );
                     ImGui::SameLine();
                 }
-                for (int i=0; i<block_->nFloatComponents(); i++)
+                for (unsigned int i=0; i<block_->nFloatComponents(); i++)
                 {
                     if (!gui_.floatDataViewComponents[i])
                         continue;
@@ -759,7 +759,7 @@ should be suffixed by 'l' and 'ul' respectively (e.g., 'uint64_t x = 1389l;',
                         i, 
                         gui_.floatDataViewFormat.c_str()
                     );
-                    if (i < block_->nFloatComponents()-1)
+                    if (i < block_->nFloatComponents()-1u)
                         ImGui::SameLine();
                 }
                 ImGui::PopID();
