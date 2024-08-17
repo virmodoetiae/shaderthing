@@ -202,10 +202,29 @@ TODO ---------------------------------------------------------------------------
 
 (X) Implement customizable ShaderThing project auto-save feature
 
+(X) Implement blank texture2D creator for use as data storage. This is tightly
+    related to the next item on the list
+
+(X) Implement image-type uniforms to enable write operations from within the 
+    layers' fragment shader to destinations other than fragColor, such as 
+    texture2D targets, which can act as custom, flexible, non-SSBO-based shared
+    storage
+
+(X) Implement OpenGL extension explorer to allow enabling and/or disabling
+    specific extensions based on the user system's availability. This is
+    useful for e.g., enabling support for 64-bit data types
+
+(X) Make the shared storage SSBO fully dynamically settable, i.e., allow the 
+    user to set custom data types, inclusive of 64-bit types, for the integer 
+    (ssiData) and floating point (ssfData) data arrays, as well as a custom 
+    size for each array, all at runtime
+
 (W) Add example projects that can be loaded in ShaderThings as demos/tutorials.
     This is currently being implemented under Help->Examples
 
 (W) Expand the Help->Code Repository section
+
+(W) Expand project README with demo images and GIFs
 
 ( ) [vir & shaderthing] Implement an actual internal logging system
 
@@ -214,9 +233,14 @@ TODO ---------------------------------------------------------------------------
 ( ) Implement "replace next" occurence of found text in the find/replace tool,
     as currently only a "replace all" can be performed
 
-( ) Expand project README with demo images and GIFs
-
 TO-CONSIDER --------------------------------------------------------------------
+
+*   Allow a layer to represent a compute shader instead of a fragment shader,
+    giving the user control of its type at runtime.
+    This is technically possible and would make sense given the recent addition
+    of custom storage textures and image-type uniforms enabing arbitrary data
+    input-output. However, I will need to carefully evaluate this, as it would
+    be no small feature from an implementation standpoint
 
 *   Add possibility of rendering to cubemaps (e.g., adding a type selector for
     any layer's internal framebuffer 'type': either a Texture2D framebuffer or
