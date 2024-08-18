@@ -563,6 +563,21 @@ void App::renderGui()
     font_.checkLoadJapaneseAndOrSimplifiedChinese();
     
     vir::ImGuiRenderer::newFrame();
+
+    // Slightly edit tab bar colors for better visibility
+    bool static tabBarColorsSet = false;
+    if (!tabBarColorsSet)
+    {
+        auto scaleColor = [](unsigned int cid, float s)
+        {
+            auto c = ImGui::GetStyleColorVec4(cid);
+            ImGui::PushStyleColor(cid, ImVec4{c.x*s, c.y*s, c.z*s, c.w*s});
+        };
+        scaleColor(ImGuiCol_Tab, .8);
+        scaleColor(ImGuiCol_TabActive, 1.05);
+        scaleColor(ImGuiCol_TabHovered, 1.05);
+        tabBarColorsSet = true;
+    }
     
     ImGui::SetNextWindowSize(ImVec2(750,750), ImGuiCond_FirstUseEver);
     static ImGuiWindowFlags flags

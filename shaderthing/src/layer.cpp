@@ -2072,8 +2072,31 @@ void Layer::renderTabBarGui
     std::vector<Resource*>& resources
 )
 {
+    static unsigned int gActiveTabId = 0;
+    static unsigned int gActiveLayerId = 0;
+    bool layerChanged = (gActiveLayerId != id_);
+    if (layerChanged)
+        gActiveLayerId = id_;
     if (ImGui::BeginTabBar("##layerTabBar"))
     {
+        if (layerChanged && gui_.activeTabId != gActiveTabId)
+        {
+            switch (gActiveTabId)
+            {
+                case 0 :
+                    ImGui::SetTabItemClosed("Shared source");
+                    ImGui::SetTabItemClosed("Uniforms");
+                    break;
+                case 1 :
+                    ImGui::SetTabItemClosed("Fragment source");
+                    ImGui::SetTabItemClosed("Uniforms");
+                    break;
+                case 2 :
+                    ImGui::SetTabItemClosed("Fragment source");
+                    ImGui::SetTabItemClosed("Shared source");
+                    break;
+            }
+        }
         if (ImGui::BeginTabItem("Fragment source"))
         {
             static ImVec4 redColor = {1,0,0,1};
@@ -2114,6 +2137,7 @@ void Layer::renderTabBarGui
                 ImGui::Indent(); // Re-add indent from Header TreeNode
             }
             gui_.sourceEditor.renderGui("##sourceEditor");
+            gActiveTabId = 0;
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Shared source"))
@@ -2123,6 +2147,7 @@ void Layer::renderTabBarGui
             flags_.uncompiledChanges = 
                 flags_.uncompiledChanges || madeReplacements;
             gui_.sharedSourceEditor.renderGui("##sharedSourceEditor");
+            gActiveTabId = 1;
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Uniforms"))
@@ -2134,8 +2159,10 @@ void Layer::renderTabBarGui
                 layers,
                 resources
             );
+            gActiveTabId = 2;
             ImGui::EndTabItem();
         }
+        gui_.activeTabId = gActiveTabId;
         ImGui::EndTabBar();
     }
 }

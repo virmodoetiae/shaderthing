@@ -79,6 +79,7 @@ public:
                TextEditor               sourceEditor;
         static std::string              defaultSharedSource;
         static TextEditor               sharedSourceEditor;
+               unsigned int             activeTabId                = 0;
     };
     struct Flags
     {
@@ -88,6 +89,7 @@ public:
                bool                     isAspectRatioBoundToWindow = true;
                bool                     rescaleWithWindow          = true;
         static bool                     restartRendering;
+               
     };
     struct Cache
     {

@@ -1606,7 +1606,8 @@ is currently being held down)");
     )
         showDefaultUniforms = !showDefaultUniforms;
 
-    ImGui::BeginChild("##uniformsFrame", ImVec2(-1, -1), false);
+    std::string uniformFrameName = "##uniformsFrame"+std::to_string(layer->id_);
+    ImGui::BeginChild(uniformFrameName.c_str(), ImVec2(-1, -1), false);
 
     int nColumns = 5;
     if 
@@ -1715,6 +1716,8 @@ is currently being held down)");
         // been set earlier, where the uniform markedForDeletion flag is set
     }
 
+    ImGui::EndChild();
+
     if (!hasSharedByUserChanged)
         return;
 
@@ -1763,8 +1766,6 @@ is currently being held down)");
             }
         uniform->hasSharedByUserChanged = false;
     }
-
-    ImGui::EndChild();
 }
 
 void Uniform::loadAll
