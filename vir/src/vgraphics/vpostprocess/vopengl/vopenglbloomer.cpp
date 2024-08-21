@@ -373,7 +373,7 @@ OpenGLBloomer::~OpenGLBloomer()
 void OpenGLBloomer::bloom
 (
     const Framebuffer* input,
-    Settings& settings
+    const Settings& settings
 )
 {
     // Size output to match input
@@ -414,7 +414,7 @@ void OpenGLBloomer::bloom
             bloom_->setWrapMode(i, WrapMode::ClampToEdge);
         sizeChanged = true;
     }
-    static glm::ivec2 mipSize[Bloomer::maxMipDepth];
+    static glm::ivec2 mipSize[Bloomer::maxMipDepth_];
     mipSize[0] = glm::ivec2(input->width(), input->height());
     bool isSF32(input->colorBufferInternalFormat()==InternalFormat::RGBA_SF_32);
 
@@ -467,8 +467,8 @@ void OpenGLBloomer::bloom
     OpenGLWaitSync();
 
     // Downsampling ----------------------------------------------------------//
-    int minSideResolution = 2; // Could be passed via settings
-    int mipLevel = 1;
+    int mipStep = 1;
+    int mipLevel = mipStep;
     bool firstLevel = true;
     while (true)
     {
@@ -500,8 +500,8 @@ void OpenGLBloomer::bloom
         glm::ivec2& size = mipSize[mipLevel];
         size.x = width;
         size.y = height;
-        downsampler_.setUniformInt("mip", mipLevel-1);
-        downsampler_.setUniformInt2("txsz", mipSize[mipLevel-1], false);
+        downsampler_.setUniformInt("mip", mipLevel-mipStep);
+        downsampler_.setUniformInt2("txsz", mipSize[mipLevel-mipStep], false);
         downsampler_.setUniformInt2("imsz", size, false);
         //downsampler_.setUniformInt("kr", int(firstLevel), false);
         downsampler_.run
@@ -513,18 +513,14 @@ void OpenGLBloomer::bloom
         OpenGLWaitSync();
         if 
         (
-            width <= minSideResolution || 
-            height <= minSideResolution ||
+            width <= minSideResolution_ || 
+            height <= minSideResolution_ ||
             mipLevel >= settings.mipDepth
         )
             break;
-        ++mipLevel;
-        if (firstLevel)
-            firstLevel = false;
+        mipLevel += mipStep;
+        firstLevel = false;
     }
-    int lastMipLevel = mipLevel;
-    if (sizeChanged)
-        settings.mipDepth = lastMipLevel;
 
     // Upsampling ------------------------------------------------------------//
     while(mipLevel > 0)
@@ -533,7 +529,7 @@ void OpenGLBloomer::bloom
         (
             bloomUnit, 
             bloom_->id(), 
-            mipLevel-1,
+            mipLevel-mipStep,
             GL_FALSE, 
             0, 
             GL_READ_WRITE,
@@ -541,7 +537,7 @@ void OpenGLBloomer::bloom
         );
         upsampler_.setUniformInt("mip", mipLevel);
         upsampler_.setUniformInt2("txsz", mipSize[mipLevel], false);
-        const glm::ivec2& size = mipSize[mipLevel-1];
+        const glm::ivec2& size = mipSize[mipLevel-mipStep];
         upsampler_.setUniformInt2("imsz", size, false);
         upsampler_.setUniformFloat("ii", settings.intensity, false);
         float hz = settings.haze;
@@ -556,27 +552,6 @@ void OpenGLBloomer::bloom
                 settings.reinhardWhitePoint;
             upsampler_.setUniformFloat("tma", tma, false);
         }
-        /*switch (settings.toneMap)
-        {
-            case ToneMap::Radman :
-            {
-                float tma = settings.radmanExposure;
-                if (tma > 0.f)
-                    tma *= std::pow(2, tma);
-                upsampler_.setUniformFloat("tma", tma, false);
-                break;
-            }
-            case ToneMap::Reinhard :
-            {
-                float tma = 
-                    settings.reinhardWhitePoint*
-                    settings.reinhardWhitePoint;
-                upsampler_.setUniformFloat("tma", tma, false);
-                break;
-            }
-            default:
-                break;
-        }*/
         upsampler_.run
         (
             N_WORK_GROUPS_X(size.x),
@@ -584,7 +559,7 @@ void OpenGLBloomer::bloom
             N_WORK_GROUPS_Z
         );
         OpenGLWaitSync();
-        --mipLevel;
+        mipLevel -= mipStep;
     }
 
     // Add bloom to input ----------------------------------------------------//

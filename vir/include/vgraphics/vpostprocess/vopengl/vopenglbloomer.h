@@ -22,9 +22,9 @@ protected:
     // single texel. However, it turned out it runs just as well as the 
     // simpler downsampler_, meaning that the 13 textureLod fetches are
     // marginal in computational expensiveness in the grand scheme of things.
-    // I am keeping it for reference for future such compute shaders, but
-    // otherwise not used because of its poor legibility/maintainability
-    // compared to the simpler downsampler_;
+    // I am keeping it for reference for future compute shaders, but otherwise
+    // it's not used because of its poor legibility/maintainability
+    // compared to the simpler downsampler_
     static OpenGLComputeShader cachingDownsampler_;
 
     // Actually used compute shaders
@@ -53,7 +53,7 @@ public:
     void bloom
     (
         const Framebuffer* input,
-        Settings& settings
+        const Settings& settings
     ) override;
 
 };

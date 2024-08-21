@@ -26,4 +26,33 @@ Bloomer* Bloomer::create()
     }
     return nullptr;
 }
+
+// Just a fancy integer log2(x)-1 implementation
+unsigned int Bloomer::maxMipLevel
+(
+    const Framebuffer* framebuffer
+)
+{
+    unsigned int size = 
+        std::max(framebuffer->width(), framebuffer->height())-1u;
+#if defined(__GNUC__) || defined(__clang__)
+    #include <cstdint>
+    return 
+        std::min(31u-__builtin_clz(size), maxMipDepth_);
+#elif defined(_MSC_VER)
+    #include <intrin.h>
+    unsigned long index;
+    if (_BitScanReverse(&index, size))
+        return std::min(31u - (unsigned int)index, maxMipDepth_);
+    return maxMipDepth_-1u;
+#else
+    unsigned int level = 0;
+    while (x >>= 1) 
+    {
+        ++level;
+    }
+    return std::min(level, maxMipDepth_);
+#endif
+}
+
 }

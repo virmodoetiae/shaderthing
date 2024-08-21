@@ -1179,7 +1179,7 @@ void BloomPostProcess::renderGui()
     )
         isActive_ = !isActive_;
 
-    ImGui::Text("Radius   ");
+    ImGui::Text("Radius     ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     ImGui::SliderInt
@@ -1187,11 +1187,13 @@ void BloomPostProcess::renderGui()
         "##bloomMipDepthSlider",
         (int*)&settings_.mipDepth,
         1,
-        vir::Bloomer::maxMipDepth
+        vir::Bloomer::maxMipLevel(*inputFramebuffer_),
+        "%d", 
+        ImGuiSliderFlags_AlwaysClamp
     );
     ImGui::PopItemWidth();
-
-    ImGui::Text("Intensity");
+    
+    ImGui::Text("Intensity  ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     if 
@@ -1207,7 +1209,7 @@ void BloomPostProcess::renderGui()
         settings_.intensity = std::max(0.f, settings_.intensity);
     ImGui::PopItemWidth();
 
-    ImGui::Text("Threshold");
+    ImGui::Text("Threshold  ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     if 
@@ -1223,7 +1225,7 @@ void BloomPostProcess::renderGui()
         settings_.threshold = std::max(0.f, settings_.threshold);
     ImGui::PopItemWidth();
 
-    ImGui::Text("Knee     ");
+    ImGui::Text("Knee       ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     if 
@@ -1239,7 +1241,7 @@ void BloomPostProcess::renderGui()
         settings_.knee = std::max(0.f, settings_.knee);
     ImGui::PopItemWidth();
 
-    ImGui::Text("Haze     ");
+    ImGui::Text("Haze       ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     if 
@@ -1255,7 +1257,7 @@ void BloomPostProcess::renderGui()
         settings_.haze = std::max(0.f, settings_.haze);
     ImGui::PopItemWidth();
 
-    ImGui::Text("Tone map ");
+    ImGui::Text("Tone map   ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
     if 
@@ -1279,7 +1281,7 @@ void BloomPostProcess::renderGui()
 
     if (settings_.toneMap == Settings::ToneMap::Reinhard)
     {
-        ImGui::Text("White pt.");
+        ImGui::Text("White pt.  ");
         ImGui::SameLine();
         ImGui::PushItemWidth(entryWidth);
         if 
