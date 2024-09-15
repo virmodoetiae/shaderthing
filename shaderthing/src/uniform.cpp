@@ -822,7 +822,7 @@ is currently being held down)");
         (
             ImGui::BeginCombo
             (
-                "##ufSelector", 
+                "##uniformTypeSelector", 
                 vir::Shader::uniformTypeToName[uniform->type].c_str()
             )
         )
@@ -834,7 +834,42 @@ is currently being held down)");
                         vir::Shader::uniformNameToType[uniformTypeName];
                     if (selectedType != uniform->type)
                     {
-                        uniform->resetValue();
+                        if // Do not reset when swapping between uniform types
+                           // that have the same underlying data types 
+                           // (Sampler2D and Image2D uniforms both refer to 
+                           // TextureBuffer2D objects, and the same happens for
+                           // cube map types) 
+                        (
+                            !(
+                                (
+                                    uniform->type == 
+                                    vir::Shader::Variable::Type::Sampler2D ||
+                                    uniform->type == 
+                                    vir::Shader::Variable::Type::Image2D
+                                ) &&
+                                (
+                                    selectedType == 
+                                    vir::Shader::Variable::Type::Sampler2D ||
+                                    selectedType == 
+                                    vir::Shader::Variable::Type::Image2D
+                                )
+                            ) &&
+                            !(
+                                (
+                                    uniform->type == 
+                                    vir::Shader::Variable::Type::SamplerCube ||
+                                    uniform->type == 
+                                    vir::Shader::Variable::Type::ImageCube
+                                ) &&
+                                (
+                                    selectedType == 
+                                    vir::Shader::Variable::Type::SamplerCube ||
+                                    selectedType == 
+                                    vir::Shader::Variable::Type::ImageCube
+                                )
+                            )
+                        )
+                            uniform->resetValue();
                         uniform->type = selectedType;
                         uniform->gui.showBounds = 
                         (

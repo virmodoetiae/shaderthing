@@ -570,8 +570,12 @@ void App::renderGui()
     {
         auto scaleColor = [](unsigned int cid, float s)
         {
-            auto c = ImGui::GetStyleColorVec4(cid);
-            ImGui::PushStyleColor(cid, ImVec4{c.x*s, c.y*s, c.z*s, c.w*s});
+            auto& style = ImGui::GetStyle();
+            ImVec4& c = style.Colors[cid];
+            c.x*=s;
+            c.y*=s;
+            c.z*=s;
+            c.w*=s;
         };
         scaleColor(ImGuiCol_Tab, .8);
         scaleColor(ImGuiCol_TabActive, 1.05);

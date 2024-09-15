@@ -169,7 +169,7 @@ void Shader::Uniform::resetValue()
         
             break;
     }
-    value_=nullptr;
+    value_ = nullptr;
 }
 
 Shader* Shader::create
