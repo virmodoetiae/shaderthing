@@ -376,31 +376,33 @@ void OpenGLBloomer::bloom
     const Settings& settings
 )
 {
-    // Size output to match input
-    prepareOutput(input);
-    bool sizeChanged(false);
-    if (bloom_ == nullptr)
-    {
-        bloom_ = TextureBuffer2D::create
-        (
-            nullptr,
-            input->width(),
-            input->height(),
-            InternalFormat::RGBA_SF_32
-        );
-        bloom_->setMagFilterMode(FilterMode::Linear);
-        bloom_->setMinFilterMode(FilterMode::LinearMipmapNearest);
-        for (int i=0;i<2;i++)
-            bloom_->setWrapMode(i, WrapMode::ClampToEdge);
-        sizeChanged = true;
-    }
-    else if 
+    // Prevent the use of any minimization filter other than nearest or linear
+    // on the input texture as, otherwise, the bloom algorithm won't work. This
+    // is reset later on, if required
+    bool resetInputMinFilter = false;
+    FilterMode origInputMinFilter = input->colorBufferMinFilterMode();
+    if 
     (
-        bloom_->width() != input->width() || 
-        bloom_->height() != input->height()
+        origInputMinFilter != FilterMode::Nearest &&
+        origInputMinFilter != FilterMode::Linear
     )
     {
-        delete bloom_;
+        // Const casting is real ugly, I know
+        ((Framebuffer*)input)->setColorBufferMinFilterMode(FilterMode::Linear);
+        resetInputMinFilter = true;
+    }
+
+    // Size output to match input
+    prepareOutput(input);
+    bool sizeChangedOrInitRequired = 
+        bloom_ == nullptr ? 
+            true : 
+            bloom_->width() != input->width() || 
+            bloom_->height() != input->height();
+    if (sizeChangedOrInitRequired)
+    {
+        if (bloom_ != nullptr)
+            delete bloom_;
         bloom_ = TextureBuffer2D::create
         (
             nullptr,
@@ -412,7 +414,6 @@ void OpenGLBloomer::bloom
         bloom_->setMinFilterMode(FilterMode::LinearMipmapNearest);
         for (int i=0;i<2;i++)
             bloom_->setWrapMode(i, WrapMode::ClampToEdge);
-        sizeChanged = true;
     }
     static glm::ivec2 mipSize[Bloomer::maxMipDepth_];
     mipSize[0] = glm::ivec2(input->width(), input->height());
@@ -602,6 +603,8 @@ void OpenGLBloomer::bloom
         N_WORK_GROUPS_Z
     );
     OpenGLWaitSync();
+    if (resetInputMinFilter)
+        ((Framebuffer*)input)->setColorBufferMinFilterMode(origInputMinFilter);
 };
 
 }
