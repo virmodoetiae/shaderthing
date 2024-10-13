@@ -42,6 +42,9 @@ public:
     void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
     void unbind() override;
     void unbindImage() override;
+    void readData(unsigned char*& data, bool allocate=false) override;
+    void readData(unsigned int*& data, bool allocate=false) override;
+    void readData(float*& data, bool allocate=false) override;
 };
 
 class OpenGLAnimatedTextureBuffer2D : public AnimatedTextureBuffer2D
@@ -76,6 +79,9 @@ public:
     void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
     void unbind() override;
     void unbindImage() override;
+    void readData(unsigned char*& data, bool allocate=false) override;
+    void readData(unsigned int*& data, bool allocate=false) override;
+    void readData(float*& data, bool allocate=false) override;
 };
 
 class OpenGLCubeMapBuffer : public CubeMapBuffer
@@ -100,6 +106,9 @@ public:
     void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
     void unbind() override;
     void unbindImage() override;
+    void readData(unsigned char*& data, bool allocate=false) override;
+    void readData(unsigned int*& data, bool allocate=false) override;
+    void readData(float*& data, bool allocate=false) override;
 };
 
 class OpenGLFramebuffer : public Framebuffer

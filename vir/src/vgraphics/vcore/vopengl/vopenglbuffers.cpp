@@ -199,8 +199,12 @@ TextureBuffer2D(data, width, height, internalFormat)
 
     // Create texture
     GLint glFormat = OpenGLFormat(internalFormat);
+    bool resetAlignment = false;
     if (glFormat != GL_RGBA && glFormat != GL_RGBA_INTEGER)
+    {
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        resetAlignment = true;
+    }
     else
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
     GLint glInternalFormat = OpenGLInternalFormat(internalFormat);
@@ -216,6 +220,8 @@ TextureBuffer2D(data, width, height, internalFormat)
         OpenGLType(internalFormat), // GL_UNSIGNED_BYTE
         data
     );
+    if (resetAlignment)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     
     // Swizzling setting
     if (nChannels_ == 1) 
@@ -351,6 +357,40 @@ void OpenGLTextureBuffer2D::unbindImage()
         GL_READ_WRITE, 
         OpenGLInternalFormat(internalFormat_)
     );
+}
+
+#define READ_DATA(id, dataType, glDataType)                                 \
+    unsigned int size = width_*height_*nChannels_;                          \
+    GLint glFormat = OpenGLFormat(internalFormat_);                         \
+    bool resetAlignment = false;                                            \
+    if (glFormat != GL_RGBA && glFormat != GL_RGBA_INTEGER)                 \
+    {                                                                       \
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);                                \
+        resetAlignment = true;                                              \
+    }                                                                       \
+    else                                                                    \
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);                                \
+    if (allocate)                                                           \
+        data = new dataType[size];                                          \
+    glBindTexture(GL_TEXTURE_2D, id);                                       \
+    glGetTexImage(GL_TEXTURE_2D, 0, glFormat, glDataType, data);            \
+    glBindTexture(GL_TEXTURE_2D, 0);                                        \
+    if (resetAlignment)                                                     \
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+
+void OpenGLTextureBuffer2D::readData(unsigned char*& data, bool allocate)
+{
+    READ_DATA(id_, unsigned char, GL_UNSIGNED_BYTE)
+}
+
+void OpenGLTextureBuffer2D::readData(unsigned int*& data, bool allocate)
+{
+    READ_DATA(id_, unsigned int, GL_UNSIGNED_INT)
+}
+
+void OpenGLTextureBuffer2D::readData(float*& data, bool allocate)
+{
+    READ_DATA(id_, float, GL_FLOAT)
 }
 
 //----------------------------------------------------------------------------//
@@ -498,6 +538,21 @@ void OpenGLAnimatedTextureBuffer2D::unbindImage()
     );
 }
 
+void OpenGLAnimatedTextureBuffer2D::readData(unsigned char*& data, bool allocate)
+{
+    READ_DATA(frame_->id(), unsigned char, GL_UNSIGNED_BYTE)
+}
+
+void OpenGLAnimatedTextureBuffer2D::readData(unsigned int*& data, bool allocate)
+{
+    READ_DATA(frame_->id(), unsigned int, GL_UNSIGNED_INT)
+}
+
+void OpenGLAnimatedTextureBuffer2D::readData(float*& data, bool allocate)
+{
+    READ_DATA(frame_->id(), float, GL_FLOAT)
+}
+
 //----------------------------------------------------------------------------//
 // CubeMap buffer ------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -518,8 +573,12 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
     glGenTextures(1, &id_);
     glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
     GLint glFormat = OpenGLFormat(internalFormat);
-    if (glFormat != GL_RGBA)
+    bool resetAlignment = false;
+    if (glFormat != GL_RGBA && glFormat != GL_RGBA_INTEGER)
+    {
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        resetAlignment = true;
+    }
     else
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
     GLint glInternalFormat = OpenGLInternalFormat(internalFormat);
@@ -536,6 +595,8 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
             OpenGLType(internalFormat), 
             faceData[i]
         );
+    if (resetAlignment)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     // Zoom in filter
     magFilterMode_ = FilterMode::Linear;
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, 
@@ -676,6 +737,21 @@ void OpenGLCubeMapBuffer::setMinFilterMode
     minFilterMode_ = mode;
 }
 
+void OpenGLCubeMapBuffer::readData(unsigned char*& data, bool allocate)
+{
+    throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
+}
+
+void OpenGLCubeMapBuffer::readData(unsigned int*& data, bool allocate)
+{
+    throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
+}
+
+void OpenGLCubeMapBuffer::readData(float*& data, bool allocate)
+{
+    throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
+}
+
 //----------------------------------------------------------------------------//
 // Frame buffer --------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -811,7 +887,7 @@ void OpenGLFramebuffer::colorBufferData(unsigned char* data, bool yFlip)
     bind();
     glReadPixels(0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, data);
     if (yFlip)
-        for(int line = 0; line != height_/2; ++line) 
+        for(int line = 0; line != height_/2; ++line)
         {
             std::swap_ranges
             (

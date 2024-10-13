@@ -78,6 +78,28 @@ const std::unordered_map<TextureBuffer::InternalFormat, bool>
     {TextureBuffer::InternalFormat::RGBA_SF_32, false},
 };
 
+const std::unordered_map<TextureBuffer::InternalFormat, TextureBuffer::DataType> 
+    TextureBuffer::internalFormatToDataType =
+{
+    {TextureBuffer::InternalFormat::Undefined, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::R_UNI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::R_UI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::R_UI_32, TextureBuffer::DataType::UnsignedInt},
+    {TextureBuffer::InternalFormat::R_SF_32, TextureBuffer::DataType::Float},
+    {TextureBuffer::InternalFormat::RG_UNI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::RG_UI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::RG_UI_32, TextureBuffer::DataType::UnsignedInt},
+    {TextureBuffer::InternalFormat::RG_SF_32, TextureBuffer::DataType::Float},
+    {TextureBuffer::InternalFormat::RGB_UNI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::RGB_UI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::RGB_UI_32, TextureBuffer::DataType::UnsignedInt},
+    {TextureBuffer::InternalFormat::RGB_SF_32, TextureBuffer::DataType::Float},
+    {TextureBuffer::InternalFormat::RGBA_UNI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::RGBA_UI_8, TextureBuffer::DataType::UnsignedChar},
+    {TextureBuffer::InternalFormat::RGBA_UI_32, TextureBuffer::DataType::UnsignedInt},
+    {TextureBuffer::InternalFormat::RGBA_SF_32, TextureBuffer::DataType::Float},
+};
+
 const std::unordered_map<TextureBuffer::WrapMode, std::string> 
     TextureBuffer::wrapModeToName =
 {

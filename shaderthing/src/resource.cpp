@@ -255,10 +255,12 @@ void Resource::loadAll
             default :
                 continue;
             case Type::AnimatedTexture2D :
-                resource = AnimatedTexture2DResource::load(ioResource, resources);
+                resource = 
+                    AnimatedTexture2DResource::load(ioResource, resources);
                 break;
             case Type::Cubemap :
-                resource = CubemapResource::load(ioResource, resources);
+                resource = 
+                    CubemapResource::load(ioResource, resources);
                 break;
         }
         if (resource != nullptr)
@@ -445,6 +447,20 @@ Texture2DResource* Texture2DResource::load(const ObjectIO& io)
     return resource;
 }
 
+/*void Texture2DResource::readData(unsigned char*& data, bool allocate)
+{
+    native_->readData(data, allocate);
+    unsigned int size = native_->width()*native_->height()*native_->nChannels();
+    auto dataType = native_->dataType();
+    for (int i=0; i < size; i++)
+    {
+        auto value = ((unsigned char*)data)[i];
+        std::cout << value << " ";
+        if (i % native_->nChannels() == 0)
+            std::cout << "\n";
+    }
+}*/
+
 //----------------------------------------------------------------------------//
 
 bool AnimatedTexture2DResource::set(const std::string& filepath)
@@ -481,7 +497,10 @@ bool AnimatedTexture2DResource::set
     SET_NATIVE_AND_RAW_AND_RETURN(rawData, size)
 }
 
-bool AnimatedTexture2DResource::set(const std::vector<Texture2DResource*>& frames)
+bool AnimatedTexture2DResource::set
+(
+    const std::vector<Texture2DResource*>& frames
+)
 {
     std::vector<vir::TextureBuffer2D*> nativeFrames(frames.size());
     for(int i=0; i<(int)frames.size(); i++)
@@ -964,7 +983,7 @@ void Resource::renderResourcesGui
         ImGuiTableFlags_BordersV | 
         ImGuiTableFlags_BordersOuterH |
         ImGuiTableFlags_SizingFixedFit;
-    if (ImGui::BeginTable("##resourceTable", 6, flags, ImVec2(0.0, tableHeight)))
+    if (ImGui::BeginTable("##resourceTable", 6, flags, ImVec2(0., tableHeight)))
     {
         // Declare columns
         static ImGuiTableColumnFlags flags = 0;
@@ -1391,7 +1410,11 @@ bool Resource::createOrEditAnimationButtonGui
                 false, 
                 ImGuiSelectableFlags_DontClosePopups
             );
-            if (ImGui::IsItemActive() && !ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+            if 
+            (
+                ImGui::IsItemActive() && 
+                !ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)
+            )
             {
                 int j = i + (ImGui::GetMouseDragDelta(0).y<0.f?-1:1);
                 if (j >= 0 && j < nFrames)
@@ -1760,7 +1783,11 @@ void Resource::renderResourceActionsButtonGui
 
             if (ImGui::Button("Settings", size))
                 ImGui::OpenPopup("##resourceSettings");
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && inUseBy.size() > 0)
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                inUseBy.size() > 0
+            )
             {
                 // Again, if inUseBy.size() > 0 I am assured this 
                 // resource is a Texture2D, not a Cubemap nor an Animation

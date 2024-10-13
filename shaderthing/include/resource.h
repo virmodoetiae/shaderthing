@@ -22,10 +22,11 @@
 namespace ShaderThing
 {
 
-typedef vir::TextureBuffer::WrapMode      WrapMode;
-typedef vir::TextureBuffer::FilterMode    FilterMode;
+typedef vir::TextureBuffer::WrapMode       WrapMode;
+typedef vir::TextureBuffer::FilterMode     FilterMode;
 typedef vir::TextureBuffer::InternalFormat InternalFormat;
-typedef vir::TextureBuffer::ImageBindMode ImageBindMode;
+typedef vir::TextureBuffer::ImageBindMode  ImageBindMode;
+typedef vir::TextureBuffer::DataType       DataType;
 
 class Layer;
 class ObjectIO;
@@ -51,11 +52,11 @@ public:
         const float timeStep;
     };
 protected:
-    Type                          type_;
-    bool                          isNameManaged_ = true;
-    std::string*                  namePtr_       = nullptr;
-    int                           textureUnit_          = -1;
-    int                           imageUnit_            = -1;
+    Type                                         type_;
+    bool                                         isNameManaged_ = true;
+    std::string*                                 namePtr_       = nullptr;
+    int                                          textureUnit_   = -1;
+    int                                          imageUnit_     = -1;
 
     static std::map<Resource::Type, const char*> typeToName_;
     static FileDialog                            fileDialog_;
@@ -87,6 +88,7 @@ public:
     virtual FilterMode   magFilterMode() const = 0;
     virtual FilterMode   minFilterMode() const = 0;
     virtual InternalFormat internalFormat() const = 0;
+    virtual DataType     dataType() const = 0;
     virtual std::string  internalFormatName() const = 0;
     virtual bool         isInternalFormatUnsigned() const = 0;
     virtual void         setWrapMode(int index, WrapMode mode) = 0;
@@ -203,6 +205,7 @@ private:
     FilterMode   magFilterMode() const override {return native_->magFilterMode();}                    \
     FilterMode   minFilterMode() const override {return native_->minFilterMode();}                    \
     InternalFormat internalFormat() const override {return native_->internalFormat();}                \
+    DataType     dataType() const override {return native_->dataType();}                              \
     std::string  internalFormatName() const override {return vir::TextureBuffer::internalFormatToShortName.at(native_->internalFormat());} \
     bool         isInternalFormatUnsigned() const override {return native_->isInternalFormatUnsigned();} \
     void         setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
@@ -230,6 +233,9 @@ public:
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
     bool set(unsigned int width, unsigned int height, InternalFormat internalFormat);
+    void readData(unsigned char*& data, bool allocate=false) const {native_->readData(data, allocate);}
+    void readData(unsigned int*& data, bool allocate=false) const {native_->readData(data, allocate);}
+    void readData(float*& data, bool allocate=false) const {native_->readData(data, allocate);}
     DECLARE_OVERRIDE_VIRTUALS
 };
 
@@ -312,6 +318,7 @@ public:
     FilterMode   magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
     FilterMode   minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}
     InternalFormat internalFormat() const override {return (*native_)->colorBufferInternalFormat();}
+    DataType     dataType() const override {return (*native_)->colorBufferDataType();}
     std::string  internalFormatName() const override {return vir::TextureBuffer::internalFormatToShortName.at((*native_)->colorBufferInternalFormat());}
     bool         isInternalFormatUnsigned() const override {return false;}
     void         setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}

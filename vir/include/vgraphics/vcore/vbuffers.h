@@ -41,6 +41,12 @@ public:
         RGBA_UI_32 = 16,
         RGBA_SF_32 = 9
     };
+    enum class DataType
+    {
+        UnsignedChar,
+        UnsignedInt,
+        Float
+    };
     enum class WrapMode
     {
         ClampToBorder = 0,
@@ -69,6 +75,8 @@ public:
         internalFormatToShortName;
     static const std::unordered_map<InternalFormat, bool> 
         internalFormatToIsUnsigned;
+    static const std::unordered_map<InternalFormat, DataType> 
+        internalFormatToDataType;
     static const std::unordered_map<WrapMode, std::string> wrapModeToName;
     static const std::unordered_map<FilterMode, std::string> filterModeToName;
 protected:
@@ -98,6 +106,10 @@ public:
     WrapMode wrapMode(uint32_t index) const {return wrapModes_[index];}
     FilterMode magFilterMode() const {return magFilterMode_;}
     FilterMode minFilterMode() const {return minFilterMode_;}
+    DataType dataType() const 
+    {
+        return internalFormatToDataType.at(internalFormat_);
+    }
     bool isInternalFormatUnsigned() const 
     {
         return internalFormatToIsUnsigned.at(internalFormat_);
@@ -203,6 +215,18 @@ public:
         std::string filepath, 
         InternalFormat internalFormat = InternalFormat::Undefined
     );
+    // Retrieve the texture data as unsigned char, and store it in the provided
+    // array. If allocate is true, the array will be re-allocated with the 
+    // correct size and data type
+    virtual void readData(unsigned char*& data, bool allocate=false) = 0;
+    // Retrieve the texture data as unsigned int, and store it in the provided
+    // array. If allocate is true, the array will be re-allocated with the 
+    // correct size and data type
+    virtual void readData(unsigned int*& data, bool allocate=false) = 0;
+    // Retrieve the texture data as float, and store it in the provided
+    // array. If allocate is true, the array will be re-allocated with the 
+    // correct size and data type
+    virtual void readData(float*& data, bool allocate=false) = 0;
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
 };
@@ -407,6 +431,12 @@ public:
         if (colorBuffer_ == nullptr)
             return TextureBuffer::FilterMode::Nearest;
         return colorBuffer_->minFilterMode();
+    }
+    TextureBuffer::DataType colorBufferDataType() const
+    {
+        if (colorBuffer_ == nullptr)
+            return TextureBuffer::DataType::UnsignedChar;
+        return colorBuffer_->dataType();
     }
     void setColorBufferWrapMode(uint32_t index, TextureBuffer::WrapMode mode)
     {

@@ -759,6 +759,12 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         glDeleteBuffers(1, &indexedDataPBO_);
         glGenBuffers(1, &indexedDataPBO_);
         glBindBuffer(GL_PIXEL_PACK_BUFFER, indexedDataPBO_);
+        // Set pixel alignment for packing (e.g., texture->PBO transfer op.
+        // to 1 byte instead of the deafult 4. Without this, the packing of the
+        // indexedDataPBO will include padding values which will make it useless
+        // if the input textures have width and height that are not a power of
+        // two. Took a while to figure this one out
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glBufferStorage
         (
             GL_PIXEL_PACK_BUFFER, 
@@ -773,6 +779,8 @@ void OpenGLQuantizer::quantizeOpenGLTexture
             nPixels*sizeof(unsigned char), // sizeof(unsigned char) = 1...
             PBOFlags
         );
+        // Reset to default after mapping
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
         //
@@ -783,7 +791,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
             glBindTexture(GL_TEXTURE_2D, oldQuantizedInput_);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // Reset to 4 for safety
             glTexImage2D
             (
                 GL_TEXTURE_2D, 
@@ -1372,7 +1380,7 @@ OpenGLQuantizer::OpenGLQuantizer() //:
     glBindTexture(GL_TEXTURE_2D, oldQuantizedInput_);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // Reset to 4 for safety
     glTexImage2D
     (
         GL_TEXTURE_2D, 
@@ -1398,13 +1406,6 @@ OpenGLQuantizer::OpenGLQuantizer() //:
         GL_STATIC_READ
     );
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
-
-    // Finally, set pixel alignment for packing (e.g., texture->PBO transfer 
-    // operations) to 1 byte instead of the deafult 4. Without this, the
-    // packing of the indexedDataPBO will include padding values which will
-    // make it useless if the input textures have width and height that are
-    // not a power of two. Took a while to figure this one out...
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
 }
 
 OpenGLQuantizer::~OpenGLQuantizer()
