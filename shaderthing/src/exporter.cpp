@@ -193,7 +193,7 @@ void Exporter::writeOutput()
             }
             else
                 filepath = settings_.outputFilepath.c_str();
-            framebuffer_->colorBufferData(framebufferData_, true);
+            framebuffer_->readColorBufferData(framebufferData_, true, false);
             stbi_write_png
             (
                 filepath, 

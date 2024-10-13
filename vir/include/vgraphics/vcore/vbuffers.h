@@ -137,16 +137,22 @@ public:
                 return 0;
             case InternalFormat::R_UNI_8 :
             case InternalFormat::R_UI_8 :
+            case InternalFormat::R_UI_32 :
+            case InternalFormat::R_SF_32 :
                 return 1;
             case InternalFormat::RG_UNI_8 :
             case InternalFormat::RG_UI_8 :
+            case InternalFormat::RG_UI_32 :
+            case InternalFormat::RG_SF_32 :
                 return 2;
             case InternalFormat::RGB_UNI_8 :
             case InternalFormat::RGB_UI_8 :
+            case InternalFormat::RGB_UI_32 :
+            case InternalFormat::RGB_SF_32 :
                 return 3;
             case InternalFormat::RGBA_UNI_8 :
             case InternalFormat::RGBA_UI_8 :
-                return 4;
+            case InternalFormat::RGBA_UI_32 :
             case InternalFormat::RGBA_SF_32 :
                 return 4;
         }
@@ -402,14 +408,17 @@ public:
     virtual void bindDepthBuffer(uint32_t) = 0;
     virtual void unbindColorBuffer() = 0;
     virtual void unbindColorBufferFromImage() = 0;
-    virtual void colorBufferData(unsigned char*, bool yFlip=false) = 0;
-    virtual void clearColorBuffer(float r=0,float g=0,float b=0,float a=0)=0;
+    virtual void readColorBufferData(unsigned char*& data, bool yFlip=false, bool allocate=false) = 0;
+    virtual void readColorBufferData(unsigned int*& data, bool yFlip=false, bool allocate=false) = 0;
+    virtual void readColorBufferData(float*& data, bool yFlip=false, bool allocate=false) = 0;
+    virtual void clearColorBuffer(float r=0,float g=0,float b=0,float a=0) = 0;
     virtual void updateColorBufferMipmap() = 0;
     uint32_t id() const {return id_;}
     uint32_t colorBufferId() const {return colorBufferId_;}
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
-    uint32_t colorBufferDataSize() const {return width_*height_*4;}
+    uint32_t colorBufferNChannels() const {return colorBuffer_->nChannels();}
+    uint32_t colorBufferDataSize() const {return width_*height_*colorBuffer_->nChannels();}
     TextureBuffer::InternalFormat colorBufferInternalFormat() const
     {
         return colorBuffer_->internalFormat();

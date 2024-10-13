@@ -84,6 +84,7 @@ public:
     virtual unsigned int id() const = 0;
     virtual unsigned int width() const = 0;
     virtual unsigned int height() const = 0;
+    virtual unsigned int nChannels() const = 0;
     virtual WrapMode     wrapMode(int index) const = 0;
     virtual FilterMode   magFilterMode() const = 0;
     virtual FilterMode   minFilterMode() const = 0;
@@ -201,6 +202,7 @@ private:
     unsigned int id() const override {return native_->id();}                                          \
     unsigned int width() const override {return native_->width();}                                    \
     unsigned int height() const override{return native_->height();}                                   \
+    unsigned int nChannels() const override{return native_->nChannels();}                             \
     WrapMode     wrapMode(int index) const override {return native_->wrapMode(index);}                \
     FilterMode   magFilterMode() const override {return native_->magFilterMode();}                    \
     FilterMode   minFilterMode() const override {return native_->minFilterMode();}                    \
@@ -313,7 +315,8 @@ public:
     void         unbindImage() override {(*native_)->unbindColorBufferFromImage(); imageUnit_=-1;};
     unsigned int id() const override {return (*native_)->colorBufferId();}
     unsigned int width() const override {return (*native_)->width();}
-    unsigned int height() const override{return (*native_)->height();}
+    unsigned int height() const override {return (*native_)->height();}
+    unsigned int nChannels() const override {return (*native_)->colorBufferNChannels();}
     WrapMode     wrapMode(int index) const override {return (*native_)->colorBufferWrapMode(index);}
     FilterMode   magFilterMode() const override {return (*native_)->colorBufferMagFilterMode();}
     FilterMode   minFilterMode() const override {return (*native_)->colorBufferMinFilterMode();}

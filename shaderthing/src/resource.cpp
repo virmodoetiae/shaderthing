@@ -24,6 +24,7 @@
 #include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
+#include "thirdparty/stb/stb_image_write.h"
 
 namespace ShaderThing
 {
@@ -66,12 +67,30 @@ void Resource::update(std::vector<Resource*>& resources, const UpdateArgs& args)
             resource->type_ == Resource::Type::Texture2D ?
             ((const Texture2DResource*)resource)->rawDataSize_ :
             ((const AnimatedTexture2DResource*)resource)->rawDataSize_;
-        std::ofstream file;
-        file.open(filepath, std::ios_base::out|std::ios_base::binary);
-        if(file.is_open())
+        if (rawData != nullptr && rawDataSize > 0)
         {
-            file.write((const char*)rawData, rawDataSize);
-            file.close();
+            std::ofstream file;
+            file.open(filepath, std::ios_base::out|std::ios_base::binary);
+            if(file.is_open())
+            {
+                file.write((const char*)rawData, rawDataSize);
+                file.close();
+            }
+        }
+        else if (auto texture2D = dynamic_cast<const Texture2DResource*>(resource))
+        {
+            unsigned char* data = nullptr;
+            texture2D->readData(data, true);
+            stbi_write_png
+            (
+                filepath.c_str(), 
+                texture2D->width(),
+                texture2D->height(),
+                texture2D->nChannels(), 
+                (const void*)data, 
+                texture2D->nChannels()*texture2D->width() // stride
+            );
+            delete[] data;
         }
         Resource::resourceToBeExported_ = nullptr;
     }
@@ -1698,11 +1717,11 @@ bool Resource::exportTextureOrAnimationButtonGui
         )
     )
         return false;
-    if (auto texture2D = dynamic_cast<const Texture2DResource*>(resource))
+    /*if (auto texture2D = dynamic_cast<const Texture2DResource*>(resource))
     {
         if (texture2D->rawDataSize_ == 0 || texture2D->rawData_ == 0)
             return false;
-    }
+    }*/
     if (ImGui::Button("Export", size))
     {
         std::string originalFileExtension = 

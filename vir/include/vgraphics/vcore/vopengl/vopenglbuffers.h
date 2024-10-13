@@ -133,9 +133,14 @@ public:
     void bindDepthBuffer(uint32_t) override;
     void unbindColorBuffer() override;
     void unbindColorBufferFromImage() override;
-    void colorBufferData(unsigned char*, bool yFlip=false) override;
+    void readColorBufferData(unsigned char*& data, bool yFlip=false, bool allocate=false) override;
+    void readColorBufferData(unsigned int*& data, bool yFlip=false, bool allocate=false) override;
+    void readColorBufferData(float*& data, bool yFlip=false, bool allocate=false) override;
     void clearColorBuffer(float r=0,float g=0,float b=0,float a=0) override;
     void updateColorBufferMipmap() override;
+private:
+    template<typename DataType>
+    void readColorBufferData(DataType*& data, bool yFlip, bool allocate, GLint glDataType);
 };
 
 class OpenGLUniformBuffer : public UniformBuffer

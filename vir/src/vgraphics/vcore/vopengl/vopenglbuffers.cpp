@@ -882,20 +882,79 @@ void OpenGLFramebuffer::bindDepthBuffer(uint32_t unit)
     //glBindRenderbuffer(GL_RENDERBUFFER, depthBufferId_);
 }
 
-void OpenGLFramebuffer::colorBufferData(unsigned char* data, bool yFlip)
+template <typename DataType>
+void OpenGLFramebuffer::readColorBufferData
+(
+    DataType*& data, 
+    bool yFlip, 
+    bool allocate, 
+    GLint glDataType
+)
 {
+    if (allocate)
+        data = new DataType[colorBufferDataSize()];
     bind();
-    glReadPixels(0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    GLint glFormat = OpenGLFormat(colorBuffer_->internalFormat());
+    bool resetAlignment = false;
+    if (glFormat != GL_RGBA && glFormat != GL_RGBA_INTEGER)
+    {
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        resetAlignment = true;
+    }
+    else
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels
+    (
+        0, 
+        0, 
+        width_, 
+        height_, 
+        OpenGLFormat(colorBuffer_->internalFormat()), 
+        glDataType, 
+        data
+    );
+    if (resetAlignment)
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
     if (yFlip)
         for(int line = 0; line != height_/2; ++line)
         {
             std::swap_ranges
             (
-                &data[0] + 4 * width_ * line,
-                &data[0] + 4 * width_ * (line+1),
-                &data[0] + 4 * width_ * (height_-line-1)
+                &data[0] + colorBuffer_->nChannels() * width_ * line,
+                &data[0] + colorBuffer_->nChannels() * width_ * (line+1),
+                &data[0] + colorBuffer_->nChannels() * width_ * (height_-line-1)
             );
         }
+}
+
+void OpenGLFramebuffer::readColorBufferData
+(
+    unsigned char*& data, 
+    bool yFlip, 
+    bool allocate
+)
+{
+    readColorBufferData(data, yFlip, allocate, GL_UNSIGNED_BYTE);
+}
+
+void OpenGLFramebuffer::readColorBufferData
+(
+    unsigned int*& data, 
+    bool yFlip, 
+    bool allocate
+)
+{
+    readColorBufferData(data, yFlip, allocate, GL_UNSIGNED_INT);
+}
+
+void OpenGLFramebuffer::readColorBufferData
+(
+    float*& data, 
+    bool yFlip, 
+    bool allocate
+)
+{
+    readColorBufferData(data, yFlip, allocate, GL_FLOAT);
 }
 
 void OpenGLFramebuffer::clearColorBuffer(float r, float g, float b, float a)
