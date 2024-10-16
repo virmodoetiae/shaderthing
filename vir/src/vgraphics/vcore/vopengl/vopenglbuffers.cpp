@@ -393,6 +393,21 @@ void OpenGLTextureBuffer2D::readData(float*& data, bool allocate)
     READ_DATA(id_, float, GL_FLOAT)
 }
 
+void OpenGLTextureBuffer2D::updateMipmap(bool onlyIfRequiredByFilterMode)
+{
+    if 
+    (
+        onlyIfRequiredByFilterMode &&
+        (
+            minFilterMode_ == FilterMode::Nearest ||
+            minFilterMode_ == FilterMode::Linear
+        )
+    )
+        return;
+    glBindTexture(GL_TEXTURE_2D, id_);
+    glGenerateMipmap(GL_TEXTURE_2D);
+}
+
 //----------------------------------------------------------------------------//
 // Animated 2D textue buffer -------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -551,6 +566,22 @@ void OpenGLAnimatedTextureBuffer2D::readData(unsigned int*& data, bool allocate)
 void OpenGLAnimatedTextureBuffer2D::readData(float*& data, bool allocate)
 {
     READ_DATA(frame_->id(), float, GL_FLOAT)
+}
+
+void OpenGLAnimatedTextureBuffer2D::updateMipmap(bool onlyIfRequiredByFilterMode)
+{
+    // For simplicity, only regenerate the mipmap of the current frame
+    if 
+    (
+        onlyIfRequiredByFilterMode &&
+        (
+            minFilterMode_ == FilterMode::Nearest ||
+            minFilterMode_ == FilterMode::Linear
+        )
+    )
+        return;
+    glBindTexture(GL_TEXTURE_2D, frame_->id());
+    glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 //----------------------------------------------------------------------------//
@@ -750,6 +781,21 @@ void OpenGLCubeMapBuffer::readData(unsigned int*& data, bool allocate)
 void OpenGLCubeMapBuffer::readData(float*& data, bool allocate)
 {
     throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
+}
+
+void OpenGLCubeMapBuffer::updateMipmap(bool onlyIfRequiredByFilterMode)
+{
+    if 
+    (
+        onlyIfRequiredByFilterMode &&
+        (
+            minFilterMode_ == FilterMode::Nearest ||
+            minFilterMode_ == FilterMode::Linear
+        )
+    )
+        return;
+    glBindTexture(GL_TEXTURE_2D, id_);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 }
 
 //----------------------------------------------------------------------------//
@@ -967,10 +1013,9 @@ void OpenGLFramebuffer::clearColorBuffer(float r, float g, float b, float a)
         previouslyActiveFramebuffer->bind();
 }
 
-void OpenGLFramebuffer::updateColorBufferMipmap()
+void OpenGLFramebuffer::updateColorBufferMipmap(bool onlyIfRequiredByFilterMode)
 {
-    glBindTexture(GL_TEXTURE_2D, colorBufferId_);
-    glGenerateMipmap(GL_TEXTURE_2D);
+    colorBuffer_->updateMipmap(onlyIfRequiredByFilterMode);
 }
 
 //----------------------------------------------------------------------------//

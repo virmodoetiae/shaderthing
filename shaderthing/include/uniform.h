@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <map>
 #include <vector>
 
 #include "shaderthing/include/macros.h"

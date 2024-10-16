@@ -125,6 +125,7 @@ public:
     ) = 0;
     virtual void setMagFilterMode(FilterMode mode) = 0;
     virtual void setMinFilterMode(FilterMode mode) = 0;
+    virtual void updateMipmap(bool onlyIfRequiredByFilterMode=true) = 0;
     bool operator==(const TextureBuffer& rhs) const
     {
         return id_ == rhs.id();
@@ -412,7 +413,7 @@ public:
     virtual void readColorBufferData(unsigned int*& data, bool yFlip=false, bool allocate=false) = 0;
     virtual void readColorBufferData(float*& data, bool yFlip=false, bool allocate=false) = 0;
     virtual void clearColorBuffer(float r=0,float g=0,float b=0,float a=0) = 0;
-    virtual void updateColorBufferMipmap() = 0;
+    virtual void updateColorBufferMipmap(bool onlyIfRequiredByFilterMode=true) = 0;
     uint32_t id() const {return id_;}
     uint32_t colorBufferId() const {return colorBufferId_;}
     uint32_t width() const {return width_;}

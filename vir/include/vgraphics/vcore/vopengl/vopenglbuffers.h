@@ -38,6 +38,7 @@ public:
     ) override;
     void setMagFilterMode(FilterMode mode) override;
     void setMinFilterMode(FilterMode mode) override;
+    void updateMipmap(bool onlyIfRequiredByFilterMode=true) override;
     void bind(uint32_t unit) override;
     void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
     void unbind() override;
@@ -75,6 +76,7 @@ public:
     ) override;
     void setMagFilterMode(FilterMode mode) override;
     void setMinFilterMode(FilterMode mode) override;
+    void updateMipmap(bool onlyIfRequiredByFilterMode=true) override;
     void bind(uint32_t) override;
     void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
     void unbind() override;
@@ -102,6 +104,7 @@ public:
     ) override;
     void setMagFilterMode(FilterMode mode) override;
     void setMinFilterMode(FilterMode mode) override;
+    void updateMipmap(bool onlyIfRequiredByFilterMode=true) override;
     void bind(uint32_t) override;
     void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
     void unbind() override;
@@ -137,7 +140,7 @@ public:
     void readColorBufferData(unsigned int*& data, bool yFlip=false, bool allocate=false) override;
     void readColorBufferData(float*& data, bool yFlip=false, bool allocate=false) override;
     void clearColorBuffer(float r=0,float g=0,float b=0,float a=0) override;
-    void updateColorBufferMipmap() override;
+    void updateColorBufferMipmap(bool onlyIfRequiredByFilterMode=true) override;
 private:
     template<typename DataType>
     void readColorBufferData(DataType*& data, bool yFlip, bool allocate, GLint glDataType);

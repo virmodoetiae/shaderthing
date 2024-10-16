@@ -46,18 +46,10 @@ void Renderer::submit
     // If I provide a target framebuffer, set it as the rendering target 
     // by binding it
     auto window = Window::instance();
-    bool updateTargetMipmap = false;
     if (target != nullptr)
     {
         window->setViewport(target->width(), target->height());
         target->bind();
-        auto minFilterMode(target->colorBufferMinFilterMode());
-        if 
-        (
-            minFilterMode != TextureBuffer::FilterMode::Nearest &&
-            minFilterMode != TextureBuffer::FilterMode::Linear
-        )
-            updateTargetMipmap = true;
     }
     // Otherwise (i.e. no target framebuffer provided), I want to render to the 
     // screen so check if there is any active framebuffer and unbind it
@@ -76,8 +68,8 @@ void Renderer::submit
         geometricPrimitive.vertexArray(), 
         shader
     );
-    if (updateTargetMipmap)
-        target->updateColorBufferMipmap();
+    if (target != nullptr)
+        target->updateColorBufferMipmap(true);
 }
 
 }
