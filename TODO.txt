@@ -226,6 +226,11 @@ TODO ---------------------------------------------------------------------------
 
 (W) Expand project README with demo images and GIFs
 
+( ) Add dynamic mip-map auto-regeneration option (enabling which regenerates the
+    mip-maps on every render call, useful for textures updated very frequently) 
+    for all Texture-2D objects that use any mip-map-based mag/min filtering
+    option
+
 ( ) [vir & shaderthing] Implement an actual internal logging system
 
 ( ) Implement layer cloning (for convenience)
