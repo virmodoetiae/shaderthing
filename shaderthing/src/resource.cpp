@@ -832,14 +832,18 @@ void Resource::renderResourcesGui
         Resource* resource = resources[row];
         END_COLUMN
         START_COLUMN // Type column --------------------------------------------
-        static std::map<Resource::Type, const char*> typeToName
+        std::string typeName = typeToName_.at(resource->type_);
+        if (auto texture = dynamic_cast<Texture2DResource*>(resource))
         {
-            {Resource::Type::Texture2D,         "Texture-2D"},
-            {Resource::Type::AnimatedTexture2D, "Animation-2D"},
-            {Resource::Type::Cubemap,           "Cubemap"},
-            {Resource::Type::Framebuffer,       "Layer"}
-        };
-        ImGui::Text(typeToName.at(resource->type_));
+            // Small fix to distinguish storage textures from "regular" image-
+            // loaded textures. I will need to revist the whole storage-texture
+            // thing in the future, or add the same functionalities (namely
+            // resizing/reformatting) to "regular" image-loaded textures to 
+            // remove such somewhat artificial distinctions altogether
+            if (!texture->hasRawData())
+                typeName += " (S)";
+        }
+        ImGui::Text(typeName.c_str());
         END_COLUMN
         START_COLUMN // Preview column -----------------------------------------
         float x = resource->width();
@@ -963,9 +967,11 @@ void Resource::renderResourcesGui
                 ImVec2(buttonWidth, 0),
                 true
             );
-            Resource::createOrResizeTextureButtonGui
+            createOrResizeOrReformatTextureGui
             (
-                resource, 
+                resource,
+                true,
+                false,
                 ImVec2(buttonWidth, 0)
             );
             Resource::createOrEditAnimationButtonGui
@@ -1171,38 +1177,30 @@ bool Resource::loadOrReplaceTextureOrAnimationButtonGui
 
 //----------------------------------------------------------------------------//
 
-bool Resource::createOrResizeTextureButtonGui
+bool Resource::createOrResizeOrReformatTextureGui
 (
     Resource*& resource,
-    const ImVec2 size
+    const bool enablePopup,
+    const bool resetValues,
+    const ImVec2 buttonSize
 )
 {
     bool valid = false;
     static glm::ivec2 resolution(1, 1);
     static InternalFormat internalFormat = InternalFormat::RGBA_SF_32;
-    if 
-    (
-        ImGui::Button
-        (
-            resource == nullptr ? "Create texture" : "Resize/reformat",
-            size
-        )
-    )
+    if (enablePopup && ImGui::Button("Create texture", buttonSize))
     {
-        ImGui::OpenPopup("##createOrResizeTexturePopup");
-        if (resource == nullptr)
-        {
-            resolution = {1,1};
-            internalFormat = InternalFormat::RGBA_SF_32;
-        }
-        else
-        {
-            resolution.x = resource->width();
-            resolution.y = resource->height();
-            internalFormat = ((Texture2DResource*)resource)->internalFormat();
-        }
+        ImGui::OpenPopup("##createTexturePopup");
+        resolution = {1,1};
+        internalFormat = InternalFormat::RGBA_SF_32;
     }
-    if (ImGui::BeginPopup("##createOrResizeTexturePopup"))
+    if (resetValues && resource != nullptr)
+    {
+        resolution.x = resource->width();
+        resolution.y = resource->height();
+        internalFormat = ((Texture2DResource*)resource)->internalFormat();
+    }
+    if (ImGui::BeginPopup("##createTexturePopup") || !enablePopup)
     {
         if (resource == nullptr)
         {
@@ -1214,9 +1212,12 @@ these textures will not be saved within
 the project)");
             ImGui::Separator();
         }
-        ImGui::Text("Resolution ");
+        if (enablePopup)
+            ImGui::Text("Resolution ");
+        else
+            ImGui::Text("Resolution          ");
         ImGui::SameLine();
-        float itemWidth = resource == nullptr ? -1 : 12*ImGui::GetFontSize();
+        float itemWidth = -1; //resource == nullptr ? -1 : 12*ImGui::GetFontSize();
         ImGui::PushItemWidth(itemWidth);
         if 
         (
@@ -1231,8 +1232,10 @@ the project)");
             resolution.y = std::min(std::max(resolution.y, 1), 4096);
         }
         ImGui::PopItemWidth();
-        
-        ImGui::Text("Format     ");
+        if (enablePopup)
+            ImGui::Text("Format     ");
+        else
+            ImGui::Text("Format              ");
         ImGui::SameLine();
         ImGui::PushItemWidth(itemWidth);
         // RGB formats are not easy to work with due to memory-alignment 
@@ -1338,10 +1341,14 @@ the project)");
                     valid = true;
                 }
             }
+            resolution.x = resource->width();
+            resolution.y = resource->height();
+            internalFormat = ((Texture2DResource*)resource)->internalFormat();
         }
         if (disabled)
             ImGui::EndDisabled();
-        ImGui::EndPopup();
+        if (enablePopup)
+            ImGui::EndPopup();
     }
     return valid;
 }
@@ -1800,8 +1807,12 @@ void Resource::renderResourceActionsButtonGui
             }
             //------------------------------------------------------------------
 
+            bool settingsOpened = false;
             if (ImGui::Button("Settings", size))
+            {
+                settingsOpened = true;
                 ImGui::OpenPopup("##resourceSettings");
+            }
             if 
             (
                 ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
@@ -2053,6 +2064,27 @@ affect any cubemaps or animations using this texture)");
                     }
                     ImGui::EndCombo();
                 }
+                if (resource->type_ == Resource::Type::Texture2D)
+                {
+                    if 
+                    (
+                        ((Texture2DResource*)resource)->rawData_ == nullptr ||
+                        ((Texture2DResource*)resource)->rawDataSize_ == 0
+                    )
+                    {
+                        bool disabled = inUseBy.size() > 0;
+                        if (disabled)
+                            ImGui::BeginDisabled();
+                        createOrResizeOrReformatTextureGui
+                        (
+                            resource,
+                            false,
+                            settingsOpened
+                        );
+                        if (disabled)
+                            ImGui::EndDisabled();
+                    }
+                }
                 ImGui::PopItemWidth();
                 ImGui::EndPopup();
             }
@@ -2068,16 +2100,6 @@ affect any cubemaps or animations using this texture)");
                             size, 
                             false
                         );
-                        if 
-                        (
-                            ((Texture2DResource*)resource)->rawData_==nullptr||
-                            ((Texture2DResource*)resource)->rawDataSize_==0
-                        )
-                            createOrResizeTextureButtonGui
-                            (
-                                resource,
-                                size
-                            );
                         break;
                     case Resource::Type::AnimatedTexture2D:
                         

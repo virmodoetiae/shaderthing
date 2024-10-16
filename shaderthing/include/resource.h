@@ -163,10 +163,12 @@ private:
         const bool animation=false,
         const bool disabled=false
     );
-    static bool createOrResizeTextureButtonGui
+    static bool createOrResizeOrReformatTextureGui
     (
         Resource*& resource,
-        const ImVec2 size=ImVec2(0,0)
+        const bool enablePopup,
+        const bool resetValues,
+        const ImVec2 buttonSize=ImVec2(0,0)
     );
     static bool createOrEditAnimationButtonGui
     (
@@ -212,7 +214,7 @@ private:
     bool         isInternalFormatUnsigned() const override {return native_->isInternalFormatUnsigned();} \
     void         setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
     void         setMagFilterMode(FilterMode mode) override {native_->setMagFilterMode(mode);}        \
-    void         setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}
+    void         setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}         \
 
 class Texture2DResource : public Resource
 {
@@ -238,6 +240,7 @@ public:
     void readData(unsigned char*& data, bool allocate=false) const {native_->readData(data, allocate);}
     void readData(unsigned int*& data, bool allocate=false) const {native_->readData(data, allocate);}
     void readData(float*& data, bool allocate=false) const {native_->readData(data, allocate);}
+    bool hasRawData() const {return rawData_ != nullptr;}
     DECLARE_OVERRIDE_VIRTUALS
 };
 
