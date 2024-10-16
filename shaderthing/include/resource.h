@@ -95,6 +95,7 @@ public:
     virtual void         setWrapMode(int index, WrapMode mode) = 0;
     virtual void         setMagFilterMode(FilterMode mode) = 0;
     virtual void         setMinFilterMode(FilterMode mode) = 0;
+    virtual void         updateMipmap() = 0;
 
     std::string          name() const {return namePtr_ == nullptr? "" : *namePtr_;}
     void                 setName(const std::string& name);
@@ -214,7 +215,8 @@ private:
     bool         isInternalFormatUnsigned() const override {return native_->isInternalFormatUnsigned();} \
     void         setWrapMode(int index, WrapMode mode) override {native_->setWrapMode(index, mode);}  \
     void         setMagFilterMode(FilterMode mode) override {native_->setMagFilterMode(mode);}        \
-    void         setMinFilterMode(FilterMode mode) override{native_->setMinFilterMode(mode);}         \
+    void         setMinFilterMode(FilterMode mode) override {native_->setMinFilterMode(mode);}        \
+    void         updateMipmap() override {native_->updateMipmap(true);}
 
 class Texture2DResource : public Resource
 {
@@ -233,10 +235,13 @@ class Texture2DResource : public Resource
     virtual void save(ObjectIO& io) override;
     static Texture2DResource* load(const ObjectIO& io);
 public:
+    bool autoUpdateMipmap = false;
+   
     ~Texture2DResource();
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
     bool set(unsigned int width, unsigned int height, InternalFormat internalFormat);
+    void update(const UpdateArgs& args) override;
     void readData(unsigned char*& data, bool allocate=false) const {native_->readData(data, allocate);}
     void readData(unsigned int*& data, bool allocate=false) const {native_->readData(data, allocate);}
     void readData(float*& data, bool allocate=false) const {native_->readData(data, allocate);}
@@ -267,12 +272,14 @@ class AnimatedTexture2DResource : public Resource
         const std::vector<Resource*>& resources
     );
 public:
+    bool autoUpdateMipmap = false;
+
     ~AnimatedTexture2DResource();
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
     bool set(const std::vector<Texture2DResource*>& animationFrames);
-    unsigned int frameId() const {return native_->frameId();}
     void update(const UpdateArgs& args) override;
+    unsigned int frameId() const {return native_->frameId();}
     DECLARE_OVERRIDE_VIRTUALS
 };
 
@@ -329,7 +336,8 @@ public:
     bool         isInternalFormatUnsigned() const override {return false;}
     void         setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
     void         setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
-    void         setMinFilterMode(FilterMode mode) override{(*native_)->setColorBufferMinFilterMode(mode);}
+    void         setMinFilterMode(FilterMode mode) override {(*native_)->setColorBufferMinFilterMode(mode);}
+    void         updateMipmap() override {(*native_)->updateColorBufferMipmap(true);}
 
     static bool insertInResources
     (

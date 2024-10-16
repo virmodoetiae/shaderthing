@@ -426,6 +426,7 @@ void Texture2DResource::save(ObjectIO& io)
     io.write("magFilterMode", (int)magFilterMode());
     io.write("minFilterMode", (int)minFilterMode());
     io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
+    io.write("autoUpdateMipmap", autoUpdateMipmap);
     io.write("width", native_->width());
     io.write("height", native_->height());
     io.write("internalFormat", (int)native_->internalFormat());
@@ -463,22 +464,16 @@ Texture2DResource* Texture2DResource::load(const ObjectIO& io)
     auto wrapModes = io.read<glm::ivec2>("wrapModes");
     resource->setWrapMode(0, (WrapMode)wrapModes[0]);
     resource->setWrapMode(1, (WrapMode)wrapModes[1]);
+    resource->autoUpdateMipmap = 
+        io.readOrDefault<bool>("autoUpdateMipmap", false);
     return resource;
 }
 
-/*void Texture2DResource::readData(unsigned char*& data, bool allocate)
+void Texture2DResource::update(const UpdateArgs& args)
 {
-    native_->readData(data, allocate);
-    unsigned int size = native_->width()*native_->height()*native_->nChannels();
-    auto dataType = native_->dataType();
-    for (int i=0; i < size; i++)
-    {
-        auto value = ((unsigned char*)data)[i];
-        std::cout << value << " ";
-        if (i % native_->nChannels() == 0)
-            std::cout << "\n";
-    }
-}*/
+    if (autoUpdateMipmap)
+        native_->updateMipmap(true);
+}
 
 //----------------------------------------------------------------------------//
 
@@ -560,6 +555,7 @@ void AnimatedTexture2DResource::save(ObjectIO& io)
     io.write("magFilterMode", (int)magFilterMode());
     io.write("minFilterMode", (int)minFilterMode());
     io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
+    io.write("autoUpdateMipmap", autoUpdateMipmap);
     io.write("animationFps", native_->fps());
     io.write("animationFrameIndex", native_->frameIndex());
     io.write("animationPaused", isAnimationPaused_);
@@ -590,6 +586,8 @@ void AnimatedTexture2DResource::update(const UpdateArgs& args)
         native_->setTime(args.time);
     else if (!isAnimationPaused_)
         native_->advanceTime(args.timeStep);
+    if (autoUpdateMipmap)
+        native_->updateMipmap(true);
 }
 
 AnimatedTexture2DResource* AnimatedTexture2DResource::load
@@ -627,6 +625,8 @@ AnimatedTexture2DResource* AnimatedTexture2DResource::load
         }
         resource->set(referencedResources);
     }
+    resource->autoUpdateMipmap = 
+        io.readOrDefault<bool>("autoUpdateMipmap", false);
     
     resource->native_->setFps(io.read<float>("animationFps"));
     resource->native_->setFrameIndex(io.read<int>("animationFrameIndex"));
@@ -2064,14 +2064,29 @@ affect any cubemaps or animations using this texture)");
                     }
                     ImGui::EndCombo();
                 }
+                ImGui::PopItemWidth();
                 if (resource->type_ == Resource::Type::Texture2D)
                 {
+                    auto texture = (Texture2DResource*)resource;
                     if 
                     (
-                        ((Texture2DResource*)resource)->rawData_ == nullptr ||
-                        ((Texture2DResource*)resource)->rawDataSize_ == 0
+                        texture->rawData_ == nullptr ||
+                        texture->rawDataSize_ == 0
                     )
                     {
+                        ImGui::Text("Auto mipmap update  ");
+                        ImGui::SameLine();
+                        ImGui::Checkbox
+                        (
+                            "##autoMipmapUpdate", 
+                            &(texture->autoUpdateMipmap)
+                        );
+                        if 
+                        (
+                            !texture->autoUpdateMipmap && 
+                            ImGui::Button("Update mipmap", ImVec2(-1, 0))
+                        )
+                            texture->updateMipmap();
                         bool disabled = inUseBy.size() > 0;
                         if (disabled)
                             ImGui::BeginDisabled();
@@ -2085,7 +2100,20 @@ affect any cubemaps or animations using this texture)");
                             ImGui::EndDisabled();
                     }
                 }
-                ImGui::PopItemWidth();
+                else if (resource->type_ == Resource::Type::AnimatedTexture2D)
+                {
+                    ImGui::Text("Auto mipmap update  ");
+                    ImGui::SameLine();
+                    ImGui::Checkbox
+                    (
+                        "##autoMipmapUpdate", 
+                        &(((AnimatedTexture2DResource*)resource)->autoUpdateMipmap)
+                    );
+                    // No manual mipmap update button for animation-type
+                    // resources because it just does not make much sense (also,
+                    // the way it's currently implemented in vir, it only 
+                    // updates the current animation frame)
+                }
                 ImGui::EndPopup();
             }
             //------------------------------------------------------------------

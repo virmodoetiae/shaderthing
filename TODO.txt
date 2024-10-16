@@ -219,17 +219,17 @@ TODO ---------------------------------------------------------------------------
     (ssiData) and floating point (ssfData) data arrays, as well as a custom 
     size for each array, all at runtime
 
+(X) Add dynamic mip-map auto-regeneration option (enabling which regenerates the
+    mip-maps on every render call, useful for textures updated very frequently) 
+    for all Texture-2D objects that use any mip-map-based mag/min filtering
+    option
+
 (W) Add example projects that can be loaded in ShaderThings as demos/tutorials.
     This is currently being implemented under Help->Examples
 
 (W) Expand the Help->Code Repository section
 
 (W) Expand project README with demo images and GIFs
-
-( ) Add dynamic mip-map auto-regeneration option (enabling which regenerates the
-    mip-maps on every render call, useful for textures updated very frequently) 
-    for all Texture-2D objects that use any mip-map-based mag/min filtering
-    option
 
 ( ) [vir & shaderthing] Implement an actual internal logging system
 
