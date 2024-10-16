@@ -2065,14 +2065,13 @@ affect any cubemaps or animations using this texture)");
                     ImGui::EndCombo();
                 }
                 ImGui::PopItemWidth();
+                bool usesMipmap = 
+                    resource->minFilterMode() != FilterMode::Nearest &&
+                    resource->minFilterMode() != FilterMode::Linear;
                 if (resource->type_ == Resource::Type::Texture2D)
                 {
                     auto texture = (Texture2DResource*)resource;
-                    if 
-                    (
-                        texture->rawData_ == nullptr ||
-                        texture->rawDataSize_ == 0
-                    )
+                    if (usesMipmap)
                     {
                         ImGui::Text("Auto mipmap update  ");
                         ImGui::SameLine();
@@ -2087,6 +2086,13 @@ affect any cubemaps or animations using this texture)");
                             ImGui::Button("Update mipmap", ImVec2(-1, 0))
                         )
                             texture->updateMipmap();
+                    }
+                    if 
+                    (
+                        texture->rawData_ == nullptr ||
+                        texture->rawDataSize_ == 0
+                    )
+                    {
                         bool disabled = inUseBy.size() > 0;
                         if (disabled)
                             ImGui::BeginDisabled();
@@ -2100,7 +2106,11 @@ affect any cubemaps or animations using this texture)");
                             ImGui::EndDisabled();
                     }
                 }
-                else if (resource->type_ == Resource::Type::AnimatedTexture2D)
+                else if 
+                (
+                    resource->type_ == Resource::Type::AnimatedTexture2D &&
+                    usesMipmap
+                )
                 {
                     ImGui::Text("Auto mipmap update  ");
                     ImGui::SameLine();
