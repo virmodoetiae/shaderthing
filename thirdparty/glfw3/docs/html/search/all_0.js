@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['axes_0',['axes',['../structGLFWgamepadstate.html#a8b2c8939b1d31458de5359998375c189',1,'GLFWgamepadstate']]]
+  ['1_209_208_20or_20later_0',['Documentation generation requires Doxygen 1.9.8 or later',['../news.html#docs_target_caveat',1,'']]]
 ];

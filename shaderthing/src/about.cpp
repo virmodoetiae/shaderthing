@@ -188,7 +188,7 @@ if (ImGui::IsItemHovered() && ImGui::BeginTooltip()){                       \
     ACKNOWLEDGE(
 "GLAD - OpenGL loader, v0.1.34                    ", "[S]", "Statically linked")
     ACKNOWLEDGE(
-"GLFW - Window & input management, v3.3.8         ", "[S]", "Statically linked")
+"GLFW - Window & input management, v3.4           ", "[S]", "Statically linked")
     ACKNOWLEDGE(
 "GLM - OpenGL mathematics, v0.9.9.9               ", "[H]", "Header-only")
     ACKNOWLEDGE(
