@@ -635,6 +635,8 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                 case vir::Shader::Variable::Type::ImageCube :
                 {
                     auto resource = u->getValuePtr<Resource>();
+                    if (resource == nullptr)
+                        break;
                     header += 
                         "layout(binding="+std::to_string(imageBindingPoint++)+
                         ", "+resource->internalFormatName()+") ";
@@ -652,6 +654,8 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                 case vir::Shader::Variable::Type::SamplerCube :
                 {
                     auto resource = u->getValuePtr<Resource>();
+                    if (resource == nullptr)
+                        break;
                     // This logic should be handled different at the vir:: 
                     // level and exposed via Resource::, not here
                     if 

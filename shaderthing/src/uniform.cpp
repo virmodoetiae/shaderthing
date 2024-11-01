@@ -828,6 +828,7 @@ is currently being held down)");
         )
         {
             for(auto uniformTypeName : supportedUniformTypeNames)
+            {
                 if (ImGui::Selectable(uniformTypeName.c_str()))
                 {
                     auto selectedType = 
@@ -886,6 +887,7 @@ is currently being held down)");
                         );
                     }
                 }
+            }
             ImGui::EndCombo();
         }
         if (showSeparator)
