@@ -1309,6 +1309,7 @@ the project)");
                 auto wrapMode1 = resource->wrapMode(1);
                 auto minFilterMode = resource->minFilterMode();
                 auto magFilterMode = resource->magFilterMode();
+                bool isIFUS0 = resource->isInternalFormatUnsigned();
                 if 
                 (
                     ((Texture2DResource*)resource)->set
@@ -1320,10 +1321,16 @@ the project)");
                 )
                 {
                     valid = true;
+                    bool isIFUS = resource->isInternalFormatUnsigned();
                     resource->setWrapMode(0, wrapMode0);
                     resource->setWrapMode(1, wrapMode1);
                     resource->setMinFilterMode(minFilterMode);
                     resource->setMagFilterMode(magFilterMode);
+                    if (isIFUS0 != isIFUS)
+                    {
+                        if (resource->clientUniforms_.size() > 0)
+                            Layer::Flags::requestRecompilation = true;
+                    }
                 }
             }
             else
@@ -1771,7 +1778,7 @@ void Resource::renderResourceActionsButtonGui
             ImGui::OpenPopup("##textureManagerSettings");
         if (ImGui::BeginPopup("##textureManagerSettings"))
         {
-            std::vector<std::string*> inUseBy(0);
+            std::vector<std::string*> inUseByCubemapOrAnimation(0);
             if (resource->type_ == Resource::Type::Texture2D)
             {
                 for (auto* r : resources)
@@ -1784,7 +1791,10 @@ void Resource::renderResourceActionsButtonGui
                         {
                             if (faces[i]->name() != resource->name())
                                 continue;
-                            inUseBy.emplace_back(cubemap->namePtr_);
+                            inUseByCubemapOrAnimation.emplace_back
+                            (
+                                cubemap->namePtr_
+                            );
                             break;
                         }
                     }
@@ -1799,7 +1809,7 @@ void Resource::renderResourceActionsButtonGui
                         {
                             if (frame->name() != resource->name())
                                 continue;
-                            inUseBy.emplace_back(r->namePtr_);
+                            inUseByCubemapOrAnimation.emplace_back(r->namePtr_);
                             break;
                         }
                     }
@@ -1816,11 +1826,11 @@ void Resource::renderResourceActionsButtonGui
             if 
             (
                 ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
-                inUseBy.size() > 0
+                inUseByCubemapOrAnimation.size() > 0
             )
             {
-                // Again, if inUseBy.size() > 0 I am assured this 
-                // resource is a Texture2D, not a Cubemap nor an Animation
+                // Again, if inUseByCubemapOrAnimation.size() > 0 I am assured 
+                // this resource is a Texture2D, not a Cubemap nor an Animation
                 ImGui::BeginTooltip();
                 ImGui::Text(
 R"(These settings only affect this texture and do not 
@@ -2093,7 +2103,7 @@ affect any cubemaps or animations using this texture)");
                         texture->rawDataSize_ == 0
                     )
                     {
-                        bool disabled = inUseBy.size() > 0;
+                        bool disabled = inUseByCubemapOrAnimation.size() > 0;
                         if (disabled)
                             ImGui::BeginDisabled();
                         createOrResizeOrReformatTextureGui
@@ -2127,7 +2137,7 @@ affect any cubemaps or animations using this texture)");
                 ImGui::EndPopup();
             }
             //------------------------------------------------------------------
-            if (inUseBy.size() == 0)
+            if (inUseByCubemapOrAnimation.size() == 0)
             {
                 switch (resource->type_)
                 {
@@ -2168,9 +2178,9 @@ affect any cubemaps or animations using this texture)");
                         break;
                 }
             }
-            else    // No way inUseBy.size() != 0 if resource->type_ !=
-                    // Resource::Type::Texture2D, so no cubemaps or 
-                    // animations here
+            else    // No way inUseByCubemapOrAnimation.size() != 0 if 
+                    // resource->type_ != Resource::Type::Texture2D, so no 
+                    // cubemaps or animations here
             {
                 loadOrReplaceTextureOrAnimationButtonGui
                 (
@@ -2189,9 +2199,10 @@ affect any cubemaps or animations using this texture)");
                 {
                     std::string hoverText = 
 "This texture is in use by the following resources:\n";
-                    for (int i=0; i<(int)inUseBy.size(); i++)
+                    for (int i=0; i<(int)inUseByCubemapOrAnimation.size(); i++)
                         hoverText += 
-                        "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
+                            "  "+std::to_string(i+1)+") "+
+                            *inUseByCubemapOrAnimation[i]+"\n";
                     hoverText += 
 "To replace this texture, first delete the resources which use it";
                     ImGui::Text(hoverText.c_str());
@@ -2206,7 +2217,7 @@ affect any cubemaps or animations using this texture)");
             )
                 exportTextureOrAnimationButtonGui(resource,size);
             //------------------------------------------------------------------
-            if (inUseBy.size() == 0)
+            if (inUseByCubemapOrAnimation.size() == 0)
             {
                 if (ImGui::Button("Delete", size))
                     deleteResource = true;
@@ -2226,9 +2237,10 @@ affect any cubemaps or animations using this texture)");
                 {
                     std::string hoverText = 
 "This texture is in use by the following resources:\n";
-                    for (int i=0; i<(int)inUseBy.size(); i++)
+                    for (int i=0; i<(int)inUseByCubemapOrAnimation.size(); i++)
                         hoverText += 
-                        "  "+std::to_string(i+1)+") "+*inUseBy[i]+"\n";
+                            "  "+std::to_string(i+1)+") "+
+                            *inUseByCubemapOrAnimation[i]+"\n";
                     hoverText += 
 "To delete this texture, first delete the resources which use it";
                     ImGui::Text(hoverText.c_str());

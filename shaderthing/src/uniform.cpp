@@ -835,42 +835,100 @@ is currently being held down)");
                         vir::Shader::uniformNameToType[uniformTypeName];
                     if (selectedType != uniform->type)
                     {
-                        if // Do not reset when swapping between uniform types
-                           // that have the same underlying data types 
-                           // (Sampler2D and Image2D uniforms both refer to 
-                           // TextureBuffer2D objects, and the same happens for
-                           // cube map types) 
+                        bool uniformTypeIsSamplerOrImage2D = 
                         (
-                            !(
-                                (
-                                    uniform->type == 
-                                    vir::Shader::Variable::Type::Sampler2D ||
-                                    uniform->type == 
-                                    vir::Shader::Variable::Type::Image2D
-                                ) &&
-                                (
-                                    selectedType == 
-                                    vir::Shader::Variable::Type::Sampler2D ||
-                                    selectedType == 
-                                    vir::Shader::Variable::Type::Image2D
-                                )
+                            uniform->type == 
+                            vir::Shader::Variable::Type::Sampler2D ||
+                            uniform->type == 
+                            vir::Shader::Variable::Type::Image2D
+                        );
+                        bool selectedTypeIsSamplerOrImage2D = 
+                        (
+                            selectedType == 
+                            vir::Shader::Variable::Type::Sampler2D ||
+                            selectedType == 
+                            vir::Shader::Variable::Type::Image2D
+                        );
+                        bool uniformTypeIsSamplerOrImageCube = 
+                        (
+                            uniform->type == 
+                            vir::Shader::Variable::Type::SamplerCube ||
+                            uniform->type == 
+                            vir::Shader::Variable::Type::ImageCube
+                        );
+                        bool selectedTypeIsSamplerOrImageCube = 
+                        (
+                            selectedType == 
+                            vir::Shader::Variable::Type::SamplerCube ||
+                            selectedType == 
+                            vir::Shader::Variable::Type::ImageCube
+                        );
+                        // This is only for setting the inUseByLayers_ member of
+                        // the resource, which in turn is only used to determine
+                        // whether a full shader recompilation is  required
+                        // after changing the internal format of any resource
+                        // that is actively used by a layer. This is necessary
+                        // because, as the choice of using e.g., a 'usampler' or
+                        // a 'sampler' qualifier for the uniform is automatic,
+                        // changing the internal uniform type might require
+                        // changing the qualifier, and this can only be changed
+                        // in the shader source code with a recompilation
+                        if
+                        (
+                            (
+                                uniformTypeIsSamplerOrImage2D ||
+                                uniformTypeIsSamplerOrImageCube
                             ) &&
                             !(
-                                (
-                                    uniform->type == 
-                                    vir::Shader::Variable::Type::SamplerCube ||
-                                    uniform->type == 
-                                    vir::Shader::Variable::Type::ImageCube
-                                ) &&
-                                (
-                                    selectedType == 
-                                    vir::Shader::Variable::Type::SamplerCube ||
-                                    selectedType == 
-                                    vir::Shader::Variable::Type::ImageCube
-                                )
+                                selectedTypeIsSamplerOrImage2D ||
+                                selectedTypeIsSamplerOrImageCube
                             )
                         )
+                        {
+                            auto resource = uniform->getValuePtr<Resource>();
+                            if (resource != nullptr)
+                            {
+                                resource->removeClientUniform(uniform);
+                            }
+                        }
+                        else if 
+                        (
+                            !(
+                                uniformTypeIsSamplerOrImage2D ||
+                                uniformTypeIsSamplerOrImageCube
+                            ) &&
+                            (
+                                selectedTypeIsSamplerOrImage2D ||
+                                selectedTypeIsSamplerOrImageCube
+                            )
+                        )
+                        {
+                            auto resource = uniform->getValuePtr<Resource>();
+                            if (resource != nullptr)
+                            {
+                                resource->addClientUniform(uniform);
+                            }
+                        }
+
+                        // Do not reset when swapping between uniform types that
+                        // have the same underlying data types (Sampler2D and
+                        // Image2D uniforms both refer to TextureBuffer2D 
+                        // objects, and the same happens for cube map types) 
+                        if
+                        (
+                            !(
+                                uniformTypeIsSamplerOrImage2D &&
+                                selectedTypeIsSamplerOrImage2D
+                            ) &&
+                            !(
+                                uniformTypeIsSamplerOrImageCube &&
+                                selectedTypeIsSamplerOrImageCube
+                            )
+                        )
+                        {
                             uniform->resetValue();
+                        }
+                        
                         uniform->type = selectedType;
                         uniform->gui.showBounds = 
                         (
@@ -1489,8 +1547,22 @@ is currently being held down)");
                             continue;
                         if (ImGui::Selectable(r->name().c_str()))
                         {
+                            if (resource != nullptr)
+                            {
+                                Layer::Flags::requestRecompilation = 
+                                    Layer::Flags::requestRecompilation ||
+                                    resource->isInternalFormatUnsigned() !=
+                                    r->isInternalFormatUnsigned();
+                                if (resource->isUsedByUniform(uniform))
+                                    resource->removeClientUniform(uniform);
+                            }
+                            else
+                                Layer::Flags::requestRecompilation = true;
+                            if (!r->isUsedByUniform(uniform))
+                                r->addClientUniform(uniform);
                             uniform->setValuePtr<const Resource>(r);
                             sharedUniforms.setUserAction(true);
+                            
                         }
                     }
                     ImGui::EndCombo();
@@ -1514,6 +1586,19 @@ is currently being held down)");
                             continue;
                         if (ImGui::Selectable(r->name().c_str()))
                         {
+                            if (resource != nullptr)
+                            {
+                                Layer::Flags::requestRecompilation = 
+                                    Layer::Flags::requestRecompilation ||
+                                    resource->isInternalFormatUnsigned() !=
+                                    r->isInternalFormatUnsigned();
+                                if (resource->isUsedByUniform(uniform))
+                                    resource->removeClientUniform(uniform);
+                            }
+                            else
+                                Layer::Flags::requestRecompilation = true;
+                            if (!r->isUsedByUniform(uniform))
+                                r->addClientUniform(uniform);
                             uniform->setValuePtr<const Resource>(r);
                             sharedUniforms.setUserAction(true);
                         }
@@ -1743,6 +1828,8 @@ is currently being held down)");
                     )
                     {
                         auto resource = uniform->getValuePtr<Resource>();
+                        if (resource->isUsedByUniform(uniform))
+                            resource->removeClientUniform(uniform);
                         resource->unbind();
                     }
                     return uniform->gui.markedForDeletion;

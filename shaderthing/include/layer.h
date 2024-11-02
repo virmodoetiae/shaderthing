@@ -46,6 +46,7 @@ class Layer : vir::Event::Receiver
 friend LayerResource;
 friend PostProcess;
 friend Uniform;
+friend Resource;
 public:
     struct Rendering
     {
@@ -88,8 +89,8 @@ public:
                bool                     uncompiledChanges          = false;
                bool                     isAspectRatioBoundToWindow = true;
                bool                     rescaleWithWindow          = true;
+        static bool                     requestRecompilation;
         static bool                     restartRendering;
-               
     };
     struct Cache
     {

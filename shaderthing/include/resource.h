@@ -29,6 +29,7 @@ typedef vir::TextureBuffer::ImageBindMode  ImageBindMode;
 typedef vir::TextureBuffer::DataType       DataType;
 
 class Layer;
+class Uniform;
 class ObjectIO;
 
 class Texture2DResource;
@@ -57,6 +58,8 @@ protected:
     std::string*                                 namePtr_       = nullptr;
     int                                          textureUnit_   = -1;
     int                                          imageUnit_     = -1;
+    // List of uniforms using this resource as value
+    std::vector<Uniform*>                        clientUniforms_ = {};
 
     static std::map<Resource::Type, const char*> typeToName_;
     static FileDialog                            fileDialog_;
@@ -102,6 +105,9 @@ public:
     void                 setNamePtr(std::string* namePtr);
     unsigned int         textureUnit() const {return textureUnit_;}
     unsigned int         imageUnit() const {return imageUnit_;}
+    void                 addClientUniform(Uniform* u) {clientUniforms_.push_back(u);}
+    void                 removeClientUniform(Uniform* u) {clientUniforms_.erase(std::remove(clientUniforms_.begin(), clientUniforms_.end(), u), clientUniforms_.end());}
+    bool                 isUsedByUniform(const Uniform* u) const {return std::find(clientUniforms_.begin(), clientUniforms_.end(), u) != clientUniforms_.end();}
 
     static bool isGuiOpen;
     static bool isGuiDetachedFromMenu;

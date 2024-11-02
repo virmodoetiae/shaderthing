@@ -33,6 +33,7 @@
 namespace ShaderThing
 {
 
+bool        Layer::Flags::requestRecompilation = false;
 bool        Layer::Flags::restartRendering  = false;
 std::string Layer::GUI::defaultSharedSource = 
 R"(// Common source code is shared by all fragment shaders across all layers and
@@ -527,6 +528,30 @@ void Layer::loadAll
     // done for shared user-custom uniforms
     sharedUniforms.postLoadProcessCachedResourceLayers(resources);
 
+    // Reset the lists of layers using each image- or sampler-type resource
+    // within each resource
+    for (auto* layer : layers)
+    {
+        for (auto* uniform : layer->uniforms_)
+        {
+            if 
+            (
+                uniform->type == Uniform::Type::Sampler2D ||
+                uniform->type == Uniform::Type::SamplerCube ||
+                uniform->type == Uniform::Type::Image2D ||
+                uniform->type == Uniform::Type::ImageCube
+            )
+            {
+                auto resource = uniform->getValuePtr<Resource>();
+                if (resource != nullptr)
+                {
+                    if (!resource->isUsedByUniform(uniform))
+                        resource->addClientUniform(uniform);
+                }
+            }
+        }
+    }
+
     // Compile all layer shaders after dependencies have been re-established
     for (auto* layer : layers)
     {
@@ -642,11 +667,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                         ", "+resource->internalFormatName()+") ";
                     // This logic should be handled different at the vir:: 
                     // level and exposed via Resource::, not here
-                    if 
-                    (
-                        resource->internalFormatName().find("ui") != 
-                        std::string::npos
-                    )
+                    if (resource->isInternalFormatUnsigned())
                         uniformTypeName = "u"+uniformTypeName;
                     break;
                 }
@@ -658,11 +679,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                         break;
                     // This logic should be handled different at the vir:: 
                     // level and exposed via Resource::, not here
-                    if 
-                    (
-                        resource->internalFormatName().find("ui") != 
-                        std::string::npos
-                    )
+                    if (resource->isInternalFormatUnsigned())
                         uniformTypeName = "u"+uniformTypeName;
                     break;
                 }
@@ -1819,8 +1836,16 @@ void Layer::renderLayersTabBarGui // Static
 )
 {
     static bool compilationErrors(false);
-    static bool uncompiledEdits(false);
-    if (uncompiledEdits || compilationErrors) // Render compilation button ------
+    static bool anyUncompiledChanges(false);
+    if (Flags::requestRecompilation)
+    {
+        for (auto layer : layers)
+        {
+            layer->flags_.uncompiledChanges = true;
+        }
+        Flags::requestRecompilation = false;
+    }
+    if (anyUncompiledChanges || compilationErrors) // Render compilation button 
     {
         float time = vir::Time::instance()->outerTime();
         ImVec4 compileButtonColor = 
@@ -1862,7 +1887,7 @@ void Layer::renderLayersTabBarGui // Static
         ImGui::Text("Compilation errors in:");
     }
     compilationErrors = false;
-    uncompiledEdits = false;
+    anyUncompiledChanges = false;
     const auto& sharedErrors // First render errors in shared source -----------
     (
         Layer::GUI::sharedSourceEditor.getErrorMarkers()
@@ -1916,7 +1941,7 @@ void Layer::renderLayersTabBarGui // Static
             Layer::GUI::sharedSourceEditor.isTextChanged() ||
             layer->flags_.uncompiledChanges
         )
-            uncompiledEdits = true;
+            anyUncompiledChanges = true;
     }
     if (compilationErrors)
         ImGui::Separator();
