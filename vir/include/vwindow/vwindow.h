@@ -30,6 +30,7 @@ protected :
     float aspectRatio_;
     bool iconified_;
     bool resizable_;
+    bool mouseCaptured_;
     bool VSync_;
 
 public:
@@ -105,6 +106,10 @@ public:
     // resize as a WindowResizeEvent
     virtual void setSize(uint32_t, uint32_t) = 0;
 
+    // Set mouse capturing option. If set to true, the mouse cursor will not
+    // be visible and will be captured by this window
+    virtual void setMouseCaptured(bool flag) = 0;
+
     // Retrieve window color data
     virtual void data(unsigned char*) = 0;
 
@@ -125,7 +130,8 @@ public:
     const float& aspectRatio() const {return aspectRatio_;}
     const bool& iconified() const {return iconified_;}
     const bool& resizable() const {return resizable_;}
-    const bool& VSync(){return VSync_;}
+    const bool& VSync() const {return VSync_;}
+    const bool& isMouseCaptured() const {return mouseCaptured_;}
 
     //
     static Window* instance() {return GlobalPtr<Window>::instance();}

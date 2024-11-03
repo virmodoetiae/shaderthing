@@ -134,6 +134,16 @@ void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height)
     setViewport(width, height);
 }
 
+void GLFWOpenGLWindow::setMouseCaptured(bool flag)
+{
+    mouseCaptured_ = flag;
+    glfwSetInputMode
+    (
+        glfwWindow_, 
+        GLFW_CURSOR, flag ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL
+    );
+}
+
 void GLFWOpenGLWindow::data(unsigned char* data)
 {
     if (Framebuffer::activeOne() != nullptr)

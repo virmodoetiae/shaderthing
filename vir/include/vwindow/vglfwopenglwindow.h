@@ -48,6 +48,8 @@ public :
     // else the program may end up in an infinite loop
     void setSize(uint32_t, uint32_t) override;
 
+    void setMouseCaptured(bool flag) override;
+
     void data(unsigned char*) override;
 
     bool isOpen() override;

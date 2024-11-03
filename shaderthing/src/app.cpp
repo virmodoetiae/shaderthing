@@ -705,7 +705,7 @@ void App::renderMenuBarGui()
         }
         if (ImGui::BeginMenu("Properties"))
         {
-            sharedUniforms_->renderWindowResolutionMenuGui();
+            sharedUniforms_->renderWindowMenuGui();
             for (auto layer : layers_)
                 layer->renderPropertiesMenuGui(resources_);
             ImGui::Separator();

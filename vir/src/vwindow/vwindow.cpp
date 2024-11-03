@@ -11,7 +11,8 @@ viewportWidth_(w),
 viewportHeight_(w),
 aspectRatio_(float(w)/float(h)),
 iconified_(false),
-resizable_(r)
+resizable_(r),
+mouseCaptured_(false)
 {}
 
 Window::~Window()

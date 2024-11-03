@@ -497,6 +497,7 @@ void Uniform::renderUniformsGui
         // iMouse --------------------------------------------------------------
         START_ROW
         NEXT_COLUMN
+        /*
         if 
         (
             ImGui::Button
@@ -508,6 +509,37 @@ void Uniform::renderUniformsGui
             )
         )
             sharedUniforms.toggleMouseInputs();
+        */
+        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+            ImGui::OpenPopup("##iMouseSettings");
+        if (ImGui::BeginPopup("##iMouseSettings"))
+        {
+            bool enabled = sharedUniforms.flags_.isMouseInputEnabled;
+            std::string text = enabled ? "Disable inputs" : "Enable inputs";
+            if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+                sharedUniforms.toggleMouseInputs();
+            ImGui::Text("Clamp value to window resolution ");
+            ImGui::SameLine();
+            bool status = sharedUniforms.flags_.isMouseInputClampedToWindow;
+            ImGui::Checkbox("##iMouseSettings_ClampValue", &status);
+            if (status != sharedUniforms.flags_.isMouseInputClampedToWindow)
+                sharedUniforms.setMouseInputsClamped(status);
+            ImGui::Text("Input requires holding LMB       ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text(
+R"(If true, the iMouse uniform value will change on mouse 
+motion only if the left mouse button (LMB) is held)");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            ImGui::Checkbox
+            (
+                "##iMouseSettings_LMBHold", 
+                &(sharedUniforms.flags_.mouseInputRequiresLMBHold)
+            );
+            ImGui::EndPopup();
+        }
         NEXT_COLUMN
         ImGui::Text("iMouse");
         NEXT_COLUMN
@@ -548,9 +580,23 @@ is currently being held down)");
         if (ImGui::BeginPopup("##iLookSettings"))
         {
             bool enabled = sharedUniforms.flags_.isCameraMouseInputEnabled;
-            std::string text = enabled ? "Disable" : "Enable";
+            std::string text = enabled ? "Disable inputs" : "Enable inputs";
             if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
                 sharedUniforms.toggleCameraMouseInputs();
+            ImGui::Text("Input requires holding LMB       ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text(
+R"(If true, the iLook uniform value will change on mouse 
+motion only if the left mouse button (LMB) is held)");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            ImGui::Checkbox
+            (
+                "##iLookSettings_LMBHold", 
+                &(sharedUniforms.flags_.cameraMouseInputRequiresLMBHold)
+            );
             ImGui::Text("Mouse sensitivity ");
             ImGui::SameLine();
             ImGui::PushItemWidth(-1);
@@ -606,7 +652,7 @@ is currently being held down)");
         if (ImGui::BeginPopup("##iWASDSettings"))
         {
             bool enabled = sharedUniforms.flags_.isCameraKeyboardInputEnabled;
-            std::string text = enabled ? "Disable" : "Enable";
+            std::string text = enabled ? "Disable inputs" : "Enable inputs";
             if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
                 sharedUniforms.toggleCameraKeyboardInputs();
             ImGui::Text("Keyboard sensitivity ");

@@ -176,6 +176,19 @@ void SharedUniforms::setResolution
         );
 }
 
+void SharedUniforms::setMouseInputsClamped(bool flag)
+{
+    flags_.isMouseInputClampedToWindow = flag;
+    if (flag)
+    {
+        fBlock_.iMouse.x = 
+            std::max(std::min(fBlock_.iMouse.x, fBlock_.iResolution.x), 0.f);
+        fBlock_.iMouse.y = 
+            std::max(std::min(fBlock_.iMouse.y, fBlock_.iResolution.y), 0.f);
+    }
+    flags_.updateDataRangeII = true;
+}
+
 //----------------------------------------------------------------------------//
 
 void SharedUniforms::setUserAction(bool flag)
@@ -270,6 +283,11 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonPressEvent& event)
         fBlock_.iMouse.x,
         -fBlock_.iMouse.y
     };
+    if (flags_.isMouseInputClampedToWindow)
+    {
+        mouse.x = std::max(std::min(mouse.x, fBlock_.iResolution.x), 0.f);
+        mouse.y = std::max(std::min(mouse.y, fBlock_.iResolution.y), 0.f);
+    }
     if (fBlock_.iMouse == mouse)
         return;
     fBlock_.iUserAction = true;
@@ -283,8 +301,9 @@ void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
 {
     if 
     (
-        !vir::InputState::instance()->
-        mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked()
+        flags_.mouseInputRequiresLMBHold &&
+        !vir::InputState::instance()->mouseButtonState(VIR_MOUSE_BUTTON_1)
+        .isClicked()
     )
         return;
     glm::vec4 mouse = 
@@ -294,6 +313,11 @@ void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
         fBlock_.iMouse.z,
         fBlock_.iMouse.w
     };
+    if (flags_.isMouseInputClampedToWindow)
+    {
+        mouse.x = std::max(std::min(mouse.x, fBlock_.iResolution.x), 0.f);
+        mouse.y = std::max(std::min(mouse.y, fBlock_.iResolution.y), 0.f);
+    }
     if (fBlock_.iMouse == mouse)
         return;
     fBlock_.iUserAction = true;
@@ -323,6 +347,13 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
 
 void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 {
+    if // Un-capture mouse on ESC
+    (
+        event.keyCode == VIR_KEY_ESCAPE &&
+        vir::GlobalPtr<vir::Window>::instance()->isMouseCaptured()
+    )
+        vir::GlobalPtr<vir::Window>::instance()->setMouseCaptured(false);
+
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::InputState::instance();
     auto& status = inputState->keyState(event.keyCode);
@@ -538,10 +569,16 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("iLook", shaderCamera_->z());
     io.write("iLookSensitivity",shaderCamera_->mouseSensitivityRef());
     io.write("iLookInputEnabled",flags_.isCameraMouseInputEnabled);
+    io.write("iLookInputRequiresLMBHold", 
+        flags_.cameraMouseInputRequiresLMBHold);
     io.write("iMouseInputEnabled", flags_.isMouseInputEnabled);
+    io.write("iMouseInputClampedToWindow", flags_.isMouseInputClampedToWindow);
+    io.write("mouseInputRequiresLMBHold", 
+        flags_.mouseInputRequiresLMBHold);
     io.write("iKeyboardInputEnabled", flags_.isKeyboardInputEnabled);
     io.write("smoothTimeDelta", flags_.isTimeDeltaSmooth);
-    io.write("resetTimeOnFrameCounterReset", flags_.isTimeResetOnFrameCounterReset);
+    io.write("resetTimeOnFrameCounterReset", 
+        flags_.isTimeResetOnFrameCounterReset);
     io.write("vSyncEnabled", flags_.isVSyncEnabled);
     Uniform::saveAll(io, userUniforms_);
     io.writeObjectEnd();
@@ -582,8 +619,14 @@ void SharedUniforms::load
         su->toggleCameraKeyboardInputs();
     if (!ioSu.read<bool>("iLookInputEnabled"))
         su->toggleCameraMouseInputs();
+    su->flags_.cameraMouseInputRequiresLMBHold = 
+        ioSu.readOrDefault<bool>("iLookInputRequiresLMBHold", true);
     if (!ioSu.read<bool>("iMouseInputEnabled"))
         su->toggleMouseInputs();
+    su->setMouseInputsClamped(
+        ioSu.readOrDefault<bool>("iMouseInputClampedToWindow", false));
+    su->flags_.mouseInputRequiresLMBHold = 
+        ioSu.readOrDefault<bool>("mouseInputRequiresLMBHold", true);
     if (!ioSu.read<bool>("iKeyboardInputEnabled"))
         su->toggleKeyboardInputs();
     su->exportData_.resolutionScale = 
@@ -624,11 +667,11 @@ void SharedUniforms::postLoadProcessCachedResourceLayers
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::renderWindowResolutionMenuGui()
+void SharedUniforms::renderWindowMenuGui()
 {
     if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
     {
-        ImGui::Text("Resolution ");
+        ImGui::Text("Resolution     ");
         ImGui::SameLine();
         ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
         glm::ivec2 resolution(fBlock_.iResolution);
@@ -643,10 +686,22 @@ void SharedUniforms::renderWindowResolutionMenuGui()
             setResolution(resolution, false);
         ImGui::PopItemWidth();
 
-        ImGui::Text("VSync      ");
+        auto window = vir::Window::instance();
+        ImGui::Text("VSync          ");
         ImGui::SameLine();
         if (ImGui::Checkbox("##windowVSync", &flags_.isVSyncEnabled))
-            vir::Window::instance()->setVSync(flags_.isVSyncEnabled);
+            window->setVSync(flags_.isVSyncEnabled);
+
+        ImGui::Text("Mouse captured ");
+        ImGui::SameLine();
+        bool status = window->isMouseCaptured();
+        ImGui::Checkbox("##mouseCaptured", &status);
+        if (status != window->isMouseCaptured())
+        {
+            window->setMouseCaptured(status);
+            if (status)
+                setMouseInputsClamped(true);
+        }
 
         ImGui::EndMenu();
     }

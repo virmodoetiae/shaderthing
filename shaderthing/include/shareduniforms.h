@@ -64,8 +64,11 @@ private:
               bool isRandomNumberGeneratorPaused      = false;
               bool isKeyboardInputEnabled             = true; // iKeyboard
               bool isMouseInputEnabled                = true; // iMouse
+              bool isMouseInputClampedToWindow        = false;
+              bool mouseInputRequiresLMBHold          = true;
               bool isCameraKeyboardInputEnabled       = true; // iWASD
               bool isCameraMouseInputEnabled          = true; // iLook
+              bool cameraMouseInputRequiresLMBHold    = true;
               bool isVSyncEnabled                     = true;
               bool isSSBOSupported                    = false;
     };
@@ -210,6 +213,7 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
         bool windowFrameManuallyDragged, 
         bool prepareForExport=false
     );
+    void setMouseInputsClamped(bool flag);
     void toggleMouseInputs();
     void toggleKeyboardInputs();
     void toggleCameraKeyboardInputs();
@@ -259,7 +263,7 @@ public:
     void resetAfterExport(bool resetFrameCounter = true);
     void resetTimeAndFrame(float time=0);
 
-    void renderWindowResolutionMenuGui();
+    void renderWindowMenuGui();
 
     const char* glslFragmentBlockSource() const {return fBlock_.glslSource;}
     const char* glslVertexBlockSource() const {return vBlock_.glslSource;}
