@@ -104,6 +104,15 @@ SharedUniforms::SharedUniforms()
     // higher priority (lower value is higher priority) than all other
     // ShaderThing event receivers
     this->tuneIntoEventBroadcaster(VIR_DEFAULT_PRIORITY-1);
+
+    // Make SharedUniforms receive MouseMotion event before the vir::InputCamera
+    // itself. This is necessary to enable the functionality controlled by the
+    // cameraMouseInputRequiresLMBHold flag
+    this->setEventReceiverPriority
+    (
+        vir::Event::Type::MouseMotion, 
+        VIR_CAMERA_PRIORITY-1
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -114,7 +123,7 @@ SharedUniforms::~SharedUniforms()
     DELETE_IF_NOT_NULLPTR(vBuffer_)
     DELETE_IF_NOT_NULLPTR(screenCamera_)
     DELETE_IF_NOT_NULLPTR(shaderCamera_)
-     DELETE_IF_NOT_NULLPTR(random_)
+    DELETE_IF_NOT_NULLPTR(random_)
 }
 
 //----------------------------------------------------------------------------//
@@ -299,12 +308,12 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonPressEvent& event)
 
 void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
 {
-    if 
-    (
-        flags_.mouseInputRequiresLMBHold &&
-        !vir::InputState::instance()->mouseButtonState(VIR_MOUSE_BUTTON_1)
-        .isClicked()
-    )
+    bool LMBClicked = 
+        vir::InputState::instance()->mouseButtonState(VIR_MOUSE_BUTTON_1)
+        .isClicked();
+    if (flags_.cameraMouseInputRequiresLMBHold && !LMBClicked)
+        event.handled = true; // Prevent propagation to vir::InputCamera
+    if (flags_.mouseInputRequiresLMBHold && !LMBClicked)
         return;
     glm::vec4 mouse = 
     {
@@ -671,7 +680,7 @@ void SharedUniforms::renderWindowMenuGui()
 {
     if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
     {
-        ImGui::Text("Resolution     ");
+        ImGui::Text("Resolution    ");
         ImGui::SameLine();
         ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
         glm::ivec2 resolution(fBlock_.iResolution);
@@ -687,12 +696,14 @@ void SharedUniforms::renderWindowMenuGui()
         ImGui::PopItemWidth();
 
         auto window = vir::Window::instance();
-        ImGui::Text("VSync          ");
+        ImGui::Text("VSync         ");
         ImGui::SameLine();
         if (ImGui::Checkbox("##windowVSync", &flags_.isVSyncEnabled))
             window->setVSync(flags_.isVSyncEnabled);
 
-        ImGui::Text("Mouse captured ");
+        static ImVec4 ctrlRColor = 
+            ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
+        ImGui::Text("Capture mouse ");
         ImGui::SameLine();
         bool status = window->isMouseCaptured();
         ImGui::Checkbox("##mouseCaptured", &status);
@@ -702,6 +713,10 @@ void SharedUniforms::renderWindowMenuGui()
             if (status)
                 setMouseInputsClamped(true);
         }
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, ctrlRColor);
+        ImGui::Text("Esc to free");
+        ImGui::PopStyleColor();
 
         ImGui::EndMenu();
     }

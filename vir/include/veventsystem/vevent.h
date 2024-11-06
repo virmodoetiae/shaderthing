@@ -237,11 +237,11 @@ class Broadcaster;
 class Receiver
 {
 
-#define VIR_INPUT_PRIORITY 0
-#define VIR_WINDOW_PRIORITY 1
-#define VIR_IMGUI_PRIORITY 2
-#define VIR_CAMERA_PRIORITY 3
-#define VIR_DEFAULT_PRIORITY 10
+#define VIR_INPUT_PRIORITY 10
+#define VIR_WINDOW_PRIORITY 20
+#define VIR_IMGUI_PRIORITY 30
+#define VIR_CAMERA_PRIORITY 50
+#define VIR_DEFAULT_PRIORITY 100
 
 friend Broadcaster;
 
@@ -253,10 +253,29 @@ private:
     // Id assigned by broadcaster when receiver tunes in for first time
     unsigned int id_;
 
-    // Higher priority means this receiver will receive events before others
-    // with lower priority. All priorities stored as negative numbers, so that
-    // 0 is the highest priority
-    int priority_ = -VIR_DEFAULT_PRIORITY;
+    // Map to indicate what is the priority for receiving events of each
+    // type as compared to other receivers. Smaller values mean higher
+    // priority, i.e., events will be receiver earlier. 
+    std::map<Type, int> priorityByEvent_ = 
+    {
+        {KeyPress,              VIR_DEFAULT_PRIORITY},
+        {KeyRelease,            VIR_DEFAULT_PRIORITY},
+        {KeyChar,               VIR_DEFAULT_PRIORITY},
+        {MouseButtonPress,      VIR_DEFAULT_PRIORITY},
+        {MouseButtonRelease,    VIR_DEFAULT_PRIORITY},
+        {MouseMotion,           VIR_DEFAULT_PRIORITY},
+        {MouseScroll,           VIR_DEFAULT_PRIORITY},
+        {WindowClose,           VIR_DEFAULT_PRIORITY},
+        {WindowFocus,           VIR_DEFAULT_PRIORITY},
+        {WindowMaximization,    VIR_DEFAULT_PRIORITY},
+        {WindowIconification,   VIR_DEFAULT_PRIORITY},
+        {WindowMotion,          VIR_DEFAULT_PRIORITY},
+        {WindowResize,          VIR_DEFAULT_PRIORITY},
+        {WindowContentRescale,  VIR_DEFAULT_PRIORITY},
+        {ProgramTick,           VIR_DEFAULT_PRIORITY},
+        {ProgramUpdate,         VIR_DEFAULT_PRIORITY},
+        {ProgramRender,         VIR_DEFAULT_PRIORITY}
+    };
 
     // List of immutable event types the derived Receiver object is intended
     // to be able to receive by design, i.e., those declared via the
@@ -299,9 +318,11 @@ public:
     virtual ~Receiver();
 
     // Register with the global event broadcaster to enable receiving events.
-    // A priority can be specified, the highest being 0, with larger values
-    // indicating a lower priority (i.e., other receivers with a lower 
-    // priorityValue will receive events earlier)
+    // A priority can be specified as a default priority value for all event
+    // types. Lower values mean higher priority (i.e., the receiver will receive
+    // events before other receivers with higher priority values).  To set the 
+    // priority for receiving specific events, use the setEventReceiverPriority(
+    // Type t, unsigned int value) function
     bool tuneIntoEventBroadcaster(int priorityValue=VIR_DEFAULT_PRIORITY);
     
     // Unregister from the global event broadcaster to disable receiving events
@@ -347,13 +368,17 @@ public:
     // Pause listening to event type t
     void pauseEventReception(Type t);
 
-    // Higher values are treated as a lower priority; zero is the highest
-    // possible priority
-    int eventReceiverPriority() const {return -priority_;}
+    // Retrieve the priority for receiving events of type t. Smaller values
+    // indicate a higher priority. Values may be negative
+    int eventReceiverPriority(Type t) const {return priorityByEvent_.at(t);}
 
-    // Higher values are treated as a lower priority; zero is the highest
-    // possible priority
-    void setEventReceiverPriority(unsigned int value){priority_ = -value;}
+    // Set the priority for receiving all events. Smaller values indicate a
+    // higher priority. Values may be negative
+    void setEventReceiverPriority(unsigned int value);
+
+    // Set the priority for receiving events of type t. Smaller values
+    // indicate a higher priority. Values may be negative
+    void setEventReceiverPriority(Type t, unsigned int value);
 };
 
 } // End of namespace Event

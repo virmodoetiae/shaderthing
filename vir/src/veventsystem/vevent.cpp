@@ -12,7 +12,6 @@ int MouseMotionEvent::y0_;
 
 Receiver::Receiver() : 
     initialized_(false),
-    priority_(0),
     receivableEvents_(0)
 {}
 
@@ -23,11 +22,11 @@ Receiver::~Receiver()
 
 bool Receiver::tuneIntoEventBroadcaster(int priorityValue)
 {
-    Broadcaster* p(Broadcaster::instance());
-    if (p == nullptr)
+    Broadcaster* broadcaster(Broadcaster::instance());
+    if (broadcaster == nullptr)
         return false;
     initialize();
-    bool added = p->addReceiver(*this);
+    bool added = broadcaster->addReceiver(*this);
     if (added)
         setEventReceiverPriority(priorityValue);
     return added;
@@ -35,9 +34,9 @@ bool Receiver::tuneIntoEventBroadcaster(int priorityValue)
 
 bool Receiver::tuneOutFromEventBroadcaster()
 {
-    Broadcaster* p(Broadcaster::instance());
-    if (p != nullptr)
-        return p->removeReceiver(*this);
+    Broadcaster* broadcaster(Broadcaster::instance());
+    if (broadcaster != nullptr)
+        return broadcaster->removeReceiver(*this);
     return false;
 }
 
@@ -80,6 +79,25 @@ void Receiver::pauseEventReception(Type t)
 {
     if (canReceiveEvent(t))
         currentlyReceivableEvents_[t]=false;
+}
+
+void Receiver::setEventReceiverPriority(unsigned int value)
+{
+    Broadcaster* broadcaster(Broadcaster::instance());
+    for (auto& entry : priorityByEvent_)
+    {
+        entry.second = value;
+        if (broadcaster != nullptr)
+            broadcaster->requestReceiverSorting(entry.first);
+    }
+}
+
+void Receiver::setEventReceiverPriority(Type t, unsigned int value)
+{
+    Broadcaster* broadcaster(Broadcaster::instance());
+    priorityByEvent_[t] = value;
+    if (broadcaster != nullptr)
+        broadcaster->requestReceiverSorting(t);
 }
 
 }

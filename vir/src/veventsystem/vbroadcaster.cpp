@@ -64,6 +64,12 @@ bool Broadcaster::removeReceiver(Receiver& receiver)
     return removed;
 }
 
+void Broadcaster::requestReceiverSorting(Type t)
+{
+    if (sorted_.find(t) != sorted_.end())
+        sorted_[t] = false;
+}
+
 // Find if a receiver already exists in a certain receiver list
 ReceiverPtrVector::iterator Broadcaster::findReceiverIn
 (
@@ -95,9 +101,13 @@ void Broadcaster::sortReceivers(Type te)
         (
             receivers.begin(), 
             receivers.end(), 
-            [](Receiver* r0, Receiver* r1)
+            [&te](Receiver* r0, Receiver* r1)
             {
-                return (r0->priority_ > r1->priority_);
+                return 
+                (
+                    r0->eventReceiverPriority(te) < 
+                    r1->eventReceiverPriority(te)
+                );
             }
         );
         sorted = true;

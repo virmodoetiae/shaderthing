@@ -58,9 +58,16 @@ public:
 
     virtual ~Broadcaster(){}
 
-    // Receiver addition and removal operator
-    bool addReceiver(Receiver&);
-    bool removeReceiver(Receiver&);
+    // Add a receiver to this broadcaster, so that it will receive all events
+    // of the types it supports receiving
+    bool addReceiver(Receiver& receiver);
+
+    // Remove a receiver from this broadcaster
+    bool removeReceiver(Receiver& receiver);
+
+    // Request that the broadcaster re-sort all receivers for an event type
+    // t (only used in Receiver::setEventPriority) based on their priority
+    void requestReceiverSorting(Type t);
 
     // Template function to broadcast any even type to the approriate onReceive
     // method implemented by all the receivers that can receive such an event
@@ -113,13 +120,13 @@ protected:
     // Find if a receiver already exists in a certain receiver list
     ReceiverPtrVector::iterator findReceiverIn
     (
-        const Receiver&, 
-        ReceiverPtrVector&
+        const Receiver& receiver, 
+        ReceiverPtrVector& receiverPtrVector
     );
 
     // Sort all receivers in the receivers list (for that event type) by
     // priority
-    void sortReceivers(Type);
+    void sortReceivers(Type t);
 };
 
 }

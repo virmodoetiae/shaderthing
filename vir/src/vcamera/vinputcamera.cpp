@@ -23,12 +23,12 @@ void InputCamera::onReceive(Event::MouseMotionEvent& event)
     auto inputState = InputState::instance();
     if (inputState == nullptr)
         return;
-    if (inputState->mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked())
-    {
-        dTheta_ += -event.dy*TPI_BY_360;
-        dPhi_ += -event.dx*TPI_BY_360;
-        updated_ = false;
-    }
+    //if (inputState->mouseButtonState(VIR_MOUSE_BUTTON_1).isClicked())
+    //{
+    dTheta_ += -event.dy*TPI_BY_360;
+    dPhi_ += -event.dx*TPI_BY_360;
+    updated_ = false;
+    //}
 }
 
 void InputCamera::onReceive(Event::MouseScrollEvent& event)
