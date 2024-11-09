@@ -66,19 +66,19 @@ bool Receiver::canReceiveEvent(Type et) const
 
 bool Receiver::isEventReceptionPaused(Type t)
 {
-    return canReceiveEvent(t) && !currentlyReceivableEvents_[t];
+    return canReceiveEvent(t) && receptionCooldownByEvent_[t] != 0;
 }
 
 void Receiver::resumeEventReception(Type t)
 {
     if (canReceiveEvent(t))
-        currentlyReceivableEvents_[t]=true;
+        receptionCooldownByEvent_[t] = 0;
 }
 
-void Receiver::pauseEventReception(Type t)
+void Receiver::pauseEventReception(Type t, unsigned int cooldown)
 {
     if (canReceiveEvent(t))
-        currentlyReceivableEvents_[t]=false;
+        receptionCooldownByEvent_[t] = cooldown == 0 ? -1 : cooldown;
 }
 
 void Receiver::setEventReceiverPriority(unsigned int value)

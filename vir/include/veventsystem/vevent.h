@@ -8,6 +8,15 @@
 namespace vir
 {
 
+struct MousePosition
+{
+    float x = 0;
+    float y = 0;
+    MousePosition() = default;
+    MousePosition(glm::ivec2 p):x(p.x),y(p.y){}
+    MousePosition(glm::vec2 p):x(p.x),y(p.y){}
+};
+
 namespace Event
 {
 
@@ -102,6 +111,8 @@ struct MouseButtonPressEvent : public Event
     int button;
     MouseButtonPressEvent(int x, int y, int button):
         x(x),y(y),button(button){}
+    MouseButtonPressEvent(MousePosition p, int button):
+        x(p.x),y(p.y),button(button){}
     EVENT_IMPLEMENTS(MouseButtonPress)
 };
 
@@ -112,6 +123,8 @@ struct MouseButtonReleaseEvent : public Event
     int button;
     MouseButtonReleaseEvent(int x, int y, int button):
         x(x),y(y),button(button){}
+    MouseButtonReleaseEvent(MousePosition p, int button):
+        x(p.x),y(p.y),button(button){}
     EVENT_IMPLEMENTS(MouseButtonRelease)
 };
 
@@ -126,7 +139,19 @@ public:
     int y;
     int dx = 0.0;
     int dy = 0.0;
+    // The provided coordinates are of those of the motion endpoint
     MouseMotionEvent(int x, int y):x(x),y(y)
+    {
+        if (!first_)
+        {
+            dx = x-x0_;
+            dy = y-y0_;
+        }
+        else
+            first_ = false;
+    }
+    // The provided coordinates are of those of the motion endpoint
+    MouseMotionEvent(MousePosition p):x(p.x),y(p.y)
     {
         if (!first_)
         {
@@ -282,28 +307,32 @@ private:
     // DECLARE_RECEIVABLE_EVENTS macro
     std::vector<Type> receivableEvents_;
 
-    // List of mutable event types the derived Receiver object is currently
-    // actively listening to (if and only if said event Type is present in
-    // receivableEvents_)
-    std::map<Type, bool> currentlyReceivableEvents_ =
+    // Number of event broadcast to be skipped/to not react to before actually
+    // reacting to one. 0 means that all broadcasts for that event type will be
+    // received. -1 means the event reception is paused idefinitely. Any number
+    // > 0 can thus be interpreted as a cooldown before being able to receive
+    // an event. Please note that this is a bit different from the behavior of
+    // the cooldown parameter in pauseEventReception(type, cooldown), where, for
+    // clarity, providing a cooldown = 0 means pausing the event indefinitely
+    std::map<Type, int> receptionCooldownByEvent_ =
     {
-        {KeyPress, true},
-        {KeyRelease, true},
-        {KeyChar, true},
-        {MouseButtonPress, true},
-        {MouseButtonRelease, true},
-        {MouseMotion, true},
-        {MouseScroll, true},
-        {WindowClose, true},
-        {WindowFocus, true},
-        {WindowMaximization, true},
-        {WindowIconification, true},
-        {WindowMotion, true},
-        {WindowResize, true},
-        {WindowContentRescale, true},
-        {ProgramTick, true},
-        {ProgramUpdate, true},
-        {ProgramRender, true}
+        {KeyPress, 0},
+        {KeyRelease, 0},
+        {KeyChar, 0},
+        {MouseButtonPress, 0},
+        {MouseButtonRelease, 0},
+        {MouseMotion, 0},
+        {MouseScroll, 0},
+        {WindowClose, 0},
+        {WindowFocus, 0},
+        {WindowMaximization, 0},
+        {WindowIconification, 0},
+        {WindowMotion, 0},
+        {WindowResize, 0},
+        {WindowContentRescale, 0},
+        {ProgramTick, 0},
+        {ProgramUpdate, 0},
+        {ProgramRender, 0}
     };
 
     // Initialize the receivableEvents_ list based on the implementation of
@@ -365,8 +394,10 @@ public:
     // Resume listening to event type t
     void resumeEventReception(Type t);
 
-    // Pause listening to event type t
-    void pauseEventReception(Type t);
+    // Pause listening to event type t for the next n = cooldown events.
+    // If n == 0, the pause is indefinite until resumeEventReception(t) is
+    // called
+    void pauseEventReception(Type t, unsigned int cooldown=0);
 
     // Retrieve the priority for receiving events of type t. Smaller values
     // indicate a higher priority. Values may be negative

@@ -13,6 +13,17 @@ class GraphicsContext;
 
 class Window : public Event::Receiver
 {
+public :
+
+    enum class PositionOf
+    {
+        TopLeftCorner = 0,
+        TopRightCorner = 1,
+        BottomLeftCorner = 2,
+        BottomRightCorner = 3,
+        Center = 4
+    };
+
 protected :
 
     // Time (not owned by Window, managed by GlobalPtr)
@@ -30,7 +41,6 @@ protected :
     float aspectRatio_;
     bool iconified_;
     bool resizable_;
-    bool mouseCaptured_;
     bool VSync_;
 
 public:
@@ -83,6 +93,9 @@ public:
     virtual glm::vec2 contentScale() = 0;
 
     //
+    virtual glm::ivec2 position(PositionOf pof=PositionOf::TopLeftCorner)=0;
+
+    //
     virtual glm::ivec2 primaryMonitorResolution() = 0;
 
     // 
@@ -110,6 +123,9 @@ public:
     // be visible and will be captured by this window
     virtual void setMouseCaptured(bool flag) = 0;
 
+    // True if the mouse cursor is captured by this window
+    virtual bool isMouseCaptured() const = 0;
+
     // Retrieve window color data
     virtual void data(unsigned char*) = 0;
 
@@ -131,7 +147,6 @@ public:
     const bool& iconified() const {return iconified_;}
     const bool& resizable() const {return resizable_;}
     const bool& VSync() const {return VSync_;}
-    const bool& isMouseCaptured() const {return mouseCaptured_;}
 
     //
     static Window* instance() {return GlobalPtr<Window>::instance();}

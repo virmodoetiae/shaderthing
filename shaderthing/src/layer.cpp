@@ -2215,7 +2215,7 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
     if (ImGui::BeginMenu("OpenGL extensions"))
     {
         static auto* context = 
-            vir::GlobalPtr<vir::Window>::instance()->context();
+            vir::Window::instance()->context();
         float fontSize(ImGui::GetFontSize());
         float textWidth(40.0f*fontSize);
         float vSpace = .25*ImGui::GetTextLineHeightWithSpacing();

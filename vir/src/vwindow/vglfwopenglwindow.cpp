@@ -67,6 +67,32 @@ glm::vec2 GLFWOpenGLWindow::contentScale()
     return glm::vec2(x, y);
 }
 
+glm::ivec2 GLFWOpenGLWindow::position(PositionOf pof)
+{
+    int x, y;
+    glfwGetWindowPos(glfwWindow_, &x, &y);
+    switch (pof)
+    {
+    case PositionOf::TopLeftCorner :
+        break;
+    case PositionOf::TopRightCorner :
+        x += width_;
+        break;
+    case PositionOf::BottomLeftCorner :
+        y += height_;
+        break;
+    case PositionOf::BottomRightCorner :
+        y += height_;
+        x += width_;
+        break;
+    case PositionOf::Center :
+        y += height_/2;
+        x += width_/2;
+        break;
+    }
+    return glm::vec2(x, y);
+}
+
 glm::ivec2 GLFWOpenGLWindow::primaryMonitorResolution()
 {
     auto videoMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
@@ -136,12 +162,17 @@ void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height)
 
 void GLFWOpenGLWindow::setMouseCaptured(bool flag)
 {
-    mouseCaptured_ = flag;
     glfwSetInputMode
     (
         glfwWindow_, 
         GLFW_CURSOR, flag ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL
     );
+}
+
+bool GLFWOpenGLWindow::isMouseCaptured() const
+{
+    int mode = glfwGetInputMode(glfwWindow_, GLFW_CURSOR);
+    return (mode == GLFW_CURSOR_DISABLED);
 }
 
 void GLFWOpenGLWindow::data(unsigned char* data)

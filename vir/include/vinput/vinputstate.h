@@ -8,12 +8,6 @@
 namespace vir
 {
 
-struct MousePosition
-{
-    float x = 0;
-    float y = 0;
-};
-
 class InputState : public Event::Receiver
 {
 public :
@@ -101,8 +95,17 @@ public:
    
     const MousePosition& mousePosition(){return mousePosition_;}
 
+    // Simulate a mouse cursor motion on the host system
+    void setMousePositionNativeOS
+    (
+        MousePosition position, 
+        int msDelay=10
+    );
+
+    // Simulate a left mouse button click on the host system
+    void leftMouseButtonClickNativeOS(int msDelay=10);
+
     static InputState* instance() {return GlobalPtr<InputState>::instance();}
-    
 };
 
 }

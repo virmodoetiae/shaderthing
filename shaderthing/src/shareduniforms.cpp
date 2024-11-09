@@ -113,6 +113,27 @@ SharedUniforms::SharedUniforms()
         vir::Event::Type::MouseMotion, 
         VIR_CAMERA_PRIORITY-1
     );
+
+    this->setEventReceiverPriority
+    (
+        vir::Event::Type::MouseButtonPress, 
+        VIR_IMGUI_PRIORITY-1
+    );
+    this->setEventReceiverPriority
+    (
+        vir::Event::Type::MouseButtonRelease, 
+        VIR_IMGUI_PRIORITY-1
+    );
+    this->setEventReceiverPriority
+    (
+        vir::Event::Type::KeyPress, 
+        VIR_IMGUI_PRIORITY-1
+    );
+    this->setEventReceiverPriority
+    (
+        vir::Event::Type::KeyRelease, 
+        VIR_IMGUI_PRIORITY-1
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -356,12 +377,8 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
 
 void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 {
-    if // Un-capture mouse on ESC
-    (
-        event.keyCode == VIR_KEY_ESCAPE &&
-        vir::GlobalPtr<vir::Window>::instance()->isMouseCaptured()
-    )
-        vir::GlobalPtr<vir::Window>::instance()->setMouseCaptured(false);
+    if (event.keyCode == VIR_KEY_ESCAPE) // Un-capture mouse on ESC
+        setMouseCaptured(false);
 
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::InputState::instance();
@@ -708,17 +725,54 @@ void SharedUniforms::renderWindowMenuGui()
         bool status = window->isMouseCaptured();
         ImGui::Checkbox("##mouseCaptured", &status);
         if (status != window->isMouseCaptured())
-        {
-            window->setMouseCaptured(status);
-            if (status)
-                setMouseInputsClamped(true);
-        }
+            setMouseCaptured(status);
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Text, ctrlRColor);
         ImGui::Text("Esc to free");
         ImGui::PopStyleColor();
 
         ImGui::EndMenu();
+    }
+}
+
+void SharedUniforms::setMouseCaptured(bool flag)
+{
+    auto window = vir::Window::instance();
+
+    // Not the best approach, and it can still fail sometimes anyways... (fail 
+    // as in, the mouse cursor does not get actually captured)
+    while (window->isMouseCaptured() != flag)
+    {
+        window->setMouseCaptured(flag);
+
+        // Trick to instantly auto-capture the mouse: after capturing has been
+        // enabled by the previou call, the mouse is sttil not actually captured
+        // because the active window is the ImGui control panel. Thus, move the
+        // mouse over to the main window and click on it using nativeOS calls.
+        // Also, since I do not want these events to back-propagate in GLFW,
+        // disable the reception of these events for a selection of receivers
+        // for one broadcast only
+        if (flag)
+        {
+            auto position = 
+                vir::Window::instance()->position
+                (
+                    vir::Window::PositionOf::Center
+                );
+            this->pauseEventReception(vir::Event::Type::MouseMotion, 1);
+            ((vir::InputCamera*)this->shaderCamera_)->pauseEventReception
+            (
+                vir::Event::Type::MouseMotion, 
+                1
+            );
+            this->pauseEventReception(vir::Event::Type::MouseButtonPress, 1);
+            this->pauseEventReception(vir::Event::Type::MouseButtonRelease, 1);
+            vir::InputState::instance()->setMousePositionNativeOS
+            (
+                vir::MousePosition(position), 5
+            );
+            vir::InputState::instance()->leftMouseButtonClickNativeOS(5);
+        }
     }
 }
 

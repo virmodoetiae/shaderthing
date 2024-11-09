@@ -218,6 +218,7 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
     void toggleKeyboardInputs();
     void toggleCameraKeyboardInputs();
     void toggleCameraMouseInputs();
+    void setMouseCaptured(bool flag);
 
     DELETE_COPY_MOVE(SharedUniforms)
 

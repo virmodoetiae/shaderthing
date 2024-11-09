@@ -78,29 +78,36 @@ public:
         Type t = TE::getStaticType();
         sortReceivers(t);
         ReceiverPtrVector& receivers(receivers_[t]);
-        int n = receivers.size();
-
-#define ONE_BROADCAST                                                       \
-        Receiver* r = receivers[i];                                         \
-        if (!r->isEventReceptionPaused(event.getType()))                    \
-        {                                                                   \
-            r->onReceive(event);                                            \
-            if (event.handled)                                              \
-                break;                                                      \
-        }
-
         if (!broadcastInReversedOrder_)
         {
-            for (int i=0; i<n; i++)
+            for (int i=0; i<receivers.size(); i++)
             {
-                ONE_BROADCAST
+                Receiver* r = receivers[i];
+                int& cooldown = r->receptionCooldownByEvent_[t];
+                if (cooldown == 0)
+                {
+                    r->onReceive(event);
+                    if (event.handled)
+                        break;
+                }
+                else
+                    cooldown -= cooldown > 0 ? 1 : 0;
             }
         }
         else
         {
-            for (int i=n-1; i>=0; i--)
+            for (int i=receivers.size()-1; i>=0; i--)
             {
-                ONE_BROADCAST
+                Receiver* r = receivers[i];
+                int& cooldown = r->receptionCooldownByEvent_[t];
+                if (cooldown == 0)
+                {
+                    r->onReceive(event);
+                    if (event.handled)
+                        break;
+                }
+                else
+                    cooldown -= cooldown > 0 ? 1 : 0;
             }
         }
     }

@@ -28,6 +28,8 @@ public :
 
     glm::vec2 contentScale() override;
 
+    glm::ivec2 position(PositionOf pof) override;
+
     glm::ivec2 primaryMonitorResolution() override;
 
     void setTitle(std::string) override;
@@ -49,6 +51,8 @@ public :
     void setSize(uint32_t, uint32_t) override;
 
     void setMouseCaptured(bool flag) override;
+
+    bool isMouseCaptured() const override;
 
     void data(unsigned char*) override;
 
