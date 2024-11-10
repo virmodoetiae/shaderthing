@@ -112,9 +112,14 @@ public:
         }
     }
 
-    // Same, but enable passing r-value references to events
+    // Template function to broadcast any even type to the approriate onReceive
+    // method implemented by all the receivers that can receive such an event
+    // type
     template <typename TE>
     void broadcast(TE&& event){broadcast(event);}
+
+    //
+    virtual void broadcastNativeQueue() = 0;
 
     // Accessors
     bool broadcastInReversedOrder() const {return broadcastInReversedOrder_;}

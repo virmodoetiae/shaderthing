@@ -722,9 +722,9 @@ void SharedUniforms::renderWindowMenuGui()
             ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
         ImGui::Text("Capture mouse ");
         ImGui::SameLine();
-        bool status = window->isMouseCaptured();
+        bool status = window->cursorStatus() == vir::Window::CursorStatus::Captured;
         ImGui::Checkbox("##mouseCaptured", &status);
-        if (status != window->isMouseCaptured())
+        if (status != (window->cursorStatus() == vir::Window::CursorStatus::Captured))
             setMouseCaptured(status);
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Text, ctrlRColor);
@@ -738,41 +738,32 @@ void SharedUniforms::renderWindowMenuGui()
 void SharedUniforms::setMouseCaptured(bool flag)
 {
     auto window = vir::Window::instance();
-
-    // Not the best approach, and it can still fail sometimes anyways... (fail 
-    // as in, the mouse cursor does not get actually captured)
-    while (window->isMouseCaptured() != flag)
+    if (!flag)
+        window->setCursorStatus(vir::Window::CursorStatus::Normal);
+    if (flag)
     {
-        window->setMouseCaptured(flag);
-
-        // Trick to instantly auto-capture the mouse: after capturing has been
-        // enabled by the previou call, the mouse is sttil not actually captured
-        // because the active window is the ImGui control panel. Thus, move the
-        // mouse over to the main window and click on it using nativeOS calls.
-        // Also, since I do not want these events to back-propagate in GLFW,
-        // disable the reception of these events for a selection of receivers
-        // for one broadcast only
-        if (flag)
-        {
-            auto position = 
-                vir::Window::instance()->position
-                (
-                    vir::Window::PositionOf::Center
-                );
-            this->pauseEventReception(vir::Event::Type::MouseMotion, 1);
-            ((vir::InputCamera*)this->shaderCamera_)->pauseEventReception
+        auto position = 
+            vir::Window::instance()->position
             (
-                vir::Event::Type::MouseMotion, 
-                1
+                vir::Window::PositionOf::Center
             );
-            this->pauseEventReception(vir::Event::Type::MouseButtonPress, 1);
-            this->pauseEventReception(vir::Event::Type::MouseButtonRelease, 1);
-            vir::InputState::instance()->setMousePositionNativeOS
-            (
-                vir::MousePosition(position), 5
-            );
-            vir::InputState::instance()->leftMouseButtonClickNativeOS(5);
-        }
+        this->pauseEventReception(vir::Event::Type::MouseMotion, 1);
+        ((vir::InputCamera*)this->shaderCamera_)->pauseEventReception
+        (
+            vir::Event::Type::MouseMotion, 
+            1
+        );
+        this->pauseEventReception(vir::Event::Type::MouseButtonPress, 1);
+        this->pauseEventReception(vir::Event::Type::MouseButtonRelease, 1);
+        window->setCursorStatus(vir::Window::CursorStatus::Hidden);
+        vir::InputState::instance()->setMousePositionNativeOS
+        (
+            vir::MousePosition(position), 5
+        );
+        vir::Event::Broadcaster::instance()->broadcastNativeQueue();
+        window->setCursorStatus(vir::Window::CursorStatus::Captured);
+        vir::InputState::instance()->leftMouseButtonClickNativeOS(5);
+        vir::Event::Broadcaster::instance()->broadcastNativeQueue();
     }
 }
 

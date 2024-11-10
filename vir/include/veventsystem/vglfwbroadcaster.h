@@ -17,6 +17,7 @@ private:
 public:
     GLFWBroadcaster();
     void bindToWindow(GLFWwindow*);
+    void broadcastNativeQueue() override;
 };
 
 }

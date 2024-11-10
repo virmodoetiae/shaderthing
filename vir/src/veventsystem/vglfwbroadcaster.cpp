@@ -212,6 +212,11 @@ void GLFWBroadcaster::bindToWindow(GLFWwindow* window)
     );
 }
 
+void GLFWBroadcaster::broadcastNativeQueue()
+{
+    glfwPollEvents();
+}
+
 }
 
 }

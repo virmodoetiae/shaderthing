@@ -50,9 +50,9 @@ public :
     // else the program may end up in an infinite loop
     void setSize(uint32_t, uint32_t) override;
 
-    void setMouseCaptured(bool flag) override;
-
-    bool isMouseCaptured() const override;
+    void setCursorStatus(CursorStatus status) override;
+ 
+    CursorStatus cursorStatus() const override;
 
     void data(unsigned char*) override;
 

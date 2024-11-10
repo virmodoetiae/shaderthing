@@ -24,6 +24,13 @@ public :
         Center = 4
     };
 
+    enum class CursorStatus
+    {
+        Normal = 0,
+        Hidden = 1,
+        Captured = 2
+    };
+
 protected :
 
     // Time (not owned by Window, managed by GlobalPtr)
@@ -119,12 +126,11 @@ public:
     // resize as a WindowResizeEvent
     virtual void setSize(uint32_t, uint32_t) = 0;
 
-    // Set mouse capturing option. If set to true, the mouse cursor will not
-    // be visible and will be captured by this window
-    virtual void setMouseCaptured(bool flag) = 0;
+    // 
+    virtual void setCursorStatus(CursorStatus status) = 0;
 
-    // True if the mouse cursor is captured by this window
-    virtual bool isMouseCaptured() const = 0;
+    // 
+    virtual CursorStatus cursorStatus() const = 0;
 
     // Retrieve window color data
     virtual void data(unsigned char*) = 0;

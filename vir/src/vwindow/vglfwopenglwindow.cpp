@@ -160,19 +160,34 @@ void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height)
     setViewport(width, height);
 }
 
-void GLFWOpenGLWindow::setMouseCaptured(bool flag)
+void GLFWOpenGLWindow::setCursorStatus(CursorStatus status)
 {
-    glfwSetInputMode
-    (
-        glfwWindow_, 
-        GLFW_CURSOR, flag ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL
-    );
+    int glfwStatus;
+    switch (status)
+    {
+        case CursorStatus::Normal :
+            glfwStatus = GLFW_CURSOR_NORMAL;
+            break;
+        case CursorStatus::Hidden :
+            glfwStatus = GLFW_CURSOR_HIDDEN;
+            break;
+        case CursorStatus::Captured :
+            glfwStatus = GLFW_CURSOR_DISABLED;
+            break;
+    }
+    glfwSetInputMode(glfwWindow_, GLFW_CURSOR, glfwStatus);
 }
 
-bool GLFWOpenGLWindow::isMouseCaptured() const
+Window::CursorStatus GLFWOpenGLWindow::cursorStatus() const
 {
     int mode = glfwGetInputMode(glfwWindow_, GLFW_CURSOR);
-    return (mode == GLFW_CURSOR_DISABLED);
+    if (mode == GLFW_CURSOR_NORMAL)
+        return CursorStatus::Normal;
+    if (mode == GLFW_CURSOR_HIDDEN)
+        return CursorStatus::Hidden;
+    if (mode == GLFW_CURSOR_DISABLED)
+        return CursorStatus::Captured;
+    return CursorStatus::Normal;
 }
 
 void GLFWOpenGLWindow::data(unsigned char* data)
