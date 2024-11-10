@@ -224,6 +224,10 @@ TODO ---------------------------------------------------------------------------
     for all Texture-2D objects that use any mip-map-based mag/min filtering
     option
 
+(X) Add cursor capturing mechanism and possibility to have iMouse & iLook
+    uniforms automatically being updated on mouse movement without having to
+    hold LMB
+
 (W) Add example projects that can be loaded in ShaderThings as demos/tutorials.
     This is currently being implemented under Help->Examples
 
