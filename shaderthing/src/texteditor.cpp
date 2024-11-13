@@ -22,6 +22,8 @@
 
 #include "shaderthing/include/texteditor.h"
 
+#include "vir/include/vtime/vtime.h"
+
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 
 template<class InputIt1, class InputIt2, class BinaryPredicate>
@@ -38,6 +40,10 @@ bool equals(InputIt1 first1, InputIt1 last1,
 
 namespace ShaderThing
 {
+
+std::string TextEditor::statusBarMessage_ = "";
+std::vector<TextEditor::TemporaryStatusBarMessage> 
+    TextEditor::temporaryStatusBarMessages_ = {};
 
 TextEditor::TextEditor() :
     startTime_
@@ -1447,18 +1453,33 @@ void TextEditor::renderGui
 
     if (!ignoreImGuiChild_)
         ImGui::EndChild();
-
+    
     // Print line/column cursor coordinates (and selected text size, if
     // applicable) to the bottom-right of the editor
+    renderStatusBarAndCursorCoordinatesGui();
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+
+    withinRender_ = false;
+}
+
+void TextEditor::renderStatusBarAndCursorCoordinatesGui()
+{
     ImGui::Separator();
-    ImGui::Dummy({0, .3f*lh});
+    ImGui::Dummy({0, .3f*ImGui::GetTextLineHeightWithSpacing()});
+
     auto cursor = getCursorPosition();
-    auto imGuiCursor = ImGui::GetCursorScreenPos();
-    static thread_local char buf[48];
+    static char rBuffer[48];
     int selectionSize = 0;
     if (hasSelection())
     {
-        for (int i=state_.selectionStart.line; i<state_.selectionEnd.line; i++)
+        for 
+        (
+            int i=state_.selectionStart.line; 
+            i<state_.selectionEnd.line; 
+            i++
+        )
             selectionSize += lines_[i].size() + 1; // +1 for new line chars
         selectionSize += 
             state_.selectionEnd.column - state_.selectionStart.column;
@@ -1466,23 +1487,30 @@ void TextEditor::renderGui
     if (selectionSize > 0)
         snprintf
         (
-            buf, 
+            rBuffer, 
             48, 
             "ln %d, col %d (%d selected)", 
             cursor.line+1, cursor.column+1, selectionSize
         );
     else
-        snprintf(buf, 48, "ln %d, col %d", cursor.line+1, cursor.column+1);
+        snprintf
+        (
+            rBuffer, 
+            48, 
+            "ln %d, col %d", 
+            cursor.line+1, cursor.column+1
+        );
     auto lineNoWidth = 
         ImGui::GetFont()->CalcTextSizeA
         (
             ImGui::GetFontSize(), 
             FLT_MAX, 
             -1.0f, 
-            buf, 
+            rBuffer, 
             nullptr, 
             nullptr
         ).x;
+    auto imGuiCursor = ImGui::GetCursorScreenPos();
     ImGui::GetWindowDrawList()->AddText
     (
         ImVec2
@@ -1491,13 +1519,78 @@ void TextEditor::renderGui
             imGuiCursor.y
         ), 
         palette_[(int)PaletteIndex::Default],
-        buf
+        rBuffer
     );
 
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor();
+    renderStatusBarGui(palette_[(int)PaletteIndex::StatusBarMessage], false);
+}
 
-    withinRender_ = false;
+void TextEditor::renderStatusBarGui(ImU32 textColor, bool separator)
+{
+    static char lBuffer[48];
+    const std::string* message = nullptr;
+    if (!temporaryStatusBarMessages_.empty())
+    {
+        auto& item = temporaryStatusBarMessages_[0];
+        item.duration -= vir::Time::instance()->outerTimestep();
+        if (item.duration < 0)
+            temporaryStatusBarMessages_.erase
+            (
+                temporaryStatusBarMessages_.begin()
+            );
+        else
+            message = &(item.message);
+    }
+    else if (!statusBarMessage_.empty())
+        message = &statusBarMessage_;
+    if (message != nullptr)
+    {
+        if (separator)
+            ImGui::Separator();
+        snprintf(lBuffer, 60, message->c_str());
+        auto imGuiCursor = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddText
+        (
+            ImVec2
+            (
+                imGuiCursor.x,
+                imGuiCursor.y
+            ),
+            textColor,
+            lBuffer
+        );
+    }
+}
+
+void TextEditor::setStatusBarMessage(const std::string& message)
+{
+    TextEditor::statusBarMessage_ = message;
+}
+
+void TextEditor::setTemporaryStatusBarMessage
+(
+    const std::string& message, 
+    unsigned int durationInSeconds
+)
+{
+    if // I.e., if not found already, add it
+    (
+        std::find_if
+        (
+            TextEditor::temporaryStatusBarMessages_.begin(),
+            TextEditor::temporaryStatusBarMessages_.end(),
+            [&message](const TemporaryStatusBarMessage& tmsgi)
+            {
+                return message == tmsgi.message;
+            }
+        ) == TextEditor::temporaryStatusBarMessages_.end()
+    )
+    {
+        TextEditor::temporaryStatusBarMessages_.emplace_back
+        (
+            TemporaryStatusBarMessage{message, float(durationInSeconds)}
+        );
+    }
 }
 
 void TextEditor::setText(const std::string & aText)
@@ -2561,6 +2654,7 @@ const TextEditor::Palette & TextEditor::getDarkPalette()
             0x40000000, // Current line fill
             0x40808080, // Current line fill (inactive)
             0x40a0a0a0, // Current line edge
+            0xff00ffff, // Status bar message
         } };
     return p;
 }
@@ -2589,6 +2683,7 @@ const TextEditor::Palette & TextEditor::getLightPalette()
             0x40000000, // Current line fill
             0x40808080, // Current line fill (inactive)
             0x40000000, // Current line edge
+            0xff0000ff, // Status bar message
         } };
     return p;
 }
@@ -2617,6 +2712,7 @@ const TextEditor::Palette & TextEditor::getRetroBluePalette()
             0x40000000, // Current line fill
             0x40808080, // Current line fill (inactive)
             0x40000000, // Current line edge
+            0xff0000ff, // Status bar message
         } };
     return p;
 }

@@ -75,6 +75,7 @@ public:
         CurrentLineFill,
         CurrentLineFillInactive,
         CurrentLineEdge,
+        StatusBarMessage,
         Max
     };
 
@@ -217,6 +218,12 @@ public:
         static const LanguageDefinition& GLSL();
     };
 
+    struct TemporaryStatusBarMessage
+    {
+        std::string message;
+        float duration;
+    };
+
     class FindReplaceTool
     {
         enum class Mode
@@ -279,6 +286,8 @@ public:
         const ImVec2& aSize = ImVec2(), 
         bool aBorder = false
     );
+    void renderStatusBarAndCursorCoordinatesGui();
+    static void renderStatusBarGui(ImU32 textColor = 0xff00ffff, bool separator = true);
     bool renderFindReplaceToolGui(){return findReplaceTool_.renderGui(*this);}
     static void renderFindReplaceToolMenuGui();
 
@@ -381,6 +390,13 @@ public:
     static const Palette& getDarkPalette();
     static const Palette& getLightPalette();
     static const Palette& getRetroBluePalette();
+
+    static void setStatusBarMessage(const std::string& message);
+    static void setTemporaryStatusBarMessage
+    (
+        const std::string& message, 
+        unsigned int durationInSeconds
+    );
 
 private:
     
@@ -492,6 +508,9 @@ private:
     float                  lineSpacing_           = 1.f;
     float                  textStart_             = 20.f;
     std::string            lineBuffer_;
+    static std::string     statusBarMessage_;
+    static std::vector<TemporaryStatusBarMessage> 
+                           temporaryStatusBarMessages_;
     
     Breakpoints            breakpoints_;
     ImVec2                 charAdvance_;

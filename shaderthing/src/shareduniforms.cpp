@@ -20,6 +20,7 @@
 #include "shaderthing/include/random.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/uniform.h"
+#include "shaderthing/include/texteditor.h"
 
 #include "vir/include/vir.h"
 
@@ -606,6 +607,9 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("resetTimeOnFrameCounterReset", 
         flags_.isTimeResetOnFrameCounterReset);
     io.write("vSyncEnabled", flags_.isVSyncEnabled);
+    io.write("cursorStatus", 
+        vir::Window::instance()->cursorStatus() == 
+        vir::Window::CursorStatus::Captured);
     Uniform::saveAll(io, userUniforms_);
     io.writeObjectEnd();
 }
@@ -661,6 +665,10 @@ void SharedUniforms::load
         (glm::vec2)su->fBlock_.iResolution*
         su->exportData_.resolutionScale + .5f;
     su->flags_.isVSyncEnabled = ioSu.readOrDefault<bool>("vSyncEnabled", true);
+    if (ioSu.readOrDefault<bool>("cursorStatus", false))
+    {
+        su->setMouseCaptured(true);
+    }
     vir::Window::instance()->setVSync(su->flags_.isVSyncEnabled);
     Uniform::loadAll
     (
@@ -718,19 +726,8 @@ void SharedUniforms::renderWindowMenuGui()
         if (ImGui::Checkbox("##windowVSync", &flags_.isVSyncEnabled))
             window->setVSync(flags_.isVSyncEnabled);
 
-        static ImVec4 ctrlRColor = 
-            ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
-        ImGui::Text("Capture mouse ");
-        ImGui::SameLine();
-        bool status = window->cursorStatus() == vir::Window::CursorStatus::Captured;
-        ImGui::Checkbox("##mouseCaptured", &status);
-        if (status != (window->cursorStatus() == vir::Window::CursorStatus::Captured))
-            setMouseCaptured(status);
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Text, ctrlRColor);
-        ImGui::Text("Esc to free");
-        ImGui::PopStyleColor();
-
+        if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
+            setMouseCaptured(true);
         ImGui::EndMenu();
     }
 }
@@ -739,7 +736,11 @@ void SharedUniforms::setMouseCaptured(bool flag)
 {
     auto window = vir::Window::instance();
     if (!flag)
+    {
         window->setCursorStatus(vir::Window::CursorStatus::Normal);
+        TextEditor::setStatusBarMessage("");
+        TextEditor::setTemporaryStatusBarMessage("Mouse cursor freed", 2);
+    }
     if (flag)
     {
         auto position = 
@@ -764,6 +765,10 @@ void SharedUniforms::setMouseCaptured(bool flag)
         window->setCursorStatus(vir::Window::CursorStatus::Captured);
         vir::InputState::instance()->leftMouseButtonClickNativeOS(5);
         vir::Event::Broadcaster::instance()->broadcastNativeQueue();
+        TextEditor::setStatusBarMessage
+        (
+            "Mouse cursor captured by window (press ESC to free)"
+        );
     }
 }
 

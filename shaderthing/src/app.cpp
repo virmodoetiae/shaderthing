@@ -159,13 +159,7 @@ void App::update()
         fps = elapsedFrames/elapsedTime;
         vir::Window::instance()->setTitle
         (
-            "ShaderThing ("+Helpers::format(fps,1)+" FPS) - "+project_.filename+
-            (
-                !project_.forceSaveAs && 
-                project_.timeSinceLastSave > 0 && 
-                project_.timeSinceLastSave < 2 ?
-                " (saved!)" : ""
-            )
+            "ShaderThing ("+Helpers::format(fps,1)+" FPS) - "+project_.filename
         );
         elapsedFrames = 0;
         elapsedTime = 0;
@@ -192,6 +186,8 @@ void App::saveProject(const std::string& filepath) const
     project.writeContentsToDisk();
 
     project_.timeSinceLastSave = 0;
+
+    TextEditor::setTemporaryStatusBarMessage("Saved!", 3);
 }
 
 //----------------------------------------------------------------------------//
@@ -400,7 +396,7 @@ void App::Font::initialize()
         fontConfig.OversampleV = 3.0;
         fontConfig.OversampleH = 3.0;
         fontConfig.RasterizerMultiply = 1.0;
-        // The 26-36.5 ratio between Western writing systems' characters and
+        // The 26.0/36.5 ratio between Western writing systems' characters and
         // asian logograms/characters is set so that the latter are (almost)
         // exactly twice as wide as the former, for readability, valid for the
         // selected fonts at hand

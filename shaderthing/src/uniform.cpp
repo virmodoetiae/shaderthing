@@ -20,6 +20,7 @@
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/shareduniforms.h"
+#include "shaderthing/include/texteditor.h"
 
 #include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
@@ -1886,7 +1887,13 @@ motion only if the left mouse button (LMB) is held)");
         // been set earlier, where the uniform markedForDeletion flag is set
     }
 
-    ImGui::EndChild();
+    ImGui::SetCursorPosY
+    (
+        ImGui::GetCursorPosY()+
+        ImGui::GetContentRegionAvail().y-
+        ImGui::GetTextLineHeightWithSpacing()
+    );
+    TextEditor::renderStatusBarGui();
 
     if (!hasSharedByUserChanged)
         return;
