@@ -21,6 +21,7 @@
 #include <string>
 
 #include "shaderthing/include/texteditor.h"
+#include "shaderthing/include/statusbar.h"
 
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 
@@ -1493,6 +1494,8 @@ void TextEditor::renderGui
         palette_[(int)PaletteIndex::Default],
         buf
     );
+
+    StatusBar::renderGui(false);
 
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();

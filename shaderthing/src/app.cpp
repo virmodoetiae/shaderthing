@@ -29,6 +29,7 @@
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/shareduniforms.h"
+#include "shaderthing/include/statusbar.h"
 
 #include "vir/include/vir.h"
 
@@ -142,7 +143,7 @@ void App::update()
     )
     {
         if (project_.timeSinceLastSave > project_.autoSaveInterval)
-            saveProject(project_.filepath+".bak");
+            saveProject(project_.filepath+".bak", true);
         else
             project_.timeSinceLastSave += 
                 vir::Window::instance()->time()->smoothOuterTimestep();
@@ -159,13 +160,7 @@ void App::update()
         fps = elapsedFrames/elapsedTime;
         vir::Window::instance()->setTitle
         (
-            "ShaderThing ("+Helpers::format(fps,1)+" FPS) - "+project_.filename+
-            (
-                !project_.forceSaveAs && 
-                project_.timeSinceLastSave > 0 && 
-                project_.timeSinceLastSave < 2 ?
-                " (saved!)" : ""
-            )
+            "ShaderThing ("+Helpers::format(fps,1)+" FPS) - "+project_.filename
         );
         elapsedFrames = 0;
         elapsedTime = 0;
@@ -174,7 +169,7 @@ void App::update()
 
 //----------------------------------------------------------------------------//
 
-void App::saveProject(const std::string& filepath) const
+void App::saveProject(const std::string& filepath, bool isAutosave) const
 {
     auto project = ObjectIO(filepath.c_str(), ObjectIO::Mode::Write);
     
@@ -192,6 +187,12 @@ void App::saveProject(const std::string& filepath) const
     project.writeContentsToDisk();
 
     project_.timeSinceLastSave = 0;
+
+    StatusBar::queueTemporaryMessage
+    (
+        isAutosave ? "Project auto-saved" : "Project saved",
+        3
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -266,7 +267,7 @@ void App::processProjectActions()
             project_.action = Project::Action::None;
             break;
         case Project::Action::Save :
-            saveProject(project_.filepath);
+            saveProject(project_.filepath, false);
             project_.action = Project::Action::None;
             break;
         case Project::Action::Load :
@@ -310,7 +311,7 @@ void App::processProjectActions()
             project_.filepath = fileDialog_.selection().front();
             project_.filename = Helpers::filename(project_.filepath);
             project_.forceSaveAs = false;
-            saveProject(project_.filepath);
+            saveProject(project_.filepath, false);
             fileDialog_.clearSelection();
             project_.action = Project::Action::None;
             break;
@@ -788,10 +789,10 @@ void App::renderMenuBarGui()
             newProjectConfirmation = true;
         else if (Helpers::isCtrlKeyPressed(ImGuiKey_O) && !windowIconified)
             setProjectAction(Project::Action::Load, project_, fileDialog_);
-        else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
-            setProjectAction(Project::Action::Save, project_, fileDialog_);
         else if (Helpers::isCtrlShiftKeyPressed(ImGuiKey_S))
             setProjectAction(Project::Action::SaveAs, project_, fileDialog_);
+        else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
+            setProjectAction(Project::Action::Save, project_, fileDialog_);
     }
 
     if (shadersRequireRecompilation)

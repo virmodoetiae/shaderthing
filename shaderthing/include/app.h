@@ -80,7 +80,7 @@ private:
     };
     Font                   font_            = {};
     
-    void saveProject(const std::string& filepath) const;
+    void saveProject(const std::string& filepath, bool isAutosave) const;
     void loadProject(const std::string& filepathOrData, bool fromMemory=false);
     void newProject();
     void processProjectActions();
