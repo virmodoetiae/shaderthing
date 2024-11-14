@@ -21,8 +21,7 @@
 #include <string>
 
 #include "shaderthing/include/texteditor.h"
-
-#include "vir/include/vtime/vtime.h"
+#include "shaderthing/include/statusbar.h"
 
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 
@@ -40,10 +39,6 @@ bool equals(InputIt1 first1, InputIt1 last1,
 
 namespace ShaderThing
 {
-
-std::string TextEditor::statusBarMessage_ = "";
-std::vector<TextEditor::TemporaryStatusBarMessage> 
-    TextEditor::temporaryStatusBarMessages_ = {};
 
 TextEditor::TextEditor() :
     startTime_
@@ -1522,75 +1517,7 @@ void TextEditor::renderStatusBarAndCursorCoordinatesGui()
         rBuffer
     );
 
-    renderStatusBarGui(palette_[(int)PaletteIndex::StatusBarMessage], false);
-}
-
-void TextEditor::renderStatusBarGui(ImU32 textColor, bool separator)
-{
-    static char lBuffer[48];
-    const std::string* message = nullptr;
-    if (!temporaryStatusBarMessages_.empty())
-    {
-        auto& item = temporaryStatusBarMessages_[0];
-        item.duration -= vir::Time::instance()->outerTimestep();
-        if (item.duration < 0)
-            temporaryStatusBarMessages_.erase
-            (
-                temporaryStatusBarMessages_.begin()
-            );
-        else
-            message = &(item.message);
-    }
-    else if (!statusBarMessage_.empty())
-        message = &statusBarMessage_;
-    if (message != nullptr)
-    {
-        if (separator)
-            ImGui::Separator();
-        snprintf(lBuffer, 60, message->c_str());
-        auto imGuiCursor = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddText
-        (
-            ImVec2
-            (
-                imGuiCursor.x,
-                imGuiCursor.y
-            ),
-            textColor,
-            lBuffer
-        );
-    }
-}
-
-void TextEditor::setStatusBarMessage(const std::string& message)
-{
-    TextEditor::statusBarMessage_ = message;
-}
-
-void TextEditor::setTemporaryStatusBarMessage
-(
-    const std::string& message, 
-    unsigned int durationInSeconds
-)
-{
-    if // I.e., if not found already, add it
-    (
-        std::find_if
-        (
-            TextEditor::temporaryStatusBarMessages_.begin(),
-            TextEditor::temporaryStatusBarMessages_.end(),
-            [&message](const TemporaryStatusBarMessage& tmsgi)
-            {
-                return message == tmsgi.message;
-            }
-        ) == TextEditor::temporaryStatusBarMessages_.end()
-    )
-    {
-        TextEditor::temporaryStatusBarMessages_.emplace_back
-        (
-            TemporaryStatusBarMessage{message, float(durationInSeconds)}
-        );
-    }
+    StatusBar::renderGui(false);
 }
 
 void TextEditor::setText(const std::string & aText)
@@ -2654,7 +2581,6 @@ const TextEditor::Palette & TextEditor::getDarkPalette()
             0x40000000, // Current line fill
             0x40808080, // Current line fill (inactive)
             0x40a0a0a0, // Current line edge
-            0xff00ffff, // Status bar message
         } };
     return p;
 }
@@ -2683,7 +2609,6 @@ const TextEditor::Palette & TextEditor::getLightPalette()
             0x40000000, // Current line fill
             0x40808080, // Current line fill (inactive)
             0x40000000, // Current line edge
-            0xff0000ff, // Status bar message
         } };
     return p;
 }
@@ -2712,11 +2637,9 @@ const TextEditor::Palette & TextEditor::getRetroBluePalette()
             0x40000000, // Current line fill
             0x40808080, // Current line fill (inactive)
             0x40000000, // Current line edge
-            0xff0000ff, // Status bar message
         } };
     return p;
 }
-
 
 std::string TextEditor::getText() const
 {

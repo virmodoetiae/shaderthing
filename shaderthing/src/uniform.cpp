@@ -20,7 +20,7 @@
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/shareduniforms.h"
-#include "shaderthing/include/texteditor.h"
+#include "shaderthing/include/statusbar.h"
 
 #include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
@@ -1893,7 +1893,7 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::GetContentRegionAvail().y-
         ImGui::GetTextLineHeightWithSpacing()
     );
-    TextEditor::renderStatusBarGui();
+    //StatusBar::renderGui();
 
     if (!hasSharedByUserChanged)
         return;

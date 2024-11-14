@@ -19,8 +19,8 @@
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/random.h"
 #include "shaderthing/include/resource.h"
+#include "shaderthing/include/statusbar.h"
 #include "shaderthing/include/uniform.h"
-#include "shaderthing/include/texteditor.h"
 
 #include "vir/include/vir.h"
 
@@ -738,8 +738,8 @@ void SharedUniforms::setMouseCaptured(bool flag)
     if (!flag)
     {
         window->setCursorStatus(vir::Window::CursorStatus::Normal);
-        TextEditor::setStatusBarMessage("");
-        TextEditor::setTemporaryStatusBarMessage("Mouse cursor freed", 2);
+        StatusBar::clearMessage();
+        StatusBar::queueTemporaryMessage("Mouse cursor freed", 2);
     }
     if (flag)
     {
@@ -765,7 +765,7 @@ void SharedUniforms::setMouseCaptured(bool flag)
         window->setCursorStatus(vir::Window::CursorStatus::Captured);
         vir::InputState::instance()->leftMouseButtonClickNativeOS(5);
         vir::Event::Broadcaster::instance()->broadcastNativeQueue();
-        TextEditor::setStatusBarMessage
+        StatusBar::setMessage
         (
             "Mouse cursor captured by window (press ESC to free)"
         );
