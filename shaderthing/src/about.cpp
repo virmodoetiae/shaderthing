@@ -123,7 +123,7 @@ void About::renderGui()
     {
         ImGui::Image
         (
-            (void*)(uintptr_t)(virmodoetiaeImage->id()), 
+            (ImTextureID)(virmodoetiaeImage->id()), 
             {256,256}, 
             {0,1}, 
             {1,0}
@@ -194,7 +194,7 @@ if (ImGui::IsItemHovered() && ImGui::BeginTooltip()){                       \
     ACKNOWLEDGE(
 "STB - Image read/write operations, v2.28         ", "[H]", "Header-only")
     ACKNOWLEDGE(
-"ImGui - Immediate mode GUI, v1.89.8-docking      ", "[S]", "Statically linked")
+"Dear ImGui - Immediate mode GUI, v1.91.5-docking ", "[S]", "Statically linked")
     ACKNOWLEDGE(
 "ColorTextEditor - ImGui-based text editor (mod.) ", "[S]", "Statically linked")
     ACKNOWLEDGE(

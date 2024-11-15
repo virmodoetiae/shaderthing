@@ -874,7 +874,7 @@ void Resource::renderResourcesGui
 #define SHOW_IMAGE(size)                                                    \
     ImGui::Image                                                            \
     (                                                                       \
-        (void*)(uintptr_t)                                                  \
+        (ImTextureID)                                                       \
         (                                                                   \
             resource->type_ != Resource::Type::AnimatedTexture2D ?          \
             resource->id() :                                                \
