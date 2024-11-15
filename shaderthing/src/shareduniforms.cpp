@@ -233,18 +233,9 @@ void SharedUniforms::setUserAction(bool flag)
 void SharedUniforms::toggleMouseInputs()
 {
     flags_.isMouseInputEnabled = !flags_.isMouseInputEnabled;
-    if (flags_.isMouseInputEnabled)
-    {
-        resumeEventReception(vir::Event::Type::MouseButtonPress);
-        resumeEventReception(vir::Event::Type::MouseMotion);
-        resumeEventReception(vir::Event::Type::MouseButtonRelease);
-    }
-    else
-    {
-        pauseEventReception(vir::Event::Type::MouseButtonPress);
-        pauseEventReception(vir::Event::Type::MouseMotion);
-        pauseEventReception(vir::Event::Type::MouseButtonRelease);
-    }
+    // Mouse-related event-reception not 'really' paused as it does some 
+    // important pre-processing required to possibly block input propagation 
+    // to the input camera
 }
 
 //----------------------------------------------------------------------------//
@@ -307,6 +298,10 @@ void SharedUniforms::onReceive(vir::Event::WindowResizeEvent& event)
 
 void SharedUniforms::onReceive(vir::Event::MouseButtonPressEvent& event)
 {
+    if (!flags_.isCameraMouseInputEnabled)
+        event.handled = true; // Prevent propagation to vir::InputCamera
+    if (!flags_.isMouseInputEnabled)
+        return;
     glm::vec4 mouse = 
     {
         event.x,
@@ -333,9 +328,17 @@ void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
     bool LMBClicked = 
         vir::InputState::instance()->mouseButtonState(VIR_MOUSE_BUTTON_1)
         .isClicked();
-    if (flags_.cameraMouseInputRequiresLMBHold && !LMBClicked)
+    if 
+    (
+        !flags_.isCameraMouseInputEnabled || 
+        (flags_.cameraMouseInputRequiresLMBHold && !LMBClicked)
+    )
         event.handled = true; // Prevent propagation to vir::InputCamera
-    if (flags_.mouseInputRequiresLMBHold && !LMBClicked)
+    if 
+    (
+        !flags_.isMouseInputEnabled || 
+        (flags_.mouseInputRequiresLMBHold && !LMBClicked)
+    )
         return;
     glm::vec4 mouse = 
     {
@@ -358,8 +361,12 @@ void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
+void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& event)
 {
+    if (!flags_.isCameraMouseInputEnabled)
+        event.handled = true; // Prevent propagation to vir::InputCamera
+    if (!flags_.isMouseInputEnabled)
+        return;
     glm::vec4 mouse = 
     {
         fBlock_.iMouse.x,
@@ -378,9 +385,15 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& e)
 
 void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 {
-    if (event.keyCode == VIR_KEY_ESCAPE) // Un-capture mouse on ESC
+    if 
+    (
+        event.keyCode == VIR_KEY_ESCAPE &&
+        vir::Window::instance()->cursorStatus() == 
+            vir::Window::CursorStatus::Captured
+    ) // Un-capture mouse on ESC
+    {
         setMouseCaptured(false);
-
+    }
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::InputState::instance();
     auto& status = inputState->keyState(event.keyCode);
@@ -747,14 +760,23 @@ void SharedUniforms::setMouseCaptured(bool flag)
             (
                 vir::Window::PositionOf::Center
             );
-        this->pauseEventReception(vir::Event::Type::MouseMotion, 1);
-        ((vir::InputCamera*)this->shaderCamera_)->pauseEventReception
+        auto pauseForOneBroadcast = [this]
         (
-            vir::Event::Type::MouseMotion, 
-            1
+            vir::Event::Receiver* receiver, 
+            vir::Event::Type type
+        )
+        {
+            if (!receiver->isEventReceptionPaused(type))
+                receiver->pauseEventReception(type, 1);
+        };
+        pauseForOneBroadcast(this, vir::Event::Type::MouseMotion);
+        pauseForOneBroadcast(this, vir::Event::Type::MouseButtonPress);
+        pauseForOneBroadcast(this, vir::Event::Type::MouseButtonRelease);
+        pauseForOneBroadcast
+        (
+            (vir::InputCamera*)this->shaderCamera_, 
+            vir::Event::Type::MouseMotion
         );
-        this->pauseEventReception(vir::Event::Type::MouseButtonPress, 1);
-        this->pauseEventReception(vir::Event::Type::MouseButtonRelease, 1);
         window->setCursorStatus(vir::Window::CursorStatus::Hidden);
         vir::InputState::instance()->setMousePositionNativeOS
         (
