@@ -136,6 +136,9 @@ SharedStorage::~SharedStorage()
 
 void SharedStorage::save(ObjectIO& io) const
 {
+    if (!isSupported_)
+        return;
+    
     io.writeObjectStart("sharedStorage");
 
     #define WRITE_GUI_ITEM(Name)             \
@@ -172,7 +175,7 @@ void SharedStorage::save(ObjectIO& io) const
 SharedStorage* SharedStorage::load(const ObjectIO& io)
 {
     auto sharedStorage = new SharedStorage();
-    if (!io.hasMember("sharedStorage"))
+    if (!io.hasMember("sharedStorage") || !sharedStorage->isSupported_)
         return sharedStorage;
 
     auto ioSS = io.readObject("sharedStorage");

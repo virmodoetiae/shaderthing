@@ -19,3 +19,8 @@ add_library(vir ${VIR_SOURCE_FILES})
 
 target_precompile_headers(vir PUBLIC include/vpch.h)
 target_link_libraries(vir PUBLIC thirdparty PUBLIC ${OPENGL_LIBRARIES})
+if(UNIX AND NOT APPLE)
+	find_package(X11 REQUIRED)
+	target_link_libraries(vir PUBLIC ${X11_LIBRARIES} Xtst)
+	target_include_directories(vir PUBLIC ${X11_INCLUDE_DIR})
+endif()

@@ -24,6 +24,7 @@
     class& operator=(class&&)=delete;
 
 #define DELETE_IF_NOT_NULLPTR(ptr) if (ptr!=nullptr) delete ptr; ptr=nullptr;
+#define DELETE_ARRAY_IF_NOT_NULLPTR(ptr) if (ptr!=nullptr) delete[] ptr; ptr=nullptr;
 
 // Use TO_STRING instead of this, this is just a helper
 #define _TO_STRING(x) #x

@@ -21,6 +21,7 @@ if(WIN32)
 else()
     set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ -std=c++17 -Wall -Wextra -Wno-unused-parameter")
 endif()
+
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 

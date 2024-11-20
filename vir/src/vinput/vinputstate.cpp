@@ -71,10 +71,10 @@ void InputState::setMousePositionNativeOS
     SendInput(1, &input, sizeof(INPUT));
     Sleep(msDelay);
 #elif defined(__linux__)
-    Display* display = XOpenDisplay(NULL);
+    ::Display* display = XOpenDisplay(NULL);
     if (display != NULL) 
     {
-        Window root = DefaultRootWindow(display);
+        ::Window root = DefaultRootWindow(display);
         XWarpPointer(display, None, root, 0, 0, 0, 0, position.x, position.y); 
         XFlush(display);
         XCloseDisplay(display);
@@ -98,7 +98,7 @@ void InputState::leftMouseButtonClickNativeOS(int msDelay)
     SendInput(1, &input, sizeof(INPUT));
     Sleep(msDelay);
 #elif defined(__linux__)
-    Display* display = XOpenDisplay(NULL);
+    ::Display* display = XOpenDisplay(NULL);
     if (display != NULL) 
     {
         XTestFakeButtonEvent(display, 1, True, CurrentTime);

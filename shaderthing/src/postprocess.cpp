@@ -439,7 +439,7 @@ QuantizationPostProcess::Palette::~Palette()
 
 void QuantizationPostProcess::Palette::clear()
 {
-    DELETE_IF_NOT_NULLPTR(data)
+    DELETE_ARRAY_IF_NOT_NULLPTR(data)
 }
 
 //----------------------------------------------------------------------------//

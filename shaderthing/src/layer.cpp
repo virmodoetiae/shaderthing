@@ -903,6 +903,8 @@ void Layer::rebuildFramebuffers
                 internalFormat
             );
     };
+    if (rendering_.quad == nullptr)
+        return;
     rebuildFramebuffer
     (
         rendering_.framebufferA, 

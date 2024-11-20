@@ -394,6 +394,8 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
     {
         setMouseCaptured(false);
     }
+    if (event.keyCode > 256)
+        return;
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::InputState::instance();
     auto& status = inputState->keyState(event.keyCode);
@@ -419,6 +421,8 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
 
 void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
 {
+    if (event.keyCode > 256)
+        return;
     FragmentBlock::ivec3A16& data(fBlock_.iKeyboard[event.keyCode]);
     static auto* inputState = vir::InputState::instance();
     data.x = 0;
