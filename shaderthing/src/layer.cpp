@@ -854,7 +854,7 @@ void Layer::rebuildFramebuffers
     auto rebuildFramebuffer = []
     (
         vir::Framebuffer*& framebuffer, 
-        vir::GeometricPrimitive& quad,
+        vir::GeometricPrimitive* quad,
         const vir::TextureBuffer::InternalFormat& internalFormat, 
         const glm::ivec2& resolution
     )
@@ -880,12 +880,13 @@ void Layer::rebuildFramebuffers
             // This rendering step is to copy the original framebuffer contents
             // to the new framebuffer according to the original framebuffer
             // filtering options
-            vir::Renderer::instance()->submit
-            (
-                quad, 
-                Layer::Rendering::textureMapperShader.get(), 
-                newFramebuffer
-            );
+            if (quad != nullptr)
+                vir::Renderer::instance()->submit
+                (
+                    *quad, 
+                    Layer::Rendering::textureMapperShader.get(), 
+                    newFramebuffer
+                );
             framebuffer->unbind();
             DELETE_IF_NOT_NULLPTR(framebuffer)
             framebuffer = newFramebuffer;
@@ -903,19 +904,17 @@ void Layer::rebuildFramebuffers
                 internalFormat
             );
     };
-    if (rendering_.quad == nullptr)
-        return;
     rebuildFramebuffer
     (
         rendering_.framebufferA, 
-        *rendering_.quad, 
+        rendering_.quad, 
         internalFormat, 
         glm::max(resolution, {1,1})
     );
     rebuildFramebuffer
     (
         rendering_.framebufferB, 
-        *rendering_.quad, 
+        rendering_.quad, 
         internalFormat, 
         glm::max(resolution, {1,1})
     );
