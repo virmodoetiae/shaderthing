@@ -743,7 +743,8 @@ void QuantizationPostProcess::renderGui()
     ImGui::Text("Palette fidelity    ");
     ImGui::SameLine();
     ImGui::PushItemWidth(entryWidth);
-    float fidelity = 1.0-settings_.relTol*settings_.relTol;
+    float tol = settings_.relTol; tol*=tol; tol*=tol;
+    float fidelity = 1.0-tol;
     if 
     (
         ImGui::SliderFloat
@@ -756,7 +757,7 @@ void QuantizationPostProcess::renderGui()
             ImGuiSliderFlags_AlwaysClamp
         )
     )
-        settings_.relTol = std::sqrt(1.0f-fidelity);
+        settings_.relTol = std::sqrt(std::sqrt(1.0f-fidelity));
     ImGui::PopItemWidth();
 
     if (!settings_.recalculatePalette)

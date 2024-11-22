@@ -13,7 +13,7 @@ bool OpenGLQuantizer::computeShaderStagesCompiled = false;
 OpenGLComputeShader 
     OpenGLQuantizer::computeShader_findMaxSqrDistColSF32
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int counter;
 uniform int paletteSize;
 layout(std430) coherent buffer ssbo {uint clusteringError;};
@@ -45,7 +45,6 @@ void main()
             imageAtomicExchange(paletteData, ivec2(2, 0), img.b);
             imageAtomicExchange(paletteData, d2MaxPos, 0);
             atomicExchange(clusteringError, 0);
-            memoryBarrier();
         }
         return;
     }
@@ -74,7 +73,7 @@ void main()
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_setNextPaletteColSF32
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int counter;
 uniform int paletteSize;
 layout(rgba32f, binding=0) uniform image2D image;
@@ -101,7 +100,7 @@ void main()
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_buildClustersFromPaletteSF32
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int paletteSize;
 layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(rgba32f, binding=1) uniform image2D image;
@@ -135,13 +134,12 @@ void main()
     imageAtomicAdd(paletteData, ivec2(index*3+2, 1), img.b);
     imageAtomicAdd(paletteData, ivec2(index,     2), 1);
     atomicAdd(clusteringError, uint(d2m));
-    memoryBarrier();
 })" );
 
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_updatePaletteFromClustersSF32
     (
-R"(#version 460 core
+R"(#version 430 core
 layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(rgba32f, binding=2) uniform image2D image;
@@ -168,7 +166,6 @@ void main()
     uint b = imageAtomicExchange(paletteData, ivec2(gid*3+2, 1), 0);
     uint count = imageAtomicExchange(paletteData, ivec2(gid, 2), 0);
     float error = float(atomicExchange(clusteringError, 0));
-    memoryBarrier();
     if (count == 0)
     {
         count = 1;
@@ -192,7 +189,7 @@ void main()
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_quantizeInputSF32
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int paletteSize;
 uniform int ditherLevel;
 uniform float ditherThreshold;
@@ -306,7 +303,7 @@ void main()
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_findMaxSqrDistColUI8
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int counter;
 uniform int paletteSize;
 layout(std430) coherent buffer ssbo {uint clusteringError;};
@@ -334,7 +331,6 @@ void main()
             imageAtomicExchange(paletteData, ivec2(2, 0), img.b);
             imageAtomicExchange(paletteData, d2MaxPos, 0);
             atomicExchange(clusteringError, 0);
-            memoryBarrier();
         }
         return;
     }
@@ -363,7 +359,7 @@ void main()
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_setNextPaletteColUI8
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int counter;
 uniform int paletteSize;
 layout(rgba8ui, binding=0) uniform uimage2D image;
@@ -386,7 +382,7 @@ void main()
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_buildClustersFromPaletteUI8
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int paletteSize;
 layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(rgba8ui, binding=1) uniform uimage2D image;
@@ -416,13 +412,12 @@ void main()
     imageAtomicAdd(paletteData, ivec2(index*3+2, 1), img.b);
     imageAtomicAdd(paletteData, ivec2(index,     2), 1);
     atomicAdd(clusteringError, uint(d2m));
-    memoryBarrier();
 })" );
 
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_updatePaletteFromClustersUI8
     (
-R"(#version 460 core
+R"(#version 430 core
 layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(rgba8ui, binding=2) uniform uimage2D image;
@@ -445,7 +440,6 @@ void main()
     uint b = imageAtomicExchange(paletteData, ivec2(gid*3+2, 1), 0);
     uint count = imageAtomicExchange(paletteData, ivec2(gid, 2), 0);
     float error = float(atomicExchange(clusteringError, 0));
-    memoryBarrier();
     if (count == 0)
     {
         count = 1;
@@ -469,7 +463,7 @@ void main()
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_quantizeInputUI8
     (
-R"(#version 460 core
+R"(#version 430 core
 uniform int paletteSize;
 uniform int ditherLevel;
 uniform float ditherThreshold;

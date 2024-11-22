@@ -109,7 +109,7 @@ protected:
         nullptr,                      // paletteData
         true,                         // reseedPalette
         true,                         // recalculatePalette
-        .5f,                          // relTol
+        .707f,                        // relTol
         Settings::DitherMode::None,
         .25f,                         // ditherThreshold
         Settings::IndexMode::Default,
