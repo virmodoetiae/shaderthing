@@ -1,11 +1,16 @@
 #ifndef V_OPENGL_MISC_H
 #define V_OPENGL_MISC_H
 
+#include "thirdparty/glad/include/glad/glad.h"
+
 namespace vir
 {
 
 // Wait for all OpenGL commands issued up to this point to execute
 void OpenGLWaitSync();
+
+//
+GLuint findFreeSSBOBindingPoint();
 
 // Set the canRunOnDeviceInUse_, errorMessage_ variables of OpenGL-based
 // PostProcess-derived objects

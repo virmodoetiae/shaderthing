@@ -23,4 +23,18 @@ void OpenGLWaitSync()
     }   
 }
 
+GLuint findFreeSSBOBindingPoint()
+{
+    // Find a free SSBO binding point
+    GLint maxBindings = 0;
+    glGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS, &maxBindings);
+    for (GLuint binding = 0; binding < (GLuint)maxBindings; ++binding)
+    {
+        GLint boundBuffer = 0;
+        glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, binding, &boundBuffer);
+        if (boundBuffer == 0) 
+            return binding;
+    }
+}
+
 }

@@ -1093,6 +1093,7 @@ OpenGLShaderStorageBuffer::~OpenGLShaderStorageBuffer()
 {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, id_);
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, id_);
     glDeleteBuffers(1, &id_);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }

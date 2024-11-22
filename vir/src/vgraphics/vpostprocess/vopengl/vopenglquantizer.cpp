@@ -16,7 +16,7 @@ OpenGLComputeShader
 R"(#version 460 core
 uniform int counter;
 uniform int paletteSize;
-layout(binding=0) uniform atomic_uint clusteringError;
+layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(rgba32f, binding=0) uniform image2D image;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -44,7 +44,8 @@ void main()
             imageAtomicExchange(paletteData, ivec2(1, 0), img.g);
             imageAtomicExchange(paletteData, ivec2(2, 0), img.b);
             imageAtomicExchange(paletteData, d2MaxPos, 0);
-            atomicCounterExchange(clusteringError, 0);
+            atomicExchange(clusteringError, 0);
+            memoryBarrier();
         }
         return;
     }
@@ -102,7 +103,7 @@ OpenGLComputeShader
     (
 R"(#version 460 core
 uniform int paletteSize;
-layout(binding=0) uniform atomic_uint clusteringError;
+layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(rgba32f, binding=1) uniform image2D image;
 layout(r32ui, binding=2) uniform uimage2D paletteData;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -133,14 +134,15 @@ void main()
     imageAtomicAdd(paletteData, ivec2(index*3+1, 1), img.g);
     imageAtomicAdd(paletteData, ivec2(index*3+2, 1), img.b);
     imageAtomicAdd(paletteData, ivec2(index,     2), 1);
-    atomicCounterAdd(clusteringError, uint(d2m));
+    atomicAdd(clusteringError, uint(d2m));
+    memoryBarrier();
 })" );
 
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_updatePaletteFromClustersSF32
     (
 R"(#version 460 core
-layout(binding=0) uniform atomic_uint clusteringError;
+layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(rgba32f, binding=2) uniform image2D image;
 layout(rgba8ui, binding=3) uniform uimage2D cumulatedPaletteData;
@@ -165,7 +167,8 @@ void main()
     uint g = imageAtomicExchange(paletteData, ivec2(gid*3+1, 1), 0);
     uint b = imageAtomicExchange(paletteData, ivec2(gid*3+2, 1), 0);
     uint count = imageAtomicExchange(paletteData, ivec2(gid, 2), 0);
-    float error = float(atomicCounterExchange(clusteringError, 0));
+    float error = float(atomicExchange(clusteringError, 0));
+    memoryBarrier();
     if (count == 0)
     {
         count = 1;
@@ -306,7 +309,7 @@ OpenGLComputeShader
 R"(#version 460 core
 uniform int counter;
 uniform int paletteSize;
-layout(binding=0) uniform atomic_uint clusteringError;
+layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(rgba8ui, binding=0) uniform uimage2D image;
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -330,7 +333,8 @@ void main()
             imageAtomicExchange(paletteData, ivec2(1, 0), img.g);
             imageAtomicExchange(paletteData, ivec2(2, 0), img.b);
             imageAtomicExchange(paletteData, d2MaxPos, 0);
-            atomicCounterExchange(clusteringError, 0);
+            atomicExchange(clusteringError, 0);
+            memoryBarrier();
         }
         return;
     }
@@ -384,7 +388,7 @@ OpenGLComputeShader
     (
 R"(#version 460 core
 uniform int paletteSize;
-layout(binding=0) uniform atomic_uint clusteringError;
+layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(rgba8ui, binding=1) uniform uimage2D image;
 layout(r32ui, binding=2) uniform uimage2D paletteData;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -411,14 +415,15 @@ void main()
     imageAtomicAdd(paletteData, ivec2(index*3+1, 1), img.g);
     imageAtomicAdd(paletteData, ivec2(index*3+2, 1), img.b);
     imageAtomicAdd(paletteData, ivec2(index,     2), 1);
-    atomicCounterAdd(clusteringError, uint(d2m));
+    atomicAdd(clusteringError, uint(d2m));
+    memoryBarrier();
 })" );
 
 OpenGLComputeShader
     OpenGLQuantizer::computeShader_updatePaletteFromClustersUI8
     (
 R"(#version 460 core
-layout(binding=0) uniform atomic_uint clusteringError;
+layout(std430) coherent buffer ssbo {uint clusteringError;};
 layout(r32ui, binding=1) uniform uimage2D paletteData;
 layout(rgba8ui, binding=2) uniform uimage2D image;
 layout(rgba8ui, binding=3) uniform uimage2D cumulatedPaletteData;
@@ -439,7 +444,8 @@ void main()
     uint g = imageAtomicExchange(paletteData, ivec2(gid*3+1, 1), 0);
     uint b = imageAtomicExchange(paletteData, ivec2(gid*3+2, 1), 0);
     uint count = imageAtomicExchange(paletteData, ivec2(gid, 2), 0);
-    float error = float(atomicCounterExchange(clusteringError, 0));
+    float error = float(atomicExchange(clusteringError, 0));
+    memoryBarrier();
     if (count == 0)
     {
         count = 1;
@@ -726,11 +732,25 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         GL_READ_WRITE, GL_R8UI);
     //
     uint32_t oldQuantizedInputUnit = textureUnit++;
-    // Atomic error counter
-    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, clusteringError_);
-    uint32_t binding = 0;
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, binding, 
-        clusteringError_);
+    
+    // Atomic error counter (via SSBO)
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, clusteringError_);
+    if (settings.ensureFreeSSBOBinding)
+    {
+        GLuint binding = findFreeSSBOBindingPoint();
+        if (binding != ssboBindingPoint_)
+        {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssboBindingPoint_, 
+                clusteringError_);
+            const char* ssboName = "ssbo";
+            findMaxSqrDistCol->bindShaderStorageBlock(ssboName, 
+                ssboBindingPoint_);
+            buildClustersFromPalette->bindShaderStorageBlock(ssboName, 
+                ssboBindingPoint_);
+            updatePaletteFromClusters->bindShaderStorageBlock(ssboName, 
+                ssboBindingPoint_);
+        }
+    }
 
     // Resize indexedData if necessary
     if (width_ != width || height_ != height || internalFormatChanged)
@@ -1095,7 +1115,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
             // Read clustering error
             glGetBufferSubData
             (
-                GL_ATOMIC_COUNTER_BUFFER, 
+                GL_SHADER_STORAGE_BUFFER, 
                 0, 
                 sizeof(uint32_t), 
                 sqErrPtr
@@ -1111,7 +1131,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
             updatePaletteFromClusters->run(paletteSize, 1, 1);
         }
         delete sqErrPtr;
-        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         
         cumulatedPaletteRow_ = 
             settings_.cumulatePalette ? 
@@ -1394,18 +1414,23 @@ OpenGLQuantizer::OpenGLQuantizer() //:
         NULL
     );
 
-    // Generate atomic counter for storing clustering error
+    // Generate atomic counter for storing clustering error. No longer using
+    // GL_ATOMIC_COUNTER to enable comptability with OpenGL down to v430, 
+    // now using SSBOs
     glGenBuffers(1, &clusteringError_);
-    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, clusteringError_);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, clusteringError_);
     uint32_t data(0);
     glBufferData
     (
-        GL_ATOMIC_COUNTER_BUFFER, 
+        GL_SHADER_STORAGE_BUFFER, 
         sizeof(uint32_t), 
         &data, 
         GL_STATIC_READ
     );
-    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+    ssboBindingPoint_ = findFreeSSBOBindingPoint();
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssboBindingPoint_, 
+        clusteringError_);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 OpenGLQuantizer::~OpenGLQuantizer()
@@ -1419,6 +1444,7 @@ OpenGLQuantizer::~OpenGLQuantizer()
     glDeleteTextures(1, &indexedData_);
     glDeleteBuffers(1, &indexedDataPBO_);
     glDeleteBuffers(1, &clusteringError_);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, clusteringError_);
     glDeleteTextures(1, &oldQuantizedInput_);
 }
 

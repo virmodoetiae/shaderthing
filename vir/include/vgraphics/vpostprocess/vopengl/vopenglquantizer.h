@@ -62,6 +62,9 @@ protected:
     // 
     GLuint oldQuantizedInput_;
 
+    //
+    GLuint ssboBindingPoint_;
+
     // True if the previously quantized image had a 32-bit float internal format
     bool isFloat320_ = false;
 

@@ -247,11 +247,11 @@ void App::newProject()
     
     vir::Window::instance()->setSize(512, 512);
 
-    exporter_ = new Exporter();
     sharedUniforms_ = new SharedUniforms();
     Layer::Rendering::sharedStorage.reset();
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     Layer::resetSharedSourceEditor();
+    exporter_ = new Exporter();
 }
 
 //----------------------------------------------------------------------------//

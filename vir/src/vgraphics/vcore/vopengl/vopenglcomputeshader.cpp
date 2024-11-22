@@ -110,6 +110,23 @@ void OpenGLComputeShader::setUniformFloat2
     glUniform2fv(getUniformLocation(uniformName), 1, glm::value_ptr(value));
 }
 
+void OpenGLComputeShader::bindShaderStorageBlock
+(
+    const std::string& blockName,  
+    GLuint bindingPoint
+)
+{
+    GLint location = glGetProgramResourceIndex
+    (
+        id_,
+        GL_SHADER_STORAGE_BLOCK,
+        blockName.c_str()
+    );
+    if (location == -1)
+        return;
+    glShaderStorageBlockBinding(id_, location, bindingPoint);
+}
+
 void OpenGLComputeShader::use()
 {
     glUseProgram(id_);

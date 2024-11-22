@@ -39,6 +39,11 @@ public:
         glm::vec2 value,
         bool autoUse=true
     );
+    void bindShaderStorageBlock
+    (
+        const std::string& blockName,  
+        GLuint bindingPoint
+    );
     void use();
     void run(int x, int y, int z, GLbitfield barriers=GL_ALL_BARRIER_BITS);
 };

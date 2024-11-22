@@ -121,6 +121,13 @@ struct Settings
     // process
     unsigned int inputUnit=0;
 
+    // The quantizer uses an SSBO for some internal operations. Said SSBO
+    // requires a binding point, which is automatically determined on the first
+    // quantizer run. For subsequent runs, in case changes in the availability of
+    // SSBO binding points are expected, set this flag to true. If you know SSBO
+    // binding point availabili has not changed, leave it to false
+    bool ensureFreeSSBOBinding=true;
+
     // If true, the palette computed from this quantization call will
     // be appended to a texture of palettes
     bool cumulatePalette=false;
