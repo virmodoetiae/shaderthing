@@ -180,20 +180,12 @@ unsigned char* readFileContents
 
 std::string format(float value, unsigned int precision) 
 {
-    char buffer[8];
-    auto result = std::to_chars
-    (
-        buffer, 
-        buffer + sizeof(buffer), 
-        value, 
-        std::chars_format::fixed, 
-        precision
-    );
-    if (result.ec == std::errc())
-        return std::string(buffer, result.ptr - buffer);
+    char buffer[8]; 
+    int out = std::snprintf(buffer, sizeof(buffer), "%.*f", precision, value);
+    if (out > 0 && (size_t)out < sizeof(buffer))
+        return std::string(buffer);
     return "";
 }
-
 // This approach is a modification of mine to the one proposed here
 // https://github.com/ocornut/imgui/issues/902#issuecomment-1103072284, which
 // did not result in pixel-perfect alignment with other lines rendered with the
