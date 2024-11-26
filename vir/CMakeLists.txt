@@ -12,8 +12,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty thirdparty)
 
 find_package(OpenGL REQUIRED)
 
-set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ -static -std=c++17")
+set(CXX_FLAGS "-fno-delete-null-pointer-checks -static-libgcc -static-libstdc++ -static -std=c++17 -Wall -Wextra")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 add_library(vir ${VIR_SOURCE_FILES})
 

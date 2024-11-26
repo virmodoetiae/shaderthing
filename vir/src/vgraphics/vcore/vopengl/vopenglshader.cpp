@@ -138,8 +138,8 @@ OpenGLShader::OpenGLShader
         currentContextExtensionStatusMapInitialized = true;
     }
 
-    unsigned int vertexShader;
-    unsigned int fragmentShader;
+    unsigned int vertexShader = 0;
+    unsigned int fragmentShader = 0;
     switch(cf)
     {
         case ConstructFrom::SourceFile :

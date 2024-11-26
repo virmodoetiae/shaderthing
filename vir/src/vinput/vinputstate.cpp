@@ -63,7 +63,7 @@ void InputState::setMousePositionNativeOS
 )
 {
 #ifdef _WIN32
-    INPUT input = {0};
+    INPUT input = {};
     input.type = INPUT_MOUSE;
     input.mi.dx = position.x * (65535 / GetSystemMetrics(SM_CXSCREEN));
     input.mi.dy = position.y * (65535 / GetSystemMetrics(SM_CYSCREEN));
@@ -89,7 +89,7 @@ void InputState::leftMouseButtonClickNativeOS(int msDelay)
 {
 #ifdef _WIN32
     
-    INPUT input = {0};
+    INPUT input = {};
     input.type = INPUT_MOUSE;
     input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
     SendInput(1, &input, sizeof(INPUT));

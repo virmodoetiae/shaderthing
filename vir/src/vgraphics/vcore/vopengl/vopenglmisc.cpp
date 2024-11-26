@@ -35,6 +35,7 @@ GLuint findFreeSSBOBindingPoint()
         if (boundBuffer == 0) 
             return binding;
     }
+    return 0; // Not the best option
 }
 
 }

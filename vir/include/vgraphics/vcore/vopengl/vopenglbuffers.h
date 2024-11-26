@@ -14,11 +14,11 @@ extern const std::unordered_map<uint32_t, GLint> wrapIndexToGLint_;
 extern const std::unordered_map<TextureBuffer::FilterMode, GLint> 
     filterModeToGLint_;
 
-static GLint OpenGLInternalFormat(TextureBuffer::InternalFormat internalFormat);
+GLint OpenGLInternalFormat(TextureBuffer::InternalFormat internalFormat);
 
-static GLint OpenGLFormat(TextureBuffer::InternalFormat internalFormat);
+GLint OpenGLFormat(TextureBuffer::InternalFormat internalFormat);
 
-static GLint OpenGLType(TextureBuffer::InternalFormat internalFormat);
+GLint OpenGLType(TextureBuffer::InternalFormat internalFormat);
 
 class OpenGLTextureBuffer2D : public TextureBuffer2D
 {

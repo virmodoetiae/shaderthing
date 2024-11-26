@@ -41,6 +41,8 @@ GLint OpenGLInternalFormat(TextureBuffer::InternalFormat internalFormat)
             return GL_RGBA32UI;
         case TextureBuffer::InternalFormat::RGBA_SF_32 :
             return GL_RGBA32F;
+        case TextureBuffer::InternalFormat::Undefined :
+            return 0;
     }
     return 0;
 }
@@ -81,6 +83,8 @@ GLint OpenGLFormat(TextureBuffer::InternalFormat internalFormat)
             return GL_RGBA_INTEGER;
         case TextureBuffer::InternalFormat::RGBA_SF_32 :
             return GL_RGBA;
+        case TextureBuffer::InternalFormat::Undefined :
+            return 0;
     }
     return 0;
 }
@@ -108,6 +112,8 @@ GLint OpenGLType(TextureBuffer::InternalFormat internalFormat)
         case TextureBuffer::InternalFormat::RGB_SF_32 :
         case TextureBuffer::InternalFormat::RGBA_SF_32 :
             return GL_FLOAT;
+        case TextureBuffer::InternalFormat::Undefined :
+            return 0;
     }
     return 0;
 }
@@ -433,14 +439,14 @@ OpenGLAnimatedTextureBuffer2D::OpenGLAnimatedTextureBuffer2D
     height_ = height;
     nChannels_ = TextureBuffer::nChannels(internalFormat);
     internalFormat = internalFormat;
-    uint32_t frameSize = width*height*nChannels_;
+    auto frameSize = width*height*nChannels_;
     if (frames_.size() != nFrames)
     {
-        for (int i=0; i<frames_.size(); i++)
+        for (uint32_t i=0; i<frames_.size(); i++)
             delete frames_[i];
         frames_.resize(nFrames);
     }
-    for (int i=0;i<nFrames;i++)
+    for (uint32_t i=0; i<nFrames; i++)
     {
         frames_[i] = 
             new OpenGLTextureBuffer2D
@@ -770,16 +776,22 @@ void OpenGLCubeMapBuffer::setMinFilterMode
 
 void OpenGLCubeMapBuffer::readData(unsigned char*& data, bool allocate)
 {
+    (void)data;
+    (void)allocate;
     throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
 }
 
 void OpenGLCubeMapBuffer::readData(unsigned int*& data, bool allocate)
 {
+    (void)data;
+    (void)allocate;
     throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
 }
 
 void OpenGLCubeMapBuffer::readData(float*& data, bool allocate)
 {
+    (void)data;
+    (void)allocate;
     throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
 }
 
@@ -923,6 +935,7 @@ void OpenGLFramebuffer::unbindColorBufferFromImage()
 
 void OpenGLFramebuffer::bindDepthBuffer(uint32_t unit)
 {
+    (void)unit;
     /*glActiveTexture(GL_TEXTURE0+unit);
     glBindTexture(GL_TEXTURE_2D, depthBufferId_);*/
     //glBindRenderbuffer(GL_RENDERBUFFER, depthBufferId_);
@@ -962,7 +975,7 @@ void OpenGLFramebuffer::readColorBufferData
     if (resetAlignment)
         glPixelStorei(GL_PACK_ALIGNMENT, 4);
     if (yFlip)
-        for(int line = 0; line != height_/2; ++line)
+        for(uint32_t line = 0; line != height_/2; ++line)
         {
             std::swap_ranges
             (
@@ -1204,9 +1217,12 @@ void OpenGLVertexBuffer::setLayout
         {
             case (Shader::Variable::Type::Bool) :
                 return GL_BOOL;
+            case (Shader::Variable::Type::UInt) :
+                return GL_UNSIGNED_BYTE;
             case (Shader::Variable::Type::Int) :
             case (Shader::Variable::Type::Int2) :
             case (Shader::Variable::Type::Int3) :
+            case (Shader::Variable::Type::Int4) :
                 return GL_INT;
             case (Shader::Variable::Type::Float) :
             case (Shader::Variable::Type::Float2) :
@@ -1215,6 +1231,11 @@ void OpenGLVertexBuffer::setLayout
             case (Shader::Variable::Type::Mat3) :
             case (Shader::Variable::Type::Mat4) :
                 return GL_FLOAT;
+            case (Shader::Variable::Type::Sampler2D) :
+            case (Shader::Variable::Type::SamplerCube) :
+            case (Shader::Variable::Type::Image2D) :
+            case (Shader::Variable::Type::ImageCube) :
+                throw std::runtime_error("Invalid vertex buffer element type");
         }
         return GL_FLOAT;
     };

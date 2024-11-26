@@ -980,7 +980,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         // smarter way?
         if (settings_.reseedPalette || internalFormatChanged)
         {
-            for (int counter = 0; counter < paletteSize; counter++)
+            for (unsigned int counter = 0; counter < paletteSize; counter++)
             {
                 // Determine the pixel of the image which is the furthest away
                 // (in color-space) from the last palette color in paletteData
@@ -1130,7 +1130,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         cumulatedPaletteRow_ = 
             settings_.cumulatePalette ? 
             (
-                ++cumulatedPaletteRow_ < maxNCumulatedPalettes_ ? 
+                ++cumulatedPaletteRow_ < (unsigned int)maxNCumulatedPalettes_ ? 
                 cumulatedPaletteRow_ : 0u 
             ) : 0u;
     }
@@ -1214,10 +1214,10 @@ void OpenGLQuantizer::quantizeOpenGLTexture
         settings_.overwriteInput ? GL_READ_WRITE : GL_READ_ONLY, 
         isFloat32 ? GL_RGBA32F : GL_RGBA8UI
     );
-    uint32_t outputDataUnit;
+    uint32_t outputDataUnit = settings_.overwriteInput ?
+        settings_.inputUnit : textureUnit++;
     if (!settings_.overwriteInput)
     {
-        outputDataUnit = textureUnit++;
         glActiveTexture(GL_TEXTURE0+outputDataUnit);
         glBindTexture(GL_TEXTURE_2D, output_->colorBufferId());
         glBindImageTexture
@@ -1234,7 +1234,7 @@ void OpenGLQuantizer::quantizeOpenGLTexture
     quantizeInput->setUniformInt
     (
         "outputImage", 
-        settings_.overwriteInput ? settings_.inputUnit : outputDataUnit
+        outputDataUnit
     );
     quantizeInput->use();
     quantizeInput->run(width, height, 1);

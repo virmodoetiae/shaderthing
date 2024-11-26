@@ -27,7 +27,7 @@ void GifEncoder::writePaletteData()
         fputc(0, file_);
     }
     // Write palette data
-    for(int i=0; i<paletteSize_; i++)
+    for(uint32_t i=0; i<paletteSize_; i++)
     {
         fputc((int)palette_[3*i], file_);
         fputc((int)palette_[3*i+1], file_);
@@ -78,7 +78,7 @@ void GifEncoder::encodeIndexedFrame
         if (paletteMode_ != PaletteMode::Dynamic) // Bits 2,1,0 equal to 
                                                   // log2(paletteSize)-1 of
                                                   // global palette
-            packedFields |= (paletteBitDepth_-1 << 0);
+            packedFields |= ((paletteBitDepth_-1) << 0);
 
         fputc(packedFields, file_);
         fputc(0, file_); // Byte 5, background color index (always 0 in my

@@ -21,7 +21,7 @@ void OpenGLContext::initialize(void* nativeWindow)
     }
     name_ = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     name_ = "OpenGL "+name_;
-    GLint majorVersion, minorVersion, patch, profile;
+    GLint majorVersion, minorVersion;
     glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
     glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
     versionMajor_ = int(majorVersion);

@@ -116,8 +116,8 @@ void OpenGLBlurrer::blur
         updateBuffer = true;
     else if 
     (
-        buffer_->width() != size.x || 
-        buffer_->height() != size.y ||
+        buffer_->width() != (uint32_t)size.x || 
+        buffer_->height() != (uint32_t)size.y ||
         buffer_->wrapMode(0) != input->colorBufferWrapMode(0) ||
         buffer_->wrapMode(1) != input->colorBufferWrapMode(1)
     )

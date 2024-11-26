@@ -470,7 +470,6 @@ void OpenGLBloomer::bloom
     // Downsampling ----------------------------------------------------------//
     int mipStep = 1;
     int mipLevel = mipStep;
-    bool firstLevel = true;
     while (true)
     {
         glBindImageTexture
@@ -514,13 +513,12 @@ void OpenGLBloomer::bloom
         OpenGLWaitSync();
         if 
         (
-            width <= minSideResolution_ || 
-            height <= minSideResolution_ ||
-            mipLevel >= settings.mipDepth
+            width <= (int)minSideResolution_ || 
+            height <= (int)minSideResolution_ ||
+            mipLevel >= (int)settings.mipDepth
         )
             break;
         mipLevel += mipStep;
-        firstLevel = false;
     }
 
     // Upsampling ------------------------------------------------------------//

@@ -113,10 +113,15 @@ void GLFWOpenGLWindow::setIcon
     bool isDataRaw
 )
 {
-    GLFWimage icon[1]; 
-    int nc;
+    GLFWimage icon[1];
+    icon[0].width = 0;
+    icon[0].height = 0;
+    int nComponents;
     if (isDataRaw)
+    {
+        icon[0].pixels = new unsigned char[dataSize];
         std::memcpy(icon[0].pixels, data, dataSize);
+    }
     else 
         icon[0].pixels = stbi_load_from_memory
         (
@@ -124,11 +129,16 @@ void GLFWOpenGLWindow::setIcon
             dataSize, 
             &icon[0].width, 
             &icon[0].height, 
-            &nc, 
+            &nComponents, 
             4
         );
+    if (icon[0].pixels == nullptr) // Failure, maybe make this return a bool
+        return;
     glfwSetWindowIcon(glfwWindow_, 1, icon); 
-    stbi_image_free(icon[0].pixels);
+    if (isDataRaw)
+        delete[] icon[0].pixels;
+    else
+        stbi_image_free(icon[0].pixels);
 }
 
 void GLFWOpenGLWindow::setVSync(bool state)
@@ -162,20 +172,18 @@ void GLFWOpenGLWindow::setSize(uint32_t width, uint32_t height)
 
 void GLFWOpenGLWindow::setCursorStatus(CursorStatus status)
 {
-    int glfwStatus;
     switch (status)
     {
         case CursorStatus::Normal :
-            glfwStatus = GLFW_CURSOR_NORMAL;
+            glfwSetInputMode(glfwWindow_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             break;
         case CursorStatus::Hidden :
-            glfwStatus = GLFW_CURSOR_HIDDEN;
+            glfwSetInputMode(glfwWindow_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             break;
         case CursorStatus::Captured :
-            glfwStatus = GLFW_CURSOR_DISABLED;
+            glfwSetInputMode(glfwWindow_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             break;
     }
-    glfwSetInputMode(glfwWindow_, GLFW_CURSOR, glfwStatus);
 }
 
 Window::CursorStatus GLFWOpenGLWindow::cursorStatus() const
