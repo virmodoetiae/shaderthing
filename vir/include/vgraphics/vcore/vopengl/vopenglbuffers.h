@@ -173,6 +173,7 @@ public :
     void bind() override;
     void unbind() override;
     void setBindingPoint(uint32_t) override;
+    bool isBoundToBindingPoint(uint32_t) const override;
     void* mapData
     (
         uint32_t size = 0,

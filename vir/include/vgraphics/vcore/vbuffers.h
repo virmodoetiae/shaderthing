@@ -511,6 +511,7 @@ public :
     virtual void bind() = 0;
     virtual void unbind() = 0;
     virtual void setBindingPoint(uint32_t) = 0;
+    virtual bool isBoundToBindingPoint(uint32_t) const = 0;
     // Maps a range of the GPU-side buffer data to a permanent CPU-side address.
     // When used, any previous mappings are invalidated. This mapping is
     // persistent

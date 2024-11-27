@@ -125,7 +125,7 @@ struct Settings
     // requires a binding point, which is automatically determined on the first
     // quantizer run. For subsequent runs, in case changes in the availability of
     // SSBO binding points are expected, set this flag to true. If you know SSBO
-    // binding point availabili has not changed, leave it to false
+    // binding point availability has not changed, leave it to false
     bool ensureFreeSSBOBinding=true;
 
     // If true, the palette computed from this quantization call will

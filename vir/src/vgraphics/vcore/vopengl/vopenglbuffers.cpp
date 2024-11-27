@@ -1138,6 +1138,16 @@ void OpenGLShaderStorageBuffer::setBindingPoint(uint32_t bindingPoint)
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingPoint, id_);
 }
 
+bool OpenGLShaderStorageBuffer::isBoundToBindingPoint
+(
+    uint32_t bindingPoint
+) const
+{
+    GLint boundBuffer = 0;
+    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, bindingPoint, &boundBuffer);
+    return boundBuffer == (GLint)id_;
+}
+
 void* OpenGLShaderStorageBuffer::mapData
 (
     uint32_t size,

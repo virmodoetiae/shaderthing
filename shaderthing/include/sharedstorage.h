@@ -284,7 +284,7 @@ class SharedStorage
     vir::ShaderStorageBuffer* buffer_        = nullptr;
     GUI                       gui_           = {};
     bool                      isSupported_   = false;
-    const unsigned int        bindingPoint_  = 0;
+    const unsigned int        bindingPoint_  = 2;
     bool                      newInstance_   = true;
 
 public:
