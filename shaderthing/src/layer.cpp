@@ -1896,7 +1896,7 @@ void Layer::renderLayersTabBarGui // Static
     if (sharedErrors.size() > 0)
     {
         compilationErrors = true;
-        ImGui::Bullet(); ImGui::Text("Common");
+        ImGui::Bullet(); ImGui::Text("Shared source");
         if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
         {
             for (auto& error : sharedErrors)

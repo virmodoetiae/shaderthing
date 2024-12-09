@@ -249,8 +249,8 @@ void App::newProject()
 
     sharedUniforms_ = new SharedUniforms();
     Layer::Rendering::sharedStorage.reset();
-    layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     Layer::resetSharedSourceEditor();
+    layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
     exporter_ = new Exporter();
 }
 
