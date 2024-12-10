@@ -43,8 +43,10 @@ public:
             Mat3,
             Mat4,
             Sampler2D,
+            Sampler3D,
             SamplerCube,
             Image2D,
+            Image3D,
             ImageCube
         };
         uint32_t size;
@@ -76,8 +78,10 @@ public:
     DEFINE_SHADER_VARIABLE(Mat3,        float,    9)
     DEFINE_SHADER_VARIABLE(Mat4,        float,    16)
     DEFINE_SHADER_VARIABLE(Sampler2D,   uint32_t, 1)
+    DEFINE_SHADER_VARIABLE(Sampler3D,   uint32_t, 1)
     DEFINE_SHADER_VARIABLE(SamplerCube, uint32_t, 1)
     DEFINE_SHADER_VARIABLE(Image2D, uint32_t, 1)
+    DEFINE_SHADER_VARIABLE(Image3D, uint32_t, 1)
     DEFINE_SHADER_VARIABLE(ImageCube, uint32_t, 1)
     
     static std::unordered_map<std::string, Variable::Type> 

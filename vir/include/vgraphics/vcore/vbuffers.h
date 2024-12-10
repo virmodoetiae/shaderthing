@@ -375,6 +375,55 @@ public:
 
 //----------------------------------------------------------------------------//
 
+class TextureBuffer3D : public TextureBuffer
+{
+protected:
+    uint32_t width_  = 0;
+    uint32_t height_ = 0;
+    uint32_t depth_ = 0;
+    
+    TextureBuffer3D(){nDimensions_=2;}
+    TextureBuffer3D
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        InternalFormat internalFormat
+    ):TextureBuffer(internalFormat),width_(width),height_(height),depth_(depth)
+    {
+        nDimensions_=3;
+    }
+public:
+    virtual ~TextureBuffer3D(){}
+    static uint32_t maxSize();
+    static TextureBuffer3D* create
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        InternalFormat internalFormat
+    );
+    // Retrieve the texture data as unsigned char, and store it in the provided
+    // array. If allocate is true, the array will be re-allocated with the 
+    // correct size and data type
+    virtual void readData(unsigned char*& data, bool allocate=false) = 0;
+    // Retrieve the texture data as unsigned int, and store it in the provided
+    // array. If allocate is true, the array will be re-allocated with the 
+    // correct size and data type
+    virtual void readData(unsigned int*& data, bool allocate=false) = 0;
+    // Retrieve the texture data as float, and store it in the provided
+    // array. If allocate is true, the array will be re-allocated with the 
+    // correct size and data type
+    virtual void readData(float*& data, bool allocate=false) = 0;
+    uint32_t width() const {return width_;}
+    uint32_t height() const {return height_;}
+    uint32_t depth() const {return depth_;}
+};
+
+//----------------------------------------------------------------------------//
+
 class Framebuffer
 {
 protected:

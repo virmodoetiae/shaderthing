@@ -43,6 +43,7 @@ public:
     enum class Type
     {
         Texture2D,
+        Texture3D,
         AnimatedTexture2D,
         Cubemap,
         Framebuffer
@@ -75,6 +76,7 @@ public:
     static Resource*     create(const std::string& filepath);
     static Resource*     create(const unsigned char* rawData, unsigned int size, bool gif);
     static Resource*     create(unsigned int width, unsigned int height, InternalFormat internalFormat);
+    static Resource*     create(unsigned int width, unsigned int height, unsigned int depth, InternalFormat internalFormat);
     static Resource*     create(const std::vector<Texture2DResource*>& frames);
     static Resource*     create(const Texture2DResource* faces[6]);
     static Resource*     create(Layer* layer);
@@ -87,6 +89,7 @@ public:
     virtual unsigned int id() const = 0;
     virtual unsigned int width() const = 0;
     virtual unsigned int height() const = 0;
+    virtual unsigned int depth() const {return 1;}
     virtual unsigned int nChannels() const = 0;
     virtual WrapMode     wrapMode(int index) const = 0;
     virtual FilterMode   magFilterMode() const = 0;
@@ -163,14 +166,21 @@ private:
         const std::vector<Resource*>& resources
     );
     
-    static bool loadOrReplaceTextureOrAnimationButtonGui
+    static bool loadOrReplaceTexture2DOrAnimationButtonGui
     (
         Resource*& resource,
         const ImVec2 size=ImVec2(0,0),
         const bool animation=false,
         const bool disabled=false
     );
-    static bool createOrResizeOrReformatTextureGui
+    static bool createOrResizeOrReformatTexture2DGui
+    (
+        Resource*& resource,
+        const bool enablePopup,
+        const bool resetValues,
+        const ImVec2 buttonSize=ImVec2(0,0)
+    );
+    static bool createOrResizeOrReformatTexture3DGui
     (
         Resource*& resource,
         const bool enablePopup,
@@ -189,7 +199,7 @@ private:
         const std::vector<Resource*>& resources,
         const ImVec2 size=ImVec2(0,0)
     );
-    static bool exportTextureOrAnimationButtonGui
+    static bool exportTexture2DOrAnimationButtonGui
     (
         const Resource* resource,
         const ImVec2 size=ImVec2(0,0)
@@ -309,6 +319,30 @@ public:
     ~CubemapResource();
     bool set(const Texture2DResource* faces[6]);
     DECLARE_OVERRIDE_VIRTUALS
+};
+
+class Texture3DResource : public Resource
+{
+    friend                  Resource;
+    
+    vir::TextureBuffer3D* native_      = nullptr;
+    
+    Texture3DResource():Resource(Type::Texture3D){}
+    DELETE_COPY_MOVE(Texture3DResource)
+
+    virtual void save(ObjectIO& io) override;
+    static Texture3DResource* load(const ObjectIO& io);
+public:
+    bool autoUpdateMipmap = false;
+   
+    ~Texture3DResource();
+    bool set(unsigned int width, unsigned int height, unsigned int depth, InternalFormat internalFormat);
+    void update(const UpdateArgs& args) override;
+    void readData(unsigned char*& data, bool allocate=false) const {native_->readData(data, allocate);}
+    void readData(unsigned int*& data, bool allocate=false) const {native_->readData(data, allocate);}
+    void readData(float*& data, bool allocate=false) const {native_->readData(data, allocate);}
+    DECLARE_OVERRIDE_VIRTUALS
+    unsigned int depth() const override {return native_->depth();}
 };
 
 class Layer;

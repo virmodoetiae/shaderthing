@@ -36,6 +36,7 @@ Resource**      Resource::resourceToBeReplaced_ = nullptr;
 std::map<Resource::Type, const char*> Resource::typeToName_ =
 {
     {Resource::Type::Texture2D,         "Texture-2D"},
+    {Resource::Type::Texture3D,         "Texture-3D"},
     {Resource::Type::AnimatedTexture2D, "Animation-2D"},
     {Resource::Type::Cubemap,           "Cubemap"},
     {Resource::Type::Framebuffer,       "Layer"}
@@ -186,6 +187,21 @@ Resource* Resource::create
     return nullptr;
 }
 
+Resource* Resource::create
+(
+    unsigned int width, 
+    unsigned int height, 
+    unsigned int depth,
+    InternalFormat internalFormat
+)
+{
+    auto resource = new Texture3DResource();
+    if (resource->set(width, height, depth, internalFormat))
+        return resource;
+    delete resource;
+    return nullptr;
+}
+
 Resource* Resource::create(const std::vector<Texture2DResource*>& frames)
 {
     auto resource = new AnimatedTexture2DResource();
@@ -273,6 +289,10 @@ void Resource::loadAll
         {
             default :
                 continue;
+            case Type::Texture3D :
+                resource = 
+                    Texture3DResource::load(ioResource);
+                break;
             case Type::AnimatedTexture2D :
                 resource = 
                     AnimatedTexture2DResource::load(ioResource, resources);
@@ -731,6 +751,87 @@ CubemapResource* CubemapResource::load
 
 //----------------------------------------------------------------------------//
 
+bool Texture3DResource::set
+(
+    unsigned int width, 
+    unsigned int height, 
+    unsigned int depth, 
+    InternalFormat internalFormat
+)
+{
+    auto native = vir::TextureBuffer3D::create
+    (
+        nullptr, 
+        width, 
+        height, 
+        depth, 
+        internalFormat
+    );
+    if (native == nullptr)
+        return false;
+    if (native_ != nullptr) delete native_;
+        native_ = native;
+}
+
+Texture3DResource::~Texture3DResource()
+{
+    if (native_ != nullptr)
+    {
+        if (textureUnit_ != -1)
+            this->unbind();
+        if (imageUnit_ != -1)
+            this->unbindImage();
+        delete native_;
+    }
+}
+
+void Texture3DResource::save(ObjectIO& io)
+{
+    io.writeObjectStart(namePtr_->c_str());
+    io.write("type", Resource::typeToName_[type_]);
+    io.write("magFilterMode", (int)magFilterMode());
+    io.write("minFilterMode", (int)minFilterMode());
+    io.write("wrapModes", glm::ivec3((int)wrapMode(0), (int)wrapMode(1), (int)wrapMode(2)));
+    io.write("autoUpdateMipmap", autoUpdateMipmap);
+    io.write("width", native_->width());
+    io.write("height", native_->height());
+    io.write("depth", native_->depth());
+    io.write("internalFormat", (int)native_->internalFormat());
+    io.writeObjectEnd();
+}
+
+Texture3DResource* Texture3DResource::load(const ObjectIO& io)
+{
+    auto resource = new Texture3DResource();
+    
+    unsigned int width, height, depth;
+    width = io.read<unsigned int>("width");
+    height = io.read<unsigned int>("height");
+    depth = io.read<unsigned int>("depth");
+    InternalFormat internalFormat = 
+        (InternalFormat)io.read<unsigned int>("internalFormat");
+    resource->set(width, height, depth, internalFormat);
+
+    resource->setName(io.name());
+    resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
+    resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
+    auto wrapModes = io.read<glm::ivec3>("wrapModes");
+    resource->setWrapMode(0, (WrapMode)wrapModes[0]);
+    resource->setWrapMode(1, (WrapMode)wrapModes[1]);
+    resource->setWrapMode(2, (WrapMode)wrapModes[2]);
+    resource->autoUpdateMipmap = 
+        io.readOrDefault<bool>("autoUpdateMipmap", false);
+    return resource;
+}
+
+void Texture3DResource::update(const UpdateArgs& args)
+{
+    if (autoUpdateMipmap)
+        native_->updateMipmap(true);
+}
+
+//----------------------------------------------------------------------------//
+
 bool LayerResource::set(Layer* layer)
 {
     if (layer == nullptr || layer->rendering_.framebuffer == nullptr)
@@ -789,7 +890,7 @@ void Resource::renderResourcesGui
     }
 
     const float fontSize = ImGui::GetFontSize();
-    const float buttonWidth(10*fontSize);
+    const float buttonWidth(12*fontSize);
     const float cursorPosY0 = ImGui::GetCursorPosY();
 
     #define START_ROW                                                       \
@@ -932,7 +1033,10 @@ void Resource::renderResourcesGui
             ImGui::Text(resource->name().c_str());
         END_COLUMN
         START_COLUMN // Resolution column --------------------------------------
-        ImGui::Text("%d x %d", (int)x, (int)y);
+        if (resource->type_ == Type::Texture3D)
+            ImGui::Text("%d x %d x %d", (int)x, (int)y, (int)resource->depth());
+        else
+            ImGui::Text("%d x %d", (int)x, (int)y);
         END_COLUMN
         START_COLUMN // Aspect ratio column ------------------------------------
         ImGui::Text("%.3f", aspectRatio);
@@ -955,19 +1059,26 @@ void Resource::renderResourcesGui
         if (ImGui::BeginPopup("##addResourcePopup"))
         {
             Resource* resource = nullptr;
-            Resource::loadOrReplaceTextureOrAnimationButtonGui
+            Resource::loadOrReplaceTexture2DOrAnimationButtonGui
             (
                 resource,
                 ImVec2(buttonWidth, 0),
                 false
             );
-            Resource::loadOrReplaceTextureOrAnimationButtonGui
+            Resource::loadOrReplaceTexture2DOrAnimationButtonGui
             (
                 resource,
                 ImVec2(buttonWidth, 0),
                 true
             );
-            createOrResizeOrReformatTextureGui
+            createOrResizeOrReformatTexture2DGui
+            (
+                resource,
+                true,
+                false,
+                ImVec2(buttonWidth, 0)
+            );
+            createOrResizeOrReformatTexture3DGui
             (
                 resource,
                 true,
@@ -1016,7 +1127,7 @@ void Resource::renderResourcesGui
         ImGui::TableSetupColumn("Type", flags, 8.0*fontSize);
         ImGui::TableSetupColumn("Preview", flags, 4.0*fontSize);
         ImGui::TableSetupColumn("Name", flags, 8.0*fontSize);
-        ImGui::TableSetupColumn("Resolution", flags, 8.0*fontSize);
+        ImGui::TableSetupColumn("Resolution", flags, 10.0*fontSize);
         ImGui::TableSetupColumn
         (
             "Aspect ratio", 
@@ -1130,7 +1241,7 @@ bool LayerResource::removeFromResources
 
 //----------------------------------------------------------------------------//
 
-bool Resource::loadOrReplaceTextureOrAnimationButtonGui
+bool Resource::loadOrReplaceTexture2DOrAnimationButtonGui
 (
     Resource*& resource,
     const ImVec2 size,
@@ -1145,7 +1256,7 @@ bool Resource::loadOrReplaceTextureOrAnimationButtonGui
         ImGui::Button
         (
             resource == nullptr ? 
-            (animation ? "Load animation" : "Load texture") : 
+            (animation ? "Load animation" : "Load texture-2D") : 
             "Replace",
             size
         )
@@ -1177,7 +1288,7 @@ bool Resource::loadOrReplaceTextureOrAnimationButtonGui
 
 //----------------------------------------------------------------------------//
 
-bool Resource::createOrResizeOrReformatTextureGui
+bool Resource::createOrResizeOrReformatTexture2DGui
 (
     Resource*& resource,
     const bool enablePopup,
@@ -1188,7 +1299,7 @@ bool Resource::createOrResizeOrReformatTextureGui
     bool valid = false;
     static glm::ivec2 resolution(1, 1);
     static InternalFormat internalFormat = InternalFormat::RGBA_SF_32;
-    if (enablePopup && ImGui::Button("Create texture", buttonSize))
+    if (enablePopup && ImGui::Button("Create texture-2D", buttonSize))
     {
         ImGui::OpenPopup("##createTexturePopup");
         resolution = {1,1};
@@ -1298,7 +1409,7 @@ the project)");
         (
             ImGui::Button
             (
-                resource == nullptr ? "Create texture" : "Resize or reformat", 
+                resource == nullptr ? "Create texture-2D" : "Resize or reformat", 
                 ImVec2(-1, 0)
             )
         )
@@ -1309,7 +1420,7 @@ the project)");
                 auto wrapMode1 = resource->wrapMode(1);
                 auto minFilterMode = resource->minFilterMode();
                 auto magFilterMode = resource->magFilterMode();
-                bool isIFUS0 = resource->isInternalFormatUnsigned();
+                auto format0 = ((Texture2DResource*)resource)->internalFormat();
                 if 
                 (
                     ((Texture2DResource*)resource)->set
@@ -1321,12 +1432,13 @@ the project)");
                 )
                 {
                     valid = true;
-                    bool isIFUS = resource->isInternalFormatUnsigned();
+                    auto format = 
+                        ((Texture2DResource*)resource)->internalFormat();
                     resource->setWrapMode(0, wrapMode0);
                     resource->setWrapMode(1, wrapMode1);
                     resource->setMinFilterMode(minFilterMode);
                     resource->setMagFilterMode(magFilterMode);
-                    if (isIFUS0 != isIFUS)
+                    if (format != format0)
                     {
                         if (resource->clientUniforms_.size() > 0)
                             Layer::Flags::requestRecompilation = true;
@@ -1351,6 +1463,202 @@ the project)");
             resolution.x = resource->width();
             resolution.y = resource->height();
             internalFormat = ((Texture2DResource*)resource)->internalFormat();
+        }
+        if (disabled)
+            ImGui::EndDisabled();
+        if (enablePopup)
+            ImGui::EndPopup();
+    }
+    return valid;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Resource::createOrResizeOrReformatTexture3DGui
+(
+    Resource*& resource,
+    const bool enablePopup,
+    const bool resetValues,
+    const ImVec2 buttonSize
+)
+{
+    bool valid = false;
+    static glm::ivec3 resolution(1, 1, 1);
+    static InternalFormat internalFormat = InternalFormat::RGBA_SF_32;
+    if (enablePopup && ImGui::Button("Create texture-3D", buttonSize))
+    {
+        ImGui::OpenPopup("##createTexture3DPopup");
+        resolution = {1,1,1};
+        internalFormat = InternalFormat::RGBA_SF_32;
+    }
+    if (resetValues && resource != nullptr)
+    {
+        resolution.x = resource->width();
+        resolution.y = resource->height();
+        resolution.z = resource->height();
+        internalFormat = ((Texture3DResource*)resource)->internalFormat();
+    }
+    if (ImGui::BeginPopup("##createTexture3DPopup") || !enablePopup)
+    {
+        if (resource == nullptr)
+        {
+            ImGui::Text(
+R"(Create a blank texture, useful for e.g., 
+shader data storage via imageLoad and
+imageStore operations. Data written to 
+these textures will not be saved within 
+the project)");
+            ImGui::Separator();
+        }
+        if (enablePopup)
+            ImGui::Text("Resolution ");
+        else
+            ImGui::Text("Resolution          ");
+        ImGui::SameLine();
+        float itemWidth = -1;
+        ImGui::PushItemWidth(itemWidth);
+        if 
+        (
+            ImGui::InputInt3
+            (
+                "##windowResolution", 
+                glm::value_ptr(resolution)
+            )
+        )
+        {
+            // The /2 is just for safety
+            int maxSize = vir::TextureBuffer3D::maxSize()/2;
+            resolution.x = std::min(std::max(resolution.x, 1), maxSize);
+            resolution.y = std::min(std::max(resolution.y, 1), maxSize);
+            resolution.z = std::min(std::max(resolution.z, 1), maxSize);
+        }
+        ImGui::PopItemWidth();
+        if (enablePopup)
+            ImGui::Text("Format     ");
+        else
+            ImGui::Text("Format              ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(itemWidth);
+        // RGB formats are not easy to work with due to memory-alignment 
+        // limitations so they are omitted
+        static std::vector<InternalFormat> supportedFormats = 
+        {
+            InternalFormat::R_UI_32,
+            InternalFormat::R_SF_32,
+            InternalFormat::RG_UI_32,
+            InternalFormat::RG_SF_32,
+            InternalFormat::RGBA_UI_32,
+            InternalFormat::RGBA_SF_32
+        };
+        if
+        (
+            ImGui::BeginCombo
+            (
+                "##textureFormatCombo",
+                vir::TextureBuffer::internalFormatToName.at
+                (
+                    internalFormat
+                ).c_str()
+            )
+        )
+        {
+            for (auto format : supportedFormats)
+            {
+                if 
+                (
+                    ImGui::Selectable
+                    (
+                        vir::TextureBuffer::internalFormatToName.at
+                        (
+                            format
+                        ).c_str()
+                    )
+                )
+                {
+                    internalFormat = format;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
+        bool disabled = false;
+        if (resource != nullptr)
+        {
+            if 
+            (
+                (int)resource->width() == resolution.x && 
+                (int)resource->height() == resolution.y && 
+                (int)resource->depth() == resolution.z && 
+                resource->internalFormat() == internalFormat
+            )
+            {
+                ImGui::BeginDisabled();
+                disabled = true;
+            }
+        }
+        if 
+        (
+            ImGui::Button
+            (
+                resource == nullptr ? "Create texture-3D" : "Resize or reformat", 
+                ImVec2(-1, 0)
+            )
+        )
+        {
+            if (resource != nullptr)
+            {
+                auto wrapMode0 = resource->wrapMode(0);
+                auto wrapMode1 = resource->wrapMode(1);
+                auto wrapMode2 = resource->wrapMode(2);
+                auto minFilterMode = resource->minFilterMode();
+                auto magFilterMode = resource->magFilterMode();
+                auto format0 = ((Texture3DResource*)resource)->internalFormat();
+                if 
+                (
+                    ((Texture3DResource*)resource)->set
+                    (
+                        resolution.x, 
+                        resolution.y,
+                        resolution.z,
+                        internalFormat
+                    )
+                )
+                {
+                    valid = true;
+                    auto format = 
+                        ((Texture3DResource*)resource)->internalFormat();
+                    resource->setWrapMode(0, wrapMode0);
+                    resource->setWrapMode(1, wrapMode1);
+                    resource->setWrapMode(2, wrapMode2);
+                    resource->setMinFilterMode(minFilterMode);
+                    resource->setMagFilterMode(magFilterMode);
+                    if (format != format0)
+                    {
+                        if (resource->clientUniforms_.size() > 0)
+                            Layer::Flags::requestRecompilation = true;
+                    }
+                }
+            }
+            else
+            {
+                auto newResource = 
+                    Resource::create
+                    (
+                        resolution.x,
+                        resolution.y,
+                        resolution.z,
+                        internalFormat
+                    );
+                if (newResource != nullptr)
+                {
+                    resource = newResource;
+                    valid = true;
+                }
+            }
+            resolution.x = resource->width();
+            resolution.y = resource->height();
+            resolution.z = resource->depth();
+            internalFormat = ((Texture3DResource*)resource)->internalFormat();
         }
         if (disabled)
             ImGui::EndDisabled();
@@ -1716,7 +2024,7 @@ among those loaded in the resource manager.)");
 
 //----------------------------------------------------------------------------//
 
-bool Resource::exportTextureOrAnimationButtonGui
+bool Resource::exportTexture2DOrAnimationButtonGui
 (
     const Resource* resource,
     const ImVec2 size
@@ -2106,7 +2414,7 @@ affect any cubemaps or animations using this texture)");
                         bool disabled = inUseByCubemapOrAnimation.size() > 0;
                         if (disabled)
                             ImGui::BeginDisabled();
-                        createOrResizeOrReformatTextureGui
+                        createOrResizeOrReformatTexture2DGui
                         (
                             resource,
                             false,
@@ -2115,6 +2423,32 @@ affect any cubemaps or animations using this texture)");
                         if (disabled)
                             ImGui::EndDisabled();
                     }
+                }
+                else if (resource->type_ == Resource::Type::Texture3D)
+                {
+                    auto texture = (Texture3DResource*)resource;
+                    if (usesMipmap)
+                    {
+                        ImGui::Text("Auto mipmap update  ");
+                        ImGui::SameLine();
+                        ImGui::Checkbox
+                        (
+                            "##autoMipmapUpdate", 
+                            &(texture->autoUpdateMipmap)
+                        );
+                        if 
+                        (
+                            !texture->autoUpdateMipmap && 
+                            ImGui::Button("Update mipmap", ImVec2(-1, 0))
+                        )
+                            texture->updateMipmap();
+                    }
+                    createOrResizeOrReformatTexture3DGui
+                    (
+                        resource,
+                        false,
+                        settingsOpened
+                    );
                 }
                 else if 
                 (
@@ -2142,7 +2476,7 @@ affect any cubemaps or animations using this texture)");
                 switch (resource->type_)
                 {
                     case Resource::Type::Texture2D:
-                        loadOrReplaceTextureOrAnimationButtonGui
+                        loadOrReplaceTexture2DOrAnimationButtonGui
                         (
                             resource,
                             size, 
@@ -2153,7 +2487,7 @@ affect any cubemaps or animations using this texture)");
                         
                         ((AnimatedTexture2DResource*)resource)->
                         unmanagedFrames_.size() == 0 ? 
-                        loadOrReplaceTextureOrAnimationButtonGui
+                        loadOrReplaceTexture2DOrAnimationButtonGui
                         (
                             resource,
                             size, 
@@ -2182,7 +2516,7 @@ affect any cubemaps or animations using this texture)");
                     // resource->type_ != Resource::Type::Texture2D, so no 
                     // cubemaps or animations here
             {
-                loadOrReplaceTextureOrAnimationButtonGui
+                loadOrReplaceTexture2DOrAnimationButtonGui
                 (
                     resource,
                     size,
@@ -2215,7 +2549,7 @@ affect any cubemaps or animations using this texture)");
                 resource->type_ == Resource::Type::Texture2D ||
                 resource->type_ == Resource::Type::AnimatedTexture2D
             )
-                exportTextureOrAnimationButtonGui(resource,size);
+                exportTexture2DOrAnimationButtonGui(resource,size);
             //------------------------------------------------------------------
             if (inUseByCubemapOrAnimation.size() == 0)
             {

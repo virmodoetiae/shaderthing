@@ -746,7 +746,7 @@ motion only if the left mouse button (LMB) is held)");
     }; // End of renderSharedUniformsGui lambda
 
     // -------------------------------------------------------------------------
-    static std::string supportedUniformTypeNames[13]
+    static std::string supportedUniformTypeNames[15]
     {
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Bool],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int],
@@ -758,8 +758,10 @@ motion only if the left mouse button (LMB) is held)");
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float3],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float4],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Sampler2D],
+        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Sampler3D],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Image2D],
+        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Image3D],
         vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::ImageCube]
     };
     auto renderUniformGui = 
@@ -896,6 +898,20 @@ motion only if the left mouse button (LMB) is held)");
                             selectedType == 
                             vir::Shader::Variable::Type::Image2D
                         );
+                        bool uniformTypeIsSamplerOrImage3D = 
+                        (
+                            uniform->type == 
+                            vir::Shader::Variable::Type::Sampler3D ||
+                            uniform->type == 
+                            vir::Shader::Variable::Type::Image3D
+                        );
+                        bool selectedTypeIsSamplerOrImage3D = 
+                        (
+                            selectedType == 
+                            vir::Shader::Variable::Type::Sampler3D ||
+                            selectedType == 
+                            vir::Shader::Variable::Type::Image3D
+                        );
                         bool uniformTypeIsSamplerOrImageCube = 
                         (
                             uniform->type == 
@@ -924,10 +940,12 @@ motion only if the left mouse button (LMB) is held)");
                         (
                             (
                                 uniformTypeIsSamplerOrImage2D ||
+                                uniformTypeIsSamplerOrImage3D ||
                                 uniformTypeIsSamplerOrImageCube
                             ) &&
                             !(
                                 selectedTypeIsSamplerOrImage2D ||
+                                selectedTypeIsSamplerOrImage3D ||
                                 selectedTypeIsSamplerOrImageCube
                             )
                         )
@@ -942,10 +960,12 @@ motion only if the left mouse button (LMB) is held)");
                         (
                             !(
                                 uniformTypeIsSamplerOrImage2D ||
+                                uniformTypeIsSamplerOrImage3D ||
                                 uniformTypeIsSamplerOrImageCube
                             ) &&
                             (
                                 selectedTypeIsSamplerOrImage2D ||
+                                selectedTypeIsSamplerOrImage3D ||
                                 selectedTypeIsSamplerOrImageCube
                             )
                         )
@@ -960,12 +980,17 @@ motion only if the left mouse button (LMB) is held)");
                         // Do not reset when swapping between uniform types that
                         // have the same underlying data types (Sampler2D and
                         // Image2D uniforms both refer to TextureBuffer2D 
-                        // objects, and the same happens for cube map types) 
+                        // objects, and the same happens for cube map types and
+                        // 3D textures) 
                         if
                         (
                             !(
                                 uniformTypeIsSamplerOrImage2D &&
                                 selectedTypeIsSamplerOrImage2D
+                            ) &&
+                            !(
+                                uniformTypeIsSamplerOrImage3D &&
+                                selectedTypeIsSamplerOrImage3D
                             ) &&
                             !(
                                 uniformTypeIsSamplerOrImageCube &&
@@ -983,10 +1008,14 @@ motion only if the left mouse button (LMB) is held)");
                                 vir::Shader::Variable::Type::Bool &&
                             selectedType != 
                                 vir::Shader::Variable::Type::Sampler2D &&
+                                selectedType != 
+                                vir::Shader::Variable::Type::Sampler3D &&
                             selectedType != 
                                 vir::Shader::Variable::Type::SamplerCube &&
                             selectedType != 
                                 vir::Shader::Variable::Type::Image2D &&
+                                selectedType != 
+                                vir::Shader::Variable::Type::Image3D &&
                             selectedType != 
                                 vir::Shader::Variable::Type::ImageCube
                         );
@@ -1581,7 +1610,7 @@ motion only if the left mouse button (LMB) is held)");
                 (
                     (resource != nullptr) ? resource->name() : ""
                 );
-                if (ImGui::BeginCombo("##txSelector", name.c_str()))
+                if (ImGui::BeginCombo("##tx2DSelector", name.c_str()))
                 {
                     for(auto r : resources)
                     {
@@ -1591,6 +1620,45 @@ motion only if the left mouse button (LMB) is held)");
                             r->type() != Resource::Type::AnimatedTexture2D &&
                             r->type() != Resource::Type::Framebuffer
                         )
+                            continue;
+                        if (ImGui::Selectable(r->name().c_str()))
+                        {
+                            if (resource != nullptr)
+                            {
+                                Layer::Flags::requestRecompilation = 
+                                    Layer::Flags::requestRecompilation ||
+                                    resource->isInternalFormatUnsigned() !=
+                                    r->isInternalFormatUnsigned();
+                                if (resource->isUsedByUniform(uniform))
+                                    resource->removeClientUniform(uniform);
+                            }
+                            else
+                                Layer::Flags::requestRecompilation = true;
+                            if (!r->isUsedByUniform(uniform))
+                                r->addClientUniform(uniform);
+                            uniform->setValuePtr<const Resource>(r);
+                            sharedUniforms.setUserAction(true);
+                            
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                break;
+            }
+            case vir::Shader::Variable::Type::Sampler3D :
+            case vir::Shader::Variable::Type::Image3D :
+            {
+                auto resource = 
+                    uniform->getValuePtr<Resource>();
+                std::string name
+                (
+                    (resource != nullptr) ? resource->name() : ""
+                );
+                if (ImGui::BeginCombo("##tx3DSelector", name.c_str()))
+                {
+                    for(auto r : resources)
+                    {
+                        if (r->type() != Resource::Type::Texture3D)
                             continue;
                         if (ImGui::Selectable(r->name().c_str()))
                         {
@@ -1868,8 +1936,10 @@ motion only if the left mouse button (LMB) is held)");
                         uniform->gui.markedForDeletion &&
                         (
                             uniform->type == Type::Sampler2D ||
+                            uniform->type == Type::Sampler3D ||
                             uniform->type == Type::SamplerCube ||
                             uniform->type == Type::Image2D ||
+                            uniform->type == Type::Image3D ||
                             uniform->type == Type::ImageCube
                         )
                     )
@@ -2053,8 +2123,10 @@ void Uniform::loadAll
                 break;
             }
             case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::Sampler3D :
             case vir::Shader::Variable::Type::SamplerCube :
             case vir::Shader::Variable::Type::Image2D :
+            case vir::Shader::Variable::Type::Image3D :
             case vir::Shader::Variable::Type::ImageCube :
             {
                 std::string resourceName = uniformData.read("value", false);
@@ -2165,8 +2237,10 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
                 break;
             }
             case vir::Shader::Variable::Type::Sampler2D :
+            case vir::Shader::Variable::Type::Sampler3D :
             case vir::Shader::Variable::Type::SamplerCube :
             case vir::Shader::Variable::Type::Image2D :
+            case vir::Shader::Variable::Type::Image3D :
             case vir::Shader::Variable::Type::ImageCube :
             {
                 auto r = u->getValuePtr<Resource>();

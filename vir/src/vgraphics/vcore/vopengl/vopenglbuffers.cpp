@@ -811,7 +811,274 @@ void OpenGLCubeMapBuffer::updateMipmap(bool onlyIfRequiredByFilterMode)
 }
 
 //----------------------------------------------------------------------------//
-// Frame buffer --------------------------------------------------------------//
+// Texture3D buffer ----------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+OpenGLTextureBuffer3D::OpenGLTextureBuffer3D
+(
+    const unsigned char* data, 
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth,
+    InternalFormat internalFormat
+) : 
+TextureBuffer3D(data, width, height, depth, internalFormat)
+{
+    if (width*height*depth == 0 || internalFormat == InternalFormat::Undefined)
+        throw std::runtime_error
+        (
+            "OpenGLTextureBuffer3D - invalid dimensions or internal format"
+        );
+    glGenTextures(1, &id_);
+    glBindTexture(GL_TEXTURE_3D, id_);
+    float borderColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    for (int i=0;i<3;i++)
+        glTexParameteri
+        (
+            GL_TEXTURE_3D, 
+            wrapIndexToGLint_.at(i), 
+            wrapModeToGLint_.at(wrapModes_[i])
+        );
+    // Zoom in filter
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, 
+        filterModeToGLint_.at(magFilterMode_));
+    // Zoom out filter
+    internalFormat_ = internalFormat;
+    if 
+    (
+        isInternalFormatUnsigned() &&
+        (
+            minFilterMode_ != TextureBuffer::FilterMode::Nearest &&
+            minFilterMode_ != TextureBuffer::FilterMode::Linear
+        )
+    )
+        minFilterMode_ = FilterMode::Linear;
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, 
+        filterModeToGLint_.at(minFilterMode_));
+
+    // Create texture
+    GLint glFormat = OpenGLFormat(internalFormat);
+    bool resetAlignment = false;
+    if (glFormat != GL_RGBA && glFormat != GL_RGBA_INTEGER)
+    {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        resetAlignment = true;
+    }
+    else
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4 Is default
+    GLint glInternalFormat = OpenGLInternalFormat(internalFormat);
+    glTexImage3D
+    (
+        GL_TEXTURE_3D, 
+        0, 
+        glInternalFormat, // GL_RGB8UI
+        width, 
+        height, 
+        depth,
+        0, 
+        glFormat, // GL_RGBA_INTEGER
+        OpenGLType(internalFormat), // GL_UNSIGNED_BYTE
+        data
+    );
+    if (resetAlignment)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    
+    // Swizzling setting
+    if (nChannels_ == 1) 
+    {
+        GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_ONE};
+        glTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+    }
+    else if (nChannels_ == 2) 
+    {
+        GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_GREEN};
+        glTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+    }
+    else if (nChannels_ == 3)
+    {
+        GLint swizzleMask[] = {GL_RED, GL_GREEN, GL_BLUE, GL_ONE};
+        glTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+    }
+    glGenerateMipmap(GL_TEXTURE_3D);
+    width_ = width;
+    height_ = height;
+    depth_ = depth;
+    nChannels_ = TextureBuffer::nChannels(internalFormat);
+}
+
+OpenGLTextureBuffer3D::~OpenGLTextureBuffer3D()
+{
+    glDeleteTextures(1, &id_);
+}
+
+uint32_t OpenGLTextureBuffer3D::maxSize()
+{
+    GLint size;
+    glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &size);
+    return size;
+}
+
+void OpenGLTextureBuffer3D::setWrapMode
+(
+    uint32_t index,
+    TextureBuffer::WrapMode mode
+)
+{
+    glBindTexture(GL_TEXTURE_3D, id_);
+    glTexParameteri
+    (
+        GL_TEXTURE_3D, 
+        wrapIndexToGLint_.at(index), 
+        wrapModeToGLint_.at(mode)
+    );
+    wrapModes_[index] = mode;
+}
+
+void OpenGLTextureBuffer3D::setMagFilterMode
+(
+    TextureBuffer::FilterMode mode
+)
+{
+    glBindTexture(GL_TEXTURE_3D, id_);
+    glTexParameteri
+    (
+        GL_TEXTURE_3D, 
+        GL_TEXTURE_MAG_FILTER, 
+        filterModeToGLint_.at(mode)
+    );
+    magFilterMode_ = mode;
+}
+
+void OpenGLTextureBuffer3D::setMinFilterMode
+(
+    TextureBuffer::FilterMode mode
+)
+{
+    if // Setting a mipmap based filtering mode to an unsigned int texture
+       // format will render it unusable/unwritable/unreadable (as long as a
+       // mipmap based filter mode is set). Thus, prevent such filtering modes
+       // to be set in such a scenario
+    (
+        isInternalFormatUnsigned() &&
+        (
+            mode != TextureBuffer::FilterMode::Nearest &&
+            mode != TextureBuffer::FilterMode::Linear
+        )
+    )
+        return;
+
+    glBindTexture(GL_TEXTURE_3D, id_);
+    if 
+    (
+        mode != TextureBuffer::FilterMode::Nearest &&
+        mode != TextureBuffer::FilterMode::Linear
+    )
+        glGenerateMipmap(GL_TEXTURE_3D);
+    glTexParameteri
+    (
+        GL_TEXTURE_3D, 
+        GL_TEXTURE_MIN_FILTER, 
+        filterModeToGLint_.at(mode)
+    );
+    minFilterMode_ = mode;
+}
+
+void OpenGLTextureBuffer3D::bind(uint32_t unit)
+{
+    glActiveTexture(GL_TEXTURE0+unit);
+    glBindTexture(GL_TEXTURE_3D, id_);
+}
+
+void OpenGLTextureBuffer3D::bindImage
+(
+    uint32_t unit, 
+    uint32_t level, 
+    ImageBindMode mode
+)
+{
+    glBindImageTexture
+    (
+        unit, 
+        id_, 
+        level, 
+        GL_TRUE, // Layered 
+        0, 
+        OpenGLImageBindMode(mode), 
+        OpenGLInternalFormat(internalFormat_)
+    );
+}
+
+void OpenGLTextureBuffer3D::unbind()
+{
+    glBindTexture(GL_TEXTURE_3D, 0);
+}
+
+void OpenGLTextureBuffer3D::unbindImage()
+{
+    glBindImageTexture
+    (
+        0, 
+        id_, 
+        0, 
+        GL_TRUE, // Layered 
+        0, 
+        GL_READ_WRITE, 
+        OpenGLInternalFormat(internalFormat_)
+    );
+}
+
+#define READ_DATA(id, dataType, glDataType)                                 \
+    unsigned int size = width_*height_*depth_*nChannels_;                   \
+    GLint glFormat = OpenGLFormat(internalFormat_);                         \
+    bool resetAlignment = false;                                            \
+    if (glFormat != GL_RGBA && glFormat != GL_RGBA_INTEGER)                 \
+    {                                                                       \
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);                                \
+        resetAlignment = true;                                              \
+    }                                                                       \
+    else                                                                    \
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);                                \
+    if (allocate)                                                           \
+        data = new dataType[size];                                          \
+    glBindTexture(GL_TEXTURE_3D, id);                                       \
+    glGetTexImage(GL_TEXTURE_3D, 0, glFormat, glDataType, data);            \
+    glBindTexture(GL_TEXTURE_3D, 0);                                        \
+    if (resetAlignment)                                                     \
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+
+void OpenGLTextureBuffer3D::readData(unsigned char*& data, bool allocate)
+{
+    READ_DATA(id_, unsigned char, GL_UNSIGNED_BYTE)
+}
+
+void OpenGLTextureBuffer3D::readData(unsigned int*& data, bool allocate)
+{
+    READ_DATA(id_, unsigned int, GL_UNSIGNED_INT)
+}
+
+void OpenGLTextureBuffer3D::readData(float*& data, bool allocate)
+{
+    READ_DATA(id_, float, GL_FLOAT)
+}
+
+void OpenGLTextureBuffer3D::updateMipmap(bool onlyIfRequiredByFilterMode)
+{
+    if 
+    (
+        onlyIfRequiredByFilterMode &&
+        (
+            minFilterMode_ == FilterMode::Nearest ||
+            minFilterMode_ == FilterMode::Linear
+        )
+    )
+        return;
+    glBindTexture(GL_TEXTURE_3D, id_);
+    glGenerateMipmap(GL_TEXTURE_3D);
+}
+
+//----------------------------------------------------------------------------//
+// Framebuffer ---------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
 OpenGLFramebuffer::OpenGLFramebuffer
@@ -1242,8 +1509,10 @@ void OpenGLVertexBuffer::setLayout
             case (Shader::Variable::Type::Mat4) :
                 return GL_FLOAT;
             case (Shader::Variable::Type::Sampler2D) :
+            case (Shader::Variable::Type::Sampler3D) :
             case (Shader::Variable::Type::SamplerCube) :
             case (Shader::Variable::Type::Image2D) :
+            case (Shader::Variable::Type::Image3D) :
             case (Shader::Variable::Type::ImageCube) :
                 throw std::runtime_error("Invalid vertex buffer element type");
         }

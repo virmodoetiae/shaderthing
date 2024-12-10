@@ -784,6 +784,56 @@ bool CubeMapBuffer::validFaces(const TextureBuffer2D* faces[6])
     return true;
 }
 
+// Texture3D -----------------------------------------------------------------//
+
+TextureBuffer3D* TextureBuffer3D::create
+(
+    const unsigned char* data, 
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth,
+    InternalFormat internalFormat
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    try
+    {
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLTextureBuffer3D
+                (
+                    data, 
+                    width, 
+                    height,
+                    depth,
+                    internalFormat
+                );
+        }
+    }
+    catch(...){}
+    return nullptr;
+}
+
+uint32_t TextureBuffer3D::maxSize()
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return 0;
+    try
+    {
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return OpenGLTextureBuffer3D::maxSize();
+        }
+    }
+    catch(...){}
+    return 0;
+}
+
 // Framebuffer ---------------------------------------------------------------//
 
 Framebuffer* Framebuffer::activeOne_ = nullptr;

@@ -537,8 +537,10 @@ void Layer::loadAll
             if 
             (
                 uniform->type == Uniform::Type::Sampler2D ||
+                uniform->type == Uniform::Type::Sampler3D ||
                 uniform->type == Uniform::Type::SamplerCube ||
                 uniform->type == Uniform::Type::Image2D ||
+                uniform->type == Uniform::Type::Image3D ||
                 uniform->type == Uniform::Type::ImageCube
             )
             {
@@ -657,6 +659,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
             switch (u->type)
             {
                 case vir::Shader::Variable::Type::Image2D :
+                case vir::Shader::Variable::Type::Image3D :
                 case vir::Shader::Variable::Type::ImageCube :
                 {
                     auto resource = u->getValuePtr<Resource>();
@@ -672,6 +675,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                     break;
                 }
                 case vir::Shader::Variable::Type::Sampler2D :
+                case vir::Shader::Variable::Type::Sampler3D :
                 case vir::Shader::Variable::Type::SamplerCube :
                 {
                     auto resource = u->getValuePtr<Resource>();
@@ -698,6 +702,13 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                 header += "uniform vec2 "+u->name+"Resolution;\n";
                 ++nLines;
             }
+            else if (u->type == vir::Shader::Variable::Type::Sampler3D || 
+                     u->type == vir::Shader::Variable::Type::Image3D)
+            {
+                header += "uniform vec3 "+u->name+"Resolution;\n";
+                ++nLines;
+            }
+            
         }
     };
 
@@ -1107,11 +1118,13 @@ void Layer::renderShader
             bool isSampler
             (
                 u->type == vir::Shader::Variable::Type::Sampler2D ||
+                u->type == vir::Shader::Variable::Type::Sampler3D ||
                 u->type == vir::Shader::Variable::Type::SamplerCube
             );
             bool isImage
             (
                 u->type == vir::Shader::Variable::Type::Image2D ||
+                u->type == vir::Shader::Variable::Type::Image3D ||
                 u->type == vir::Shader::Variable::Type::ImageCube
             );
             if 
@@ -1197,6 +1210,18 @@ void Layer::renderShader
                 (
                     u->name+"Resolution", 
                     {resource->width(), resource->height()}
+                );
+            }
+            else if 
+            (
+                u->type == vir::Shader::Variable::Type::Sampler3D ||
+                u->type == vir::Shader::Variable::Type::Image3D
+            )
+            {
+                shader->setUniformFloat3
+                (
+                    u->name+"Resolution", 
+                    {resource->width(), resource->height(), resource->depth()}
                 );
             }
         }
@@ -1291,8 +1316,10 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
         if 
         (
             uniform->type != Uniform::Type::Sampler2D &&
+            uniform->type != Uniform::Type::Sampler3D &&
             uniform->type != Uniform::Type::SamplerCube && 
             uniform->type != Uniform::Type::Image2D &&
+            uniform->type != Uniform::Type::Image3D &&
             uniform->type != Uniform::Type::ImageCube
         )
             continue;

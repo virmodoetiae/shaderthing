@@ -38,8 +38,10 @@ std::unordered_map<Shader::Variable::Type, std::string>
     {Shader::Variable::Type::Mat3, "mat3"},
     {Shader::Variable::Type::Mat4, "mat4"},
     {Shader::Variable::Type::Sampler2D, "sampler2D"},
+    {Shader::Variable::Type::Sampler3D, "sampler3D"},
     {Shader::Variable::Type::SamplerCube, "samplerCube"},
     {Shader::Variable::Type::Image2D, "image2D"},
+    {Shader::Variable::Type::Image3D, "image3D"},
     {Shader::Variable::Type::ImageCube, "imageCube"}
 };
 
@@ -59,8 +61,10 @@ std::unordered_map<std::string, Shader::Variable::Type>
     {"mat3", Shader::Variable::Type::Mat3},
     {"mat4", Shader::Variable::Type::Mat4},
     {"sampler2D", Shader::Variable::Type::Sampler2D},
+    {"sampler3D", Shader::Variable::Type::Sampler3D},
     {"samplerCube", Shader::Variable::Type::SamplerCube},
     {"image2D", Shader::Variable::Type::Image2D},
+    {"image3D", Shader::Variable::Type::Image3D},
     {"imageCube", Shader::Variable::Type::ImageCube}
 };
 
@@ -79,8 +83,10 @@ std::vector<Shader::Variable::Type> Shader::uniformTypes =
     Shader::Variable::Type::Mat3,
     Shader::Variable::Type::Mat4,
     Shader::Variable::Type::Sampler2D,
+    Shader::Variable::Type::Sampler3D,
     Shader::Variable::Type::SamplerCube,
     Shader::Variable::Type::Image2D,
+    Shader::Variable::Type::Image3D,
     Shader::Variable::Type::ImageCube
 };
 
@@ -99,8 +105,10 @@ std::vector<std::string> Shader::uniformNames =
     "mat3",
     "mat4",
     "sampler2D",
+    "sampler3D",
     "samplerCube",
     "image2D",
+    "image3D",
     "imageCube"
 };
 
@@ -162,6 +170,10 @@ void Shader::Uniform::resetValue()
         case Variable::Type::Sampler2D :
         case Variable::Type::Image2D :
             delete static_cast<TextureBuffer2D*>(value_);
+            break;
+        case Variable::Type::Sampler3D :
+        case Variable::Type::Image3D :
+            delete static_cast<TextureBuffer3D*>(value_);
             break;
         case Variable::Type::SamplerCube :
         case Variable::Type::ImageCube :

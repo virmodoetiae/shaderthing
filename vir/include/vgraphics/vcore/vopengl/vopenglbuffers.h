@@ -114,6 +114,36 @@ public:
     void readData(float*& data, bool allocate=false) override;
 };
 
+class OpenGLTextureBuffer3D : public TextureBuffer3D
+{
+public:
+    OpenGLTextureBuffer3D
+    (
+        const unsigned char* data, 
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        InternalFormat internalFormat
+    );
+    ~OpenGLTextureBuffer3D();
+    static uint32_t maxSize();
+    void setWrapMode
+    (
+        uint32_t index,
+        WrapMode value
+    ) override;
+    void setMagFilterMode(FilterMode mode) override;
+    void setMinFilterMode(FilterMode mode) override;
+    void updateMipmap(bool onlyIfRequiredByFilterMode=true) override;
+    void bind(uint32_t unit) override;
+    void bindImage(uint32_t unit, uint32_t level, ImageBindMode mode) override;
+    void unbind() override;
+    void unbindImage() override;
+    void readData(unsigned char*& data, bool allocate=false) override;
+    void readData(unsigned int*& data, bool allocate=false) override;
+    void readData(float*& data, bool allocate=false) override;
+};
+
 class OpenGLFramebuffer : public Framebuffer
 {
 public:
