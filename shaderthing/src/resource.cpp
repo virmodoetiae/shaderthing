@@ -769,8 +769,10 @@ bool Texture3DResource::set
     );
     if (native == nullptr)
         return false;
-    if (native_ != nullptr) delete native_;
-        native_ = native;
+    if (native_ != nullptr) 
+        delete native_;
+    native_ = native;
+    return true;
 }
 
 Texture3DResource::~Texture3DResource()
@@ -1543,10 +1545,13 @@ the project)");
         // limitations so they are omitted
         static std::vector<InternalFormat> supportedFormats = 
         {
+            InternalFormat::R_UNI_8,
             InternalFormat::R_UI_32,
             InternalFormat::R_SF_32,
+            InternalFormat::RG_UNI_8,
             InternalFormat::RG_UI_32,
             InternalFormat::RG_SF_32,
+            InternalFormat::RGBA_UNI_8,
             InternalFormat::RGBA_UI_32,
             InternalFormat::RGBA_SF_32
         };

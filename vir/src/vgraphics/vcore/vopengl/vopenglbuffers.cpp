@@ -245,7 +245,10 @@ TextureBuffer2D(data, width, height, internalFormat)
         GLint swizzleMask[] = {GL_RED, GL_GREEN, GL_BLUE, GL_ONE};
         glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
     }
+    int maxLevel = std::floor(std::log2(std::min(width, height)));
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, maxLevel);
     glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
     width_ = width;
     height_ = height;
     nChannels_ = TextureBuffer::nChannels(internalFormat);
@@ -270,6 +273,7 @@ void OpenGLTextureBuffer2D::setWrapMode
         wrapModeToGLint_.at(mode)
     );
     wrapModes_[index] = mode;
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void OpenGLTextureBuffer2D::setMagFilterMode
@@ -285,6 +289,7 @@ void OpenGLTextureBuffer2D::setMagFilterMode
         filterModeToGLint_.at(mode)
     );
     magFilterMode_ = mode;
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void OpenGLTextureBuffer2D::setMinFilterMode
@@ -319,6 +324,7 @@ void OpenGLTextureBuffer2D::setMinFilterMode
         filterModeToGLint_.at(mode)
     );
     minFilterMode_ = mode;
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void OpenGLTextureBuffer2D::bind(uint32_t unit)
@@ -412,6 +418,7 @@ void OpenGLTextureBuffer2D::updateMipmap(bool onlyIfRequiredByFilterMode)
         return;
     glBindTexture(GL_TEXTURE_2D, id_);
     glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 //----------------------------------------------------------------------------//
@@ -586,8 +593,7 @@ void OpenGLAnimatedTextureBuffer2D::updateMipmap(bool onlyIfRequiredByFilterMode
         )
     )
         return;
-    glBindTexture(GL_TEXTURE_2D, frame_->id());
-    glGenerateMipmap(GL_TEXTURE_2D);
+    frame_->updateMipmap();
 }
 
 //----------------------------------------------------------------------------//
@@ -654,7 +660,10 @@ OpenGLCubeMapBuffer::OpenGLCubeMapBuffer
             wrapModeToGLint_.at(wrapModes_[i])
         );
     }
+    int maxLevel = std::floor(std::log2(std::min(width, height)));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, maxLevel);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     width_ = width;
     height_ = height;
     nChannels_ = TextureBuffer::nChannels(internalFormat);
@@ -723,6 +732,7 @@ void OpenGLCubeMapBuffer::setWrapMode
         wrapModeToGLint_.at(mode)
     );
     wrapModes_[index] = mode;
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 void OpenGLCubeMapBuffer::setMagFilterMode
@@ -738,6 +748,7 @@ void OpenGLCubeMapBuffer::setMagFilterMode
         filterModeToGLint_.at(mode)
     );
     magFilterMode_ = mode;
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 void OpenGLCubeMapBuffer::setMinFilterMode
@@ -772,6 +783,7 @@ void OpenGLCubeMapBuffer::setMinFilterMode
         filterModeToGLint_.at(mode)
     );
     minFilterMode_ = mode;
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 void OpenGLCubeMapBuffer::readData(unsigned char*& data, bool allocate)
@@ -806,8 +818,9 @@ void OpenGLCubeMapBuffer::updateMipmap(bool onlyIfRequiredByFilterMode)
         )
     )
         return;
-    glBindTexture(GL_TEXTURE_2D, id_);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, id_);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 //----------------------------------------------------------------------------//
@@ -900,7 +913,10 @@ TextureBuffer3D(data, width, height, depth, internalFormat)
         GLint swizzleMask[] = {GL_RED, GL_GREEN, GL_BLUE, GL_ONE};
         glTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
     }
+    int maxLevel = std::floor(std::log2(std::min(std::min(width, height), depth)));
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, maxLevel);
     glGenerateMipmap(GL_TEXTURE_3D);
+    glBindTexture(GL_TEXTURE_3D, 0);
     width_ = width;
     height_ = height;
     depth_ = depth;
@@ -933,6 +949,7 @@ void OpenGLTextureBuffer3D::setWrapMode
         wrapModeToGLint_.at(mode)
     );
     wrapModes_[index] = mode;
+    glBindTexture(GL_TEXTURE_3D, 0);
 }
 
 void OpenGLTextureBuffer3D::setMagFilterMode
@@ -948,6 +965,7 @@ void OpenGLTextureBuffer3D::setMagFilterMode
         filterModeToGLint_.at(mode)
     );
     magFilterMode_ = mode;
+    glBindTexture(GL_TEXTURE_3D, 0);
 }
 
 void OpenGLTextureBuffer3D::setMinFilterMode
@@ -982,6 +1000,7 @@ void OpenGLTextureBuffer3D::setMinFilterMode
         filterModeToGLint_.at(mode)
     );
     minFilterMode_ = mode;
+    glBindTexture(GL_TEXTURE_3D, 0);
 }
 
 void OpenGLTextureBuffer3D::bind(uint32_t unit)
@@ -1028,7 +1047,7 @@ void OpenGLTextureBuffer3D::unbindImage()
     );
 }
 
-#define READ_DATA(id, dataType, glDataType)                                 \
+#define READ_DATA_3D(id, dataType, glDataType)                              \
     unsigned int size = width_*height_*depth_*nChannels_;                   \
     GLint glFormat = OpenGLFormat(internalFormat_);                         \
     bool resetAlignment = false;                                            \
@@ -1049,17 +1068,17 @@ void OpenGLTextureBuffer3D::unbindImage()
 
 void OpenGLTextureBuffer3D::readData(unsigned char*& data, bool allocate)
 {
-    READ_DATA(id_, unsigned char, GL_UNSIGNED_BYTE)
+    READ_DATA_3D(id_, unsigned char, GL_UNSIGNED_BYTE)
 }
 
 void OpenGLTextureBuffer3D::readData(unsigned int*& data, bool allocate)
 {
-    READ_DATA(id_, unsigned int, GL_UNSIGNED_INT)
+    READ_DATA_3D(id_, unsigned int, GL_UNSIGNED_INT)
 }
 
 void OpenGLTextureBuffer3D::readData(float*& data, bool allocate)
 {
-    READ_DATA(id_, float, GL_FLOAT)
+    READ_DATA_3D(id_, float, GL_FLOAT)
 }
 
 void OpenGLTextureBuffer3D::updateMipmap(bool onlyIfRequiredByFilterMode)
@@ -1075,6 +1094,7 @@ void OpenGLTextureBuffer3D::updateMipmap(bool onlyIfRequiredByFilterMode)
         return;
     glBindTexture(GL_TEXTURE_3D, id_);
     glGenerateMipmap(GL_TEXTURE_3D);
+    glBindTexture(GL_TEXTURE_3D, 0);
 }
 
 //----------------------------------------------------------------------------//
