@@ -100,6 +100,28 @@ const std::unordered_map<TextureBuffer::InternalFormat, TextureBuffer::DataType>
     {TextureBuffer::InternalFormat::RGBA_SF_32, TextureBuffer::DataType::Float},
 };
 
+const std::unordered_map<TextureBuffer::InternalFormat, uint32_t> 
+    TextureBuffer::internalFormatToBytes =
+{
+    {TextureBuffer::InternalFormat::Undefined,  0},
+    {TextureBuffer::InternalFormat::R_UNI_8,    1},
+    {TextureBuffer::InternalFormat::R_UI_8,     1},
+    {TextureBuffer::InternalFormat::R_UI_32,    4},
+    {TextureBuffer::InternalFormat::R_SF_32,    4},
+    {TextureBuffer::InternalFormat::RG_UNI_8,   2},
+    {TextureBuffer::InternalFormat::RG_UI_8,    2},
+    {TextureBuffer::InternalFormat::RG_UI_32,   8},
+    {TextureBuffer::InternalFormat::RG_SF_32,   8},
+    {TextureBuffer::InternalFormat::RGB_UNI_8,  3},
+    {TextureBuffer::InternalFormat::RGB_UI_8,   3},
+    {TextureBuffer::InternalFormat::RGB_UI_32,  12},
+    {TextureBuffer::InternalFormat::RGB_SF_32,  12},
+    {TextureBuffer::InternalFormat::RGBA_UNI_8, 4},
+    {TextureBuffer::InternalFormat::RGBA_UI_8,  4},
+    {TextureBuffer::InternalFormat::RGBA_UI_32, 16},
+    {TextureBuffer::InternalFormat::RGBA_SF_32, 16},
+};
+
 const std::unordered_map<TextureBuffer::WrapMode, std::string> 
     TextureBuffer::wrapModeToName =
 {

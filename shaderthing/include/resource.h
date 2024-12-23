@@ -187,6 +187,12 @@ private:
         const bool resetValues,
         const ImVec2 buttonSize=ImVec2(0,0)
     );
+    static void createOrResizeOrReformatTextureMemoryEstimateGui
+    (
+        uint64_t textureSize,
+        InternalFormat internalFormat,
+        bool is2D
+    );
     static bool createOrEditAnimationButtonGui
     (
         Resource*& resource,

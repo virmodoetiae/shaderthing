@@ -77,6 +77,8 @@ public:
         internalFormatToIsUnsigned;
     static const std::unordered_map<InternalFormat, DataType> 
         internalFormatToDataType;
+    static const std::unordered_map<InternalFormat, uint32_t> 
+        internalFormatToBytes;
     static const std::unordered_map<WrapMode, std::string> wrapModeToName;
     static const std::unordered_map<FilterMode, std::string> filterModeToName;
 protected:

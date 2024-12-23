@@ -1466,6 +1466,15 @@ the project)");
             resolution.y = resource->height();
             internalFormat = ((Texture2DResource*)resource)->internalFormat();
         }
+        if (!disabled || resource == nullptr)
+        {
+            createOrResizeOrReformatTextureMemoryEstimateGui
+            (
+                uint64_t(resolution.x)*uint64_t(resolution.y),
+                internalFormat,
+                true
+            );
+        }
         if (disabled)
             ImGui::EndDisabled();
         if (enablePopup)
@@ -1528,8 +1537,7 @@ the project)");
             )
         )
         {
-            // The /2 is just for safety
-            int maxSize = vir::TextureBuffer3D::maxSize()/2;
+            int maxSize = std::min(vir::TextureBuffer3D::maxSize(), 2048u);
             resolution.x = std::min(std::max(resolution.x, 1), maxSize);
             resolution.y = std::min(std::max(resolution.y, 1), maxSize);
             resolution.z = std::min(std::max(resolution.z, 1), maxSize);
@@ -1665,12 +1673,84 @@ the project)");
             resolution.z = resource->depth();
             internalFormat = ((Texture3DResource*)resource)->internalFormat();
         }
+        if (!disabled || resource == nullptr)
+        {
+            createOrResizeOrReformatTextureMemoryEstimateGui
+            (
+                uint64_t(resolution.x)*uint64_t(resolution.y)*uint64_t(resolution.z),
+                internalFormat,
+                false
+            );
+        }
         if (disabled)
             ImGui::EndDisabled();
         if (enablePopup)
             ImGui::EndPopup();
     }
     return valid;
+}
+
+void Resource::createOrResizeOrReformatTextureMemoryEstimateGui
+(
+    uint64_t textureSize,
+    InternalFormat internalFormat,
+    bool is2D
+)
+{
+    double requiredMemory = textureSize;
+    double memoryPerPixel = 
+        vir::TextureBuffer::internalFormatToBytes.at(internalFormat);
+    requiredMemory *= memoryPerPixel;
+    // Show a warning for good measure when creating beefier textures,
+    // threshold arbitrarily set at 64 MiB of VRAM
+    if (requiredMemory >= 67108864)
+    {
+        // Mip maps occupy a theoretical maximum of an additional 
+        // 1/8 + 1/64 + 1/512 + 1/4096 + 1/... = 1/7 of the memory
+        // occupied by the base level of a 3D texture, while for
+        // 2D textures this is 1/4 + 1/16 + 1/32 + ... = 1/3 of the
+        // memory occupied by the base level
+        double mipmapsMemory = 
+            std::floor(requiredMemory/memoryPerPixel/(is2D?3:7))*memoryPerPixel;
+        int k1 = 0;
+        while (requiredMemory >= 1024)
+        {
+            requiredMemory /= 1024;
+            k1++;
+        }
+        int k2 = 0;
+        while (mipmapsMemory >= 1024)
+        {
+            mipmapsMemory /= 1024;
+            k2++;
+        }
+        static std::map<int, const char*> uom = 
+        {
+            {0, "byte(s)"},
+            {1, "KiB"}, 
+            {2, "MiB"}, 
+            {3, "GiB"}, 
+            {4, "TiB"}, // Anything beyond this is pure fantasy
+            {5, "PiB"},
+            {5, "EiB"},
+            {6, "ZiB"}
+        };
+        ImGui::PushStyleColor(ImGuiCol_Text, {1.f,1.f,0.f,1.f});
+        ImGui::Text(
+R"(This texture will occupy at least 
+%.1f %s of free VRAM, and up to 
+an additional %.1f %s for mipmaps. 
+Please, make sure your system has 
+at least the reported amount of 
+free VRAM to avoid program and/or 
+system crashes)",
+            requiredMemory, 
+            uom.at(k1),
+            mipmapsMemory, 
+            uom.at(k2)
+        );
+        ImGui::PopStyleColor();
+    }
 }
 
 //----------------------------------------------------------------------------//

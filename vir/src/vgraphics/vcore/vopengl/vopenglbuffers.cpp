@@ -913,9 +913,12 @@ TextureBuffer3D(data, width, height, depth, internalFormat)
         GLint swizzleMask[] = {GL_RED, GL_GREEN, GL_BLUE, GL_ONE};
         glTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
     }
-    int maxLevel = std::floor(std::log2(std::min(std::min(width, height), depth)));
+    int maxLevel = 
+        std::floor(std::log2(std::min(std::min(width, height), depth)));
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, maxLevel);
-    glGenerateMipmap(GL_TEXTURE_3D);
+    // Better not to generate mipmaps by default due to the weird observed RAM 
+    // usage after they are created (magic driver issues...? Who knows?)
+    //glGenerateMipmap(GL_TEXTURE_3D);
     glBindTexture(GL_TEXTURE_3D, 0);
     width_ = width;
     height_ = height;
