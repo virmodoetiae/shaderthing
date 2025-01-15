@@ -97,6 +97,7 @@ public:
     virtual InternalFormat internalFormat() const = 0;
     virtual DataType     dataType() const = 0;
     virtual std::string  internalFormatName() const = 0;
+    virtual uint64_t     maxMemoryFootprint() const = 0;
     virtual bool         isInternalFormatUnsigned() const = 0;
     virtual void         setWrapMode(int index, WrapMode mode) = 0;
     virtual void         setMagFilterMode(FilterMode mode) = 0;
@@ -268,6 +269,7 @@ public:
     void readData(unsigned int*& data, bool allocate=false) const {native_->readData(data, allocate);}
     void readData(float*& data, bool allocate=false) const {native_->readData(data, allocate);}
     bool hasRawData() const {return rawData_ != nullptr;}
+    uint64_t maxMemoryFootprint() const override {return native_->maxMemoryFootprint();}
     DECLARE_OVERRIDE_VIRTUALS
 };
 
@@ -302,6 +304,7 @@ public:
     bool set(const std::vector<Texture2DResource*>& animationFrames);
     void update(const UpdateArgs& args) override;
     unsigned int frameId() const {return native_->frameId();}
+    uint64_t maxMemoryFootprint() const override {return native_->maxMemoryFootprint();}
     DECLARE_OVERRIDE_VIRTUALS
 };
 
@@ -324,6 +327,7 @@ class CubemapResource : public Resource
 public:
     ~CubemapResource();
     bool set(const Texture2DResource* faces[6]);
+    uint64_t maxMemoryFootprint() const override {return native_->maxMemoryFootprint();}
     DECLARE_OVERRIDE_VIRTUALS
 };
 
@@ -349,6 +353,7 @@ public:
     void readData(float*& data, bool allocate=false) const {native_->readData(data, allocate);}
     DECLARE_OVERRIDE_VIRTUALS
     unsigned int depth() const override {return native_->depth();}
+    uint64_t maxMemoryFootprint() const override {return native_->maxMemoryFootprint();}
 };
 
 class Layer;
@@ -379,6 +384,7 @@ public:
     InternalFormat internalFormat() const override {return (*native_)->colorBufferInternalFormat();}
     DataType     dataType() const override {return (*native_)->colorBufferDataType();}
     std::string  internalFormatName() const override {return vir::TextureBuffer::internalFormatToShortName.at((*native_)->colorBufferInternalFormat());}
+    uint64_t     maxMemoryFootprint() const override {return 0;}
     bool         isInternalFormatUnsigned() const override {return false;}
     void         setWrapMode(int index, WrapMode mode) override {(*native_)->setColorBufferWrapMode(index, mode);}
     void         setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}

@@ -126,7 +126,7 @@ public:
         InternalFormat internalFormat
     );
     ~OpenGLTextureBuffer3D();
-    static uint32_t maxSize();
+    static uint32_t maxSideSize();
     void setWrapMode
     (
         uint32_t index,

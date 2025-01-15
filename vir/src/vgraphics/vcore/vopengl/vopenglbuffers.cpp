@@ -931,7 +931,7 @@ OpenGLTextureBuffer3D::~OpenGLTextureBuffer3D()
     glDeleteTextures(1, &id_);
 }
 
-uint32_t OpenGLTextureBuffer3D::maxSize()
+uint32_t OpenGLTextureBuffer3D::maxSideSize()
 {
     GLint size;
     glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &size);

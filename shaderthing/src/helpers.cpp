@@ -178,6 +178,28 @@ unsigned char* readFileContents
     return data;
 }
 
+const char* autoRescaleMemoryValue(double& value)
+{
+    int k = 0;
+    while (value >= 1024)
+    {
+        value /= 1024;
+        k++;
+    }
+    static std::map<int, const char*> uom = 
+    {
+        {0, "byte(s)"},
+        {1, "KiB"}, 
+        {2, "MiB"}, 
+        {3, "GiB"}, 
+        {4, "TiB"},
+        {5, "PiB"},
+        {5, "EiB"},
+        {6, "ZiB"}
+    };
+    return uom.at(k);
+}
+
 std::string format(float value, unsigned int precision) 
 {
     char buffer[8]; 

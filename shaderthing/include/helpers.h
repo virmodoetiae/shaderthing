@@ -61,6 +61,8 @@ unsigned char* readFileContents
 
 std::string format(float value, unsigned int precision);
 
+const char* autoRescaleMemoryValue(double& value);
+
 void oneLineColorfulText
 (
     const std::string& text, 

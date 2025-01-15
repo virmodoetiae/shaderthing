@@ -283,6 +283,16 @@ TextureBuffer2D* TextureBuffer2D::create
     return buffer;
 }
 
+uint64_t TextureBuffer2D::maxMemoryFootprint() const
+{
+    return (uint64_t)width_*
+            (uint64_t)height_*
+            (uint64_t)internalFormatToBytes.at(internalFormat_)*
+            (4./3.); // Account for mipmaps (in 2D, the mipmaps are 1./3. of
+                     // of the total base texture size as it converges like
+                     // 1/(2^n)^2)
+}
+
 // AnimatedTexture2D ---------------------------------------------------------//
 
 AnimatedTextureBuffer2D::AnimatedTextureBuffer2D() : 
@@ -534,6 +544,17 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     }
     catch(...){}
     return nullptr;
+}
+
+uint64_t AnimatedTextureBuffer2D::maxMemoryFootprint() const
+{
+    return  (uint64_t)frames_.size()*
+            (uint64_t)width_*
+            (uint64_t)height_*
+            (uint64_t)internalFormatToBytes.at(internalFormat_)*
+            (4./3.); // Account for mipmaps (in 2D, the mipmaps are 1./3. of
+                     // of the total base texture size as it converges like
+                     // 1/(2^n)^2)
 }
 
 TextureBuffer2D* AnimatedTextureBuffer2D::nextFrame() 
@@ -806,6 +827,15 @@ bool CubeMapBuffer::validFaces(const TextureBuffer2D* faces[6])
     return true;
 }
 
+uint64_t CubeMapBuffer::maxMemoryFootprint() const
+{
+    return  (uint64_t)width_*
+            (uint64_t)height_*
+            (uint64_t)internalFormatToBytes.at(internalFormat_)*
+            (8l); // 6 faces, each 4/3 of the base size to account for 
+                  // mipmaps, so 6*4/3 = 8
+}
+
 // Texture3D -----------------------------------------------------------------//
 
 TextureBuffer3D* TextureBuffer3D::create
@@ -839,7 +869,7 @@ TextureBuffer3D* TextureBuffer3D::create
     return nullptr;
 }
 
-uint32_t TextureBuffer3D::maxSize()
+uint32_t TextureBuffer3D::maxSideSize()
 {
     Window* window = nullptr;
     if (!GlobalPtr<Window>::valid(window))
@@ -849,11 +879,22 @@ uint32_t TextureBuffer3D::maxSize()
         switch(window->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return OpenGLTextureBuffer3D::maxSize();
+                return OpenGLTextureBuffer3D::maxSideSize();
         }
     }
     catch(...){}
     return 0;
+}
+
+uint64_t TextureBuffer3D::maxMemoryFootprint() const
+{
+    return  (uint64_t)width_*
+            (uint64_t)height_*
+            (uint64_t)depth_*
+            (uint64_t)internalFormatToBytes.at(internalFormat_)*
+            (8./7.); // Account for mipmaps (in 3D, the mipmaps are 1./7. of
+                     // of the total base texture size as it converges like
+                     // 1/(2^n)^3)
 }
 
 // Framebuffer ---------------------------------------------------------------//

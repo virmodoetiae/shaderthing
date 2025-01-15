@@ -128,6 +128,8 @@ public:
     virtual void setMagFilterMode(FilterMode mode) = 0;
     virtual void setMinFilterMode(FilterMode mode) = 0;
     virtual void updateMipmap(bool onlyIfRequiredByFilterMode=true) = 0;
+    // Maximum GPU memory that can be occupied by this texture buffer (in bytes)
+    virtual uint64_t maxMemoryFootprint() const = 0;
     bool operator==(const TextureBuffer& rhs) const
     {
         return id_ == rhs.id();
@@ -238,6 +240,7 @@ public:
     virtual void readData(float*& data, bool allocate=false) = 0;
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
+    uint64_t maxMemoryFootprint() const override;
 };
 
 //----------------------------------------------------------------------------//
@@ -301,6 +304,7 @@ public:
         std::vector<TextureBuffer2D*>& frames,
         bool gainFrameOwnership = false
     );
+    uint64_t maxMemoryFootprint() const override;
     // Current animation time
     float time() const {return time_;}
     // Number of frames
@@ -373,6 +377,7 @@ public:
     );
     static bool validFace(const TextureBuffer2D* face);
     static bool validFaces(const TextureBuffer2D* faces[6]);
+    uint64_t maxMemoryFootprint() const override;
 };
 
 //----------------------------------------------------------------------------//
@@ -398,7 +403,7 @@ protected:
     }
 public:
     virtual ~TextureBuffer3D(){}
-    static uint32_t maxSize();
+    static uint32_t maxSideSize();
     static TextureBuffer3D* create
     (
         const unsigned char* data, 
@@ -422,6 +427,7 @@ public:
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}
     uint32_t depth() const {return depth_;}
+    uint64_t maxMemoryFootprint() const override;
 };
 
 //----------------------------------------------------------------------------//

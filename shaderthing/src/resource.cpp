@@ -1396,6 +1396,17 @@ the project)");
         bool disabled = false;
         if (resource != nullptr)
         {
+            ImGui::Text("VRAM footprint      ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text("VRAM memory occupied by this texture");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            double maxMemoryFootprint = resource->maxMemoryFootprint();
+            auto uom = Helpers::autoRescaleMemoryValue(maxMemoryFootprint);
+            ImGui::Text("%.1f %s", maxMemoryFootprint, uom);
+            
             if 
             (
                 (int)resource->width() == resolution.x && 
@@ -1537,7 +1548,7 @@ the project)");
             )
         )
         {
-            int maxSize = std::min(vir::TextureBuffer3D::maxSize(), 2048u);
+            int maxSize = std::min(vir::TextureBuffer3D::maxSideSize(), 2048u);
             resolution.x = std::min(std::max(resolution.x, 1), maxSize);
             resolution.y = std::min(std::max(resolution.y, 1), maxSize);
             resolution.z = std::min(std::max(resolution.z, 1), maxSize);
@@ -1597,6 +1608,17 @@ the project)");
         bool disabled = false;
         if (resource != nullptr)
         {
+            ImGui::Text("VRAM footprint      ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text("VRAM memory occupied by this texture");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            double maxMemoryFootprint = resource->maxMemoryFootprint();
+            auto uom = Helpers::autoRescaleMemoryValue(maxMemoryFootprint);
+            ImGui::Text("%.1f %s", maxMemoryFootprint, uom);
+
             if 
             (
                 (int)resource->width() == resolution.x && 
@@ -1712,29 +1734,8 @@ void Resource::createOrResizeOrReformatTextureMemoryEstimateGui
         // memory occupied by the base level
         double mipmapsMemory = 
             std::floor(requiredMemory/memoryPerPixel/(is2D?3:7))*memoryPerPixel;
-        int k1 = 0;
-        while (requiredMemory >= 1024)
-        {
-            requiredMemory /= 1024;
-            k1++;
-        }
-        int k2 = 0;
-        while (mipmapsMemory >= 1024)
-        {
-            mipmapsMemory /= 1024;
-            k2++;
-        }
-        static std::map<int, const char*> uom = 
-        {
-            {0, "byte(s)"},
-            {1, "KiB"}, 
-            {2, "MiB"}, 
-            {3, "GiB"}, 
-            {4, "TiB"}, // Anything beyond this is pure fantasy
-            {5, "PiB"},
-            {5, "EiB"},
-            {6, "ZiB"}
-        };
+        auto uom1 = Helpers::autoRescaleMemoryValue(requiredMemory);
+        auto uom2 = Helpers::autoRescaleMemoryValue(mipmapsMemory);
         ImGui::PushStyleColor(ImGuiCol_Text, {1.f,1.f,0.f,1.f});
         ImGui::Text(
 R"(This texture will occupy at least 
@@ -1745,9 +1746,9 @@ at least the reported amount of
 free VRAM to avoid program and/or 
 system crashes)",
             requiredMemory, 
-            uom.at(k1),
+            uom1,
             mipmapsMemory, 
-            uom.at(k2)
+            uom2
         );
         ImGui::PopStyleColor();
     }
