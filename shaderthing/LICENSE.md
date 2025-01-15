@@ -1,4 +1,4 @@
-Copyright © 2024 Stefan Radman (a.k.a., virmodoetiae)
+Copyright © 2025 Stefan Radman (a.k.a., virmodoetiae)
 
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the author be held liable for any damages arising from the use
