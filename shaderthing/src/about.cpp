@@ -136,7 +136,7 @@ void About::renderGui()
     //--------------------------------------------------------------------------
     ImGui::SeparatorText("License");
     ImGui::Text(
-"Copyright © 2024 Stefan Radman (Стефан Радман, a.k.a., virmodoetiae)");
+"Copyright © 2025 Stefan Radman (Стефан Радман, a.k.a., virmodoetiae)");
     ImGui::Dummy({-1, vSpace});
     ImGui::Text(
 "This software is provided \"as-is\", without any express or implied warranty. "
