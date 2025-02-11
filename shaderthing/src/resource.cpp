@@ -20,6 +20,7 @@
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/uniform.h"
 
 #include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
@@ -103,6 +104,10 @@ void Resource::update(std::vector<Resource*>& resources, const UpdateArgs& args)
         auto newResource = Resource::create(filepath);
         if (newResource != nullptr)
         {
+            for (auto uniform : resource->clientUniforms_)
+            {
+                uniform->setValuePtr<const Resource>(newResource);
+            }
             if (resource != nullptr)
                 delete resource;
             resource = newResource;

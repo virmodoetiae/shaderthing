@@ -1058,6 +1058,26 @@ motion only if the left mouse button (LMB) is held)");
             l->rendering_.shader->setUniform##Type(uniform->name, value);   \
         }                                                                   \
 
+#define CHECK_RESOURCE_SELECTED                                             \
+    if (ImGui::Selectable(r->name().c_str()))                               \
+    {                                                                       \
+        if (resource != nullptr)                                            \
+        {                                                                   \
+            Layer::Flags::requestRecompilation =                            \
+                Layer::Flags::requestRecompilation ||                       \
+                resource->isInternalFormatUnsigned() !=                     \
+                r->isInternalFormatUnsigned();                              \
+            if (resource->isUsedByUniform(uniform))                         \
+                resource->removeClientUniform(uniform);                     \
+        }                                                                   \
+        else                                                                \
+            Layer::Flags::requestRecompilation = true;                      \
+        if (!r->isUsedByUniform(uniform))                                   \
+            r->addClientUniform(uniform);                                   \
+        uniform->setValuePtr<const Resource>(r);                            \
+        sharedUniforms.setUserAction(true);                                 \
+    }
+
         START_COLUMN // Value column -------------------------------------------
         switch(uniform->type)
         {
@@ -1612,7 +1632,7 @@ motion only if the left mouse button (LMB) is held)");
                 );
                 if (ImGui::BeginCombo("##tx2DSelector", name.c_str()))
                 {
-                    for(auto r : resources)
+                    for (auto r : resources)
                     {
                         if 
                         (
@@ -1621,25 +1641,7 @@ motion only if the left mouse button (LMB) is held)");
                             r->type() != Resource::Type::Framebuffer
                         )
                             continue;
-                        if (ImGui::Selectable(r->name().c_str()))
-                        {
-                            if (resource != nullptr)
-                            {
-                                Layer::Flags::requestRecompilation = 
-                                    Layer::Flags::requestRecompilation ||
-                                    resource->isInternalFormatUnsigned() !=
-                                    r->isInternalFormatUnsigned();
-                                if (resource->isUsedByUniform(uniform))
-                                    resource->removeClientUniform(uniform);
-                            }
-                            else
-                                Layer::Flags::requestRecompilation = true;
-                            if (!r->isUsedByUniform(uniform))
-                                r->addClientUniform(uniform);
-                            uniform->setValuePtr<const Resource>(r);
-                            sharedUniforms.setUserAction(true);
-                            
-                        }
+                        CHECK_RESOURCE_SELECTED
                     }
                     ImGui::EndCombo();
                 }
@@ -1656,29 +1658,11 @@ motion only if the left mouse button (LMB) is held)");
                 );
                 if (ImGui::BeginCombo("##tx3DSelector", name.c_str()))
                 {
-                    for(auto r : resources)
+                    for (auto r : resources)
                     {
                         if (r->type() != Resource::Type::Texture3D)
                             continue;
-                        if (ImGui::Selectable(r->name().c_str()))
-                        {
-                            if (resource != nullptr)
-                            {
-                                Layer::Flags::requestRecompilation = 
-                                    Layer::Flags::requestRecompilation ||
-                                    resource->isInternalFormatUnsigned() !=
-                                    r->isInternalFormatUnsigned();
-                                if (resource->isUsedByUniform(uniform))
-                                    resource->removeClientUniform(uniform);
-                            }
-                            else
-                                Layer::Flags::requestRecompilation = true;
-                            if (!r->isUsedByUniform(uniform))
-                                r->addClientUniform(uniform);
-                            uniform->setValuePtr<const Resource>(r);
-                            sharedUniforms.setUserAction(true);
-                            
-                        }
+                        CHECK_RESOURCE_SELECTED
                     }
                     ImGui::EndCombo();
                 }
@@ -1695,28 +1679,11 @@ motion only if the left mouse button (LMB) is held)");
                 );
                 if (ImGui::BeginCombo("##cmSelector", name.c_str()))
                 {
-                    for(auto r : resources)
+                    for (auto r : resources)
                     {
                         if (r->type() != Resource::Type::Cubemap)
                             continue;
-                        if (ImGui::Selectable(r->name().c_str()))
-                        {
-                            if (resource != nullptr)
-                            {
-                                Layer::Flags::requestRecompilation = 
-                                    Layer::Flags::requestRecompilation ||
-                                    resource->isInternalFormatUnsigned() !=
-                                    r->isInternalFormatUnsigned();
-                                if (resource->isUsedByUniform(uniform))
-                                    resource->removeClientUniform(uniform);
-                            }
-                            else
-                                Layer::Flags::requestRecompilation = true;
-                            if (!r->isUsedByUniform(uniform))
-                                r->addClientUniform(uniform);
-                            uniform->setValuePtr<const Resource>(r);
-                            sharedUniforms.setUserAction(true);
-                        }
+                        CHECK_RESOURCE_SELECTED
                     }
                     ImGui::EndCombo();
                 }
