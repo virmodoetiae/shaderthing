@@ -3776,11 +3776,18 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
             textToBeFound_ != replaceTextWith_
         )
         {
+            int offset = 0;
+            int delta = replaceTextWith_.size()-textToBeFound_.size();
             Coordinates s0, s1;
-            for (auto fcp : foundTextLineCols_)
+            for (int i=0; i<(int)foundTextLineCols_.size(); i++)
             {
-                s0 = {fcp.line, fcp.column};
-                s1 = {fcp.line, fcp.column+n};
+                Coordinates& fcp = foundTextLineCols_[i];
+                if (i > 0 && foundTextLineCols_[i-1].line == fcp.line)
+                    offset += delta;
+                else
+                    offset = 0;
+                s0 = {fcp.line, fcp.column+offset};
+                s1 = {fcp.line, fcp.column+n+offset};
                 editor.setSelection(s0,s1);
                 editor.remove(true);
                 editor.setCursorPosition(s0);
