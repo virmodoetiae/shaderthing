@@ -122,66 +122,71 @@ Shader::Uniform::~Uniform()
 
 void Shader::Uniform::resetValue()
 {
+    auto reset = [](void*& value, Shader::Variable::Type type)
+    {
+        if (value == nullptr)
+            return;
+        switch(type)
+        {
+            case Variable::Type::Bool :
+                delete static_cast<bool*>(value);
+                break;
+            case Variable::Type::UInt :
+                delete static_cast<uint32_t*>(value);
+                break;
+            case Variable::Type::Int :
+                delete static_cast<int*>(value);
+                break;
+            case Variable::Type::Int2 :
+                delete static_cast<glm::ivec2*>(value);
+                break;
+            case Variable::Type::Int3 :
+                delete static_cast<glm::ivec3*>(value);
+                break;
+            case Variable::Type::Int4 :
+                delete static_cast<glm::ivec4*>(value);
+                break;
+            case Variable::Type::Float :
+                delete static_cast<float*>(value);
+                break;
+            case Variable::Type::Float2 :
+                delete static_cast<glm::vec2*>(value);
+                break;
+            case Variable::Type::Float3 :
+                delete static_cast<glm::vec3*>(value);
+                break;
+            case Variable::Type::Float4 :
+                delete static_cast<glm::vec4*>(value);
+                break;
+            case Variable::Type::Mat3 :
+                delete static_cast<glm::mat3*>(value);
+                break;
+            case Variable::Type::Mat4 :
+                delete static_cast<glm::mat4*>(value);
+                break;
+            case Variable::Type::Sampler2D :
+            case Variable::Type::Image2D :
+                delete static_cast<TextureBuffer2D*>(value);
+                break;
+            case Variable::Type::Sampler3D :
+            case Variable::Type::Image3D :
+                delete static_cast<TextureBuffer3D*>(value);
+                break;
+            case Variable::Type::SamplerCube :
+            case Variable::Type::ImageCube :
+                delete static_cast<CubeMapBuffer*>(value);
+                break;
+        }
+        value = nullptr;
+    };
+
+    reset(cache_, type);
     if (!isValueOwner_)
     {
         value_ = nullptr;
         return;
     }
-    if(value_ == nullptr)
-        return;
-    switch(type)
-    {
-        case Variable::Type::Bool :
-            delete static_cast<bool*>(value_);
-            break;
-        case Variable::Type::UInt :
-            delete static_cast<uint32_t*>(value_);
-            break;
-        case Variable::Type::Int :
-            delete static_cast<int*>(value_);
-            break;
-        case Variable::Type::Int2 :
-            delete static_cast<glm::ivec2*>(value_);
-            break;
-        case Variable::Type::Int3 :
-            delete static_cast<glm::ivec3*>(value_);
-            break;
-        case Variable::Type::Int4 :
-            delete static_cast<glm::ivec4*>(value_);
-            break;
-        case Variable::Type::Float :
-            delete static_cast<float*>(value_);
-            break;
-        case Variable::Type::Float2 :
-            delete static_cast<glm::vec2*>(value_);
-            break;
-        case Variable::Type::Float3 :
-            delete static_cast<glm::vec3*>(value_);
-            break;
-        case Variable::Type::Float4 :
-            delete static_cast<glm::vec4*>(value_);
-            break;
-        case Variable::Type::Mat3 :
-            delete static_cast<glm::mat3*>(value_);
-            break;
-        case Variable::Type::Mat4 :
-            delete static_cast<glm::mat4*>(value_);
-            break;
-        case Variable::Type::Sampler2D :
-        case Variable::Type::Image2D :
-            delete static_cast<TextureBuffer2D*>(value_);
-            break;
-        case Variable::Type::Sampler3D :
-        case Variable::Type::Image3D :
-            delete static_cast<TextureBuffer3D*>(value_);
-            break;
-        case Variable::Type::SamplerCube :
-        case Variable::Type::ImageCube :
-            delete static_cast<CubeMapBuffer*>(value_);
-        
-            break;
-    }
-    value_ = nullptr;
+    reset(value_, type);
 }
 
 Shader* Shader::create

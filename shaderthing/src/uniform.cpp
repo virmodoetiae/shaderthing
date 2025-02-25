@@ -1164,7 +1164,6 @@ motion only if the left mouse button (LMB) is held)");
             case vir::Shader::Variable::Type::Int2 : //-------------------------
             {
                 auto value = uniform->getValue<glm::ivec2>();
-                static auto valuei0(value);
                 if (!boundsChanged)
                 {
                     bounds.x = std::min(value.x, (int)bounds.x);
@@ -1193,6 +1192,7 @@ motion only if the left mouse button (LMB) is held)");
                         int maxRes = std::max(monitor.x, monitor.y);
                         bounds.x = std::min(bounds.x, -bounds.y);
                         bounds.y = std::max(-bounds.x, bounds.y);
+                        auto valuei0 = uniform->getCache<glm::ivec2>();
                         value.x = valuei0.x + 
                             (float)(10.f*delta.x*uniform->gui.dragStep)/maxRes;
                         value.y = valuei0.y + 
@@ -1200,7 +1200,7 @@ motion only if the left mouse button (LMB) is held)");
                         input = true;
                     }
                     else
-                        valuei0 = value;
+                        uniform->setCache<glm::ivec2>(value);
                     bool input2 = ImGui::SliderInt2
                     (
                         "##i2Slider", 
@@ -1362,7 +1362,6 @@ motion only if the left mouse button (LMB) is held)");
             case vir::Shader::Variable::Type::Float2 : //-----------------------
             {
                 auto value = uniform->getValue<glm::vec2>();
-                static auto valuef0(value);
                 if (!boundsChanged)
                 {
                     bounds.x = std::min(value.x, bounds.x);
@@ -1407,6 +1406,7 @@ motion only if the left mouse button (LMB) is held)");
                         int maxRes = std::max(monitor.x, monitor.y);
                         bounds.x = std::min(bounds.x, -bounds.y);
                         bounds.y = std::max(-bounds.x, bounds.y);
+                        auto valuef0 = uniform->getCache<glm::vec2>();
                         value.x = valuef0.x + 
                             (float)(10.f*delta.x*uniform->gui.dragStep)/maxRes;
                         value.y = valuef0.y + 
@@ -1414,7 +1414,7 @@ motion only if the left mouse button (LMB) is held)");
                         input = true;
                     }
                     else
-                        valuef0 = value;
+                        uniform->setCache<glm::vec2>(value);
                     std::string format = Helpers::getFormat(value);
                     bool input2 = ImGui::SliderFloat2
                     (

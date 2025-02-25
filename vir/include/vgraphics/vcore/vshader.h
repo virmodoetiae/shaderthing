@@ -99,6 +99,9 @@ public:
         
         bool           isValueOwner_ = true;
         void*          value_ = nullptr;
+        // The cache serves as an additional back-up storage value, that
+        // can be read/set via the corresponding methods
+        void*          cache_ = nullptr;
         
         Uniform(const Uniform&) = delete;
         Uniform& operator=(const Uniform& other) = delete;
@@ -143,6 +146,23 @@ public:
         {
             if (value_ != nullptr)
                 return *(ValueType*)(value_);
+            return ValueType();
+        }
+
+        template<class ValueType>
+        void setCache(ValueType value)
+        {
+            if (cache_ == nullptr)
+                cache_ = (void*) new ValueType(value);
+            else 
+                *(ValueType*)(cache_) = value;
+        }
+        
+        template<class ValueType>
+        ValueType getCache()
+        {
+            if (cache_ != nullptr)
+                return *(ValueType*)(cache_);
             return ValueType();
         }
         

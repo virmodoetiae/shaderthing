@@ -954,11 +954,8 @@ void TextEditor::renderGui()
             nullptr,
             nullptr
         ).x;
-    charAdvance_ = ImVec2
-    (
-        fontSize, 
-        ImGui::GetTextLineHeightWithSpacing()*lineSpacing_
-    );
+    const float lh = ImGui::GetTextLineHeightWithSpacing();
+    charAdvance_ = ImVec2(fontSize, lh*lineSpacing_);
 
     /* Update palette with the current alpha from style */
     for (int i = 0; i < (int)PaletteIndex::Max; ++i)
@@ -971,6 +968,7 @@ void TextEditor::renderGui()
     assert(lineBuffer_.empty());
 
     auto contentSize = ImGui::GetWindowContentRegionMax();
+    contentSize.y += 1.25f*lh;
     auto drawList = ImGui::GetWindowDrawList();
     float longest(textStart_);
 
