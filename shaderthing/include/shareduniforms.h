@@ -198,6 +198,9 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
           // For generating random numbers for iSeed
           Random*             random_         = nullptr;
 
+          // FPS below which the rendering should stop
+          float               lowerFpsLimit_  = 5.f;
+
     // Only used in the post-loading step
     struct Cache
     {
@@ -280,6 +283,7 @@ public:
     const int& iRenderPass() const {return fBlock_.iRenderPass;}
     glm::ivec2 iResolution() const {return fBlock_.iResolution;}
     const std::vector<Uniform*>& userUniforms() const {return userUniforms_;}
+    const float& lowerFpsLimit() const {return lowerFpsLimit_;}
 };
 
 }

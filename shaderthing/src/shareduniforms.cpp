@@ -737,7 +737,7 @@ void SharedUniforms::renderWindowMenuGui()
 {
     if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
     {
-        ImGui::Text("Resolution    ");
+        ImGui::Text("Resolution         ");
         ImGui::SameLine();
         ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
         glm::ivec2 resolution(fBlock_.iResolution);
@@ -753,10 +753,39 @@ void SharedUniforms::renderWindowMenuGui()
         ImGui::PopItemWidth();
 
         auto window = vir::Window::instance();
-        ImGui::Text("VSync         ");
+        ImGui::Text("VSync              ");
         ImGui::SameLine();
         if (ImGui::Checkbox("##windowVSync", &flags_.isVSyncEnabled))
             window->setVSync(flags_.isVSyncEnabled);
+        
+        ImGui::Text("Pause render below ");
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            ImGui::Text(
+R"(The frame rate (in frames per second, fps) below which rendering to the main 
+window is automatically paused to e.g., prevent making the app unresponsive. 
+This can happen as the graphical user interface (GUI) and the shader(s) are 
+rendered serially on the GPU, and a slow-to-render shader will slow down the 
+GUI as well)");
+            ImGui::EndTooltip();
+        }
+        ImGui::SameLine();
+        ImGui::PushItemWidth(5.0*ImGui::GetFontSize());
+        if (ImGui::InputFloat("##maxLowFps", &lowerFpsLimit_, 0.f, 0.f, "%.1f"))
+            lowerFpsLimit_ = std::max(lowerFpsLimit_, 0.f);
+        ImGui::SameLine();
+        ImGui::PopItemWidth();
+        ImGui::Text("fps");
+
+        if 
+        (
+            ImGui::Button
+            (
+                !flags_.isRenderingPaused?"Pause rendering":"Resume rendering", 
+                ImVec2(-1, 0)
+            )
+        )
+            toggleRenderingPaused();
 
         if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
             setMouseCaptured(true);

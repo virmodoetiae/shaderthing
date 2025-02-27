@@ -161,8 +161,7 @@ void App::update()
     static int fpsUpdateCounter(0);
     static bool shouldStopRendering(true);
     float fpsUpdatePeriod = 0.5f;
-    float maxLowFpsPeriod = 3.0f;
-    float minFps = 10.0f;
+    float maxLowFpsPeriod = 2.0f;
 
     elapsedFrames++;
     elapsedTime += vir::Window::instance()->time()->outerTimestep();
@@ -179,7 +178,8 @@ void App::update()
         if (!exporter_->isRunning())
         {
             fpsUpdateCounter++;
-            shouldStopRendering = shouldStopRendering && fps < minFps;
+            shouldStopRendering = 
+                shouldStopRendering && fps < sharedUniforms_->lowerFpsLimit();
             if (fpsUpdateCounter >= int(maxLowFpsPeriod/fpsUpdatePeriod))
             {
                 if (shouldStopRendering && !sharedUniforms_->isRenderingPaused())
