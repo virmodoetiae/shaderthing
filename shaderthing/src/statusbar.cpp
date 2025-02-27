@@ -31,7 +31,7 @@ unsigned int                             StatusBar::textColorABGR_ = 0xff00ffff;
 
 void StatusBar::renderGui(unsigned int textColorABGR, bool withSeparator)
 {
-    static char lBuffer[48];
+    static char lBuffer[72];
     const std::string* message = nullptr;
     if (!temporaryMessageQueue_.empty())
     {
@@ -51,7 +51,11 @@ void StatusBar::renderGui(unsigned int textColorABGR, bool withSeparator)
     {
         if (withSeparator)
             ImGui::Separator();
-        snprintf(lBuffer, 60, message->c_str());
+        // TODO
+        // That '72' should actually be actually be adjusted based on the actual
+        // horziontal available space (measured in numbers of characters), 
+        // which can be somehow obtained via ImGui
+        snprintf(lBuffer, 72, message->c_str());
         auto imGuiCursor = ImGui::GetCursorScreenPos();
         ImGui::GetWindowDrawList()->AddText
         (

@@ -764,9 +764,10 @@ void SharedUniforms::renderWindowMenuGui()
             ImGui::Text(
 R"(The frame rate (in frames per second, fps) below which rendering to the main 
 window is automatically paused to e.g., prevent making the app unresponsive. 
-This can happen as the graphical user interface (GUI) and the shader(s) are 
-rendered serially on the GPU, and a slow-to-render shader will slow down the 
-GUI as well)");
+This can happen as the graphical user interface (GUI) and the shaders are 
+rendered serially on the GPU, and slow-to-render shaders will slow down the 
+GUI as well. 
+This feature is disabled during project exports)");
             ImGui::EndTooltip();
         }
         ImGui::SameLine();

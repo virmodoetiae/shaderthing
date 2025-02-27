@@ -149,10 +149,6 @@ void App::update()
                 vir::Window::instance()->time()->outerTimestep();
     }
 
-    // TODO expose minFps and maybe maxLowFpsPeriod to the GUI for custom user
-    // setting, and find a way to communicate what is going on (e.g. using the
-    // StatusBar to display the current rendering status)
-
     // Compute FPS and set in window title, also, check if rendering should stop
     // if fps too low for too long
     static float fps(60.0f);
@@ -183,7 +179,16 @@ void App::update()
             if (fpsUpdateCounter >= int(maxLowFpsPeriod/fpsUpdatePeriod))
             {
                 if (shouldStopRendering && !sharedUniforms_->isRenderingPaused())
+                {
                     sharedUniforms_->toggleRenderingPaused(); 
+                    // TODO Make it a permanent message instead of temporary,
+                    // but that would require revisiting the StatusBar 
+                    // management approach
+                    StatusBar::queueTemporaryMessage
+                    (
+"Rendering paused because of low FPS. Resume in Properties->Window", 6
+                    );
+                }
                 fpsUpdateCounter = 0;
                 shouldStopRendering = true;
             }
