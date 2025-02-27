@@ -146,16 +146,28 @@ void App::update()
             saveProject(project_.filepath+".bak", true);
         else
             project_.timeSinceLastSave += 
-                vir::Window::instance()->time()->smoothOuterTimestep();
+                vir::Window::instance()->time()->outerTimestep();
     }
 
-    // Compute FPS and set in window title
+    // TODO expose minFps and maybe maxLowFpsPeriod to the GUI for custom user
+    // setting, and find a way to communicate what is going on (e.g. using the
+    // StatusBar to display the current rendering status)
+
+    // Compute FPS and set in window title, also, check if rendering should stop
+    // if fps too low for too long
     static float fps(60.0f);
     static int elapsedFrames(0);
     static float elapsedTime(0);
+    static int fpsUpdateCounter(0);
+    static bool shouldStopRendering(true);
+    float fpsUpdatePeriod = 0.5f;
+    float maxLowFpsPeriod = 3.0f;
+    float minFps = 10.0f;
+
     elapsedFrames++;
-    elapsedTime += vir::Window::instance()->time()->smoothOuterTimestep();
-    if (elapsedFrames >= int(fps/2.0f)) // Update title every ~1/2 second
+    elapsedTime += vir::Window::instance()->time()->outerTimestep();
+    
+    if (elapsedTime >= fpsUpdatePeriod)
     {
         fps = elapsedFrames/elapsedTime;
         vir::Window::instance()->setTitle
@@ -164,6 +176,18 @@ void App::update()
         );
         elapsedFrames = 0;
         elapsedTime = 0;
+        if (!exporter_->isRunning())
+        {
+            fpsUpdateCounter++;
+            shouldStopRendering = shouldStopRendering && fps < minFps;
+            if (fpsUpdateCounter >= int(maxLowFpsPeriod/fpsUpdatePeriod))
+            {
+                if (shouldStopRendering && !sharedUniforms_->isRenderingPaused())
+                    sharedUniforms_->toggleRenderingPaused(); 
+                fpsUpdateCounter = 0;
+                shouldStopRendering = true;
+            }
+        }
     }
 }
 

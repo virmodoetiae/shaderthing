@@ -170,17 +170,7 @@ void Uniform::renderUniformsGui
             )
         )
         {
-            sharedUniforms.flags_.isRenderingPaused = 
-                !sharedUniforms.flags_.isRenderingPaused;
-            
-            if (sharedUniforms.flags_.isRenderingPaused)
-            {
-                sharedUniforms.flags_.isTimePausedBecauseRenderingPaused = 
-                    !sharedUniforms.flags_.isTimePaused;
-                sharedUniforms.flags_.isTimePaused = true;
-            }
-            else if (sharedUniforms.flags_.isTimePausedBecauseRenderingPaused)
-                sharedUniforms.flags_.isTimePaused = false;
+            sharedUniforms.toggleRenderingPaused();
         }
         if (sharedUniforms.flags_.isRenderingPaused)
         {

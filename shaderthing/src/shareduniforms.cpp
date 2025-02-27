@@ -560,6 +560,23 @@ void SharedUniforms::resetTimeAndFrame(float time)
 
 //----------------------------------------------------------------------------//
 
+void SharedUniforms::toggleRenderingPaused()
+{
+    flags_.isRenderingPaused = 
+        !flags_.isRenderingPaused;
+    
+    if (flags_.isRenderingPaused)
+    {
+        flags_.isTimePausedBecauseRenderingPaused = 
+            !flags_.isTimePaused;
+        flags_.isTimePaused = true;
+    }
+    else if (flags_.isTimePausedBecauseRenderingPaused)
+        flags_.isTimePaused = false;
+}
+
+//----------------------------------------------------------------------------//
+
 void SharedUniforms::prepareForExport(bool setTime, float exportStartTime)
 {
     if (setTime && flags_.isTimePaused)
