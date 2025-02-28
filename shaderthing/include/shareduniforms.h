@@ -266,7 +266,7 @@ public:
     void prepareForExport(bool setTime, float exportStartTime);
     void resetAfterExport(bool resetFrameCounter = true);
     void resetTimeAndFrame(float time=0);
-    void toggleRenderingPaused();
+    void toggleRenderingPaused(bool dueToLowFps = false);
 
     void renderWindowMenuGui();
 

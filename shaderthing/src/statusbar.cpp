@@ -25,70 +25,63 @@
 namespace ShaderThing
 {
 
-std::string                              StatusBar::message_ = "";
-std::vector<StatusBar::TemporaryMessage> StatusBar::temporaryMessageQueue_ = {};
-unsigned int                             StatusBar::textColorABGR_ = 0xff00ffff;
-
-void StatusBar::renderGui(unsigned int textColorABGR, bool withSeparator)
-{
-    static char lBuffer[72];
-    const std::string* message = nullptr;
-    if (!temporaryMessageQueue_.empty())
-    {
-        auto& item = temporaryMessageQueue_[0];
-        item.duration -= vir::Time::instance()->outerTimestep();
-        if (item.duration < 0)
-            temporaryMessageQueue_.erase
-            (
-                temporaryMessageQueue_.begin()
-            );
-        else
-            message = &(item.message);
-    }
-    else if (!message_.empty())
-        message = &message_;
-    if (message != nullptr)
-    {
-        if (withSeparator)
-            ImGui::Separator();
-        // TODO
-        // That '72' should actually be actually be adjusted based on the actual
-        // horziontal available space (measured in numbers of characters), 
-        // which can be somehow obtained via ImGui
-        snprintf(lBuffer, 72, message->c_str());
-        auto imGuiCursor = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddText
-        (
-            ImVec2
-            (
-                imGuiCursor.x,
-                imGuiCursor.y
-            ),
-            textColorABGR,
-            lBuffer
-        );
-    }
-}
+std::vector<StatusBar::Message> StatusBar::messageQueue_ = {};
+float                           StatusBar::defaultMessageDuration = 3.0f;
 
 void StatusBar::renderGui(bool withSeparator)
 {
-    renderGui(textColorABGR_, withSeparator);
+    if (messageQueue_.empty())
+        return;
+    static char lBuffer[72];
+
+    // The queue is rendered in order, each message is rendered for
+    // its specified time duration
+    auto& message = messageQueue_[0];
+
+    message.duration -= vir::Time::instance()->outerTimestep();;
+    if (message.duration < 0)
+    {
+        if (!message.isPersistent)
+            messageQueue_.erase(messageQueue_.begin());
+        else 
+        {
+            message.duration = StatusBar::defaultMessageDuration;
+            if (messageQueue_.size() > 1) // Move to end of queue
+                std::rotate
+                (
+                    messageQueue_.begin(), 
+                    messageQueue_.begin() + 1, 
+                    messageQueue_.end()
+                );
+        }
+    }
+
+    if (withSeparator)
+        ImGui::Separator();
+    // TODO
+    // That '72' should actually be actually be adjusted based on the actual
+    // horziontal available space (measured in numbers of characters), 
+    // which can be somehow obtained via ImGui
+    snprintf(lBuffer, 72, message.content.c_str());
+    auto imGuiCursor = ImGui::GetCursorScreenPos();
+    ImGui::GetWindowDrawList()->AddText
+    (
+        ImVec2
+        (
+            imGuiCursor.x,
+            imGuiCursor.y
+        ),
+        message.textColorABGR,
+        lBuffer
+    );
 }
 
-void StatusBar::setMessage(const std::string& message)
-{
-    message_ = message;
-}
-
-void StatusBar::clearMessage()
-{
-    message_.clear();
-}
-
-void StatusBar::queueTemporaryMessage
+void StatusBar::queueMessage
 (
-    const std::string& message, 
-    unsigned int durationInSeconds
+    const std::string& content,
+    bool isPersistent, 
+    float durationInSeconds,
+    unsigned int textColorABGR
 )
 {
     // Only queue the message if it does not exist already
@@ -96,30 +89,62 @@ void StatusBar::queueTemporaryMessage
     (
         std::find_if
         (
-            temporaryMessageQueue_.begin(),
-            temporaryMessageQueue_.end(),
-            [&message](const TemporaryMessage& tmsgi)
+            messageQueue_.begin(),
+            messageQueue_.end(),
+            [&content](const Message& message)
             {
-                return message == tmsgi.message;
+                return content == message.content;
             }
-        ) == temporaryMessageQueue_.end()
+        ) == messageQueue_.end()
     )
     {
-        temporaryMessageQueue_.emplace_back
+        messageQueue_.emplace_back
         (
-            TemporaryMessage{message, float(durationInSeconds)}
+            Message{content, isPersistent, durationInSeconds, textColorABGR}
         );
     }
 }
 
-void StatusBar::clearTemporaryMessageQueue()
+void StatusBar::queueMessage
+(
+    const std::string& content,
+    unsigned int textColorABGR
+)
 {
-    temporaryMessageQueue_.clear();
+    queueMessage(content, true, defaultMessageDuration, textColorABGR);
 }
 
-void StatusBar::setTextColor(unsigned int textColorABGR)
+void StatusBar::queueTemporaryMessage
+(
+    const std::string& content,
+    float duration,
+    unsigned int textColorABGR
+)
 {
-    textColorABGR_ = textColorABGR;
+    queueMessage(content, false, duration, textColorABGR);
+}
+
+void StatusBar::removeMessageFromQueue
+(
+    const std::string& content
+)
+{
+    auto it = std::find_if
+    (
+        messageQueue_.begin(),
+        messageQueue_.end(),
+        [&content](const Message& message)
+        {
+            return content == message.content;
+        }
+    );
+    if(it != messageQueue_.end())
+        messageQueue_.erase(it);
+}
+
+void StatusBar::clearMessageQueue()
+{
+    messageQueue_.clear();
 }
 
 }

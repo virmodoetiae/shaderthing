@@ -180,14 +180,7 @@ void App::update()
             {
                 if (shouldStopRendering && !sharedUniforms_->isRenderingPaused())
                 {
-                    sharedUniforms_->toggleRenderingPaused(); 
-                    // TODO Make it a permanent message instead of temporary,
-                    // but that would require revisiting the StatusBar 
-                    // management approach
-                    StatusBar::queueTemporaryMessage
-                    (
-"Rendering paused because of low FPS. Resume in Properties->Window", 6
-                    );
+                    sharedUniforms_->toggleRenderingPaused(true); 
                 }
                 fpsUpdateCounter = 0;
                 shouldStopRendering = true;
@@ -210,7 +203,7 @@ void App::saveProject(const std::string& filepath, bool isAutosave) const
     sharedUniforms_->save   (            project);
     Layer::          saveAll(layers_,    project);
     exporter_->      save   (            project);
-    PostProcess::    saveStaticData(  project);
+    PostProcess::    saveStaticData(     project);
 
     // TODO Could display an error via ImGui on failure
     project.writeContentsToDisk();
@@ -220,7 +213,8 @@ void App::saveProject(const std::string& filepath, bool isAutosave) const
     StatusBar::queueTemporaryMessage
     (
         isAutosave ? "Project auto-saved" : "Project saved",
-        3
+        StatusBar::defaultMessageDuration,
+        0xff25ff50
     );
 }
 

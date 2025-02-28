@@ -560,7 +560,7 @@ void SharedUniforms::resetTimeAndFrame(float time)
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::toggleRenderingPaused()
+void SharedUniforms::toggleRenderingPaused(bool dueToLowFps)
 {
     flags_.isRenderingPaused = 
         !flags_.isRenderingPaused;
@@ -573,6 +573,36 @@ void SharedUniforms::toggleRenderingPaused()
     }
     else if (flags_.isTimePausedBecauseRenderingPaused)
         flags_.isTimePaused = false;
+
+    // It would be better to update the StatusBar messages elsewhere, but
+    // whatever
+    if (flags_.isRenderingPaused)
+    {
+        StatusBar::removeMessageFromQueue("Rendering resumed");
+        StatusBar::queueMessage
+        (
+            dueToLowFps ? 
+"Rendering paused because of low FPS. Resume in Properties->Window" :
+"Rendering paused"
+        );
+    }
+    else
+    {
+        StatusBar::removeMessageFromQueue
+        (
+"Rendering paused because of low FPS. Resume in Properties->Window"
+        );
+        StatusBar::removeMessageFromQueue
+        (
+"Rendering paused"
+        );
+        StatusBar::queueTemporaryMessage
+        (
+            "Rendering resumed", 
+            StatusBar::defaultMessageDuration,
+            0xff25ff50
+        );
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -798,11 +828,13 @@ This feature is disabled during project exports)");
 void SharedUniforms::setMouseCaptured(bool flag)
 {
     auto window = vir::Window::instance();
+    static std::string mouseCapturedMessage = 
+        "Mouse cursor captured by window (press ESC to free)";
     if (!flag)
     {
         window->setCursorStatus(vir::Window::CursorStatus::Normal);
-        StatusBar::clearMessage();
-        StatusBar::queueTemporaryMessage("Mouse cursor freed", 3);
+        StatusBar::removeMessageFromQueue(mouseCapturedMessage);
+        StatusBar::queueTemporaryMessage("Mouse cursor freed");
     }
     if (flag)
     {
@@ -837,10 +869,7 @@ void SharedUniforms::setMouseCaptured(bool flag)
         window->setCursorStatus(vir::Window::CursorStatus::Captured);
         vir::InputState::instance()->leftMouseButtonClickNativeOS(5);
         vir::Event::Broadcaster::instance()->broadcastNativeQueue();
-        StatusBar::setMessage
-        (
-            "Mouse cursor captured by window (press ESC to free)"
-        );
+        StatusBar::queueMessage(mouseCapturedMessage);
     }
 }
 

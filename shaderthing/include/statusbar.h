@@ -24,14 +24,16 @@ namespace ShaderThing
 class StatusBar
 {
 private :
-    struct TemporaryMessage
+    struct Message
     {
-        std::string message;
-        float duration;
+        std::string  content;
+        bool         isPersistent;
+        float        duration = 1.f;
+        // Two digits per channel (0-256 in hex, i.e., 00-ff), per 4 channels, 
+        // namely transparency (alpha), blue, green, red, in that order
+        unsigned int textColorABGR = 0xff00ffff; // Yellow
     };
-    static std::string                   message_;
-    static std::vector<TemporaryMessage> temporaryMessageQueue_;
-    static unsigned int                  textColorABGR_;
+    static std::vector<Message> messageQueue_;
     // Prevent any type of instantiation (the class itself only serves as a 
     // private namespace)
     StatusBar() = delete;
@@ -40,22 +42,30 @@ private :
     StatusBar(int value) = delete;
     StatusBar& operator=(const StatusBar&) = delete;
     StatusBar& operator=(StatusBar&&) = delete;
-public:
-    static void renderGui(bool withSeparator = true);
-    static void renderGui
+    // Helpers
+    static void queueMessage
     (
-        unsigned int oneTimeTextColorABGR, 
-        bool withSeparator = true
+        const std::string& content,
+        bool isPersistent, 
+        float durationInSeconds,
+        unsigned int textColorABGR
     );
-    static void setMessage(const std::string& message);
-    static void clearMessage();
+public:
+    static float defaultMessageDuration;
+    static void renderGui(bool withSeparator = true);
+    static void queueMessage
+    (
+        const std::string& content, 
+        unsigned int textColorABGR = 0xff00ffff
+    );
     static void queueTemporaryMessage
     (
-        const std::string& message, 
-        unsigned int durationInSeconds
+        const std::string& content, 
+        float durationInSeconds = defaultMessageDuration,
+        unsigned int textColorABGR = 0xff00ffff
     );
-    static void clearTemporaryMessageQueue();
-    static void setTextColor(unsigned int textColorABGR);
+    static void removeMessageFromQueue(const std::string& content);
+    static void clearMessageQueue();
 };
 
 }
