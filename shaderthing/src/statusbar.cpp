@@ -26,7 +26,7 @@ namespace ShaderThing
 {
 
 std::vector<StatusBar::Message> StatusBar::messageQueue_ = {};
-float                           StatusBar::defaultMessageDuration = 3.0f;
+float                           StatusBar::defaultMessageDuration = 3.0f; // s
 
 void StatusBar::renderGui(bool withSeparator)
 {
@@ -62,7 +62,7 @@ void StatusBar::renderGui(bool withSeparator)
     // That '72' should actually be actually be adjusted based on the actual
     // horziontal available space (measured in numbers of characters), 
     // which can be somehow obtained via ImGui
-    snprintf(lBuffer, 72, message.content.c_str());
+    snprintf(lBuffer, 72, message.text.c_str());
     auto imGuiCursor = ImGui::GetCursorScreenPos();
     ImGui::GetWindowDrawList()->AddText
     (
@@ -78,7 +78,7 @@ void StatusBar::renderGui(bool withSeparator)
 
 void StatusBar::queueMessage
 (
-    const std::string& content,
+    const std::string& text,
     bool isPersistent, 
     float durationInSeconds,
     unsigned int textColorABGR
@@ -91,51 +91,64 @@ void StatusBar::queueMessage
         (
             messageQueue_.begin(),
             messageQueue_.end(),
-            [&content](const Message& message)
+            [&text](const Message& message)
             {
-                return content == message.content;
+                return text == message.text;
             }
         ) == messageQueue_.end()
     )
     {
-        messageQueue_.emplace_back
+        // Actually, newly queued messages should be displayed first, so calling
+        // this "queueMessage(...)" might be a bit misleading. Oh, well
+        messageQueue_.insert
         (
-            Message{content, isPersistent, durationInSeconds, textColorABGR}
+            messageQueue_.begin(), 
+            Message{text, isPersistent, durationInSeconds, textColorABGR}
         );
+        // If the new message is inserted when the currently displayed message's
+        // timer is close to running out, the newly inserted message will be
+        // rendered, and the the previously displayed message will only be
+        // rendered for its remaining duration, afterwards. If said duration is 
+        // very short, the previous message will simply flash very briefly. This
+        // is somewhat glitchy to see, so simply reset its timer
+        if (messageQueue_.size() > 1)
+        {
+            messageQueue_[1].duration = StatusBar::defaultMessageDuration;
+        }
     }
 }
 
 void StatusBar::queueMessage
 (
-    const std::string& content,
+    const std::string& text,
     unsigned int textColorABGR
 )
 {
-    queueMessage(content, true, defaultMessageDuration, textColorABGR);
+    queueMessage(text, true, defaultMessageDuration, textColorABGR);
 }
 
 void StatusBar::queueTemporaryMessage
 (
-    const std::string& content,
+    const std::string& text,
     float duration,
     unsigned int textColorABGR
 )
 {
-    queueMessage(content, false, duration, textColorABGR);
+    queueMessage(text, false, duration, textColorABGR);
 }
 
 void StatusBar::removeMessageFromQueue
 (
-    const std::string& content
+    const std::string& text
 )
 {
     auto it = std::find_if
     (
         messageQueue_.begin(),
         messageQueue_.end(),
-        [&content](const Message& message)
+        [&text](const Message& message)
         {
-            return content == message.content;
+            return text == message.text;
         }
     );
     if(it != messageQueue_.end())

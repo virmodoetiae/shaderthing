@@ -26,7 +26,7 @@ class StatusBar
 private :
     struct Message
     {
-        std::string  content;
+        std::string  text;
         bool         isPersistent;
         float        duration = 1.f;
         // Two digits per channel (0-256 in hex, i.e., 00-ff), per 4 channels, 
@@ -45,7 +45,7 @@ private :
     // Helpers
     static void queueMessage
     (
-        const std::string& content,
+        const std::string& text,
         bool isPersistent, 
         float durationInSeconds,
         unsigned int textColorABGR
@@ -55,16 +55,16 @@ public:
     static void renderGui(bool withSeparator = true);
     static void queueMessage
     (
-        const std::string& content, 
+        const std::string& text, 
         unsigned int textColorABGR = 0xff00ffff
     );
     static void queueTemporaryMessage
     (
-        const std::string& content, 
+        const std::string& text, 
         float durationInSeconds = defaultMessageDuration,
         unsigned int textColorABGR = 0xff00ffff
     );
-    static void removeMessageFromQueue(const std::string& content);
+    static void removeMessageFromQueue(const std::string& text);
     static void clearMessageQueue();
 };
 
