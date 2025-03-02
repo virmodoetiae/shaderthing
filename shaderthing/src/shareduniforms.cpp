@@ -650,7 +650,9 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("windowResolution", fBlock_.iResolution);
     io.write("exportWindowResolutionScale", exportData_.resolutionScale);
     io.write("time", fBlock_.iTime);
-    io.write("timePaused", flags_.isTimePaused);
+    io.write("timePaused", 
+        flags_.isTimePaused && flags_.isTimePausedBecauseRenderingPaused ? 
+        false : flags_.isTimePaused);
     io.write("timeLooped", flags_.isTimeLooped);
     io.write("timeBounds", bounds_.at(Uniform::SpecialType::Time));
     io.write("randomGeneratorPaused", flags_.isRandomNumberGeneratorPaused);
