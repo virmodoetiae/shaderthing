@@ -1595,6 +1595,12 @@ void OpenGLIndexBuffer::unbind()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+void OpenGLIndexBuffer::updateIndices(uint32_t* indices, uint32_t size)
+{
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id_);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, indices);
+}
+
 //----------------------------------------------------------------------------//
 // Vertex array --------------------------------------------------------------//
 //----------------------------------------------------------------------------//

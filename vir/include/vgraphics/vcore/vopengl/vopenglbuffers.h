@@ -235,6 +235,7 @@ public:
     ~OpenGLIndexBuffer();
     void bind() override;
     void unbind() override;
+    void updateIndices(uint32_t*, uint32_t) override;
 };
 
 class OpenGLVertexArray : public VertexArray

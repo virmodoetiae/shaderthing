@@ -706,6 +706,8 @@ public:
     
     virtual ~IndexBuffer();
 
+    virtual void updateIndices(uint32_t*, uint32_t) = 0;
+
     VertexArrayPtrVector& vertexArrays(){return vertexArrays_;}
 };
 
