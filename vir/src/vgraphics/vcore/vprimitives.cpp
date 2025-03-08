@@ -136,6 +136,9 @@ void TiledQuad::updateBuffers(uint32_t nTilesX, uint32_t nTilesY)
 {
     if (vertexArray_ == nullptr)
         return;
+    
+    nTilesX_ = nTilesX;
+    nTilesY_ = nTilesY;
 
     if (vertexBuffer_ != nullptr)
     {
@@ -162,6 +165,11 @@ void TiledQuad::updateBuffers(uint32_t nTilesX, uint32_t nTilesY)
         vertexArray_->bindIndexBuffer(indexBuffer_);
     }
     selectVisibleTiles(0, 0, nTilesX-1, nTilesY-1);
+}
+
+void TiledQuad::update(uint32_t nTilesX, uint32_t nTilesY)
+{
+    update(width_, height_, depth_, nTilesX, nTilesY);
 }
 
 void TiledQuad::update(float width, float height, float depth)
@@ -204,8 +212,15 @@ void TiledQuad::update
     width_ = width;
     height_ = height;
     depth_ = depth;
-    nTilesX_ = nTilesX;
-    nTilesX_ = nTilesY;
+}
+
+void TiledQuad::selectVisibleTile
+(
+    uint32_t ti, 
+    uint32_t tj
+)
+{
+    selectVisibleTiles(ti, tj, ti, tj);
 }
 
 void TiledQuad::selectVisibleTiles

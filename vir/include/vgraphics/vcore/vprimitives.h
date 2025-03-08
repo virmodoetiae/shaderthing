@@ -66,6 +66,8 @@ public:
         uint32_t nTilesX = 1, 
         uint32_t nTilesY = 1
     );
+    // Update quad tiling
+    void update(uint32_t nTilesX, uint32_t nTilesY);
     // Update quad dimensions
     void update(float width, float heigth, float depth);
     // Update quad dimensions and tiling
@@ -76,6 +78,11 @@ public:
         float depth, 
         uint32_t nTilesX, 
         uint32_t nTilesY
+    );
+    void selectVisibleTile
+    (
+        uint32_t ti, 
+        uint32_t tj
     );
     // Select which range of tiles should be made visible in a rectangular region
     // starting at tile at index (ti0, tj0) and up to tile at index (ti1, tj1)
