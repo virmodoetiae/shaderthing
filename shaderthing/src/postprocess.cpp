@@ -29,7 +29,7 @@ PostProcess::PostProcess
     vir::PostProcess* native
 ):
 inputLayer_(inputLayer),
-inputFramebuffer_(&inputLayer->rendering_.framebuffer),
+inputFramebuffer_(&inputLayer->rendering_.rFramebuffer),
 native_(native)
 {}
 

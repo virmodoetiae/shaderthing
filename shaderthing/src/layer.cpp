@@ -33,9 +33,12 @@
 namespace ShaderThing
 {
 
-bool        Layer::Flags::requestRecompilation = false;
-bool        Layer::Flags::restartRendering  = false;
-std::string Layer::GUI::defaultSharedSource = 
+bool         Layer::Flags::requestRecompilation = false;
+bool         Layer::Flags::restartRendering = false;
+bool         Layer::Rendering::TileController::tiledRenderingEnabled = false;
+unsigned int Layer::Rendering::TileController::tileIndex = 0;
+unsigned int Layer::Rendering::TileController::maxSize = 1;
+std::string  Layer::GUI::defaultSharedSource = 
 R"(// Common source code is shared by all fragment shaders across all layers and
 // has access to all shared in/out/uniform declarations
 
@@ -826,7 +829,7 @@ void Layer::setDepth(const float depth)
     else
     {
         auto viewport = Helpers::normalizedWindowResolution();
-        rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+        rendering_.quad = new vir::TiledQuad(viewport.x, viewport.y, depth_);
     }
 }
 
@@ -1098,6 +1101,45 @@ void Layer::renderShader
     const SharedUniforms& sharedUniforms
 )
 {
+    auto flipBuffers = [this]()
+    {
+        rendering_.framebuffer = 
+            rendering_.framebuffer == rendering_.framebufferB ? 
+            rendering_.framebufferA :
+            rendering_.framebufferB;
+
+        rendering_.rFramebuffer = 
+            rendering_.framebuffer == rendering_.framebufferB ? 
+            rendering_.framebufferA :
+            rendering_.framebufferB;
+    };
+
+    bool firstTile = 
+        Layer::Rendering::TileController::tiledRenderingEnabled ? 
+        Layer::Rendering::TileController::tileIndex == 0 : true; 
+    bool lastTile = 
+        Layer::Rendering::TileController::tiledRenderingEnabled ? 
+        Layer::Rendering::TileController::tileIndex == rendering_.tiles.size-1 : true;
+
+    if (Layer::Rendering::TileController::tiledRenderingEnabled)
+    {
+        if (Layer::Rendering::TileController::tileIndex == 0)
+            flipBuffers();
+        else if (Layer::Rendering::TileController::tileIndex > rendering_.tiles.size-1)
+            return; // Don't render anything
+        if 
+        (
+            rendering_.tiles.direction == 
+            Rendering::TileData::Direction::Horizontal
+        )
+            rendering_.quad->selectVisibleTile(Layer::Rendering::TileController::tileIndex, 0);
+        else 
+            rendering_.quad->selectVisibleTile(0, Layer::Rendering::TileController::tileIndex);
+        rendering_.tiles.allRendered = lastTile;
+    }
+    else
+        flipBuffers();
+    
     // Set sampler-type uniforms found in both this layer's uniforms as well
     // as the shared user-added uniforms
     rendering_.shader->bind();
@@ -1228,15 +1270,6 @@ void Layer::renderShader
     };
     setSamplerUniforms(sharedUniforms.userUniforms(), this, textureUnit, imageUnit);
     setSamplerUniforms(uniforms_, this, textureUnit, imageUnit);
-
-    // Flip buffers
-    rendering_.framebuffer = 
-        rendering_.framebuffer == rendering_.framebufferB ? 
-        rendering_.framebufferA :
-        rendering_.framebufferB;
-
-    // Set all uniforms that are not set in the GUI step
-    // setSharedDefaultSamplerUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
     static auto renderer = vir::Renderer::instance();
@@ -1255,8 +1288,11 @@ void Layer::renderShader
         *rendering_.quad,
         rendering_.shader,
         target,
-        clearTarget || // Or force clear if not rendering to window
-        rendering_.target != Layer::Rendering::Target::Window
+        firstTile && 
+        (
+            clearTarget || // Or force clear if not rendering to window
+            rendering_.target != Layer::Rendering::Target::Window
+        )
     );
     Rendering::sharedStorage->gpuMemoryBarrier();
 
@@ -1266,8 +1302,11 @@ void Layer::renderShader
         renderer->setBlending(true);
 
     // Apply post-processing effects, if any
-    for (auto postProcess : rendering_.postProcesses)
-        postProcess->run();
+    if (firstTile)
+    {
+        for (auto postProcess : rendering_.postProcesses)
+            postProcess->run();
+    }
 
     if 
     (
@@ -1276,17 +1315,34 @@ void Layer::renderShader
     )
         return;
 
+    //if (Layer::Rendering::TileController::tiledRenderingEnabled && !lastTile)
+    //   return;
+
+    // TODO The quad used for this should cover the entirety of the screen or
+    // only the last tile will appear post-processed in the main window view
+    // when post-processes are used
+    // TODO the issue above is almost fixed, the latest issue is that clearTarget
+    // is not set to true ONLY on the rendering of the very first tile of a
+    // visible layer, and set to false for all subsequent tiles. However, I
+    // only want to display the internally rendered framebuffer at the last
+    // rendered tile (because the post-processing effect is also only running
+    // once, over the entirety of the framebuffer, on the very last rendered
+    // tile). However, I walk in here for the first time with clearTarget =
+    // false, and since the main window is never clearing, it ends up
+    // displaying nothing. But the catch is that I NEED to clear this the
+    // first time I walk in here...
     // Render texture rendered by the previous call to the provided initial 
     // target (or to main window if target0 == nullptr)
+
     Layer::Rendering::textureMapperShader->bind();
-    rendering_.framebuffer->bindColorBuffer(0);
+    rendering_.rFramebuffer->bindColorBuffer(0);
     Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
     renderer->submit
     (
         *rendering_.quad, 
         Layer::Rendering::textureMapperShader.get(), 
         target0,
-        clearTarget
+        firstTile && clearTarget
     );
 }
 
@@ -1342,11 +1398,12 @@ unsigned int Layer::renderShaders // Static
     const std::vector<Layer*>& layers,
     vir::Framebuffer* target, 
     SharedUniforms& sharedUniforms,
+    bool& finishedRenderingFrame,
     const unsigned int nRenderPasses,
     const bool renderNextFrame
 )
 {
-    bool clearTarget = true;
+    static bool clearTarget = true;
     unsigned int iRenderPass = sharedUniforms.iRenderPass();
     if (renderNextFrame)
     {
@@ -1370,11 +1427,51 @@ unsigned int Layer::renderShaders // Static
             }
         }
 
+        /*
+        if (layers.size() > 0)
+        {
+            static unsigned int currentLayerIndex = 0;
+            currentLayerIndex = 
+                std::min(currentLayerIndex, (unsigned int)layers.size()-1);
+            if (currentLayerIndex == 0)
+                clearTarget = true;
+            while(true)
+            {
+                Layer* layer = layers[currentLayerIndex]; 
+                layer->renderShader(target, clearTarget, sharedUniforms);
+                // At the end of this loop, the status of clearTarget will 
+                // represent whether the main window has been cleared of its 
+                // contents at least once (true if never cleared at least once)
+                if 
+                (
+                    clearTarget &&
+                    layer->rendering_.target != 
+                        Layer::Rendering::Target::InternalFramebuffer
+                )
+                    clearTarget = false;
+                if (layer->rendering_.tiles.allRendered)
+                    currentLayerIndex++;
+                else
+                {
+                    finishedRenderingFrame = false;
+                    break;
+                }
+                if (currentLayerIndex == layers.size())
+                {
+                    sharedUniforms.nextRenderPass(nRenderPasses);
+                    currentLayerIndex = 0;
+                    finishedRenderingFrame = true;
+                    break;
+                }
+            }
+        }
+        */
+
         clearTarget = true;
         for (auto layer : layers)
         {
             layer->renderShader(target, clearTarget, sharedUniforms);
-            // At the end of this loop, the status of clearRenderingTarget will 
+            // At the end of this loop, the status of clearTarget will 
             // represent whether the main window has been cleared of its 
             // contents at least once (true if never cleared at least once)
             if 
@@ -1385,8 +1482,24 @@ unsigned int Layer::renderShaders // Static
             )
                 clearTarget = false;
         }
-        // Advance iRenderPass uniform, reset to 0 if it exceeds nRenderPasses-1
-        sharedUniforms.nextRenderPass(nRenderPasses);
+        if (Layer::Rendering::TileController::tiledRenderingEnabled)
+        {
+            if (++Layer::Rendering::TileController::tileIndex == Layer::Rendering::TileController::maxSize)
+            {
+                Layer::Rendering::TileController::tileIndex = 0;
+                sharedUniforms.nextRenderPass(nRenderPasses);
+                finishedRenderingFrame = true;
+            }
+            else
+            {
+                finishedRenderingFrame = false;
+            }
+        }
+        else
+        {
+            sharedUniforms.nextRenderPass(nRenderPasses);
+            finishedRenderingFrame = true;
+        }
     }
 
     // If the window has not been cleared at least once, or if I am not
@@ -1991,7 +2104,11 @@ void Layer::renderLayersTabBarGui // Static
     {
         reorderable = true;
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
+        {
             layers.emplace_back(new Layer(layers, sharedUnifoms));
+            if (Layer::Rendering::TileController::tiledRenderingEnabled)
+                Layer::setRenderingTiles(layers, Layer::Rendering::TileController::maxSize);
+        }
         auto tabBar = ImGui::GetCurrentTabBar();
         std::pair<unsigned int, unsigned int> swap {0,0};
         for (int i = 0; i < (int)layers.size(); i++)
@@ -2378,6 +2495,42 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
         }
         ImGui::EndChild();
         ImGui::EndMenu();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::setRenderingTiles(std::vector<Layer*>& layers, unsigned int nTiles)
+{
+    if (layers.size() == 0)
+        return;
+    Layer::Rendering::TileController::tiledRenderingEnabled = nTiles > 1;
+    Layer::Rendering::TileController::maxSize = nTiles;
+    Layer::Rendering::TileController::tileIndex = 0;
+    float largestLayerSize = 0.f;
+    for (auto layer : layers)
+        largestLayerSize = std::max(largestLayerSize, (float)layer->size());
+    for (auto layer : layers)
+    {
+        unsigned int nt = 
+            std::max
+            (
+                (float)nTiles*(float)layer->size()/largestLayerSize, 
+                1.f
+            );
+        auto& tiles = layer->rendering_.tiles;
+        tiles.size = nt;
+        tiles.allRendered = nt == 1;
+        if (layer->resolution_.x >= layer->resolution_.y)
+        {
+            tiles.direction = Rendering::TileData::Direction::Horizontal;
+            layer->rendering_.quad->update(nt, 1);
+        }
+        else
+        {
+            tiles.direction = Rendering::TileData::Direction::Vertical;
+            layer->rendering_.quad->update(1, nt);
+        }
     }
 }
 

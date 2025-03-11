@@ -465,7 +465,8 @@ void SharedUniforms::update(const UpdateArgs& args)
     if (!flags_.isTimePaused)
     {
         fBlock_.iTime += args.timeStep;
-        fBlock_.iTimeDelta = args.timeStep;
+        if (args.advanceFrame)
+            fBlock_.iTimeDelta = args.timeStep;
     }
     else if (flags_.stepToNextFrame || flags_.stepToNextTimeStep)
         fBlock_.iTime += fBlock_.iTimeDelta;

@@ -57,12 +57,33 @@ public:
             InternalFramebufferAndWindow
         };
         Target                          target        = Target::Window;
-        vir::Quad*                      quad          = nullptr;
+        vir::TiledQuad*                 quad          = nullptr;
         vir::Framebuffer*               framebufferA  = nullptr;
         vir::Framebuffer*               framebufferB  = nullptr;
         vir::Framebuffer*               framebuffer   = nullptr;
+        vir::Framebuffer*               rFramebuffer  = nullptr;
         vir::Shader*                    shader        = nullptr;
         std::vector<PostProcess*>       postProcesses = {};
+
+        struct TileData
+        {
+            enum class Direction
+            {
+                Horizontal,
+                Vertical
+            };
+            Direction                   direction     = Direction::Horizontal;
+            unsigned int                size          = 1;
+            bool                        allRendered   = true;
+        };
+        TileData                        tiles;
+
+        struct TileController
+        {
+            static bool                 tiledRenderingEnabled;
+            static unsigned int         tileIndex;
+            static unsigned int         maxSize;
+        };
         
         // I only use unique_ptrs to conveniently manage the lifetime of static
         // ptr-type resources
@@ -214,11 +235,17 @@ public:
         const bool clearTarget, 
         const SharedUniforms& sharedUniforms
     );
+    void renderInternalFramebufferToTarget
+    (
+        vir::Framebuffer* target, 
+        const bool clearTarget
+    );
     static unsigned int renderShaders
     (
         const std::vector<Layer*>& layers,
         vir::Framebuffer* target, 
         SharedUniforms& sharedUniforms,
+        bool& finishedRenderingFrame,
         const unsigned int nRenderPasses = 1,
         const bool renderNextFrame = true
     );
@@ -246,12 +273,19 @@ public:
         SharedUniforms& sharedUniforms
     );
 
+    static void setRenderingTiles(std::vector<Layer*>& layers, unsigned int nTiles);
+
     const std::string& name() const {return gui_.name;}
     const glm::ivec2& resolution() const {return resolution_;}
+    unsigned long int size() const
+    {
+        return ((unsigned long int)resolution_.x)*((unsigned long int)resolution_.y);
+    }
     float aspectRatio() const {return aspectRatio_;}
     bool isAspectRatioBoundToWindow() const {return flags_.isAspectRatioBoundToWindow;}
     Rendering::Target renderingTarget() const {return rendering_.target;}
     ExportData& exportData() {return exportData_;}
+    bool allTilesRendered() const {return rendering_.tiles.allRendered;}
 
     bool operator==(const Layer& layer){return id_ == layer.id_;}
     bool operator!=(const Layer& layer){return !(*this == layer);}
