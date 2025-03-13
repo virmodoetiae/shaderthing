@@ -33,9 +33,13 @@
 namespace ShaderThing
 {
 
-bool        Layer::Flags::requestRecompilation = false;
-bool        Layer::Flags::restartRendering  = false;
-std::string Layer::GUI::defaultSharedSource = 
+bool         Layer::Flags::requestRecompilation                      = false;
+bool         Layer::Flags::restartRendering                          = false;
+bool         Layer::Rendering::TileController::tiledRenderingEnabled = false;
+unsigned int Layer::Rendering::TileController::tileIndex             = 0;
+unsigned int Layer::Rendering::TileController::nTiles                = 1;
+unsigned int Layer::Rendering::TileController::nTilesCache           = 1;
+std::string  Layer::GUI::defaultSharedSource = 
 R"(// Common source code is shared by all fragment shaders across all layers and
 // has access to all shared in/out/uniform declarations
 
@@ -277,7 +281,7 @@ void Layer::save(ObjectIO& io) const
     io.write("depth", depth_);
 
     io.writeObjectStart("internalFramebuffer");
-    auto framebuffer = rendering_.framebuffer;
+    auto framebuffer = rendering_.backFramebuffer;
     io.write("format", (int)framebuffer->colorBufferInternalFormat());
     io.write
     (
@@ -790,9 +794,9 @@ void Layer::setResolution
     
     rebuildFramebuffers
     (
-        rendering_.framebuffer == nullptr ?
+        rendering_.backFramebuffer == nullptr ?
         vir::TextureBuffer::InternalFormat::RGBA_SF_32 :
-        rendering_.framebuffer->colorBufferInternalFormat(),
+        rendering_.backFramebuffer->colorBufferInternalFormat(),
         resolution_
     );
     if (rendering_.shader == nullptr)
@@ -826,7 +830,7 @@ void Layer::setDepth(const float depth)
     else
     {
         auto viewport = Helpers::normalizedWindowResolution();
-        rendering_.quad = new vir::Quad(viewport.x, viewport.y, depth_);
+        rendering_.quad = new vir::TiledQuad(viewport.x, viewport.y, depth_);
     }
 }
 
@@ -929,7 +933,12 @@ void Layer::rebuildFramebuffers
         internalFormat, 
         glm::max(resolution, {1,1})
     );
-    rendering_.framebuffer = rendering_.framebufferA;
+    rendering_.backFramebuffer = rendering_.framebufferA;
+    rendering_.frontFramebuffer = rendering_.framebufferB;
+    rendering_.resourceFramebuffer = 
+            Layer::Rendering::TileController::tiledRenderingEnabled ?
+            rendering_.frontFramebuffer :
+            rendering_.backFramebuffer;
 }
 
 //----------------------------------------------------------------------------//
@@ -1098,6 +1107,57 @@ void Layer::renderShader
     const SharedUniforms& sharedUniforms
 )
 {
+    auto flipBuffers = [this]()
+    {
+        rendering_.backFramebuffer = 
+            rendering_.backFramebuffer == rendering_.framebufferB ? 
+            rendering_.framebufferA :
+            rendering_.framebufferB;
+
+        rendering_.frontFramebuffer = 
+            rendering_.backFramebuffer == rendering_.framebufferB ? 
+            rendering_.framebufferA :
+            rendering_.framebufferB;
+
+        rendering_.resourceFramebuffer = 
+            Layer::Rendering::TileController::tiledRenderingEnabled ?
+            rendering_.frontFramebuffer :
+            rendering_.backFramebuffer;
+    };
+
+    bool allowClearTargetAndPostProcess = true;
+
+    if (Layer::Rendering::TileController::tiledRenderingEnabled)
+    {
+        if (Layer::Rendering::TileController::tileIndex == 0)
+            flipBuffers();
+        else if 
+        (
+            Layer::Rendering::TileController::tileIndex > rendering_.tiles.size-1
+        )
+            return; // Don't render anything
+        else
+            allowClearTargetAndPostProcess = false;
+        if 
+        (
+            rendering_.tiles.direction == 
+            Rendering::TileData::Direction::Horizontal
+        )
+            rendering_.quad->selectVisibleTile
+            (
+                Layer::Rendering::TileController::tileIndex, 
+                0
+            );
+        else 
+            rendering_.quad->selectVisibleTile
+            (
+                0, 
+                Layer::Rendering::TileController::tileIndex
+            );
+    }
+    else
+        flipBuffers();
+    
     // Set sampler-type uniforms found in both this layer's uniforms as well
     // as the shared user-added uniforms
     rendering_.shader->bind();
@@ -1139,16 +1199,14 @@ void Layer::renderShader
             if (resource == nullptr)
                 continue;
 
-            // These two lines are required when a layer reads from its own 
-            // framebuffer to avoid visual artifacts. It makes it so that the
-            // target read framebuffer is the framebuffer of the previous
-            // render step
+            // When reading from your own framebuffer, you should always read
+            // from the buffer to which you are NOT writing to (the back buffer
+            // is the one that is always being written, so read from the front
+            // one)
             if (resource->name() == layer->gui_.name)
             {
-                // Buffers are flipped afterwards, so rendering_.framebuffer
-                // is guaranteed to contain the read-only framebuffer pointer
                 vir::Framebuffer* sourceFramebuffer = 
-                    layer->rendering_.framebuffer;
+                    layer->rendering_.frontFramebuffer;
                 for (auto* postProcess : layer->rendering_.postProcesses)
                 {
                     if 
@@ -1228,15 +1286,6 @@ void Layer::renderShader
     };
     setSamplerUniforms(sharedUniforms.userUniforms(), this, textureUnit, imageUnit);
     setSamplerUniforms(uniforms_, this, textureUnit, imageUnit);
-
-    // Flip buffers
-    rendering_.framebuffer = 
-        rendering_.framebuffer == rendering_.framebufferB ? 
-        rendering_.framebufferA :
-        rendering_.framebufferB;
-
-    // Set all uniforms that are not set in the GUI step
-    // setSharedDefaultSamplerUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
     static auto renderer = vir::Renderer::instance();
@@ -1244,7 +1293,7 @@ void Layer::renderShader
     vir::Framebuffer* target0(target);
     if (rendering_.target != Layer::Rendering::Target::Window)
     {
-        target = rendering_.framebuffer;
+        target = rendering_.backFramebuffer;
         renderer->setBlending(false);
         blendingEnabled = false;
     }
@@ -1255,8 +1304,11 @@ void Layer::renderShader
         *rendering_.quad,
         rendering_.shader,
         target,
-        clearTarget || // Or force clear if not rendering to window
-        rendering_.target != Layer::Rendering::Target::Window
+        allowClearTargetAndPostProcess && 
+        (
+            clearTarget || // Or force clear if not rendering to window
+            rendering_.target != Layer::Rendering::Target::Window
+        )
     );
     Rendering::sharedStorage->gpuMemoryBarrier();
 
@@ -1266,8 +1318,11 @@ void Layer::renderShader
         renderer->setBlending(true);
 
     // Apply post-processing effects, if any
-    for (auto postProcess : rendering_.postProcesses)
-        postProcess->run();
+    if (allowClearTargetAndPostProcess)
+    {
+        for (auto postProcess : rendering_.postProcesses)
+            postProcess->run();
+    }
 
     if 
     (
@@ -1276,33 +1331,57 @@ void Layer::renderShader
     )
         return;
 
-    // Render texture rendered by the previous call to the provided initial 
-    // target (or to main window if target0 == nullptr)
     Layer::Rendering::textureMapperShader->bind();
-    rendering_.framebuffer->bindColorBuffer(0);
+    rendering_.resourceFramebuffer->bindColorBuffer(0);
     Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
     renderer->submit
     (
         *rendering_.quad, 
         Layer::Rendering::textureMapperShader.get(), 
         target0,
-        clearTarget
+        allowClearTargetAndPostProcess && clearTarget
     );
 }
 
 //----------------------------------------------------------------------------//
 
-void Layer::prepareForExport()
+void Layer::prepareForExport(const std::vector<Layer*>& layers)
 {
-    exportData_.originalResolution = resolution_;
-    setResolution(exportData_.resolution, false, false, false);
+    if (Layer::Rendering::TileController::tiledRenderingEnabled)
+        Layer::setRenderingTiles(layers, 1);
+    for (auto layer : layers)
+    {
+        layer->exportData_.originalResolution = layer->resolution_;
+        layer->setResolution
+        (
+            layer->exportData_.resolution, 
+            false, 
+            false, 
+            false
+        );
+    }
 }
 
 //----------------------------------------------------------------------------//
 
-void Layer::resetAfterExport()
+void Layer::resetAfterExport(const std::vector<Layer*>& layers)
 {
-    setResolution(exportData_.originalResolution, false, false, false);
+    for (auto layer : layers)
+    {
+        layer->setResolution
+        (
+            layer->exportData_.originalResolution, 
+            false, 
+            false, 
+            false
+        );
+    }
+    if (Layer::Rendering::TileController::nTilesCache > 1)
+        Layer::setRenderingTiles
+        (
+            layers, 
+            Layer::Rendering::TileController::nTilesCache
+        );
 }
 
 //----------------------------------------------------------------------------//
@@ -1337,18 +1416,24 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
 
 //----------------------------------------------------------------------------//
 
-unsigned int Layer::renderShaders // Static
+Layer::Rendering::Result Layer::renderShaders // Static
 (
     const std::vector<Layer*>& layers,
     vir::Framebuffer* target, 
     SharedUniforms& sharedUniforms,
-    const unsigned int nRenderPasses,
-    const bool renderNextFrame
+    const unsigned int nRenderPasses
 )
 {
-    bool clearTarget = true;
+    static bool clearTarget = true;
+    // TODO Fix behavior of stepping to next frame when tiled rendering is
+    // enabled
+    bool renderFrame = 
+        !sharedUniforms.isRenderingPaused() || 
+        sharedUniforms.stepToNextFrame();
+    bool frameRendered = true;
     unsigned int iRenderPass = sharedUniforms.iRenderPass();
-    if (renderNextFrame)
+
+    if (renderFrame)
     {
         if (target != nullptr && iRenderPass == 0) // I.e., if exporting
         {
@@ -1374,9 +1459,9 @@ unsigned int Layer::renderShaders // Static
         for (auto layer : layers)
         {
             layer->renderShader(target, clearTarget, sharedUniforms);
-            // At the end of this loop, the status of clearRenderingTarget will 
+            // At the end of this loop, the status of clearTarget will 
             // represent whether the main window has been cleared of its 
-            // contents at least once (true if never cleared at least once)
+            // contents at least once (true if not cleared at least once)
             if 
             (
                 clearTarget &&
@@ -1385,17 +1470,42 @@ unsigned int Layer::renderShaders // Static
             )
                 clearTarget = false;
         }
-        // Advance iRenderPass uniform, reset to 0 if it exceeds nRenderPasses-1
-        sharedUniforms.nextRenderPass(nRenderPasses);
+
+        // If tiled rendering is enabled, it means that the previous render loop
+        // has rendered only the i-th tile of each layer (in pratice, this is 
+        // achieved by rendering over a quad that covers only a portion of the
+        // rendering target). Here, the index of the tile to be rendered is
+        // advanced. The frame is considered fully rendered only if all tiles
+        // have been rendered. During exports, tiled rendering is automatically
+        // disabled in the exporter setup phase
+        if (Layer::Rendering::TileController::tiledRenderingEnabled)
+        {
+            if 
+            (
+                ++Layer::Rendering::TileController::tileIndex == 
+                Layer::Rendering::TileController::nTiles
+            )
+            {
+                Layer::Rendering::TileController::tileIndex = 0;
+                sharedUniforms.nextRenderPass(nRenderPasses);
+            }
+            else
+                frameRendered = false;
+        }
+        else
+            sharedUniforms.nextRenderPass(nRenderPasses);
     }
+    else
+        frameRendered = false;
 
     // If the window has not been cleared at least once, or if I am not
-    // rendering to the window at all (i.e., if renderTarget != nullptr, which is only
-    // true during exports), then render a dummy/void/blank window, simply to
-    // avoid visual artifacts when nothing is rendering to the main window.
-    // As for the internalFramebufferShader in Layer::renderShader, the lifetime
-    // of the shader (and quad) is managed statically within here
-    if (clearTarget || target != nullptr)
+    // rendering to the window at all (i.e., if renderTarget != nullptr, which 
+    // is only true during exports), then render a dummy/void/blank window, 
+    // simply to avoid visual artifacts when nothing is rendering to the main
+    // window. As for the internalFramebufferShader in Layer::renderShader, the 
+    // lifetimeof the shader (and quad) is managed statically within here simply
+    // for convenience
+    if (frameRendered && (clearTarget || target != nullptr))
     {
         static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
         auto viewport = Helpers::normalizedWindowResolution();
@@ -1426,7 +1536,11 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
         );
     }
 
-    return iRenderPass;
+    return 
+    {
+        iRenderPass == nRenderPasses-1, 
+        frameRendered
+    };
 }
 
 //----------------------------------------------------------------------------//
@@ -1444,7 +1558,7 @@ void Layer::renderFramebufferPropertiesGui()
             "##layerInternalFormatCombo",
             vir::TextureBuffer::internalFormatToName.at
             (
-                rendering_.framebuffer->
+                rendering_.backFramebuffer->
                     colorBufferInternalFormat()
             ).c_str()
         )
@@ -1483,25 +1597,25 @@ void Layer::renderFramebufferPropertiesGui()
     std::string selectedWrapModeY = "";
     std::string selectedMagFilterMode = "";
     std::string selectedMinFilterMode = "";
-    if (rendering_.framebuffer != nullptr)
+    if (rendering_.backFramebuffer != nullptr)
     {
         selectedWrapModeX = vir::TextureBuffer::wrapModeToName.at
         (
-            rendering_.framebuffer->colorBufferWrapMode(0)
+            rendering_.backFramebuffer->colorBufferWrapMode(0)
         );
         selectedWrapModeY = vir::TextureBuffer::wrapModeToName.at
         (
-            rendering_.framebuffer->colorBufferWrapMode(1)
+            rendering_.backFramebuffer->colorBufferWrapMode(1)
         );
         selectedMagFilterMode = 
             vir::TextureBuffer::filterModeToName.at
             (
-                rendering_.framebuffer->colorBufferMagFilterMode()
+                rendering_.backFramebuffer->colorBufferMagFilterMode()
             );
         selectedMinFilterMode = 
             vir::TextureBuffer::filterModeToName.at
             (
-                rendering_.framebuffer->colorBufferMinFilterMode()
+                rendering_.backFramebuffer->colorBufferMinFilterMode()
             );
     }
     ImGui::Text("Horizontal wrap mode ");
@@ -1513,7 +1627,7 @@ void Layer::renderFramebufferPropertiesGui()
         (
             "##layerWrapModeXCombo",
             selectedWrapModeX.c_str()
-        ) && rendering_.framebuffer != nullptr
+        ) && rendering_.backFramebuffer != nullptr
     )
     {
         for (auto entry : vir::TextureBuffer::wrapModeToName)
@@ -1533,7 +1647,7 @@ void Layer::renderFramebufferPropertiesGui()
         (
             "##layerWrapModeYCombo",
             selectedWrapModeY.c_str()
-        ) && rendering_.framebuffer != nullptr
+        ) && rendering_.backFramebuffer != nullptr
     )
     {
         for (auto entry : vir::TextureBuffer::wrapModeToName)
@@ -1554,7 +1668,7 @@ void Layer::renderFramebufferPropertiesGui()
         (
             "##layerMagModeCombo",
             selectedMagFilterMode.c_str()
-        ) && rendering_.framebuffer != nullptr
+        ) && rendering_.backFramebuffer != nullptr
     )
     {
         for (auto entry : vir::TextureBuffer::filterModeToName)
@@ -1581,7 +1695,7 @@ void Layer::renderFramebufferPropertiesGui()
         (
             "##layerMinModeCombo",
             selectedMinFilterMode.c_str()
-        ) && rendering_.framebuffer != nullptr
+        ) && rendering_.backFramebuffer != nullptr
     )
     {
         for (auto entry : vir::TextureBuffer::filterModeToName)
@@ -1991,7 +2105,15 @@ void Layer::renderLayersTabBarGui // Static
     {
         reorderable = true;
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
+        {
             layers.emplace_back(new Layer(layers, sharedUnifoms));
+            if (Layer::Rendering::TileController::tiledRenderingEnabled)
+                Layer::setRenderingTiles
+                (
+                    layers, 
+                    Layer::Rendering::TileController::nTiles
+                );
+        }
         auto tabBar = ImGui::GetCurrentTabBar();
         std::pair<unsigned int, unsigned int> swap {0,0};
         for (int i = 0; i < (int)layers.size(); i++)
@@ -2378,6 +2500,49 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
         }
         ImGui::EndChild();
         ImGui::EndMenu();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::setRenderingTiles
+(
+    const std::vector<Layer*>& layers, 
+    unsigned int nTiles
+)
+{
+    if (layers.size() == 0)
+        return;
+    Layer::Rendering::TileController::tiledRenderingEnabled = nTiles > 1;
+    Layer::Rendering::TileController::nTilesCache = 
+        Layer::Rendering::TileController::nTiles;
+    Layer::Rendering::TileController::nTiles = nTiles;
+    Layer::Rendering::TileController::tileIndex = 0;
+    float largestLayerSize = 0.f;
+    for (auto layer : layers)
+        largestLayerSize = std::max(largestLayerSize, (float)layer->size());
+    for (auto layer : layers)
+    {
+        unsigned int nt = 
+            std::max
+            (
+                (float)nTiles*(float)layer->size()/largestLayerSize, 
+                1.f
+            );
+        auto& tiles = layer->rendering_.tiles;
+        if (layer->resolution_.x >= layer->resolution_.y)
+        {
+            tiles.direction = Rendering::TileData::Direction::Horizontal;
+            nt = std::min(nt, (unsigned int)layer->resolution_.x);
+            layer->rendering_.quad->update(nt, 1);
+        }
+        else
+        {
+            tiles.direction = Rendering::TileData::Direction::Vertical;
+            nt = std::min(nt, (unsigned int)layer->resolution_.y);
+            layer->rendering_.quad->update(1, nt);
+        }
+        tiles.size = nt;
     }
 }
 

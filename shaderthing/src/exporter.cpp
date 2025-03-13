@@ -104,8 +104,7 @@ void Exporter::update
             exportType_ != ExportType::Image,
             settings_.startTime
         );
-        for (auto layer : layers)
-            layer->prepareForExport();
+        Layer::prepareForExport(layers);
         Resource::prepareAnimationsForExport
         (
             resources,
@@ -154,8 +153,7 @@ void Exporter::update
             (
                 settings_.resetFrameCounterAfterExport
             );
-            for (auto layer : layers)
-                layer->resetAfterExport();
+            Layer::resetAfterExport(layers);
             Resource::resetAnimationsAfterExport(resources);
             isAveragedPaletteReady_ = false;
         }

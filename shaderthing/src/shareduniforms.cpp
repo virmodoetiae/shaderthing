@@ -15,6 +15,7 @@
 
 #include "shaderthing/include/shareduniforms.h"
 
+#include "shaderthing/include/layer.h"
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/random.h"
@@ -465,9 +466,14 @@ void SharedUniforms::update(const UpdateArgs& args)
     if (!flags_.isTimePaused)
     {
         fBlock_.iTime += args.timeStep;
-        fBlock_.iTimeDelta = args.timeStep;
+        if (args.advanceFrame)
+            fBlock_.iTimeDelta = args.timeStep;
     }
-    else if (flags_.stepToNextFrame || flags_.stepToNextTimeStep)
+    else if 
+    (
+        args.advanceFrame && 
+        (flags_.stepToNextFrame || flags_.stepToNextTimeStep)
+    )
         fBlock_.iTime += fBlock_.iTimeDelta;
 
     const glm::vec2& timeLoopBounds(bounds_[Uniform::SpecialType::Time]);
@@ -480,12 +486,13 @@ void SharedUniforms::update(const UpdateArgs& args)
         fBlock_.iTime = timeLoopBounds.x + duration*fraction;
     }
     
-    if (args.advanceFrame && !(flags_.isRenderingPaused && !flags_.stepToNextFrame))
+    if 
+    (
+        args.advanceFrame && 
+        !(flags_.isRenderingPaused && !flags_.stepToNextFrame)
+    )
         ++fBlock_.iFrame;
-    // fBlock_.iRenderPass = 0;
 
-    flags_.stepToNextFrame = false;
-    flags_.stepToNextTimeStep = false;
     if (flags_.resetFrameCounterPreOrPostExport)
     {
         fBlock_.iFrame = 0;

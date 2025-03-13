@@ -63,22 +63,16 @@ App::App()
         renderGui();
         update();
 
-        unsigned int iRenderPass = Layer::renderShaders
+        auto result = Layer::renderShaders
         (
             layers_, 
             exporter_->isRunning() ? exporter_->framebuffer() : nullptr, 
             *sharedUniforms_,
-            exporter_->isRunning() ? exporter_->nRenderPasses() : 1,
-            renderNextFrame_
+            exporter_->isRunning() ? exporter_->nRenderPasses() : 1
         );
-        if 
-        (
-            exporter_->isRunning() && 
-            iRenderPass == exporter_->nRenderPasses()-1
-        )
+        if (exporter_->isRunning() && result.renderPassesComplete)
             exporter_->writeOutput();
-
-        window->update(renderNextFrame_);
+        window->update(result.flipWindowBuffer);
     }
 }
 
@@ -121,10 +115,27 @@ void App::update()
     }
     else
     {
-        advanceFrame = true;
-        timeStep = sharedUniforms_->isTimeDeltaSmooth() ?
+        timeStep = (sharedUniforms_->isTimeDeltaSmooth() ?
             vir::Window::instance()->time()->smoothOuterTimestep() : 
-            vir::Window::instance()->time()->outerTimestep();
+            vir::Window::instance()->time()->outerTimestep());
+        if (Layer::Rendering::TileController::tiledRenderingEnabled)
+        {
+            static float cumulatedTimeStep = 0;
+            cumulatedTimeStep += timeStep;
+            if (Layer::Rendering::TileController::tileIndex == 0)
+            {
+                timeStep = cumulatedTimeStep;
+                cumulatedTimeStep = 0;
+                advanceFrame = true;
+            }
+            else
+            {
+                timeStep = 0;
+                advanceFrame = false;
+            }
+        }
+        else
+            advanceFrame = true;
     }
 
     renderNextFrame_ = 
@@ -164,7 +175,7 @@ void App::update()
     
     if (elapsedTime >= fpsUpdatePeriod)
     {
-        fps = elapsedFrames/elapsedTime;
+        fps = elapsedFrames/elapsedTime/Layer::Rendering::TileController::nTiles;
         vir::Window::instance()->setTitle
         (
             "ShaderThing ("+Helpers::format(fps,1)+" FPS) - "+project_.filename
@@ -179,9 +190,7 @@ void App::update()
             if (fpsUpdateCounter >= int(maxLowFpsPeriod/fpsUpdatePeriod))
             {
                 if (shouldStopRendering && !sharedUniforms_->isRenderingPaused())
-                {
                     sharedUniforms_->toggleRenderingPaused(true); 
-                }
                 fpsUpdateCounter = 0;
                 shouldStopRendering = true;
             }
@@ -730,6 +739,21 @@ void App::renderMenuBarGui()
         if (ImGui::BeginMenu("Properties"))
         {
             sharedUniforms_->renderWindowMenuGui();
+
+            if (ImGui::BeginMenu("Dev"))
+            {
+                ImGui::Text("N° rendering tiles ");
+                ImGui::SameLine();
+                ImGui::PushItemWidth(10.f*ImGui::GetFontSize());
+                int nRenderingTiles = Layer::Rendering::TileController::nTiles;
+                if (ImGui::InputInt("##nRenderingTiles", &nRenderingTiles))
+                {
+                    nRenderingTiles = std::max(nRenderingTiles, 1);
+                    Layer::setRenderingTiles(layers_, nRenderingTiles);
+                }
+                ImGui::EndMenu();
+            }
+
             for (auto layer : layers_)
                 layer->renderPropertiesMenuGui(resources_);
             ImGui::Separator();

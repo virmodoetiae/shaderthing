@@ -56,13 +56,43 @@ public:
             InternalFramebuffer,
             InternalFramebufferAndWindow
         };
-        Target                          target        = Target::Window;
-        vir::Quad*                      quad          = nullptr;
-        vir::Framebuffer*               framebufferA  = nullptr;
-        vir::Framebuffer*               framebufferB  = nullptr;
-        vir::Framebuffer*               framebuffer   = nullptr;
-        vir::Shader*                    shader        = nullptr;
-        std::vector<PostProcess*>       postProcesses = {};
+        Target                          target              = Target::Window;
+        vir::TiledQuad*                 quad                = nullptr;
+        vir::Framebuffer*               framebufferA        = nullptr;
+        vir::Framebuffer*               framebufferB        = nullptr;
+        // Only framebuffers A and B are allocated. All other framebuffer ptrs
+        // are either equal to framebufferA or framebufferB
+        vir::Framebuffer*               frontFramebuffer    = nullptr;
+        vir::Framebuffer*               backFramebuffer     = nullptr;
+        vir::Framebuffer*               resourceFramebuffer = nullptr;
+        vir::Shader*                    shader              = nullptr;
+        std::vector<PostProcess*>       postProcesses       = {};
+
+        struct TileData
+        {
+            enum class Direction
+            {
+                Horizontal,
+                Vertical
+            };
+            Direction                   direction   = Direction::Horizontal;
+            unsigned int                size        = 1;
+        };
+        TileData                        tiles;
+
+        struct TileController
+        {
+            static bool                 tiledRenderingEnabled;
+            static unsigned int         tileIndex;
+            static unsigned int         nTiles;
+            static unsigned int         nTilesCache;
+        };
+
+        struct Result
+        {
+            bool renderPassesComplete;
+            bool flipWindowBuffer;
+        };
         
         // I only use unique_ptrs to conveniently manage the lifetime of static
         // ptr-type resources
@@ -199,8 +229,9 @@ public:
     DECLARE_RECEIVABLE_EVENTS(vir::Event::Type::WindowResize)
     void onReceive(vir::Event::WindowResizeEvent& event) override;
 
-    void prepareForExport();
-    void resetAfterExport();
+    static void prepareForExport(const std::vector<Layer*>& layers);
+    static void resetAfterExport(const std::vector<Layer*>& layers);
+
     bool removeResourceFromUniforms(const Resource* resource);
     
     bool compileShader
@@ -214,13 +245,17 @@ public:
         const bool clearTarget, 
         const SharedUniforms& sharedUniforms
     );
-    static unsigned int renderShaders
+    void renderInternalFramebufferToTarget
+    (
+        vir::Framebuffer* target, 
+        const bool clearTarget
+    );
+    static Rendering::Result renderShaders
     (
         const std::vector<Layer*>& layers,
         vir::Framebuffer* target, 
         SharedUniforms& sharedUniforms,
-        const unsigned int nRenderPasses = 1,
-        const bool renderNextFrame = true
+        const unsigned int nRenderPasses = 1
     );
 
     void renderFramebufferPropertiesGui();
@@ -246,8 +281,18 @@ public:
         SharedUniforms& sharedUniforms
     );
 
+    static void setRenderingTiles
+    (
+        const std::vector<Layer*>& layers, 
+        unsigned int nTiles
+    );
+
     const std::string& name() const {return gui_.name;}
     const glm::ivec2& resolution() const {return resolution_;}
+    unsigned long int size() const
+    {
+        return ((unsigned long int)resolution_.x)*((unsigned long int)resolution_.y);
+    }
     float aspectRatio() const {return aspectRatio_;}
     bool isAspectRatioBoundToWindow() const {return flags_.isAspectRatioBoundToWindow;}
     Rendering::Target renderingTarget() const {return rendering_.target;}

@@ -841,10 +841,10 @@ void Texture3DResource::update(const UpdateArgs& args)
 
 bool LayerResource::set(Layer* layer)
 {
-    if (layer == nullptr || layer->rendering_.framebuffer == nullptr)
+    if (layer == nullptr || layer->rendering_.resourceFramebuffer== nullptr)
         return false;
     layer_ = layer;
-    native_ = &layer->rendering_.framebuffer;
+    native_ = &layer->rendering_.resourceFramebuffer;
     return true;
 }
 

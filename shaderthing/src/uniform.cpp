@@ -176,6 +176,8 @@ void Uniform::renderUniformsGui
         {
             if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
                 sharedUniforms.flags_.stepToNextFrame = true;
+            else
+                sharedUniforms.flags_.stepToNextFrame = false;
         }
         if 
         (
@@ -242,6 +244,8 @@ void Uniform::renderUniformsGui
         {
             if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
                 sharedUniforms.flags_.stepToNextTimeStep = true;
+            else 
+                sharedUniforms.flags_.stepToNextTimeStep = false;
         }
         if 
         (
