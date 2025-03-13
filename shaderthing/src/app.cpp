@@ -40,7 +40,7 @@ App::App()
 {
     // Initialize vir lib
     vir::Settings settings = {};
-    settings.windowName = "ShaderThing";
+    settings.windowName = "ShaderThing - "+project_.filename;
     settings.enableFaceCulling = false;
     vir::initialize(settings);
 
@@ -138,10 +138,6 @@ void App::update()
             advanceFrame = true;
     }
 
-    renderNextFrame_ = 
-        !sharedUniforms_->isRenderingPaused() || 
-        sharedUniforms_->stepToNextFrame();
-
     sharedUniforms_->update(             {advanceFrame,             timeStep});
     Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
     
@@ -162,7 +158,6 @@ void App::update()
 
     // Compute FPS and set in window title, also, check if rendering should stop
     // if fps too low for too long
-    static float fps(60.0f);
     static int elapsedFrames(0);
     static float elapsedTime(0);
     static int fpsUpdateCounter(0);
@@ -175,11 +170,19 @@ void App::update()
     
     if (elapsedTime >= fpsUpdatePeriod)
     {
-        fps = elapsedFrames/elapsedTime/Layer::Rendering::TileController::nTiles;
-        vir::Window::instance()->setTitle
-        (
-            "ShaderThing ("+Helpers::format(fps,1)+" FPS) - "+project_.filename
-        );
+        double fps = elapsedFrames/elapsedTime;
+        if (Layer::Rendering::TileController::tiledRenderingEnabled)
+        {
+            double wFps = fps/Layer::Rendering::TileController::nTiles;
+            imGuiTitle_ = 
+                "Control panel - "+project_.filename+" (window: "+
+                Helpers::format(wFps,1)+" FPS | GUI: "+
+                Helpers::format(fps,1)+" FPS)"+"###CP";
+        }
+        else
+            imGuiTitle_ = 
+                "Control panel - "+project_.filename+" ("+
+                Helpers::format(fps,1)+" FPS)"+"###CP";
         elapsedFrames = 0;
         elapsedTime = 0;
         if (!exporter_->isRunning())
@@ -348,6 +351,7 @@ void App::processProjectActions()
             project_.action = Project::Action::None;
             break;
     }
+    vir::Window::instance()->setTitle("ShaderThing - "+project_.filename);
 }
 
 //----------------------------------------------------------------------------//
@@ -621,7 +625,7 @@ void App::renderGui()
     (
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
     );
-    ImGui::Begin("Control panel", NULL, flags);
+    ImGui::Begin(imGuiTitle_.c_str(), NULL, flags);
 
     // Refresh icon if needed
     static bool isIconSet(false);
@@ -630,7 +634,7 @@ void App::renderGui()
     {
         isIconSet = vir::ImGuiRenderer::setWindowIcon
         (
-            "Control panel", 
+            imGuiTitle_.c_str(), 
             ByteData::Icon::sTIconData, 
             ByteData::Icon::sTIconSize,
             false

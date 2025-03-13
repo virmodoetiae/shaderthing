@@ -58,7 +58,7 @@ private:
         void               renderAutoSaveMenuItemGui();
     };
     mutable Project        project_         = {};
-    bool                   renderNextFrame_ = true;
+    std::string            imGuiTitle_      = "Control panel###CP";
     SharedUniforms*        sharedUniforms_  = nullptr;
     std::vector<Layer*>    layers_          = {};
     std::vector<Resource*> resources_       = {};
