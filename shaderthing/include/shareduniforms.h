@@ -69,7 +69,7 @@ private:
               bool isCameraKeyboardInputEnabled       = true; // iWASD
               bool isCameraMouseInputEnabled          = true; // iLook
               bool cameraMouseInputRequiresLMBHold    = true;
-              bool isSSBOSupported                    = false;
+              bool tiledRenderingPauseRequested       = false;
     };
 
     struct ExportData

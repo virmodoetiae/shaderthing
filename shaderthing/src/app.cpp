@@ -121,7 +121,8 @@ void App::update()
         if (Layer::Rendering::TileController::tiledRenderingEnabled)
         {
             static float cumulatedTimeStep = 0;
-            cumulatedTimeStep += timeStep;
+            if (!sharedUniforms_->isRenderingPaused())
+                cumulatedTimeStep += timeStep;
             if (Layer::Rendering::TileController::tileIndex == 0)
             {
                 timeStep = cumulatedTimeStep;
@@ -788,11 +789,15 @@ further reduction of the shader rendering frame rate)");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.f*ImGui::GetFontSize());
                 int nRenderingTiles = Layer::Rendering::TileController::nTiles;
+                if (sharedUniforms_->isRenderingPaused())
+                    ImGui::BeginDisabled();
                 if (ImGui::InputInt("##nRenderingTiles", &nRenderingTiles))
                 {
                     nRenderingTiles = std::max(nRenderingTiles, 1);
                     Layer::setRenderingTiles(layers_, nRenderingTiles);
                 }
+                if (sharedUniforms_->isRenderingPaused())
+                    ImGui::EndDisabled();
                 
                 ImGui::Text("Pause render below ");
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())

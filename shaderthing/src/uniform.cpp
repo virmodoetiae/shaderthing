@@ -171,13 +171,35 @@ void Uniform::renderUniformsGui
         )
         {
             sharedUniforms.toggleRenderingPaused();
+            // When stopping rendering while tile rendering is enabled,
+            // make sure to render all the tiles to reach the end of the
+            // shader frame
+            if
+            (
+                sharedUniforms.flags_.isRenderingPaused && 
+                Layer::Rendering::TileController::tiledRenderingEnabled
+            )
+                sharedUniforms.flags_.stepToNextFrame = true;
         }
         if (sharedUniforms.flags_.isRenderingPaused)
         {
             if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
                 sharedUniforms.flags_.stepToNextFrame = true;
             else
-                sharedUniforms.flags_.stepToNextFrame = false;
+            {
+                // If tiled rendering is enabled, stepping by one shader frame
+                // means stepping by nTiles app frames (since each app frame 
+                // only renders a single shader tile), so the frame step is over
+                // only once all tiles have been rendered (i.e., when tileIndex
+                // is reset to 0)
+                if (Layer::Rendering::TileController::tiledRenderingEnabled)
+                {
+                    if (Layer::Rendering::TileController::tileIndex == 0)
+                        sharedUniforms.flags_.stepToNextFrame = false;
+                }
+                else
+                    sharedUniforms.flags_.stepToNextFrame = false;
+            }
         }
         if 
         (
