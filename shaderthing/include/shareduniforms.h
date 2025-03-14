@@ -69,7 +69,6 @@ private:
               bool isCameraKeyboardInputEnabled       = true; // iWASD
               bool isCameraMouseInputEnabled          = true; // iLook
               bool cameraMouseInputRequiresLMBHold    = true;
-              bool isVSyncEnabled                     = true;
               bool isSSBOSupported                    = false;
     };
 
@@ -209,20 +208,13 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
     };
           Cache               cache_ = {};
 
-    void setUserAction(bool flag);
-    void setResolution
-    (
-        glm::ivec2& resolution, 
-        bool windowFrameManuallyDragged, 
-        bool prepareForExport=false
-    );
     void setMouseInputsClamped(bool flag);
+    void setUserAction(bool flag);
     void toggleMouseInputs();
     void toggleKeyboardInputs();
     void toggleCameraKeyboardInputs();
     void toggleCameraMouseInputs();
-    void setMouseCaptured(bool flag);
-
+    
     DELETE_COPY_MOVE(SharedUniforms)
 
 public:
@@ -267,6 +259,13 @@ public:
     void resetAfterExport(bool resetFrameCounter = true);
     void resetTimeAndFrame(float time=0);
     void toggleRenderingPaused(bool dueToLowFps = false);
+    void setMouseCaptured(bool flag);
+    void setResolution
+    (
+        glm::ivec2& resolution, 
+        bool windowFrameManuallyDragged, 
+        bool prepareForExport=false
+    );
 
     void renderWindowMenuGui();
 

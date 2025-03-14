@@ -210,6 +210,7 @@ void App::saveProject(const std::string& filepath, bool isAutosave) const
     project.write("UIScale", *font_.fontScale);
     project.write("autoSaveEnabled", project_.isAutoSaveEnabled);
     project.write("autoSaveInterval", project_.autoSaveInterval);
+    project.write("vSyncEnabled", windowSettings_.isVSyncEnabled);
     
     Resource::       saveAll(resources_, project);
     sharedUniforms_->save   (            project);
@@ -252,6 +253,9 @@ void App::loadProject(const std::string& filepathOrData, bool fromMemory)
         "autoSaveInterval", 
         Project{}.autoSaveInterval
     );
+    windowSettings_.isVSyncEnabled = 
+        project.readOrDefault<bool>("vSyncEnabled", true);
+    vir::Window::instance()->setVSync(windowSettings_.isVSyncEnabled);
     
     Resource::      loadAll(project,                            resources_);
     SharedUniforms::load   (project,           sharedUniforms_, resources_);
@@ -266,6 +270,9 @@ void App::newProject()
 {
     project_ = Project{};
     *font_.fontScale = .6;
+
+    windowSettings_ = WindowSettings{};
+    vir::Window::instance()->setVSync(windowSettings_.isVSyncEnabled);
 
     DELETE_IF_NOT_NULLPTR(exporter_);
     DELETE_IF_NOT_NULLPTR(sharedUniforms_);
@@ -286,6 +293,7 @@ void App::newProject()
     Layer::Rendering::sharedStorage.reset();
     Layer::resetSharedSourceEditor();
     layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
+    Layer::setRenderingTiles(layers_, 1); // Turn tiled rendering off
     exporter_ = new Exporter();
 }
 
@@ -742,19 +750,93 @@ void App::renderMenuBarGui()
         }
         if (ImGui::BeginMenu("Properties"))
         {
-            sharedUniforms_->renderWindowMenuGui();
-
-            if (ImGui::BeginMenu("Dev"))
+            if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
             {
-                ImGui::Text("N° rendering tiles ");
+                ImGui::Text("Resolution         ");
                 ImGui::SameLine();
-                ImGui::PushItemWidth(10.f*ImGui::GetFontSize());
+                ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
+                glm::ivec2 resolution(sharedUniforms_->iResolution());
+                if 
+                (
+                    ImGui::InputInt2
+                    (
+                        "##windowResolution", 
+                        glm::value_ptr(resolution)
+                    )
+                )
+                    sharedUniforms_->setResolution(resolution, false);
+                ImGui::PopItemWidth();
+
+                auto window = vir::Window::instance();
+                ImGui::Text("VSync              ");
+                ImGui::SameLine();
+                if (ImGui::Checkbox("##windowVSync", &windowSettings_.isVSyncEnabled))
+                    window->setVSync(windowSettings_.isVSyncEnabled);
+
+                ImGui::Text("GUI fps multiplier ");
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text(
+R"(Frame rate multiplier for the graphical-user-interface. By default, the GUI
+frame rate is tied to the shader rendering frame rate in the main window. When
+rendering computationally intensive shaders, the GUI frame rate is affected as 
+well, resulting in a worsened user experience. Set this multiplier to values
+larger than one to recover the GUI frame rate, at the expense, however, of a
+further reduction of the shader rendering frame rate)");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGui::PushItemWidth(8.f*ImGui::GetFontSize());
                 int nRenderingTiles = Layer::Rendering::TileController::nTiles;
                 if (ImGui::InputInt("##nRenderingTiles", &nRenderingTiles))
                 {
                     nRenderingTiles = std::max(nRenderingTiles, 1);
                     Layer::setRenderingTiles(layers_, nRenderingTiles);
                 }
+                
+                ImGui::Text("Pause render below ");
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text(
+R"(Frame rate (in frames per second, fps) of the graphical user interface (GUI)
+below which shader rendering is paused, to prevent e.g., making the app 
+unresponsive should the shader(s) be accidentally made too computationally 
+intensive. This feature is disabled during project exports)");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGui::PushItemWidth(5.0*ImGui::GetFontSize());
+                if 
+                (
+                    ImGui::InputFloat
+                    (
+                        "##maxLowFps", 
+                        &windowSettings_.lowerFpsLimit, 
+                        0.f, 
+                        0.f, 
+                        "%.1f"
+                    )
+                )
+                    windowSettings_.lowerFpsLimit = 
+                        std::max(windowSettings_.lowerFpsLimit, 0.f);
+                ImGui::SameLine();
+                ImGui::PopItemWidth();
+                ImGui::Text("fps");
+
+                if 
+                (
+                    ImGui::Button
+                    (
+                        !sharedUniforms_->isRenderingPaused() ? 
+                        "Pause rendering" : "Resume rendering", 
+                        ImVec2(-1, 0)
+                    )
+                )
+                    sharedUniforms_->toggleRenderingPaused();
+
+                if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
+                    sharedUniforms_->setMouseCaptured(true);
+
                 ImGui::EndMenu();
             }
 

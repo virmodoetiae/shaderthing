@@ -99,9 +99,6 @@ SharedUniforms::SharedUniforms()
 
     exportData_.resolution = fBlock_.iResolution;
 
-    // Set VSync
-    vir::Window::instance()->setVSync(flags_.isVSyncEnabled);
-
     // Register the class iteself with the vir event broadcaster with a 
     // higher priority (lower value is higher priority) than all other
     // ShaderThing event receivers
@@ -627,9 +624,6 @@ void SharedUniforms::prepareForExport(bool setTime, float exportStartTime)
 
     fBlock_.iExport = true;
     flags_.updateDataRangeII = true;
-
-    if (flags_.isVSyncEnabled)
-        vir::Window::instance()->setVSync(false);
 }
 
 //----------------------------------------------------------------------------//
@@ -644,9 +638,6 @@ void SharedUniforms::resetAfterExport(bool resetFrameCounter)
 
     fBlock_.iExport = false;
     flags_.updateDataRangeII = true;
-
-    if (flags_.isVSyncEnabled)
-        vir::Window::instance()->setVSync(true);
 }
 
 //----------------------------------------------------------------------------//
@@ -682,7 +673,6 @@ void SharedUniforms::save(ObjectIO& io) const
     io.write("cursorStatus", 
         vir::Window::instance()->cursorStatus() == 
         vir::Window::CursorStatus::Captured);
-    io.write("vSyncEnabled", flags_.isVSyncEnabled);
     Uniform::saveAll(io, userUniforms_);
     io.writeObjectEnd();
 }
@@ -737,10 +727,8 @@ void SharedUniforms::load
     su->exportData_.resolution = 
         (glm::vec2)su->fBlock_.iResolution*
         su->exportData_.resolutionScale + .5f;
-    su->flags_.isVSyncEnabled = ioSu.readOrDefault<bool>("vSyncEnabled", true);
     if (ioSu.readOrDefault<bool>("cursorStatus", false))
         su->setMouseCaptured(true);
-    vir::Window::instance()->setVSync(su->flags_.isVSyncEnabled);
     Uniform::loadAll
     (
         ioSu, 
@@ -771,68 +759,6 @@ void SharedUniforms::postLoadProcessCachedResourceLayers
 }
 
 //----------------------------------------------------------------------------//
-
-void SharedUniforms::renderWindowMenuGui()
-{
-    if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
-    {
-        ImGui::Text("Resolution         ");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
-        glm::ivec2 resolution(fBlock_.iResolution);
-        if 
-        (
-            ImGui::InputInt2
-            (
-                "##windowResolution", 
-                glm::value_ptr(resolution)
-            )
-        )
-            setResolution(resolution, false);
-        ImGui::PopItemWidth();
-
-        auto window = vir::Window::instance();
-        ImGui::Text("VSync              ");
-        ImGui::SameLine();
-        if (ImGui::Checkbox("##windowVSync", &flags_.isVSyncEnabled))
-            window->setVSync(flags_.isVSyncEnabled);
-        
-        ImGui::Text("Pause render below ");
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-        {
-            ImGui::Text(
-R"(The frame rate (in frames per second, fps) below which rendering to the main 
-window is automatically paused to e.g., prevent making the app unresponsive. 
-This can happen as the graphical user interface (GUI) and the shaders are 
-rendered serially on the GPU, and slow-to-render shaders will slow down the 
-GUI as well. 
-This feature is disabled during project exports)");
-            ImGui::EndTooltip();
-        }
-        ImGui::SameLine();
-        ImGui::PushItemWidth(5.0*ImGui::GetFontSize());
-        if (ImGui::InputFloat("##maxLowFps", &lowerFpsLimit_, 0.f, 0.f, "%.1f"))
-            lowerFpsLimit_ = std::max(lowerFpsLimit_, 0.f);
-        ImGui::SameLine();
-        ImGui::PopItemWidth();
-        ImGui::Text("fps");
-
-        if 
-        (
-            ImGui::Button
-            (
-                !flags_.isRenderingPaused?"Pause rendering":"Resume rendering", 
-                ImVec2(-1, 0)
-            )
-        )
-            toggleRenderingPaused();
-
-        if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
-            setMouseCaptured(true);
-
-        ImGui::EndMenu();
-    }
-}
 
 void SharedUniforms::setMouseCaptured(bool flag)
 {

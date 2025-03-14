@@ -65,6 +65,13 @@ private:
     Exporter*              exporter_        = nullptr;
     FileDialog             fileDialog_;
 
+    struct WindowSettings
+    {
+        bool               isVSyncEnabled   = true;
+        float              lowerFpsLimit    = 5.0;
+    };
+    WindowSettings         windowSettings_  = {};
+
     struct Font
     {
         ImFont*            font             = nullptr;

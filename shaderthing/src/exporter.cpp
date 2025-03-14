@@ -62,6 +62,7 @@ void Exporter::update
     const std::vector<Resource*>& resources
 )
 {
+    static bool vSyncStatusBeforeExport;
     if (!isRunning_)
     {
         if (fileDialog_.validSelection())
@@ -99,6 +100,8 @@ void Exporter::update
         framebufferData_ = 
             new unsigned char[framebuffer_->colorBufferDataSize()];
 
+        vSyncStatusBeforeExport = vir::Window::instance()->VSync();
+        vir::Window::instance()->setVSync(false);
         sharedUniforms.prepareForExport
         (
             exportType_ != ExportType::Image,
@@ -148,7 +151,8 @@ void Exporter::update
 
             if (gifEncoder_->isFileOpen())
                 gifEncoder_->closeFile();
-
+            
+            vir::Window::instance()->setVSync(vSyncStatusBeforeExport);
             sharedUniforms.resetAfterExport
             (
                 settings_.resetFrameCounterAfterExport

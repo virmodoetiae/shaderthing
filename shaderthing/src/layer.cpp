@@ -346,6 +346,8 @@ void Layer::saveAll(const std::vector<Layer*>& layers, ObjectIO& io)
         vir::Shader::extensionsInCurrentContextShadingLanguageDirectives();
     if (enabledExtensions.size() > 0)
         io.write("graphicsExtensions", enabledExtensions);
+    if (Layer::Rendering::TileController::tiledRenderingEnabled)
+        io.write("nRenderingTiles", Layer::Rendering::TileController::nTiles);
     if (Layer::GUI::defaultSharedSource != sharedSource)
         io.write
         (
@@ -568,6 +570,10 @@ void Layer::loadAll
         // This is what the last flag is for
         layer->compileShader(sharedUniforms, true);
     }
+
+    // Finally, reset tiled rendering
+    unsigned int nTiles = io.readOrDefault<unsigned int>("nRenderingTiles", 1);
+    Layer::setRenderingTiles(layers, nTiles);
 }
 
 //----------------------------------------------------------------------------//
