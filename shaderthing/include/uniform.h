@@ -61,6 +61,7 @@ public:
 
     bool        isSharedByUser         = false;
     bool        hasSharedByUserChanged = false;
+    bool        isLogarithmic          = false; // For floats only
 
     struct GUI
     {
@@ -69,6 +70,9 @@ public:
         // True if this uniform is of Type::Float3 or Type::Float4 and its value
         // is set via an ImGui color picker tool
         bool usesColorPicker = false;
+
+        // True if this uniform's bounds are to be displayed in the GUI
+        bool showBounds = true;
 
         // Numerical bounds for the value of this uniform (or its components, if
         // a multi-component vector), only used by uniform types other than
@@ -79,8 +83,9 @@ public:
         //
         float dragStep = 1.;
         
-        // True if this uniform's bounds are to be displayed in the GUI
-        bool showBounds = true;
+        // For floats only: smallest (absolute) value that can be represented
+        // when isLogarithmic == true and the value bounds include 0.f
+        float logarithmicZero = 1e-3f;
     };
     GUI gui;
 

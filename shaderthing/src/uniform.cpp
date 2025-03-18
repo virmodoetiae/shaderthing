@@ -24,6 +24,7 @@
 
 #include "thirdparty/icons/IconsFontAwesome5.h"
 #include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/imgui_extensions.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 
 namespace ShaderThing
@@ -57,7 +58,13 @@ void Uniform::renderUniformsGui
 
     //--------------------------------------------------------------------------
     auto renderEditUniformBoundsButtonGui =
-    [&fontSize](Type type, glm::vec2& bounds, float* dragStep = nullptr)
+    [&fontSize]
+    (
+        Type type, 
+        glm::vec2& bounds, 
+        float* dragStep = nullptr, 
+        float* logarithmicZero = nullptr
+    )
     {
         if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
             ImGui::OpenPopup("##uniformBounds");
@@ -67,7 +74,7 @@ void Uniform::renderUniformsGui
             glm::vec2 bounds0(bounds);
             if (type == vir::Shader::Variable::Type::UInt)
                 bounds.x = std::max(bounds.x, 0.0f);
-            ImGui::Text("Minimum value   ");
+            ImGui::Text("Minimum value    ");
             ImGui::SameLine();
             float inputWidth = 6*fontSize;
             auto minf = Helpers::getFormat(bounds0.x);
@@ -80,7 +87,7 @@ void Uniform::renderUniformsGui
                 minf.c_str()
             );
             ImGui::PopItemWidth();
-            ImGui::Text("Maximum value   ");
+            ImGui::Text("Maximum value    ");
             ImGui::SameLine();
             ImGui::PushItemWidth(inputWidth);
             ImGui::InputFloat
@@ -97,7 +104,7 @@ void Uniform::renderUniformsGui
             )
             {
                 auto format = Helpers::getFormat(*dragStep);
-                ImGui::Text("Mouse drag step ");
+                ImGui::Text("Mouse drag step  ");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(inputWidth);
                 if (type == Type::Int2)
@@ -117,6 +124,40 @@ void Uniform::renderUniformsGui
                         dragStep, 0.f, 0.f,
                         format.c_str()
                     );
+                ImGui::PopItemWidth();
+            }
+            else if 
+            (
+                logarithmicZero != nullptr &&
+                bounds.x * bounds.y <= 0
+            )
+            {
+                auto format = Helpers::getFormat(*logarithmicZero);
+                ImGui::Text("Logarithmic zero ");
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text(
+R"(When a log-scale slider is used and the uniform bounds contain or cross 0, 
+this value determines the closest value to 0 (that differs from 0) that can be
+set by adjusting the slider)");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGui::PushItemWidth(inputWidth);
+                float logarithmicZero0(*logarithmicZero);
+                if 
+                (
+                    ImGui::InputFloat
+                    (
+                        "##logarithmicZero", 
+                        logarithmicZero, 0.f, 0.f,
+                        format.c_str()
+                    )
+                )
+                {
+                    if (*logarithmicZero <= 0)
+                        *logarithmicZero = logarithmicZero0;
+                }
                 ImGui::PopItemWidth();
             }
             ImGui::EndPopup();
@@ -1053,7 +1094,9 @@ motion only if the left mouse button (LMB) is held)");
             (
                 uniform->type,
                 bounds,
-                &(uniform->gui.dragStep)
+                &(uniform->gui.dragStep),
+                uniform->isLogarithmic ? 
+                    &(uniform->gui.logarithmicZero) : nullptr
             );
         }
         if (showSeparator)
@@ -1349,15 +1392,43 @@ motion only if the left mouse button (LMB) is held)");
                     ImGui::Text("%.3f", value);
                 else
                 {
-                    std::string format = Helpers::getFormat(value);
+                    if (ImGui::SmallButton(uniform->isLogarithmic?"log":"lin"))
+                        uniform->isLogarithmic = !uniform->isLogarithmic;
+                    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                    {
+                        ImGui::Text
+                        ( 
+                            uniform->isLogarithmic ?
+                            "Switch slider to linear scale" : 
+                            "Switch slider to logarithmic scale"
+                        );
+                        ImGui::EndTooltip();
+                    }
+                    ImGui::SameLine();
+                    ImGuiSliderFlags flags = 0;
+                    std::string format;
+                    if (uniform->isLogarithmic)
+                    {
+                        ImGui::PushDragSliderLogZeroForScientificNotation
+                        (
+                            uniform->gui.logarithmicZero
+                        );
+                        format = "%.3e";
+                        flags = ImGuiSliderFlags_Logarithmic;
+                    } 
+                    else
+                        format = Helpers::getFormat(value);
                     input = ImGui::SliderFloat
                     (
                         "##fSlider", 
                         &value, 
                         bounds.x,
                         bounds.y,
-                        format.c_str()
+                        format.c_str(),
+                        flags
                     );
+                    if (uniform->isLogarithmic)
+                        ImGui::PopDragSliderLogZeroForScientificNotation();
                 }
                 if (input || boundsChanged)
                 {
