@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(thirdparty)
 
-set(CMAKE_BUILD_TYPE_0 "${CMAKE_BUILD_TYPE}")
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_BUILD_TYPE "Release")
-endif()
+#set(CMAKE_BUILD_TYPE_0 "${CMAKE_BUILD_TYPE}")
+#if (CMAKE_BUILD_TYPE MATCHES Debug)
+#    set(CMAKE_BUILD_TYPE "Release")
+#endif()
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -26,7 +26,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stb)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/rapidjson)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/portable-file-dialogs)
 
-set(CXX_FLAGS "-static-libgcc -static-libstdc++ -static -std=c++17 -O3")
+set(CXX_FLAGS "-static-libgcc -static-libstdc++ -static -std=c++17")
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CXX_FLAGS "${CXX_FLAGS} -O0")
+else()
+    set(CXX_FLAGS "${CXX_FLAGS} -O3")
+endif()
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 add_library(thirdparty 
 			glad/src/glad.cpp 
@@ -37,9 +42,11 @@ add_library(thirdparty
 			imgui/imgui_widgets.cpp 
 			imgui/imgui_demo.cpp 
 			imgui/misc/cpp/imgui_stdlib.cpp
+			imgui/imgui_extensions.cpp
+			imgui/imgui_internal_extensions.cpp
 			stb/stb.cpp
 			portable-file-dialogs/pfd_impl.cpp)
 
 target_link_libraries(thirdparty PUBLIC glfw)
 
-set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE_0}")
+#set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE_0}")
