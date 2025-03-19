@@ -228,6 +228,9 @@ TODO ---------------------------------------------------------------------------
     uniforms automatically being updated on mouse movement without having to
     hold LMB
 
+(X) Implement "replace next" occurence of found text in the find/replace tool,
+    as currently only a "replace all" can be performed
+
 (W) Add example projects that can be loaded in ShaderThings as demos/tutorials.
     This is currently being implemented under Help->Examples
 
@@ -239,8 +242,7 @@ TODO ---------------------------------------------------------------------------
 
 ( ) Implement layer cloning (for convenience)
 
-( ) Implement "replace next" occurence of found text in the find/replace tool,
-    as currently only a "replace all" can be performed
+
 
 TO-CONSIDER --------------------------------------------------------------------
 
@@ -256,9 +258,8 @@ TO-CONSIDER --------------------------------------------------------------------
     a Cubemap framebuffer). This is probably a lot of work for a feature I don't
     see very often in the shader art community
 
-*   Add support for 3D-textures management in vir, the ShaderThing resource
-    manager and uniform system. This isn't a lot of work but it's a feature I 
-    don't see very often in the shader art community
+*   Add support for load 3D-textures from file, although I am not sure which
+    file formats exists and/or are most common in the graphics domain
 
 *   Record video tutorial(s) of program usage, host them on YouTube, 
     possibly find a way to add tutorial links within the program

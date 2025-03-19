@@ -778,10 +778,10 @@ void App::renderMenuBarGui()
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                 {
                     ImGui::Text(
-R"(Frame rate multiplier for the graphical-user-interface. By default, the GUI
-frame rate is tied to the shader rendering frame rate in the main window. When
-rendering computationally intensive shaders, the GUI frame rate is affected as 
-well, resulting in a worsened user experience. Set this multiplier to values
+R"(Frame rate multiplier of the graphical user interface (GUI). By default, the 
+GUI frame rate is tied to the shader rendering frame rate in the main window. 
+When rendering computationally intensive shaders, the GUI frame rate is affected
+as well, resulting in a worsened user experience. Set this multiplier to values
 larger than one to recover the GUI frame rate, at the expense, however, of a
 further reduction of the shader rendering frame rate)");
                     ImGui::EndTooltip();
@@ -803,10 +803,10 @@ further reduction of the shader rendering frame rate)");
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
                 {
                     ImGui::Text(
-R"(Frame rate (in frames per second, fps) of the graphical user interface (GUI)
-below which shader rendering is paused, to prevent e.g., making the app 
-unresponsive should the shader(s) be accidentally made too computationally 
-intensive. This feature is disabled during project exports)");
+R"(Frame rate of the graphical user interface (GUI) below which shader rendering
+is paused, to prevent e.g., making the app unresponsive should the shader(s) be 
+accidentally made too computationally intensive. This feature is disabled during 
+project exports)");
                     ImGui::EndTooltip();
                 }
                 ImGui::SameLine();

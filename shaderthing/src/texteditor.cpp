@@ -3180,242 +3180,6 @@ void TextEditor::UndoRecord::redo(TextEditor * aEditor)
     aEditor->ensureCursorVisible();
 }
 
-/*static bool TokenizeCStyleString
-(
-    const char * inBegin, 
-    const char * inEnd, 
-    const char *& outBegin, 
-    const char *& outEnd
-)
-{
-    const char * p = inBegin;
-    if (*p == '"')
-    {
-        p++;
-
-        while (p < inEnd)
-        {
-            // handle end of string
-            if (*p == '"')
-            {
-                outBegin = inBegin;
-                outEnd = p + 1;
-                return true;
-            }
-            // handle escape character for "
-            if (*p == '\\' && p + 1 < inEnd && p[1] == '"')
-                p++;
-            p++;
-        }
-    }
-    return false;
-}*/
-
-/*static bool TokenizeCStyleCharacterLiteral
-(
-    const char * inBegin, 
-    const char * inEnd, 
-    const char *& outBegin, 
-    const char *& outEnd
-)
-{
-    const char * p = inBegin;
-    if (*p == '\'')
-    {
-        p++;
-
-        // handle escape characters
-        if (p < inEnd && *p == '\\')
-            p++;
-
-        if (p < inEnd)
-            p++;
-
-        // handle end of character literal
-        if (p < inEnd && *p == '\'')
-        {
-            outBegin = inBegin;
-            outEnd = p + 1;
-            return true;
-        }
-    }
-    return false;
-}*/
-
-/*static bool TokenizeCStyleIdentifier
-(
-    const char * inBegin, 
-    const char * inEnd, 
-    const char *& outBegin, 
-    const char *& outEnd
-)
-{
-    const char * p = inBegin;
-    if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || *p == '_')
-    {
-        p++;
-        while 
-        (
-            (p < inEnd) && 
-            ((*p >= 'a' && *p <= 'z') || 
-            (*p >= 'A' && *p <= 'Z') || 
-            (*p >= '0' && *p <= '9') || 
-            *p == '_')
-        )
-            p++;
-        outBegin = inBegin;
-        outEnd = p;
-        return true;
-    }
-    return false;
-}*/
-
-/*static bool TokenizeCStyleNumber
-(
-    const char * inBegin, 
-    const char * inEnd, 
-    const char *& outBegin, 
-    const char *& outEnd
-)
-{
-    const char * p = inBegin;
-    const bool startsWithNumber = *p >= '0' && *p <= '9';
-    if (*p != '+' && *p != '-' && !startsWithNumber)
-        return false;
-    p++;
-    bool hasNumber = startsWithNumber;
-    while (p < inEnd && (*p >= '0' && *p <= '9'))
-    {
-        hasNumber = true;
-        p++;
-    }
-    if (hasNumber == false)
-        return false;
-    bool isFloat = false;
-    bool isHex = false;
-    bool isBinary = false;
-    if (p < inEnd)
-    {
-        if (*p == '.')
-        {
-            isFloat = true;
-            p++;
-            while (p < inEnd && (*p >= '0' && *p <= '9'))
-                p++;
-        }
-        else if (*p == 'x' || *p == 'X')
-        {
-            isHex = true;
-            p++;
-            while 
-            (
-                p < inEnd && 
-                (
-                    (*p >= '0' && *p <= '9') || 
-                    (*p >= 'a' && *p <= 'f') || 
-                    (*p >= 'A' && *p <= 'F')
-                )
-            )
-                p++;
-        }
-        else if (*p == 'b' || *p == 'B')
-        {
-            isBinary = true;
-            p++;
-            while (p < inEnd && (*p >= '0' && *p <= '1'))
-                p++;
-        }
-    }
-
-    if (isHex == false && isBinary == false)
-    {
-        // floating point exponent
-        if (p < inEnd && (*p == 'e' || *p == 'E'))
-        {
-            isFloat = true;
-            p++;
-            if (p < inEnd && (*p == '+' || *p == '-'))
-                p++;
-            bool hasDigits = false;
-            while (p < inEnd && (*p >= '0' && *p <= '9'))
-            {
-                hasDigits = true;
-                p++;
-            }
-            if (hasDigits == false)
-                return false;
-        }
-
-        // single precision floating point type
-        if (p < inEnd && *p == 'f')
-            p++;
-    }
-
-    if (isFloat == false)
-    {
-        // integer size type
-        while 
-        (
-            p < inEnd && 
-            (
-                *p == 'u' || 
-                *p == 'U' || 
-                *p == 'l' || 
-                *p == 'L'
-            )
-        )
-            p++;
-    }
-
-    outBegin = inBegin;
-    outEnd = p;
-    return true;
-}*/
-
-/*static bool TokenizeCStylePunctuation
-(
-    const char * inBegin, 
-    const char * inEnd, 
-    const char *& outBegin, 
-    const char *& outEnd
-)
-{
-    (void)inEnd;
-
-    switch (*inBegin)
-    {
-    case '[':
-    case ']':
-    case '{':
-    case '}':
-    case '!':
-    case '%':
-    case '^':
-    case '&':
-    case '*':
-    case '(':
-    case ')':
-    case '-':
-    case '+':
-    case '=':
-    case '~':
-    case '|':
-    case '<':
-    case '>':
-    case '?':
-    case ':':
-    case '/':
-    case ';':
-    case ',':
-    case '.':
-        outBegin = inBegin;
-        outEnd = inBegin + 1;
-        return true;
-    }
-
-    return false;
-}*/
-
 const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
 {
     static bool inited = false;
@@ -3653,15 +3417,8 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
 
     // Render GUI --------------------------------------------------------------
     ImGui::Dummy(ImVec2(0, 0.05f*ImGui::GetFontSize()));
-    //float x0 = ImGui::GetCursorPosX();
     ImGui::Text("Find text");
     ImGui::SameLine();
-    float x0 = ImGui::GetCursorPosX();
-    ImGui::Text("              ");
-    ImGui::SameLine();
-    float x1 = ImGui::GetCursorPosX();
-    ImGui::SetCursorPosX(x0);
-
     bool searchedByClickingArrows(false);
     if (ImGui::SmallButton("<"))
     {
@@ -3691,8 +3448,7 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         searchedByClickingArrows = true;
     }
     ImGui::SameLine();
-    ImGui::SetCursorPosX(x1);
-    //float x1 = ImGui::GetCursorPosX();
+    float x1 = ImGui::GetCursorPosX();
     ImGui::PushItemWidth(-1);
 
     if (isFocusOnSearchField_)
@@ -3722,7 +3478,6 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
     bool replaceOne(false);
     if (mode_ == Mode::FindAndReplace)
     {
-        //float width = x1-x0-0.5*ImGui::GetFontSize();
         ImGui::Text("Replace");
         ImGui::SameLine();
         replaceOne = ImGui::SmallButton("one");
@@ -3731,16 +3486,12 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         ImGui::SameLine();
         replaceAll = ImGui::SmallButton("all");
         ImGui::SameLine();
-        ImGui::Text("with");
-        ImGui::SameLine();
         ImGui::SetCursorPosX(x1);
         ImGui::InputText
         (
             "##replaceTextWith", 
             &replaceTextWith_, 
-            ImGuiInputTextFlags_NoUndoRedo | 
-            ImGuiInputTextFlags_EnterReturnsTrue
-            //ImGuiInputTextFlags_AllowTabInput
+            ImGuiInputTextFlags_NoUndoRedo|ImGuiInputTextFlags_EnterReturnsTrue
         );
     }
 
@@ -3811,12 +3562,17 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         }
         else if (!textToBeFoundChanged)
         {
-            if (textToBeFound_.size() == 0)
+            if (textToBeFound_.empty())
                 clearCache();
             return false;
         }
     }
-    // Here is the search part
+    else if (textToBeFound_.empty())
+    {
+        forceSearch = false;
+        return false;
+    }
+    // Here is the search part&
     std::string editorText = editor.getText();
     foundTextLineCols_.clear();
     nFound = 0;
