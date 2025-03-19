@@ -352,6 +352,10 @@ void TextEditor::addUndo(UndoRecord& aValue)
     undoBuffer_.resize((size_t)(undoIndex_ + 1));
     undoBuffer_.back() = aValue;
     ++undoIndex_;
+    // Any time addUndo is called is because some changes to the texts were 
+    // made. Hence, force the find-replace-text tool to update its search
+    // results
+    findReplaceTool_.forceSearch = true;
 }
 
 TextEditor::Coordinates TextEditor::screenPosToCoordinates
@@ -2523,6 +2527,7 @@ void TextEditor::undo(int aSteps)
             aSteps++;
         undoBuffer_[--undoIndex_].undo(this);
     }
+    findReplaceTool_.forceSearch = true;
 }
 
 void TextEditor::redo(int aSteps)
@@ -2536,6 +2541,7 @@ void TextEditor::redo(int aSteps)
         }
         undoBuffer_[undoIndex_++].redo(this);
     }
+    findReplaceTool_.forceSearch = true;
 }
 
 const TextEditor::Palette & TextEditor::getDarkPalette()
@@ -3611,8 +3617,8 @@ void TextEditor::FindReplaceTool::renderMenuGui()
 
 bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
 {
-    // Check if tool has been just opened or closed or if editor changed, and --
-    // thus check it tool should run at all or if cache should be cleaned ------
+    // Check if tool has been just opened or closed or if editor changed, and
+    // thus check it tool should run at all or if cache should be cleaned
     auto clearCache = [&]()
     {
         textToBeFound0_.clear();
@@ -3647,10 +3653,15 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
 
     // Render GUI --------------------------------------------------------------
     ImGui::Dummy(ImVec2(0, 0.05f*ImGui::GetFontSize()));
-    float x0 = ImGui::GetCursorPosX();
-    ImGui::Text("Find text ");
+    //float x0 = ImGui::GetCursorPosX();
+    ImGui::Text("Find text");
     ImGui::SameLine();
-    
+    float x0 = ImGui::GetCursorPosX();
+    ImGui::Text("              ");
+    ImGui::SameLine();
+    float x1 = ImGui::GetCursorPosX();
+    ImGui::SetCursorPosX(x0);
+
     bool searchedByClickingArrows(false);
     if (ImGui::SmallButton("<"))
     {
@@ -3680,7 +3691,8 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         searchedByClickingArrows = true;
     }
     ImGui::SameLine();
-    float x1 = ImGui::GetCursorPosX();
+    ImGui::SetCursorPosX(x1);
+    //float x1 = ImGui::GetCursorPosX();
     ImGui::PushItemWidth(-1);
 
     if (isFocusOnSearchField_)
@@ -3691,7 +3703,6 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         &textToBeFound_,
         ImGuiInputTextFlags_NoUndoRedo | 
         ImGuiInputTextFlags_EnterReturnsTrue
-        //ImGuiInputTextFlags_AllowTabInput
     );
     bool textToBeFoundChanged(textToBeFound_ != textToBeFound0_);
     if (textToBeFoundChanged)
@@ -3707,14 +3718,20 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         searchedByPressingEnter  || 
         searchedByClickingArrows ||
         textToBeFoundChanged;
-    bool replaceText(false);
+    bool replaceAll(false);
+    bool replaceOne(false);
     if (mode_ == Mode::FindAndReplace)
     {
-        replaceText = ImGui::Button
-        (
-            "Replace all with", 
-            ImVec2(x1-x0-0.5*ImGui::GetFontSize(), 0)
-        );
+        //float width = x1-x0-0.5*ImGui::GetFontSize();
+        ImGui::Text("Replace");
+        ImGui::SameLine();
+        replaceOne = ImGui::SmallButton("one");
+        ImGui::SameLine();
+        ImGui::Text("/");
+        ImGui::SameLine();
+        replaceAll = ImGui::SmallButton("all");
+        ImGui::SameLine();
+        ImGui::Text("with");
         ImGui::SameLine();
         ImGui::SetCursorPosX(x1);
         ImGui::InputText
@@ -3738,7 +3755,40 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
     else 
         editor.setHandleKeyboardInputs(true);
     int n(textToBeFound_.size());
-    if (!replaceText)
+    if (replaceAll || replaceOne)
+    {
+        if 
+        (
+            foundTextLineCols_.size() > 0 && 
+            textToBeFound_ != replaceTextWith_
+        )
+        {
+            int offset = 0;
+            int delta = replaceTextWith_.size()-textToBeFound_.size();
+            Coordinates s0, s1;
+            for (int i=0; i<(int)foundTextLineCols_.size(); i++)
+            {
+                if (replaceOne && foundTextCounter_ != i)
+                    continue;
+                Coordinates& fcp = foundTextLineCols_[i];
+                if (i > 0 && foundTextLineCols_[i-1].line == fcp.line)
+                    offset += delta;
+                else
+                    offset = 0;
+                s0 = {fcp.line, fcp.column+offset};
+                s1 = {fcp.line, fcp.column+n+offset};
+                editor.setSelection(s0,s1);
+                editor.remove(madeReplacements && replaceAll);
+                editor.setCursorPosition(s0);
+                editor.insertText(replaceTextWith_, true, true);
+                madeReplacements = true;
+                if (replaceOne)
+                    break;
+            }
+            foundTextLineCols_.clear();
+        }
+    }
+    else if (!forceSearch)
     {
         if 
         (
@@ -3766,36 +3816,7 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
             return false;
         }
     }
-    else
-    {
-        if 
-        (
-            foundTextLineCols_.size() > 0 && 
-            textToBeFound_ != replaceTextWith_
-        )
-        {
-            int offset = 0;
-            int delta = replaceTextWith_.size()-textToBeFound_.size();
-            Coordinates s0, s1;
-            for (int i=0; i<(int)foundTextLineCols_.size(); i++)
-            {
-                Coordinates& fcp = foundTextLineCols_[i];
-                if (i > 0 && foundTextLineCols_[i-1].line == fcp.line)
-                    offset += delta;
-                else
-                    offset = 0;
-                s0 = {fcp.line, fcp.column+offset};
-                s1 = {fcp.line, fcp.column+n+offset};
-                editor.setSelection(s0,s1);
-                editor.remove(true);
-                editor.setCursorPosition(s0);
-                editor.insertText(replaceTextWith_, true, true);
-                if (!madeReplacements)
-                    madeReplacements = true;
-            }
-            foundTextLineCols_.clear();
-        }
-    }
+    // Here is the search part
     std::string editorText = editor.getText();
     foundTextLineCols_.clear();
     nFound = 0;
@@ -3818,11 +3839,9 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         }
         if (ci0 == '\n')
         {
-            line+=1;
-            column=0;
+            line += 1;
+            column = 0;
         }
-        //else if (ci0 == '\t') // Got rid of tabs, so...
-        //    column += editor.getTabSize();
         else
             column += 1;
         if (!found)
@@ -3833,7 +3852,7 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         );
         nFound++;
     }
-    if (nFound > 0)
+    if (nFound > 0 && !forceSearch)
     {
         auto lc = foundTextLineCols_[foundTextCounter_];
         Coordinates c0(lc.line, lc.column);
@@ -3841,8 +3860,9 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         editor.setCursorPosition(c0);
         editor.setSelection(c0, c1);
     }
+    forceSearch = false;
     textToBeFound0_ = textToBeFound_;
-    foundTextCounter_ = std::min(foundTextCounter_, nFound);
+    foundTextCounter_ = std::max(std::min(foundTextCounter_, nFound-1), 0);
     foundTextCounter0_ = foundTextCounter_;
     return madeReplacements;
 }

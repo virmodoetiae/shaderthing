@@ -157,7 +157,7 @@ void App::update()
                 vir::Window::instance()->time()->outerTimestep();
     }
 
-    // Compute FPS and set in window title, also, check if rendering should stop
+    // Compute fps and set in window title, also, check if rendering should stop
     // if fps too low for too long
     static int elapsedFrames(0);
     static float elapsedTime(0);
@@ -177,13 +177,13 @@ void App::update()
             double wFps = fps/Layer::Rendering::TileController::nTiles;
             imGuiTitle_ = 
                 "Control panel - "+project_.filename+" (window: "+
-                Helpers::format(wFps,1)+" FPS | GUI: "+
-                Helpers::format(fps,1)+" FPS)"+"###CP";
+                Helpers::format(wFps,1)+" fps | GUI: "+
+                Helpers::format(fps,1)+" fps)"+"###CP";
         }
         else
             imGuiTitle_ = 
                 "Control panel - "+project_.filename+" ("+
-                Helpers::format(fps,1)+" FPS)"+"###CP";
+                Helpers::format(fps,1)+" fps)"+"###CP";
         elapsedFrames = 0;
         elapsedTime = 0;
         if (!exporter_->isRunning())
@@ -447,7 +447,7 @@ void App::Font::initialize()
         fontConfig.OversampleH = 3.0;
         fontConfig.RasterizerMultiply = 1.0;
         // The 26-36.5 ratio between Western writing systems' characters and
-        // asian logograms/characters is set so that the latter are (almost)
+        // Asian logograms/characters is set so that the latter are (almost)
         // exactly twice as wide as the former, for readability, valid for the
         // selected fonts at hand
         font = io.Fonts->AddFontFromMemoryCompressedTTF

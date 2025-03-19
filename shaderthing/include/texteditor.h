@@ -239,6 +239,8 @@ public:
 
     public:
 
+        bool                     forceSearch           = false;
+
         // Check if tool should open or close in response to pressing Ctrl+F or
         // Ctrl+H. Retruns true if said shortcuts have been pressed
         bool checkShortcuts();
