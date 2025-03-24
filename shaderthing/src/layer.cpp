@@ -243,10 +243,10 @@ R"(void main()
         (
             vertexShaderSource(sharedUniforms),
             glslDirectives()+
-R"(out  vec4      fragColor;
-in      vec2      qc;
-in      vec2      tc;
-uniform sampler2D tx;
+R"(layout (location=0) out  vec4      fragColor;
+layout (location=0) in      vec2      qc;
+layout (location=1) in      vec2      tc;
+layout (binding=0) uniform sampler2D tx;
 void main(){fragColor = texture(tx, tc);})",
             vir::Shader::ConstructFrom::SourceCode
         )
@@ -620,8 +620,8 @@ std::string Layer::vertexShaderSource
         glslDirectives()+
 R"(layout (location=0) in vec3 iqc;
 layout (location=1) in vec2 itc;
-out vec2 qc;
-out vec2 tc;
+layout (location=0) out vec2 qc;
+layout (location=1) out vec2 tc;
 )" + sharedUniforms.glslVertexBlockSource() +
 R"(
 void main(){
@@ -643,7 +643,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
     std::string header
     (
         glslDirectives()+
-        "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n" +
+        "layout (location=0) in      vec2   qc;\n layout (location=1) in      vec2   tc;\nlayout (location=0) out     vec4   fragColor;\n" +
         Rendering::sharedStorage->glslBlockSource() +
         sharedUniforms.glslFragmentBlockSource() +
         "\n"
@@ -660,6 +660,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
         unsigned int& imageBindingPoint
     )
     {
+        unsigned int uLocation = 0;
         for (auto* u : uniforms)
         {
             // If the uniform has no name, I can't add it to the source
@@ -676,7 +677,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                     if (resource == nullptr)
                         break;
                     header += 
-                        "layout(binding="+std::to_string(imageBindingPoint++)+
+                        "layout (binding="+std::to_string(imageBindingPoint++)+
                         ", "+resource->internalFormatName()+") ";
                     // This logic should be handled different at the vir:: 
                     // level and exposed via Resource::, not here
@@ -698,7 +699,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                     break;
                 }
                 default :
-                    break;
+                    header += "layout (location="+std::to_string(uLocation++)+") ";
             }
             header += "uniform "+uniformTypeName+" "+u->name+";\n";
             ++nLines;
@@ -722,6 +723,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
         }
     };
 
+    /*
     writeUniformsToHeader
     (
         sharedUniforms.userUniforms(),
@@ -736,7 +738,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
         nLines,
         imageBindingPoint
     );
-
+*/
     return {header, nLines};
 }
 
@@ -1094,9 +1096,9 @@ bool Layer::compileShader
                 (
                     vertexShaderSource(sharedUniforms),
                     glslDirectives()+
-R"(out vec4 fragColor;
-in     vec2 qc;
-in     vec2 tc;
+R"(layout (location=0) out vec4 fragColor;
+layout (location=0) in     vec2 qc;
+layout (location=1) in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})",
                     vir::Shader::ConstructFrom::SourceCode
                 );
@@ -1524,9 +1526,9 @@ Layer::Rendering::Result Layer::renderShaders // Static
                 (
                     vertexShaderSource(sharedUniforms),
                     glslDirectives()+
-R"(out vec4 fragColor;
-in     vec2 qc;
-in     vec2 tc;
+R"(layout (location=0) out vec4 fragColor;
+layout (location=0) in     vec2 qc;
+layout (location=1) in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})",
                     vir::Shader::ConstructFrom::SourceCode
                 )

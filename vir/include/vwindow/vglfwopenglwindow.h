@@ -23,6 +23,8 @@ public :
         std::string name, 
         bool resizable=true
     );
+
+    ~GLFWOpenGLWindow();
     
     void* nativeWindow() override {return glfwWindow_;}
 

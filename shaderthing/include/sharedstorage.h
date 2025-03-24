@@ -197,7 +197,7 @@ class SharedStorage
             //  running on a computer with an OpenGL version < 4.3, the SSBO is
             //  not available anyway, so no real compatibility breaking
             return
-                "layout(std430) coherent buffer sharedStorageBlock {\n        "+
+                "layout(std430, binding = 2) coherent buffer sharedStorageBlock {\n        "+
                 sIntType+" ssiData["+std::to_string(intDataSize_)+"];\n        "+
                 sVecType+" ssfData[];}; // Dynamic size up to "+
                 std::to_string(floatDataSize_)+"\n";

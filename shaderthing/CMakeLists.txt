@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(shaderthing)
 
-
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../vir/include)

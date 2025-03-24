@@ -5,6 +5,9 @@
 #include "vgraphics/vcore/vopengl/vopenglcontext.h"
 #include "thirdparty/stb/stb_image.h"
 
+#include <thirdparty/glslang/glslang/Public/ShaderLang.h>
+#include <thirdparty/glslang/SPIRV/GlslangToSpv.h>
+
 namespace vir
 {
 
@@ -19,6 +22,8 @@ GLFWOpenGLWindow::GLFWOpenGLWindow
 {
     time_ = Time::initialize<GLFWTime>();
     context_ = new OpenGLContext();
+
+    //glslang::InitializeProcess();
 
     // This is a very peculiar (read 'stupid') approach to finding the
     // highest supported OpenGL version on the system. Actually untested on
@@ -58,6 +63,11 @@ GLFWOpenGLWindow::GLFWOpenGLWindow
     }
     context_->initialize(glfwWindow_); 
     setVSync(true);
+}
+
+GLFWOpenGLWindow::~GLFWOpenGLWindow()
+{
+    //glslang::FinalizeProcess();
 }
 
 glm::vec2 GLFWOpenGLWindow::contentScale()

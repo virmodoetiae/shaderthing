@@ -2,11 +2,14 @@ cmake_minimum_required(VERSION 3.16)
 
 project(thirdparty)
 
-#set(CMAKE_BUILD_TYPE_0 "${CMAKE_BUILD_TYPE}")
-#if (CMAKE_BUILD_TYPE MATCHES Debug)
-#    set(CMAKE_BUILD_TYPE "Release")
-#endif()
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
+set(CMAKE_BUILD_TYPE_0 "${CMAKE_BUILD_TYPE}")
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+
+# GLFW Setup
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -15,6 +18,15 @@ if(UNIX AND NOT APPLE)
     set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "" FORCE)
 endif()
 add_subdirectory(glfw3)
+
+# GLSLang setup
+set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)  # No standalone binaries
+set(ENABLE_SPIRV ON CACHE BOOL "" FORCE)              # Enable SPIR-V
+set(ENABLE_SPVREMAPPER OFF CACHE BOOL "" FORCE)       # No SPIR-V Remapper
+set(ENABLE_OPT OFF CACHE BOOL "" FORCE)               # No SPIRV-Tools optimizations
+set(ENABLE_HLSL OFF CACHE BOOL "" FORCE)              # No HLSL support
+set(ENABLE_GLSLANG_JS OFF CACHE BOOL "" FORCE)        # No JavaScript bindings
+add_subdirectory(glslang)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/glad/include)
@@ -47,6 +59,8 @@ add_library(thirdparty
 			stb/stb.cpp
 			portable-file-dialogs/pfd_impl.cpp)
 
-target_link_libraries(thirdparty PUBLIC glfw)
+#target_link_libraries(thirdparty PUBLIC glfw shaderc shaderc_util SPIRV-Tools SPIRV-Tools-opt)
 
-#set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE_0}")
+target_link_libraries(thirdparty PUBLIC glfw glslang)
+
+set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE_0}")

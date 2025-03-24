@@ -143,7 +143,7 @@ private:
         // the order in which they have been delcared in FragmentBlock. On the
         // other hand, the actual uniform names do not matter
         static constexpr const char* glslSource =
-R"(layout(std140) uniform sharedUniformBlock {
+R"(layout(std140, binding=0) uniform sharedUniformBlock {
         int    iFrame;
         int    iRenderPass;
         float  iTime;
@@ -166,7 +166,7 @@ R"(layout(std140) uniform sharedUniformBlock {
         static uint32_t size() {return 64;}
         static constexpr const char* glslName = "vertexUniformBlock";
         static constexpr const char* glslSource =
-R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
+R"(layout(std140, binding=1) uniform vertexUniformBlock {mat4 iMVP;};
 )";
     };
     
