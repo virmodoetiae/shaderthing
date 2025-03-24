@@ -72,7 +72,7 @@ void Uniform::renderUniformsGui
         {
             
             glm::vec2 bounds0(bounds);
-            if (type == vir::Shader::Variable::Type::UInt)
+            if (type == vir::Shader::Uniform::Type::UInt)
                 bounds.x = std::max(bounds.x, 0.0f);
             ImGui::Text("Minimum value    ");
             ImGui::SameLine();
@@ -805,21 +805,21 @@ motion only if the left mouse button (LMB) is held)");
     // -------------------------------------------------------------------------
     static std::string supportedUniformTypeNames[15]
     {
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Bool],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int2],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int3],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Int4],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float2],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float3],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Float4],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Sampler2D],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Sampler3D],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::SamplerCube],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Image2D],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::Image3D],
-        vir::Shader::uniformTypeToName[vir::Shader::Variable::Type::ImageCube]
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Bool],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Int],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Int2],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Int3],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Int4],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Float],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Float2],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Float3],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Float4],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Sampler2D],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Sampler3D],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::SamplerCube],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Image2D],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::Image3D],
+        vir::Shader::uniformTypeToName[vir::Shader::Uniform::Type::ImageCube]
     };
     auto renderUniformGui = 
     [&fontSize, &renderEditUniformBoundsButtonGui]
@@ -944,44 +944,44 @@ motion only if the left mouse button (LMB) is held)");
                         bool uniformTypeIsSamplerOrImage2D = 
                         (
                             uniform->type == 
-                            vir::Shader::Variable::Type::Sampler2D ||
+                            vir::Shader::Uniform::Type::Sampler2D ||
                             uniform->type == 
-                            vir::Shader::Variable::Type::Image2D
+                            vir::Shader::Uniform::Type::Image2D
                         );
                         bool selectedTypeIsSamplerOrImage2D = 
                         (
                             selectedType == 
-                            vir::Shader::Variable::Type::Sampler2D ||
+                            vir::Shader::Uniform::Type::Sampler2D ||
                             selectedType == 
-                            vir::Shader::Variable::Type::Image2D
+                            vir::Shader::Uniform::Type::Image2D
                         );
                         bool uniformTypeIsSamplerOrImage3D = 
                         (
                             uniform->type == 
-                            vir::Shader::Variable::Type::Sampler3D ||
+                            vir::Shader::Uniform::Type::Sampler3D ||
                             uniform->type == 
-                            vir::Shader::Variable::Type::Image3D
+                            vir::Shader::Uniform::Type::Image3D
                         );
                         bool selectedTypeIsSamplerOrImage3D = 
                         (
                             selectedType == 
-                            vir::Shader::Variable::Type::Sampler3D ||
+                            vir::Shader::Uniform::Type::Sampler3D ||
                             selectedType == 
-                            vir::Shader::Variable::Type::Image3D
+                            vir::Shader::Uniform::Type::Image3D
                         );
                         bool uniformTypeIsSamplerOrImageCube = 
                         (
                             uniform->type == 
-                            vir::Shader::Variable::Type::SamplerCube ||
+                            vir::Shader::Uniform::Type::SamplerCube ||
                             uniform->type == 
-                            vir::Shader::Variable::Type::ImageCube
+                            vir::Shader::Uniform::Type::ImageCube
                         );
                         bool selectedTypeIsSamplerOrImageCube = 
                         (
                             selectedType == 
-                            vir::Shader::Variable::Type::SamplerCube ||
+                            vir::Shader::Uniform::Type::SamplerCube ||
                             selectedType == 
-                            vir::Shader::Variable::Type::ImageCube
+                            vir::Shader::Uniform::Type::ImageCube
                         );
                         // This is only for setting the inUseByLayers_ member of
                         // the resource, which in turn is only used to determine
@@ -1062,19 +1062,19 @@ motion only if the left mouse button (LMB) is held)");
                         uniform->gui.showBounds = 
                         (
                             selectedType != 
-                                vir::Shader::Variable::Type::Bool &&
+                                vir::Shader::Uniform::Type::Bool &&
                             selectedType != 
-                                vir::Shader::Variable::Type::Sampler2D &&
+                                vir::Shader::Uniform::Type::Sampler2D &&
                                 selectedType != 
-                                vir::Shader::Variable::Type::Sampler3D &&
+                                vir::Shader::Uniform::Type::Sampler3D &&
                             selectedType != 
-                                vir::Shader::Variable::Type::SamplerCube &&
+                                vir::Shader::Uniform::Type::SamplerCube &&
                             selectedType != 
-                                vir::Shader::Variable::Type::Image2D &&
+                                vir::Shader::Uniform::Type::Image2D &&
                                 selectedType != 
-                                vir::Shader::Variable::Type::Image3D &&
+                                vir::Shader::Uniform::Type::Image3D &&
                             selectedType != 
-                                vir::Shader::Variable::Type::ImageCube
+                                vir::Shader::Uniform::Type::ImageCube
                         );
                     }
                 }
@@ -1140,7 +1140,7 @@ motion only if the left mouse button (LMB) is held)");
         START_COLUMN // Value column -------------------------------------------
         switch(uniform->type)
         {
-            case vir::Shader::Variable::Type::Bool :
+            case vir::Shader::Uniform::Type::Bool :
             {
                 auto value = uniform->getValue<bool>();
                 if (ImGui::Checkbox((value) ? "true" : "false", &value))
@@ -1154,7 +1154,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::UInt : //-------------------------
+            case vir::Shader::Uniform::Type::UInt : //-------------------------
             {
                 auto value = uniform->getValue<uint32_t>();
                 value = std::max(value, (uint32_t)0);
@@ -1187,7 +1187,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Int : //--------------------------
+            case vir::Shader::Uniform::Type::Int : //--------------------------
             {
                 auto value = uniform->getValue<int>();
                 if (!boundsChanged)
@@ -1220,7 +1220,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Int2 : //-------------------------
+            case vir::Shader::Uniform::Type::Int2 : //-------------------------
             {
                 auto value = uniform->getValue<glm::ivec2>();
                 if (!boundsChanged)
@@ -1287,7 +1287,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Int3 : //-------------------------
+            case vir::Shader::Uniform::Type::Int3 : //-------------------------
             {
                 auto value = uniform->getValue<glm::ivec3>();
                 if (!boundsChanged)
@@ -1328,7 +1328,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Int4 : //-------------------------
+            case vir::Shader::Uniform::Type::Int4 : //-------------------------
             {
                 auto value = uniform->getValue<glm::ivec4>();
                 if (!boundsChanged)
@@ -1373,7 +1373,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Float : //------------------------
+            case vir::Shader::Uniform::Type::Float : //------------------------
             {
                 auto value = uniform->getValue<float>();
                 if (!boundsChanged)
@@ -1446,7 +1446,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Float2 : //-----------------------
+            case vir::Shader::Uniform::Type::Float2 : //-----------------------
             {
                 auto value = uniform->getValue<glm::vec2>();
                 if (!boundsChanged)
@@ -1531,7 +1531,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Float3 : //-----------------------
+            case vir::Shader::Uniform::Type::Float3 : //-----------------------
             {
                 auto value = uniform->getValue<glm::vec3>();
                 if (!boundsChanged)
@@ -1621,7 +1621,7 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Float4 : //-----------------------
+            case vir::Shader::Uniform::Type::Float4 : //-----------------------
             {
                 auto value = uniform->getValue<glm::vec4>();
                 if (!boundsChanged)
@@ -1708,8 +1708,8 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Sampler2D :
-            case vir::Shader::Variable::Type::Image2D :
+            case vir::Shader::Uniform::Type::Sampler2D :
+            case vir::Shader::Uniform::Type::Image2D :
             {
                 auto resource = 
                     uniform->getValuePtr<Resource>();
@@ -1734,8 +1734,8 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::Sampler3D :
-            case vir::Shader::Variable::Type::Image3D :
+            case vir::Shader::Uniform::Type::Sampler3D :
+            case vir::Shader::Uniform::Type::Image3D :
             {
                 auto resource = 
                     uniform->getValuePtr<Resource>();
@@ -1755,8 +1755,8 @@ motion only if the left mouse button (LMB) is held)");
                 }
                 break;
             }
-            case vir::Shader::Variable::Type::SamplerCube :
-            case vir::Shader::Variable::Type::ImageCube :
+            case vir::Shader::Uniform::Type::SamplerCube :
+            case vir::Shader::Uniform::Type::ImageCube :
             {
                 auto resource = 
                     uniform->getValuePtr<Resource>();
@@ -2106,25 +2106,25 @@ void Uniform::loadAll
 
         switch (uniform->type)
         {
-            case vir::Shader::Variable::Type::Bool :
+            case vir::Shader::Uniform::Type::Bool :
             {
                 SET_UNIFORM(bool)
                 uniform->gui.showBounds = false;
                 break;
             }
-            case vir::Shader::Variable::Type::UInt :
+            case vir::Shader::Uniform::Type::UInt :
             {
                 SET_UNIFORM(unsigned int)
                 READ_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Int :
+            case vir::Shader::Uniform::Type::Int :
             {
                 SET_UNIFORM(int)
                 READ_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Int2 :
+            case vir::Shader::Uniform::Type::Int2 :
             {
                 SET_UNIFORM(glm::ivec2)
                 READ_MIN_MAX
@@ -2132,25 +2132,25 @@ void Uniform::loadAll
                     uniformData.readOrDefault<float>("dragStep", 1.f);
                 break;
             }
-            case vir::Shader::Variable::Type::Int3 :
+            case vir::Shader::Uniform::Type::Int3 :
             {
                 SET_UNIFORM(glm::ivec3)
                 READ_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Int4 :
+            case vir::Shader::Uniform::Type::Int4 :
             {
                 SET_UNIFORM(glm::ivec4)
                 READ_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Float :
+            case vir::Shader::Uniform::Type::Float :
             {
                 SET_UNIFORM(float)
                 READ_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Float2 :
+            case vir::Shader::Uniform::Type::Float2 :
             {
                 SET_UNIFORM(glm::vec2)
                 READ_MIN_MAX
@@ -2158,7 +2158,7 @@ void Uniform::loadAll
                     uniformData.readOrDefault<float>("dragStep", 1.f);
                 break;
             }
-            case vir::Shader::Variable::Type::Float3 :
+            case vir::Shader::Uniform::Type::Float3 :
             {
                 SET_UNIFORM(glm::vec3)
                 READ_MIN_MAX
@@ -2167,7 +2167,7 @@ void Uniform::loadAll
                 uniform->gui.showBounds = !uniform->gui.usesColorPicker;
                 break;
             }
-            case vir::Shader::Variable::Type::Float4 :
+            case vir::Shader::Uniform::Type::Float4 :
             {
                 SET_UNIFORM(glm::vec4)
                 READ_MIN_MAX
@@ -2176,12 +2176,12 @@ void Uniform::loadAll
                 uniform->gui.showBounds = !uniform->gui.usesColorPicker;
                 break;
             }
-            case vir::Shader::Variable::Type::Sampler2D :
-            case vir::Shader::Variable::Type::Sampler3D :
-            case vir::Shader::Variable::Type::SamplerCube :
-            case vir::Shader::Variable::Type::Image2D :
-            case vir::Shader::Variable::Type::Image3D :
-            case vir::Shader::Variable::Type::ImageCube :
+            case vir::Shader::Uniform::Type::Sampler2D :
+            case vir::Shader::Uniform::Type::Sampler3D :
+            case vir::Shader::Uniform::Type::SamplerCube :
+            case vir::Shader::Uniform::Type::Image2D :
+            case vir::Shader::Uniform::Type::Image3D :
+            case vir::Shader::Uniform::Type::ImageCube :
             {
                 std::string resourceName = uniformData.read("value", false);
                 uniform->gui.showBounds = false;
@@ -2233,69 +2233,69 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
 
         switch(u->type)
         {
-            case vir::Shader::Variable::Type::Bool :
+            case vir::Shader::Uniform::Type::Bool :
             {
                 io.write("value", u->getValue<bool>());
                 break;
             }
-            case vir::Shader::Variable::Type::Int :
+            case vir::Shader::Uniform::Type::Int :
             {
                 io.write("value", u->getValue<int>());
                 WRITE_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Int2 :
+            case vir::Shader::Uniform::Type::Int2 :
             {
                 io.write("value", u->getValue<glm::ivec2>());
                 WRITE_MIN_MAX
                 io.write("dragStep", u->gui.dragStep);
                 break;
             }
-            case vir::Shader::Variable::Type::Int3 :
+            case vir::Shader::Uniform::Type::Int3 :
             {
                 io.write("value", u->getValue<glm::ivec3>());
                 WRITE_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Int4 :
+            case vir::Shader::Uniform::Type::Int4 :
             {
                 io.write("value", u->getValue<glm::ivec4>());
                 WRITE_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Float :
+            case vir::Shader::Uniform::Type::Float :
             {
                 io.write("value", u->getValue<float>());
                 WRITE_MIN_MAX
                 break;
             }
-            case vir::Shader::Variable::Type::Float2 :
+            case vir::Shader::Uniform::Type::Float2 :
             {
                 io.write("value", u->getValue<glm::vec2>());
                 WRITE_MIN_MAX
                 io.write("dragStep", u->gui.dragStep);
                 break;
             }
-            case vir::Shader::Variable::Type::Float3 :
+            case vir::Shader::Uniform::Type::Float3 :
             {
                 io.write("value", u->getValue<glm::vec3>());
                 WRITE_MIN_MAX
                 io.write("usesColorPicker", u->gui.usesColorPicker);
                 break;
             }
-            case vir::Shader::Variable::Type::Float4 :
+            case vir::Shader::Uniform::Type::Float4 :
             {
                 io.write("value", u->getValue<glm::vec4>());
                 WRITE_MIN_MAX
                 io.write("usesColorPicker", u->gui.usesColorPicker);
                 break;
             }
-            case vir::Shader::Variable::Type::Sampler2D :
-            case vir::Shader::Variable::Type::Sampler3D :
-            case vir::Shader::Variable::Type::SamplerCube :
-            case vir::Shader::Variable::Type::Image2D :
-            case vir::Shader::Variable::Type::Image3D :
-            case vir::Shader::Variable::Type::ImageCube :
+            case vir::Shader::Uniform::Type::Sampler2D :
+            case vir::Shader::Uniform::Type::Sampler3D :
+            case vir::Shader::Uniform::Type::SamplerCube :
+            case vir::Shader::Uniform::Type::Image2D :
+            case vir::Shader::Uniform::Type::Image3D :
+            case vir::Shader::Uniform::Type::ImageCube :
             {
                 auto r = u->getValuePtr<Resource>();
                 io.write("value", r->name().c_str());

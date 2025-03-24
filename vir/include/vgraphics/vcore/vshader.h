@@ -11,8 +11,6 @@
 namespace vir
 {
 
-class UniformBuffer;
-
 class Shader
 {
 public:
@@ -25,9 +23,10 @@ public:
         SourceFile 
     };
 
-    // Shader variable type
-    struct Variable
+    class Uniform
     {
+    public:
+
         enum class Type
         {
             Bool,
@@ -49,52 +48,7 @@ public:
             Image3D,
             ImageCube
         };
-        uint32_t size;
-        uint32_t nCmpts;
-        Type type;
-        typedef void* ValueType;
-    };
 
-    #define DEFINE_SHADER_VARIABLE(customType, nativeType, nComponents)     \
-        struct customType : Variable                                        \
-        {                                                                   \
-            customType()                                                    \
-            {                                                               \
-                size=nComponents*sizeof(nativeType);                        \
-                nCmpts=nComponents;                                         \
-                type=Type::customType;                                      \
-            }                                                               \
-        };                                      
-    DEFINE_SHADER_VARIABLE(Bool,        bool,     1)
-    DEFINE_SHADER_VARIABLE(UInt,        uint32_t, 1)
-    DEFINE_SHADER_VARIABLE(Int,         int,      1)
-    DEFINE_SHADER_VARIABLE(Int2,        int,      2)
-    DEFINE_SHADER_VARIABLE(Int3,        int,      3)
-    DEFINE_SHADER_VARIABLE(Int4,        int,      4)
-    DEFINE_SHADER_VARIABLE(Float,       float,    1)
-    DEFINE_SHADER_VARIABLE(Float2,      float,    2)
-    DEFINE_SHADER_VARIABLE(Float3,      float,    3)
-    DEFINE_SHADER_VARIABLE(Float4,      float,    4)
-    DEFINE_SHADER_VARIABLE(Mat3,        float,    9)
-    DEFINE_SHADER_VARIABLE(Mat4,        float,    16)
-    DEFINE_SHADER_VARIABLE(Sampler2D,   uint32_t, 1)
-    DEFINE_SHADER_VARIABLE(Sampler3D,   uint32_t, 1)
-    DEFINE_SHADER_VARIABLE(SamplerCube, uint32_t, 1)
-    DEFINE_SHADER_VARIABLE(Image2D, uint32_t, 1)
-    DEFINE_SHADER_VARIABLE(Image3D, uint32_t, 1)
-    DEFINE_SHADER_VARIABLE(ImageCube, uint32_t, 1)
-    
-    static std::unordered_map<std::string, Variable::Type> 
-        valueTypeToUniformTypeMap;
-    static std::unordered_map<Variable::Type, std::string>
-        uniformTypeToName;
-    static std::unordered_map<std::string, Variable::Type>
-        uniformNameToType;
-    static std::vector<std::string> uniformNames;
-    static std::vector<Variable::Type> uniformTypes;
-
-    class Uniform
-    {
     private:
         
         bool           isValueOwner_ = true;
@@ -110,7 +64,7 @@ public:
     
         std::string    name = "";
         uint32_t       unit = 0;
-        Variable::Type type = Variable::Type::Int;
+        Type type = Type::Int;
         
         Uniform() = default;
         ~Uniform();
@@ -119,7 +73,7 @@ public:
         void setValuePtr(ValueType* value, bool isValueOwner=false)
         {
             if (value != nullptr && isValueOwner_)
-                resetValue();        
+                resetValue();
             value_ = (void*)value;
             isValueOwner_ = isValueOwner;
         }
@@ -178,6 +132,15 @@ public:
             return vertexErrors.size() + fragmentErrors.size();
         }
     };
+
+    static std::unordered_map<std::string, Uniform::Type> 
+        valueTypeToUniformTypeMap;
+    static std::unordered_map<Uniform::Type, std::string>
+        uniformTypeToName;
+    static std::unordered_map<std::string, Uniform::Type>
+        uniformNameToType;
+    static std::vector<std::string> uniformNames;
+    static std::vector<Uniform::Type> uniformTypes;
 
 protected:
     uint32_t id_;

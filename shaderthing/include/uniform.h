@@ -36,7 +36,7 @@ class Uniform : public vir::Shader::Uniform
 {
 public:
 
-    typedef vir::Shader::Variable::Type Type;
+    typedef vir::Shader::Uniform::Type Type;
     
     enum class SpecialType
     {

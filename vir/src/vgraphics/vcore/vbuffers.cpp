@@ -937,7 +937,7 @@ elements_(elements)
     {
         e.offset = stride_;
         e.location = location;
-        stride_ += e.variable.size;
+        stride_ += e.attribute.size;
         location += 1;
     }
 }

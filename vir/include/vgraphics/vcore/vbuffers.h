@@ -625,23 +625,70 @@ public :
 class VertexBufferLayout
 {
 public:
+
+    struct Attribute
+    {
+        enum class Type
+        {
+            Bool,
+            UInt,
+            Int,
+            Int2,
+            Int3,
+            Int4,
+            Float,
+            Float2,
+            Float3,
+            Float4,
+            Mat3,
+            Mat4
+        };
+        uint32_t size;
+        uint32_t nCmpts;
+        Type type;
+        typedef void* ValueType;
+    };
+
+    #define DEFINE_ATTRIBUTE(customType, nativeType, nComponents)           \
+        struct customType : Attribute                                       \
+        {                                                                   \
+            customType()                                                    \
+            {                                                               \
+                size=nComponents*sizeof(nativeType);                        \
+                nCmpts=nComponents;                                         \
+                type=Type::customType;                                      \
+            }                                                               \
+        };                                      
+    DEFINE_ATTRIBUTE(Bool,        bool,     1)
+    DEFINE_ATTRIBUTE(UInt,        uint32_t, 1)
+    DEFINE_ATTRIBUTE(Int,         int,      1)
+    DEFINE_ATTRIBUTE(Int2,        int,      2)
+    DEFINE_ATTRIBUTE(Int3,        int,      3)
+    DEFINE_ATTRIBUTE(Int4,        int,      4)
+    DEFINE_ATTRIBUTE(Float,       float,    1)
+    DEFINE_ATTRIBUTE(Float2,      float,    2)
+    DEFINE_ATTRIBUTE(Float3,      float,    3)
+    DEFINE_ATTRIBUTE(Float4,      float,    4)
+    DEFINE_ATTRIBUTE(Mat3,        float,    9)
+    DEFINE_ATTRIBUTE(Mat4,        float,    16)
+
     struct Element
     {
         std::string name;
-        Shader::Variable variable;
+        Attribute attribute;
         bool normalized;
         uint32_t offset = 0;
         uint32_t location = 0;
-        Element(std::string& n, Shader::Variable& v, bool norm=false)
+        Element(std::string& n, Attribute& a, bool norm=false)
         {
             name = n;
-            variable = v;
+            attribute = a;
             normalized = norm;
         }
-        Element(std::string&& n, Shader::Variable&& v, bool norm=false)
+        Element(std::string&& n, Attribute&& a, bool norm=false)
         {
             name = n;
-            variable = v;
+            attribute = a;
             normalized = norm;
         }
     };

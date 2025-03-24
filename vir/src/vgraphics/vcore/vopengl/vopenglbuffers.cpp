@@ -1513,31 +1513,24 @@ void OpenGLVertexBuffer::setLayout
 {
     auto GLType = [](const VertexBufferLayout::Element& e)
     {
-        switch(e.variable.type)
+        switch(e.attribute.type)
         {
-            case (Shader::Variable::Type::Bool) :
+            case (VertexBufferLayout::Attribute::Type::Bool) :
                 return GL_BOOL;
-            case (Shader::Variable::Type::UInt) :
+            case (VertexBufferLayout::Attribute::Type::UInt) :
                 return GL_UNSIGNED_BYTE;
-            case (Shader::Variable::Type::Int) :
-            case (Shader::Variable::Type::Int2) :
-            case (Shader::Variable::Type::Int3) :
-            case (Shader::Variable::Type::Int4) :
+            case (VertexBufferLayout::Attribute::Type::Int) :
+            case (VertexBufferLayout::Attribute::Type::Int2) :
+            case (VertexBufferLayout::Attribute::Type::Int3) :
+            case (VertexBufferLayout::Attribute::Type::Int4) :
                 return GL_INT;
-            case (Shader::Variable::Type::Float) :
-            case (Shader::Variable::Type::Float2) :
-            case (Shader::Variable::Type::Float3) :
-            case (Shader::Variable::Type::Float4) :
-            case (Shader::Variable::Type::Mat3) :
-            case (Shader::Variable::Type::Mat4) :
+            case (VertexBufferLayout::Attribute::Type::Float) :
+            case (VertexBufferLayout::Attribute::Type::Float2) :
+            case (VertexBufferLayout::Attribute::Type::Float3) :
+            case (VertexBufferLayout::Attribute::Type::Float4) :
+            case (VertexBufferLayout::Attribute::Type::Mat3) :
+            case (VertexBufferLayout::Attribute::Type::Mat4) :
                 return GL_FLOAT;
-            case (Shader::Variable::Type::Sampler2D) :
-            case (Shader::Variable::Type::Sampler3D) :
-            case (Shader::Variable::Type::SamplerCube) :
-            case (Shader::Variable::Type::Image2D) :
-            case (Shader::Variable::Type::Image3D) :
-            case (Shader::Variable::Type::ImageCube) :
-                throw std::runtime_error("Invalid vertex buffer element type");
         }
         return GL_FLOAT;
     };
@@ -1548,7 +1541,7 @@ void OpenGLVertexBuffer::setLayout
         glVertexAttribPointer
         (   
             e.location, 
-            e.variable.nCmpts, 
+            e.attribute.nCmpts, 
             GLType(e), 
             e.normalized? GL_TRUE : GL_FALSE, 
             stride, 

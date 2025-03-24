@@ -5,89 +5,89 @@
 namespace vir
 {
 
-std::unordered_map<std::string, Shader::Variable::Type> 
+std::unordered_map<std::string, Shader::Uniform::Type> 
     Shader::valueTypeToUniformTypeMap = 
 {
-    {typeid(bool).name(), Shader::Variable::Type::Bool},
-    {typeid(uint32_t).name(), Shader::Variable::Type::UInt},
-    {typeid(int).name(), Shader::Variable::Type::Int},
-    {typeid(glm::ivec2).name(), Shader::Variable::Type::Int2},
-    {typeid(glm::ivec3).name(), Shader::Variable::Type::Int3},
-    {typeid(glm::ivec4).name(), Shader::Variable::Type::Int4},
-    {typeid(float).name(), Shader::Variable::Type::Float},
-    {typeid(glm::vec2).name(), Shader::Variable::Type::Float2},
-    {typeid(glm::vec3).name(), Shader::Variable::Type::Float3},
-    {typeid(glm::vec4).name(), Shader::Variable::Type::Float4},
-    {typeid(glm::mat3).name(), Shader::Variable::Type::Mat3},
-    {typeid(glm::mat4).name(), Shader::Variable::Type::Mat4}
+    {typeid(bool).name(), Shader::Uniform::Type::Bool},
+    {typeid(uint32_t).name(), Shader::Uniform::Type::UInt},
+    {typeid(int).name(), Shader::Uniform::Type::Int},
+    {typeid(glm::ivec2).name(), Shader::Uniform::Type::Int2},
+    {typeid(glm::ivec3).name(), Shader::Uniform::Type::Int3},
+    {typeid(glm::ivec4).name(), Shader::Uniform::Type::Int4},
+    {typeid(float).name(), Shader::Uniform::Type::Float},
+    {typeid(glm::vec2).name(), Shader::Uniform::Type::Float2},
+    {typeid(glm::vec3).name(), Shader::Uniform::Type::Float3},
+    {typeid(glm::vec4).name(), Shader::Uniform::Type::Float4},
+    {typeid(glm::mat3).name(), Shader::Uniform::Type::Mat3},
+    {typeid(glm::mat4).name(), Shader::Uniform::Type::Mat4}
 };
 
-std::unordered_map<Shader::Variable::Type, std::string> 
+std::unordered_map<Shader::Uniform::Type, std::string> 
     Shader::uniformTypeToName =
 {
-    {Shader::Variable::Type::Bool, "bool"},
-    {Shader::Variable::Type::UInt, "uint"},
-    {Shader::Variable::Type::Int, "int"},
-    {Shader::Variable::Type::Int2, "ivec2"},
-    {Shader::Variable::Type::Int3, "ivec3"},
-    {Shader::Variable::Type::Int4, "ivec4"},
-    {Shader::Variable::Type::Float, "float"},
-    {Shader::Variable::Type::Float2, "vec2"},
-    {Shader::Variable::Type::Float3, "vec3"},
-    {Shader::Variable::Type::Float4, "vec4"},
-    {Shader::Variable::Type::Mat3, "mat3"},
-    {Shader::Variable::Type::Mat4, "mat4"},
-    {Shader::Variable::Type::Sampler2D, "sampler2D"},
-    {Shader::Variable::Type::Sampler3D, "sampler3D"},
-    {Shader::Variable::Type::SamplerCube, "samplerCube"},
-    {Shader::Variable::Type::Image2D, "image2D"},
-    {Shader::Variable::Type::Image3D, "image3D"},
-    {Shader::Variable::Type::ImageCube, "imageCube"}
+    {Shader::Uniform::Type::Bool, "bool"},
+    {Shader::Uniform::Type::UInt, "uint"},
+    {Shader::Uniform::Type::Int, "int"},
+    {Shader::Uniform::Type::Int2, "ivec2"},
+    {Shader::Uniform::Type::Int3, "ivec3"},
+    {Shader::Uniform::Type::Int4, "ivec4"},
+    {Shader::Uniform::Type::Float, "float"},
+    {Shader::Uniform::Type::Float2, "vec2"},
+    {Shader::Uniform::Type::Float3, "vec3"},
+    {Shader::Uniform::Type::Float4, "vec4"},
+    {Shader::Uniform::Type::Mat3, "mat3"},
+    {Shader::Uniform::Type::Mat4, "mat4"},
+    {Shader::Uniform::Type::Sampler2D, "sampler2D"},
+    {Shader::Uniform::Type::Sampler3D, "sampler3D"},
+    {Shader::Uniform::Type::SamplerCube, "samplerCube"},
+    {Shader::Uniform::Type::Image2D, "image2D"},
+    {Shader::Uniform::Type::Image3D, "image3D"},
+    {Shader::Uniform::Type::ImageCube, "imageCube"}
 };
 
-std::unordered_map<std::string, Shader::Variable::Type> 
+std::unordered_map<std::string, Shader::Uniform::Type> 
     Shader::uniformNameToType =
 {
-    {"bool", Shader::Variable::Type::Bool},
-    {"uint", Shader::Variable::Type::UInt},
-    {"int", Shader::Variable::Type::Int},
-    {"ivec2", Shader::Variable::Type::Int2},
-    {"ivec3", Shader::Variable::Type::Int3},
-    {"ivec4", Shader::Variable::Type::Int4},
-    {"float", Shader::Variable::Type::Float},
-    {"vec2", Shader::Variable::Type::Float2},
-    {"vec3", Shader::Variable::Type::Float3},
-    {"vec4", Shader::Variable::Type::Float4},
-    {"mat3", Shader::Variable::Type::Mat3},
-    {"mat4", Shader::Variable::Type::Mat4},
-    {"sampler2D", Shader::Variable::Type::Sampler2D},
-    {"sampler3D", Shader::Variable::Type::Sampler3D},
-    {"samplerCube", Shader::Variable::Type::SamplerCube},
-    {"image2D", Shader::Variable::Type::Image2D},
-    {"image3D", Shader::Variable::Type::Image3D},
-    {"imageCube", Shader::Variable::Type::ImageCube}
+    {"bool", Shader::Uniform::Type::Bool},
+    {"uint", Shader::Uniform::Type::UInt},
+    {"int", Shader::Uniform::Type::Int},
+    {"ivec2", Shader::Uniform::Type::Int2},
+    {"ivec3", Shader::Uniform::Type::Int3},
+    {"ivec4", Shader::Uniform::Type::Int4},
+    {"float", Shader::Uniform::Type::Float},
+    {"vec2", Shader::Uniform::Type::Float2},
+    {"vec3", Shader::Uniform::Type::Float3},
+    {"vec4", Shader::Uniform::Type::Float4},
+    {"mat3", Shader::Uniform::Type::Mat3},
+    {"mat4", Shader::Uniform::Type::Mat4},
+    {"sampler2D", Shader::Uniform::Type::Sampler2D},
+    {"sampler3D", Shader::Uniform::Type::Sampler3D},
+    {"samplerCube", Shader::Uniform::Type::SamplerCube},
+    {"image2D", Shader::Uniform::Type::Image2D},
+    {"image3D", Shader::Uniform::Type::Image3D},
+    {"imageCube", Shader::Uniform::Type::ImageCube}
 };
 
-std::vector<Shader::Variable::Type> Shader::uniformTypes = 
+std::vector<Shader::Uniform::Type> Shader::uniformTypes = 
 {
-    Shader::Variable::Type::Bool,
-    Shader::Variable::Type::UInt,
-    Shader::Variable::Type::Int,
-    Shader::Variable::Type::Int2,
-    Shader::Variable::Type::Int3,
-    Shader::Variable::Type::Int4,
-    Shader::Variable::Type::Float,
-    Shader::Variable::Type::Float2,
-    Shader::Variable::Type::Float3,
-    Shader::Variable::Type::Float4,
-    Shader::Variable::Type::Mat3,
-    Shader::Variable::Type::Mat4,
-    Shader::Variable::Type::Sampler2D,
-    Shader::Variable::Type::Sampler3D,
-    Shader::Variable::Type::SamplerCube,
-    Shader::Variable::Type::Image2D,
-    Shader::Variable::Type::Image3D,
-    Shader::Variable::Type::ImageCube
+    Shader::Uniform::Type::Bool,
+    Shader::Uniform::Type::UInt,
+    Shader::Uniform::Type::Int,
+    Shader::Uniform::Type::Int2,
+    Shader::Uniform::Type::Int3,
+    Shader::Uniform::Type::Int4,
+    Shader::Uniform::Type::Float,
+    Shader::Uniform::Type::Float2,
+    Shader::Uniform::Type::Float3,
+    Shader::Uniform::Type::Float4,
+    Shader::Uniform::Type::Mat3,
+    Shader::Uniform::Type::Mat4,
+    Shader::Uniform::Type::Sampler2D,
+    Shader::Uniform::Type::Sampler3D,
+    Shader::Uniform::Type::SamplerCube,
+    Shader::Uniform::Type::Image2D,
+    Shader::Uniform::Type::Image3D,
+    Shader::Uniform::Type::ImageCube
 };
 
 std::vector<std::string> Shader::uniformNames = 
@@ -122,58 +122,58 @@ Shader::Uniform::~Uniform()
 
 void Shader::Uniform::resetValue()
 {
-    auto reset = [](void*& value, Shader::Variable::Type type)
+    auto reset = [](void*& value, Shader::Uniform::Type type)
     {
         if (value == nullptr)
             return;
         switch(type)
         {
-            case Variable::Type::Bool :
+            case Uniform::Type::Bool :
                 delete static_cast<bool*>(value);
                 break;
-            case Variable::Type::UInt :
+            case Uniform::Type::UInt :
                 delete static_cast<uint32_t*>(value);
                 break;
-            case Variable::Type::Int :
+            case Uniform::Type::Int :
                 delete static_cast<int*>(value);
                 break;
-            case Variable::Type::Int2 :
+            case Uniform::Type::Int2 :
                 delete static_cast<glm::ivec2*>(value);
                 break;
-            case Variable::Type::Int3 :
+            case Uniform::Type::Int3 :
                 delete static_cast<glm::ivec3*>(value);
                 break;
-            case Variable::Type::Int4 :
+            case Uniform::Type::Int4 :
                 delete static_cast<glm::ivec4*>(value);
                 break;
-            case Variable::Type::Float :
+            case Uniform::Type::Float :
                 delete static_cast<float*>(value);
                 break;
-            case Variable::Type::Float2 :
+            case Uniform::Type::Float2 :
                 delete static_cast<glm::vec2*>(value);
                 break;
-            case Variable::Type::Float3 :
+            case Uniform::Type::Float3 :
                 delete static_cast<glm::vec3*>(value);
                 break;
-            case Variable::Type::Float4 :
+            case Uniform::Type::Float4 :
                 delete static_cast<glm::vec4*>(value);
                 break;
-            case Variable::Type::Mat3 :
+            case Uniform::Type::Mat3 :
                 delete static_cast<glm::mat3*>(value);
                 break;
-            case Variable::Type::Mat4 :
+            case Uniform::Type::Mat4 :
                 delete static_cast<glm::mat4*>(value);
                 break;
-            case Variable::Type::Sampler2D :
-            case Variable::Type::Image2D :
+            case Uniform::Type::Sampler2D :
+            case Uniform::Type::Image2D :
                 delete static_cast<TextureBuffer2D*>(value);
                 break;
-            case Variable::Type::Sampler3D :
-            case Variable::Type::Image3D :
+            case Uniform::Type::Sampler3D :
+            case Uniform::Type::Image3D :
                 delete static_cast<TextureBuffer3D*>(value);
                 break;
-            case Variable::Type::SamplerCube :
-            case Variable::Type::ImageCube :
+            case Uniform::Type::SamplerCube :
+            case Uniform::Type::ImageCube :
                 delete static_cast<CubeMapBuffer*>(value);
                 break;
         }

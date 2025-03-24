@@ -668,9 +668,9 @@ Layer::fragmentShaderHeaderSourceAndLineCount
             std::string uniformTypeName = vir::Shader::uniformTypeToName[u->type];
             switch (u->type)
             {
-                case vir::Shader::Variable::Type::Image2D :
-                case vir::Shader::Variable::Type::Image3D :
-                case vir::Shader::Variable::Type::ImageCube :
+                case vir::Shader::Uniform::Type::Image2D :
+                case vir::Shader::Uniform::Type::Image3D :
+                case vir::Shader::Uniform::Type::ImageCube :
                 {
                     auto resource = u->getValuePtr<Resource>();
                     if (resource == nullptr)
@@ -684,9 +684,9 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                         uniformTypeName = "u"+uniformTypeName;
                     break;
                 }
-                case vir::Shader::Variable::Type::Sampler2D :
-                case vir::Shader::Variable::Type::Sampler3D :
-                case vir::Shader::Variable::Type::SamplerCube :
+                case vir::Shader::Uniform::Type::Sampler2D :
+                case vir::Shader::Uniform::Type::Sampler3D :
+                case vir::Shader::Uniform::Type::SamplerCube :
                 {
                     auto resource = u->getValuePtr<Resource>();
                     if (resource == nullptr)
@@ -704,16 +704,16 @@ Layer::fragmentShaderHeaderSourceAndLineCount
             ++nLines;
             // Automatically managed sampler2D or image2D resolution and aspect
             // ratio uniforms
-            if (u->type == vir::Shader::Variable::Type::Sampler2D || 
-                u->type == vir::Shader::Variable::Type::Image2D)
+            if (u->type == vir::Shader::Uniform::Type::Sampler2D || 
+                u->type == vir::Shader::Uniform::Type::Image2D)
             {
                 header += "uniform float "+u->name+"AspectRatio;\n";
                 ++nLines;
                 header += "uniform vec2 "+u->name+"Resolution;\n";
                 ++nLines;
             }
-            else if (u->type == vir::Shader::Variable::Type::Sampler3D || 
-                     u->type == vir::Shader::Variable::Type::Image3D)
+            else if (u->type == vir::Shader::Uniform::Type::Sampler3D || 
+                     u->type == vir::Shader::Uniform::Type::Image3D)
             {
                 header += "uniform vec3 "+u->name+"Resolution;\n";
                 ++nLines;
@@ -1183,15 +1183,15 @@ void Layer::renderShader
         {
             bool isSampler
             (
-                u->type == vir::Shader::Variable::Type::Sampler2D ||
-                u->type == vir::Shader::Variable::Type::Sampler3D ||
-                u->type == vir::Shader::Variable::Type::SamplerCube
+                u->type == vir::Shader::Uniform::Type::Sampler2D ||
+                u->type == vir::Shader::Uniform::Type::Sampler3D ||
+                u->type == vir::Shader::Uniform::Type::SamplerCube
             );
             bool isImage
             (
-                u->type == vir::Shader::Variable::Type::Image2D ||
-                u->type == vir::Shader::Variable::Type::Image3D ||
-                u->type == vir::Shader::Variable::Type::ImageCube
+                u->type == vir::Shader::Uniform::Type::Image2D ||
+                u->type == vir::Shader::Uniform::Type::Image3D ||
+                u->type == vir::Shader::Uniform::Type::ImageCube
             );
             if 
             (
@@ -1261,8 +1261,8 @@ void Layer::renderShader
             // every render call
             if 
             (
-                u->type == vir::Shader::Variable::Type::Sampler2D ||
-                u->type == vir::Shader::Variable::Type::Image2D
+                u->type == vir::Shader::Uniform::Type::Sampler2D ||
+                u->type == vir::Shader::Uniform::Type::Image2D
             )
             {
                 shader->setUniformFloat
@@ -1278,8 +1278,8 @@ void Layer::renderShader
             }
             else if 
             (
-                u->type == vir::Shader::Variable::Type::Sampler3D ||
-                u->type == vir::Shader::Variable::Type::Image3D
+                u->type == vir::Shader::Uniform::Type::Sampler3D ||
+                u->type == vir::Shader::Uniform::Type::Image3D
             )
             {
                 shader->setUniformFloat3

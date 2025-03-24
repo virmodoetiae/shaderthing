@@ -46,8 +46,8 @@ depth_(depth)
     vertexBuffer_->setLayout
     (
         {
-            {"position", Shader::Float3()},
-            {"textureCoordinates", Shader::Float2()}
+            {"position", VertexBufferLayout::Float3()},
+            {"textureCoordinates", VertexBufferLayout::Float2()}
         }
     );
     vertexArray_->bindVertexBuffer(vertexBuffer_);
@@ -153,8 +153,8 @@ void TiledQuad::updateBuffers(uint32_t nTilesX, uint32_t nTilesY)
     vertexBuffer_->setLayout
     (
         {
-            {"position", Shader::Float3()},
-            {"textureCoordinates", Shader::Float2()}
+            {"position", VertexBufferLayout::Float3()},
+            {"textureCoordinates", VertexBufferLayout::Float2()}
         }
     );
     vertexArray_->bindVertexBuffer(vertexBuffer_);
