@@ -1053,6 +1053,244 @@ UniformBuffer* UniformBuffer::create(uint32_t size)
     return nullptr;
 }
 
+// Uniform Buffer Object  2 --------------------------------------------------//
+
+DynamicUniformBuffer* DynamicUniformBuffer::create
+(
+    uint32_t size, 
+    const std::string& name
+)
+{
+    Window* window = nullptr;
+    if (!GlobalPtr<Window>::valid(window))
+        return nullptr;
+    try
+    {
+        switch(window->context()->type())
+        {
+            case (GraphicsContext::Type::OpenGL) :
+                return new OpenGLDynamicUniformBuffer(size, name);
+                break;
+        }
+    }
+    catch(...){}
+    return nullptr;
+}
+
+DynamicUniformBuffer::~DynamicUniformBuffer()
+{
+    while (!uniformWrappers_.empty())
+    {
+        delete uniformWrappers_.back();
+        uniformWrappers_.resize(uniformWrappers_.size()-1);
+    }
+}
+
+bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
+{
+    if 
+    (
+        !uniform || 
+        std::find_if
+        (
+            uniformWrappers_.begin(),
+            uniformWrappers_.end(),
+            [&uniform](const auto* uw){return uw->uniform==uniform;}
+        ) != uniformWrappers_.end()
+    )
+        return false;
+    auto uw = new UniformWrapper{uniform, sizeOf(uniform)};
+    if (!uniformWrappers_.empty()) // Compute offset
+    {
+        auto* uw0 = uniformWrappers_.back();
+        uw->offset = uw0->offset + uw0->size;
+        auto alignment = alignmentOf(uniform);
+        auto delta = uw->offset % alignment;
+        if (delta > 0)
+            uw->offset += alignment - delta;
+    }
+    size_ = uw->offset + uw->size; 
+    if (size_ >= maxSize_)
+        return false;
+    if (!uniformWrappers_.empty()) // Set previous/next
+    {
+        auto* uw0 = uniformWrappers_[uniformWrappers_.size()-1];
+        uw->previous = uw0;
+        uw0->next = uw;
+    }
+    if (!uniform->name.empty())
+    {
+        uw->markedForSubmission = true;
+        nUniformsMarkedForSubmission_++;
+    }
+    uniformWrappers_.emplace_back(uw);
+    return true;
+}
+
+bool DynamicUniformBuffer::removeUniform(const Shader::Uniform* uniform)
+{
+    auto it = std::find_if
+    (
+        uniformWrappers_.begin(),
+        uniformWrappers_.end(),
+        [&uniform](const auto& uw){return uw->uniform==uniform;}
+    );
+    if (it == uniformWrappers_.end())
+        return false;
+    
+    // Recalculate all offsets of uniforms that come after the one to be 
+    // deleted, and remove from uniforms_
+    auto uw = *it;
+    bool updateNextPrevious = true;
+    if (uw->markedForSubmission)
+        nUniformsMarkedForSubmission_--;
+    while (uw->next != nullptr)
+    {
+        auto puw0 = uw->previous;
+        uw = uw->next;
+        if (updateNextPrevious)
+        {
+            uw->previous = puw0;
+            puw0->next = uw;
+            updateNextPrevious = false;
+        }
+        uw->offset = uw->previous->offset + uw->previous->size;
+        uw->offset += uw->offset % alignmentOf(uw->uniform);
+    }
+    // Remove last elements since the while loop has shifted all those
+    // after the one to be removed by 1 in the direction of that to be
+    // removed, overwriting it
+    delete uniformWrappers_.back();
+    uniformWrappers_.resize(uniformWrappers_.size()-1); 
+    size_ = uniformWrappers_.empty() ? 0u : uw->offset + uw->size;
+    return true;
+}
+
+bool DynamicUniformBuffer::markUniformForSubmission
+(
+    const Shader::Uniform* uniform
+)
+{
+    auto it = std::find_if
+    (
+        uniformWrappers_.begin(),
+        uniformWrappers_.end(),
+        [&uniform](const auto& uw){return uw->uniform==uniform;}
+    );
+    if (it == uniformWrappers_.end())
+        return false;
+    if (!(*it)->markedForSubmission)
+    {
+        nUniformsMarkedForSubmission_++;
+        (*it)->markedForSubmission = true;
+        return true;
+    }
+    return false;
+}
+
+void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
+{
+    if (uniformWrappers_.empty() || nUniformsMarkedForSubmission_ == 0u)
+        return;
+    // if (nUniformsMarkedForSubmission_ == uniformWrappers_.size())
+    //     forceSubmitAllUniforms = true;
+    if (forceSubmitAllUniforms) // Simple case first
+    {
+        auto data = new unsigned char[size_];
+        for (auto& wu : uniformWrappers_)
+        {
+            std::memcpy
+            (
+                data + wu->offset, 
+                wu->uniform->getNativeValue(), 
+                wu->size
+            );
+            wu->markedForSubmission = false;
+        }
+        submitData(data, size_, 0u);
+        delete[] data;
+    }
+    else // Only update data of uniforms marked for submission. The most
+         // efficient way is to chop the data into contiguous blocks of
+         // uniforms marked for submissions, and upload said blocks in
+         // one go each. This is more efficient than submitting every uniform
+         // individually
+    {
+        auto* wu = uniformWrappers_[0];
+        UniformWrapper* blockStart = nullptr;
+        UniformWrapper* blockEnd = nullptr;
+        do
+        {
+            if (wu->markedForSubmission)
+            {
+                if (blockStart == nullptr)
+                    blockStart = wu;
+                blockEnd = wu;
+                wu->markedForSubmission = false;
+            }
+            if 
+            (
+                blockStart != nullptr && 
+                blockEnd != nullptr &&
+                (
+                    blockEnd->next == nullptr || 
+                    blockEnd->next->markedForSubmission == false
+                )
+            )
+            {
+                uint32_t blockSize = 
+                    blockEnd->size + blockEnd->offset - blockStart->offset;
+                auto data = new unsigned char[blockSize];
+                auto* blockItem = blockStart;
+                while (true)
+                {
+                    std::memcpy
+                    (
+                        data + blockItem->offset - blockStart->offset, 
+                        blockItem->uniform->getNativeValue(), 
+                        blockItem->size
+                    );
+                    if (blockItem == blockEnd)
+                        break;
+                    blockItem = blockItem->next;
+                };
+                submitData(data, blockSize, blockStart->offset);
+                delete[] data;
+                blockStart = nullptr;
+                blockEnd = nullptr;
+            }
+            wu = wu->next;
+        }
+        while (wu != nullptr);
+    }
+    nUniformsMarkedForSubmission_ = 0u;
+}
+
+bool DynamicUniformBuffer::submitData(const Shader::Uniform* uniform)
+{
+    auto it = std::find_if
+    (
+        uniformWrappers_.begin(),
+        uniformWrappers_.end(),
+        [&uniform](const auto& uw){return uw->uniform==uniform;}
+    );
+    if (it == uniformWrappers_.end())
+        return false;
+    const auto& wu = *it;
+    submitData
+    (
+        wu->uniform->getNativeValue(),
+        wu->size,
+        wu->offset
+    );
+    if (wu->markedForSubmission)
+    {
+        wu->markedForSubmission = false;
+        nUniformsMarkedForSubmission_--;
+    }
+    return true;
+}
+
 // Shader Storage Buffer Object ----------------------------------------------//
 
 ShaderStorageBuffer* ShaderStorageBuffer::create(uint32_t size)

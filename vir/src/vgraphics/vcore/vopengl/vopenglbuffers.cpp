@@ -1361,6 +1361,7 @@ void OpenGLUniformBuffer::setData
     uint32_t offset
 )
 {
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
     glBufferSubData
     (
         GL_UNIFORM_BUFFER, 
@@ -1368,6 +1369,159 @@ void OpenGLUniformBuffer::setData
         size == 0 ? size_ : size, 
         data
     );
+}
+
+//----------------------------------------------------------------------------//
+// Dynamic uniform buffer ----------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+uint32_t OpenGLDynamicUniformBuffer::sizeOf(const Shader::Uniform* uniform) const
+{
+    static std::unordered_map<Shader::Uniform::Type, uint32_t> 
+        uniformTypeToSize =
+        {
+            {Shader::Uniform::Type::Bool,        4},
+            {Shader::Uniform::Type::UInt,        4},
+            {Shader::Uniform::Type::Int,         4},
+            {Shader::Uniform::Type::Int2,        8},
+            {Shader::Uniform::Type::Int3,        12},
+            {Shader::Uniform::Type::Int4,        16},
+            {Shader::Uniform::Type::Float,       4},
+            {Shader::Uniform::Type::Float2,      8},
+            {Shader::Uniform::Type::Float3,      12},
+            {Shader::Uniform::Type::Float4,      16},
+            {Shader::Uniform::Type::Mat3,        36},
+            {Shader::Uniform::Type::Mat4,        64},
+            {Shader::Uniform::Type::Sampler2D,   0},
+            {Shader::Uniform::Type::Sampler3D,   0},
+            {Shader::Uniform::Type::SamplerCube, 0},
+            {Shader::Uniform::Type::Image2D,     0},
+            {Shader::Uniform::Type::Image3D,     0},
+            {Shader::Uniform::Type::ImageCube,   0}
+        };
+
+    return uniformTypeToSize.at(uniform->type);
+}
+
+uint32_t OpenGLDynamicUniformBuffer::alignmentOf(const Shader::Uniform* uniform) const
+{
+    static std::unordered_map<Shader::Uniform::Type, uint32_t> 
+        uniformTypeToAlignment =
+        {
+            {Shader::Uniform::Type::Bool,        4},
+            {Shader::Uniform::Type::UInt,        4},
+            {Shader::Uniform::Type::Int,         4},
+            {Shader::Uniform::Type::Int2,        8},
+            {Shader::Uniform::Type::Int3,        16},
+            {Shader::Uniform::Type::Int4,        16},
+            {Shader::Uniform::Type::Float,       4},
+            {Shader::Uniform::Type::Float2,      8},
+            {Shader::Uniform::Type::Float3,      16},
+            {Shader::Uniform::Type::Float4,      16},
+            {Shader::Uniform::Type::Mat3,        48},
+            {Shader::Uniform::Type::Mat4,        64},
+            {Shader::Uniform::Type::Sampler2D,   1},
+            {Shader::Uniform::Type::Sampler3D,   1},
+            {Shader::Uniform::Type::SamplerCube, 1},
+            {Shader::Uniform::Type::Image2D,     1},
+            {Shader::Uniform::Type::Image3D,     1},
+            {Shader::Uniform::Type::ImageCube,   1}
+        };
+    return uniformTypeToAlignment.at(uniform->type);
+}
+
+void OpenGLDynamicUniformBuffer::submitData
+(
+    const void* data,
+    uint32_t size,
+    uint32_t offset 
+)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+    glBufferSubData
+    (
+        GL_UNIFORM_BUFFER, 
+        offset, 
+        size, 
+        data
+    );
+}
+
+OpenGLDynamicUniformBuffer::OpenGLDynamicUniformBuffer
+(
+    uint32_t maxSize, 
+    const std::string& name
+) :
+DynamicUniformBuffer(maxSize, name)
+{
+    glGenBuffers(1, &id_);
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+    glBufferData(GL_UNIFORM_BUFFER, maxSize, NULL, GL_DYNAMIC_DRAW);
+}
+
+OpenGLDynamicUniformBuffer::~OpenGLDynamicUniformBuffer()
+{
+    glDeleteBuffers(1, &id_);
+}
+
+void OpenGLDynamicUniformBuffer::bind()
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+}
+
+void OpenGLDynamicUniformBuffer::unbind()
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void OpenGLDynamicUniformBuffer::setBindingPoint(uint32_t bindingPoint)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, id_);
+    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, id_);
+    bindingPoint_ = bindingPoint;
+}
+
+std::string OpenGLDynamicUniformBuffer::shaderSource() const
+{
+    if (uniformWrappers_.empty() || name_.empty() || bindingPoint_ == -1)
+        return "";
+    static std::unordered_map<Shader::Uniform::Type, std::string> 
+        uniformTypeToName =
+        {
+            {Shader::Uniform::Type::Bool, "bool"},
+            {Shader::Uniform::Type::UInt, "uint"},
+            {Shader::Uniform::Type::Int, "int"},
+            {Shader::Uniform::Type::Int2, "ivec2"},
+            {Shader::Uniform::Type::Int3, "ivec3"},
+            {Shader::Uniform::Type::Int4, "ivec4"},
+            {Shader::Uniform::Type::Float, "float"},
+            {Shader::Uniform::Type::Float2, "vec2"},
+            {Shader::Uniform::Type::Float3, "vec3"},
+            {Shader::Uniform::Type::Float4, "vec4"},
+            {Shader::Uniform::Type::Mat3, "mat3"},
+            {Shader::Uniform::Type::Mat4, "mat4"},
+            {Shader::Uniform::Type::Sampler2D, "sampler2D"},
+            {Shader::Uniform::Type::Sampler3D, "sampler3D"},
+            {Shader::Uniform::Type::SamplerCube, "samplerCube"},
+            {Shader::Uniform::Type::Image2D, "image2D"},
+            {Shader::Uniform::Type::Image3D, "image3D"},
+            {Shader::Uniform::Type::ImageCube, "imageCube"}
+        };
+    std::string source = 
+        "layout(std140, binding="+std::to_string(bindingPoint_)+") uniform " + 
+        name_ + " {\n";
+    uint32_t location = 0;
+    bool valid = false;
+    for (auto i=0; i<uniformWrappers_.size(); i++)
+    {
+        auto u = uniformWrappers_[i]->uniform;
+        if (u->name.empty())
+            continue;
+        source += "    "+uniformTypeToName.at(u->type)+" "+u->name+";";
+        source += (i<uniformWrappers_.size()-1) ? "\n" : "};\n";
+        valid = true;
+    }
+    return valid ? source : "";
 }
 
 //----------------------------------------------------------------------------//

@@ -51,6 +51,7 @@ public:
 
     private:
         
+        bool           isValuePtr_ = false;
         bool           isValueOwner_ = true;
         void*          value_ = nullptr;
         // The cache serves as an additional back-up storage value, that
@@ -68,6 +69,8 @@ public:
         
         Uniform() = default;
         ~Uniform();
+
+        const void* getNativeValue() const {return value_;}
         
         template<class ValueType>
         void setValuePtr(ValueType* value, bool isValueOwner=false)
@@ -93,6 +96,7 @@ public:
                 value_ = (void*) new ValueType(value);
             else 
                 *(ValueType*)(value_) = value;
+             isValuePtr_ = false;
         }
         
         template<class ValueType>

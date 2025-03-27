@@ -193,6 +193,26 @@ public :
     ) override;
 };
 
+class OpenGLDynamicUniformBuffer : public DynamicUniformBuffer
+{
+protected :
+    uint32_t sizeOf(const Shader::Uniform* uniform) const override;
+    uint32_t alignmentOf(const Shader::Uniform* uniform) const override;
+    void submitData
+    (
+        const void* data,
+        uint32_t size,
+        uint32_t offset = 0
+    ) override;
+public :
+    OpenGLDynamicUniformBuffer(uint32_t maxSize, const std::string& name);
+    ~OpenGLDynamicUniformBuffer();
+    void bind() override;
+    void unbind() override;
+    void setBindingPoint(uint32_t) override;
+    std::string shaderSource() const override;
+};
+
 class OpenGLShaderStorageBuffer : public ShaderStorageBuffer
 {
 protected :

@@ -554,6 +554,64 @@ public :
 
 //----------------------------------------------------------------------------//
 
+class DynamicUniformBuffer
+{
+protected :
+
+    struct UniformWrapper
+    {
+        const Shader::Uniform* uniform = nullptr;
+        uint32_t size = 0u;
+        uint32_t offset = 0u;
+        UniformWrapper* previous = nullptr;
+        UniformWrapper* next = nullptr;
+        bool markedForSubmission = false;
+        bool operator==(const UniformWrapper& other) const 
+        {
+            return uniform == other.uniform;
+        }
+    };
+
+    uint32_t id_;
+    uint32_t size_;
+    uint32_t maxSize_;
+    int bindingPoint_;
+    std::string name_;
+    uint32_t nUniformsMarkedForSubmission_ = 0u;
+    std::vector<UniformWrapper*> uniformWrappers_ = {};
+    DynamicUniformBuffer(uint32_t maxSize, const std::string& name):
+        id_(0), size_(0), maxSize_(maxSize), bindingPoint_(-1), name_(name){};
+    virtual uint32_t sizeOf(const Shader::Uniform* uniform) const = 0;
+    virtual uint32_t alignmentOf(const Shader::Uniform* uniform) const = 0;
+    virtual void submitData
+    (
+        const void* data,
+        uint32_t size,
+        uint32_t offset = 0
+    ) = 0;
+public :
+    virtual ~DynamicUniformBuffer();
+    static DynamicUniformBuffer* create(uint32_t size, const std::string& name);
+    uint32_t id() const {return id_;}
+    bool addUniform(const Shader::Uniform* uniform);
+    bool removeUniform(const Shader::Uniform* uniform);
+    // Marks a uniform for submission to the GPU on the next invokation of 
+    // submitData(false)
+    bool markUniformForSubmission(const Shader::Uniform* uniform);
+    // Submit the data of stored uniforms to the GPU. If forceSubmitAllUniforms
+    // == true, the entire block will be submitted. If false, only the data of
+    // the uniforms marked for submission will be submitted
+    void submitData(bool forceSubmitAllUniforms=false);
+    // Submit the data of a single uniform by its name
+    bool submitData(const Shader::Uniform* uniform);
+    virtual void bind() = 0;
+    virtual void unbind() = 0;
+    virtual void setBindingPoint(uint32_t) = 0;
+    virtual std::string shaderSource() const = 0;
+};
+
+//----------------------------------------------------------------------------//
+
 class ShaderStorageBuffer
 {
 protected :
