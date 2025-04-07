@@ -161,6 +161,10 @@ Layer::Layer
 {
     setResolution(sharedUniforms.iResolution(), false);
 
+    uniformBuffer_ = vir::DynamicUniformBuffer::create(1024, "privateUniformBlock");
+    uniformBufferBindingPoint_ = 2+layers.size();
+    uniformBuffer_->setBindingPoint(uniformBufferBindingPoint_);
+
     // Add default uniforms
     {
         Uniform* u = nullptr;
@@ -168,19 +172,19 @@ Layer::Layer
         u = new Uniform{};
         u->specialType = Uniform::SpecialType::LayerAspectRatio;
         u->name = "iAspectRatio";
-        u->type = Uniform::Type::Float;
-        u->setValuePtr(&aspectRatio_);
+        u->setValuePtr(&aspectRatio_, Uniform::Type::Float);
         u->gui.showBounds = false;
         uniforms_.emplace_back(u);
+        uniformBuffer_->addUniform(u);
 
         u = new Uniform{};
         u->specialType = Uniform::SpecialType::LayerResolution;
         u->name = "iResolution";
-        u->type = Uniform::Type::Float2;
-        u->setValuePtr(&resolution_);
+        u->setValuePtr(&resolution_, Uniform::Type::Float2);
         u->gui.bounds = glm::vec2(1.0f, 4096.0f);
         u->gui.showBounds = false;
         uniforms_.emplace_back(u);
+        uniformBuffer_->addUniform(u);
     };
 
     setName("Layer "+std::to_string(id_));
@@ -266,6 +270,7 @@ Layer::~Layer()
     {
         DELETE_IF_NOT_NULLPTR(postProcess)
     }
+    DELETE_IF_NOT_NULLPTR(uniformBuffer_)
 }
 
 //----------------------------------------------------------------------------//
@@ -274,7 +279,7 @@ void Layer::save(ObjectIO& io) const
 {
     io.writeObjectStart(gui_.name.c_str());
     io.write("renderTarget", (int)rendering_.target);
-    io.write("resolution", resolution_);
+    io.write("resolution", (glm::ivec2)resolution_);
     io.write("resolutionRatio", resolutionRatio_);
     io.write("isAspectRatioBoundToWindow", flags_.isAspectRatioBoundToWindow);
     io.write("rescaleWithWindow", flags_.rescaleWithWindow);
@@ -379,7 +384,7 @@ Layer* Layer::load
     layer->flags_.rename = true; // <- hack to prevent layer tab bar re-ordering
                                  // on first renderGui after loading
     layer->rendering_.target = (Rendering::Target)io.read<int>("renderTarget");
-    layer->resolution_ = io.read<glm::ivec2>("resolution");
+    layer->resolution_ = (glm::vec2)io.read<glm::ivec2>("resolution");
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
     layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
     layer->flags_.rescaleWithWindow = 
@@ -395,7 +400,7 @@ Layer* Layer::load
     layer->exportData_.windowResolutionScale = 
         exportData.read<float>("windowResolutionScale");
     layer->exportData_.resolution =
-        (glm::vec2)layer->resolution_ * 
+        layer->resolution_ * 
         layer->exportData_.resolutionScale *
         layer->exportData_.windowResolutionScale +.5f;
 
@@ -409,6 +414,7 @@ Layer* Layer::load
     (
         shaderData,
         layer->uniforms_,
+        layer->uniformBuffer_,
         resources,
         layer->cache_.uninitializedResourceLayers
     );
@@ -524,7 +530,7 @@ void Layer::loadAll
             {
                 if (resource->name() != layerName)
                     continue;
-                uniform->setValuePtr<Resource>(resource);
+                uniform->setResourcePtr(resource, layer->uniformBuffer_);
             }
         }
         layer->cache_.uninitializedResourceLayers.clear();
@@ -542,12 +548,12 @@ void Layer::loadAll
         {
             if 
             (
-                uniform->type == Uniform::Type::Sampler2D ||
-                uniform->type == Uniform::Type::Sampler3D ||
-                uniform->type == Uniform::Type::SamplerCube ||
-                uniform->type == Uniform::Type::Image2D ||
-                uniform->type == Uniform::Type::Image3D ||
-                uniform->type == Uniform::Type::ImageCube
+                uniform->type() == Uniform::Type::Sampler2D ||
+                uniform->type() == Uniform::Type::Sampler3D ||
+                uniform->type() == Uniform::Type::SamplerCube ||
+                uniform->type() == Uniform::Type::Image2D ||
+                uniform->type() == Uniform::Type::Image3D ||
+                uniform->type() == Uniform::Type::ImageCube
             )
             {
                 auto resource = uniform->getValuePtr<Resource>();
@@ -665,8 +671,9 @@ Layer::fragmentShaderHeaderSourceAndLineCount
             // If the uniform has no name, I can't add it to the source
             if (u->name.size() == 0)
                 continue;
-            std::string uniformTypeName = vir::Shader::uniformTypeToName[u->type];
-            switch (u->type)
+            std::string uniformTypeName = 
+                vir::Shader::uniformTypeToName[u->type()];
+            switch (u->type())
             {
                 case vir::Shader::Uniform::Type::Image2D :
                 case vir::Shader::Uniform::Type::Image3D :
@@ -682,6 +689,10 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                     // level and exposed via Resource::, not here
                     if (resource->isInternalFormatUnsigned())
                         uniformTypeName = "u"+uniformTypeName;
+                    header += "uniform "+uniformTypeName+" "+u->name+";\n";
+                    ++nLines;
+                    // Also update name of linked resolution uniform
+                    u->updateResourceResolutionName();
                     break;
                 }
                 case vir::Shader::Uniform::Type::Sampler2D :
@@ -695,13 +706,19 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                     // level and exposed via Resource::, not here
                     if (resource->isInternalFormatUnsigned())
                         uniformTypeName = "u"+uniformTypeName;
+                    header += "uniform "+uniformTypeName+" "+u->name+";\n";
+                    ++nLines;
+                    // Also update name of linked resolution uniform
+                    u->updateResourceResolutionName();
                     break;
                 }
                 default :
                     break;
             }
-            header += "uniform "+uniformTypeName+" "+u->name+";\n";
-            ++nLines;
+            // header += "uniform "+uniformTypeName+" "+u->name+";\n";
+            // ++nLines;
+            
+            /*
             // Automatically managed sampler2D or image2D resolution and aspect
             // ratio uniforms
             if (u->type == vir::Shader::Uniform::Type::Sampler2D || 
@@ -718,7 +735,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                 header += "uniform vec3 "+u->name+"Resolution;\n";
                 ++nLines;
             }
-            
+            */
         }
     };
 
@@ -736,6 +753,9 @@ Layer::fragmentShaderHeaderSourceAndLineCount
         nLines,
         imageBindingPoint
     );
+    auto privateBlockSource = uniformBuffer_->shaderSource();
+    nLines += Helpers::countNewLines(privateBlockSource);
+    header += privateBlockSource;
 
     return {header, nLines};
 }
@@ -765,7 +785,7 @@ void Layer::setResolution
     else if (!window->iconified())
         resolutionRatio_ = (glm::vec2)resolution/windowResolution;
     
-    if (resolution == resolution_)
+    if (resolution == (glm::ivec2)resolution_)
         return;
     
     if 
@@ -776,25 +796,25 @@ void Layer::setResolution
     )
     {
         float windowAspectRatio = window->aspectRatio();
-        if (resolution.x == resolution_.x)
+        if (resolution.x == (int)resolution_.x)
         {
-            resolution_.x = resolution.y*windowAspectRatio+.5f;
+            resolution_.x = (int)(resolution.y*windowAspectRatio+.5f);
             resolution_.y = resolution.y;
         }
-        else if (resolution.y == resolution_.y)
+        else if (resolution.y == (int)resolution_.y)
         {
-            resolution_.y = resolution.x/windowAspectRatio+.5f;
+            resolution_.y = (int)(resolution.x/windowAspectRatio+.5f);
             resolution_.x = resolution.x;
         }
-        resolutionRatio_ = (glm::vec2)resolution_/windowResolution;        
+        resolutionRatio_ = resolution_/windowResolution;        
     }
     else
         resolution_ = resolution;
-    aspectRatio_ = ((float)resolution_.x)/resolution_.y;
+    aspectRatio_ = resolution_.x/resolution_.y;
     
     if (setExportResolution)
         exportData_.resolution = 
-            (glm::vec2)resolution_*
+            resolution_*
             exportData_.resolutionScale*
             exportData_.windowResolutionScale + .5f;
     
@@ -809,7 +829,9 @@ void Layer::setResolution
         return;
     rendering_.shader->bind();
     rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
-    rendering_.shader->setUniformFloat2("iResolution", (glm::vec2)resolution_);
+    rendering_.shader->setUniformFloat2("iResolution", resolution_);
+    uniformBuffer_->markUniformForSubmission(uniforms_[0]);
+    uniformBuffer_->markUniformForSubmission(uniforms_[1]);
 }
 
 //----------------------------------------------------------------------------//
@@ -997,6 +1019,7 @@ bool Layer::compileShader
         );
         flags_.uncompiledChanges = false;
         // Re-set uniforms
+        shader->bindUniformBlock("privateUniformBlock", uniformBufferBindingPoint_);
         sharedUniforms.bindShader(rendering_.shader);
         Rendering::sharedStorage->bindShader(rendering_.shader);
         rendering_.shader->bind();
@@ -1004,7 +1027,7 @@ bool Layer::compileShader
         case Uniform::Type::ST :                                            \
         {                                                                   \
             T value = u->getValue<T>();                                     \
-            u->setValue(value);                                             \
+            u->setValue(value, Uniform::Type::ST);                          \
             if (named)                                                      \
                 rendering_.shader->F(u->name, value);                       \
             break;                                                          \
@@ -1012,7 +1035,7 @@ bool Layer::compileShader
         for (auto u : uniforms_)
         {
             bool named(u->name.size() > 0);
-            switch(u->type)
+            switch(u->type())
             {
                 CASE(Bool, bool, setUniformBool)
                 CASE(Int, int, setUniformInt)
@@ -1030,7 +1053,7 @@ bool Layer::compileShader
         for (auto u : sharedUniforms.userUniforms())
         {
             bool named(u->name.size() > 0);
-            switch(u->type)
+            switch(u->type())
             {
                 CASE(Bool, bool, setUniformBool)
                 CASE(Int, int, setUniformInt)
@@ -1049,7 +1072,7 @@ bool Layer::compileShader
         rendering_.shader->setUniformFloat2
         (
             "iResolution", 
-            (glm::vec2)resolution_
+            resolution_
         );
         return true;
     }
@@ -1183,15 +1206,15 @@ void Layer::renderShader
         {
             bool isSampler
             (
-                u->type == vir::Shader::Uniform::Type::Sampler2D ||
-                u->type == vir::Shader::Uniform::Type::Sampler3D ||
-                u->type == vir::Shader::Uniform::Type::SamplerCube
+                u->type() == vir::Shader::Uniform::Type::Sampler2D ||
+                u->type() == vir::Shader::Uniform::Type::Sampler3D ||
+                u->type() == vir::Shader::Uniform::Type::SamplerCube
             );
             bool isImage
             (
-                u->type == vir::Shader::Uniform::Type::Image2D ||
-                u->type == vir::Shader::Uniform::Type::Image3D ||
-                u->type == vir::Shader::Uniform::Type::ImageCube
+                u->type() == vir::Shader::Uniform::Type::Image2D ||
+                u->type() == vir::Shader::Uniform::Type::Image3D ||
+                u->type() == vir::Shader::Uniform::Type::ImageCube
             );
             if 
             (
@@ -1204,7 +1227,7 @@ void Layer::renderShader
             auto resource = u->getValuePtr<Resource>();
             if (resource == nullptr)
                 continue;
-
+            u->updateResourceResolution(layer->uniformBuffer_);
             // When reading from your own framebuffer, you should always read
             // from the buffer to which you are NOT writing to (the back buffer
             // is the one that is always being written, so read from the front
@@ -1261,8 +1284,8 @@ void Layer::renderShader
             // every render call
             if 
             (
-                u->type == vir::Shader::Uniform::Type::Sampler2D ||
-                u->type == vir::Shader::Uniform::Type::Image2D
+                u->type() == vir::Shader::Uniform::Type::Sampler2D ||
+                u->type() == vir::Shader::Uniform::Type::Image2D
             )
             {
                 shader->setUniformFloat
@@ -1278,8 +1301,8 @@ void Layer::renderShader
             }
             else if 
             (
-                u->type == vir::Shader::Uniform::Type::Sampler3D ||
-                u->type == vir::Shader::Uniform::Type::Image3D
+                u->type() == vir::Shader::Uniform::Type::Sampler3D ||
+                u->type() == vir::Shader::Uniform::Type::Image3D
             )
             {
                 shader->setUniformFloat3
@@ -1292,6 +1315,7 @@ void Layer::renderShader
     };
     setSamplerUniforms(sharedUniforms.userUniforms(), this, textureUnit, imageUnit);
     setSamplerUniforms(uniforms_, this, textureUnit, imageUnit);
+    uniformBuffer_->submitData();
     
     // Re-direct rendering & disable blending if not rendering to the window
     static auto renderer = vir::Renderer::instance();
@@ -1400,12 +1424,12 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
         auto uniform = uniforms_[i];
         if 
         (
-            uniform->type != Uniform::Type::Sampler2D &&
-            uniform->type != Uniform::Type::Sampler3D &&
-            uniform->type != Uniform::Type::SamplerCube && 
-            uniform->type != Uniform::Type::Image2D &&
-            uniform->type != Uniform::Type::Image3D &&
-            uniform->type != Uniform::Type::ImageCube
+            uniform->type() != Uniform::Type::Sampler2D &&
+            uniform->type() != Uniform::Type::Sampler3D &&
+            uniform->type() != Uniform::Type::SamplerCube && 
+            uniform->type() != Uniform::Type::Image2D &&
+            uniform->type() != Uniform::Type::Image3D &&
+            uniform->type() != Uniform::Type::ImageCube
         )
             continue;
         auto uResource = uniform->getValuePtr<const Resource>();

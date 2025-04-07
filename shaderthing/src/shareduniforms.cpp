@@ -733,6 +733,7 @@ void SharedUniforms::load
     (
         ioSu, 
         su->userUniforms_,
+        nullptr,
         resources,
         su->cache_.uninitializedResourceLayers
     );
@@ -752,7 +753,8 @@ void SharedUniforms::postLoadProcessCachedResourceLayers
         {
             if (resource->name() != layerName)
                 continue;
-            uniform->setValuePtr<Resource>(resource);
+            // TODO: Once the sharedUniform buffer is set up, pass it
+            uniform->setResourcePtr(resource); 
         }
     }
     cache_.uninitializedResourceLayers.clear();

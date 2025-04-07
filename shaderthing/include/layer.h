@@ -152,11 +152,13 @@ public:
 private:
 
     const uint32_t                      id_;
-          glm::ivec2                    resolution_;
+          glm::vec2                     resolution_;
           glm::vec2                     resolutionRatio_ = {1.f, 1.f};
           float                         aspectRatio_;
           float                         depth_;
           std::vector<Uniform*>         uniforms_;
+          vir::DynamicUniformBuffer*    uniformBuffer_;
+          unsigned int                  uniformBufferBindingPoint_;
           Rendering                     rendering_;
           GUI                           gui_;
           Flags                         flags_;
@@ -288,7 +290,7 @@ public:
     );
 
     const std::string& name() const {return gui_.name;}
-    const glm::ivec2& resolution() const {return resolution_;}
+    const glm::vec2& resolution() const {return resolution_;}
     unsigned long int size() const
     {
         return ((unsigned long int)resolution_.x)*((unsigned long int)resolution_.y);

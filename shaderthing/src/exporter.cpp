@@ -546,7 +546,7 @@ transparency)");
                 exportData.windowResolutionScale = outputScale;
                 if (layerRescale)
                     layerExportResolution = 
-                        (glm::vec2)layer->resolution()*
+                        layer->resolution()*
                         layerExportScale*outputScale + .5f;
             }
             else if (!layerRendersToWindow)

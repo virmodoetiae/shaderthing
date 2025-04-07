@@ -51,33 +51,39 @@ public:
 
     private:
         
-        bool           isValuePtr_ = false;
         bool           isValueOwner_ = true;
-        void*          value_ = nullptr;
-        // The cache serves as an additional back-up storage value, that
+        void*          value_        = nullptr;
+        Type           type_         = Type::Int;
+        // The cache serves as an additional back-up storage value that
         // can be read/set via the corresponding methods
-        void*          cache_ = nullptr;
+        void*          cache_        = nullptr;
         
         Uniform(const Uniform&) = delete;
         Uniform& operator=(const Uniform& other) = delete;
+
+    protected:
+
+        virtual void deleteValue(bool deleteCache=true);
     
     public:
     
         std::string    name = "";
         uint32_t       unit = 0;
-        Type type = Type::Int;
         
         Uniform() = default;
-        ~Uniform();
+        virtual ~Uniform();
+
+        void setType(Type type, bool doNotReinitializeIfImageOrSampler = false);
 
         const void* getNativeValue() const {return value_;}
+        Type type() const {return type_;}
         
         template<class ValueType>
-        void setValuePtr(ValueType* value, bool isValueOwner=false)
+        void setValuePtr(ValueType* value, Type type, bool isValueOwner=false)
         {
-            if (value != nullptr && isValueOwner_)
-                resetValue();
+            deleteValue(type != type_);
             value_ = (void*)value;
+            type_ = type;
             isValueOwner_ = isValueOwner;
         }
         
@@ -90,13 +96,11 @@ public:
         }
         
         template<class ValueType>
-        void setValue(ValueType value)
+        void setValue(ValueType value, Type type)
         {
-            if (value_ == nullptr)
-                value_ = (void*) new ValueType(value);
-            else 
-                *(ValueType*)(value_) = value;
-             isValuePtr_ = false;
+            setType(type); // Also does reinitialization if type != type_
+            *(ValueType*)(value_) = value;
+            isValueOwner_ = true;
         }
         
         template<class ValueType>
@@ -123,8 +127,6 @@ public:
                 return *(ValueType*)(cache_);
             return ValueType();
         }
-        
-        void resetValue();
     };
 
     struct CompilationErrors

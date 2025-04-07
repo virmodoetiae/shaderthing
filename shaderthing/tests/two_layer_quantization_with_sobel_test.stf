@@ -1,0 +1,204 @@
+{
+    "UIScale": 0.6000000238418579,
+    "autoSaveEnabled": true,
+    "autoSaveInterval": 60.0,
+    "resources": {},
+    "sharedUniforms": {
+        "windowResolution": [
+            512.0,
+            512.0
+        ],
+        "exportWindowResolutionScale": 1.0,
+        "time": 2.400008201599121,
+        "timePaused": false,
+        "timeLooped": true,
+        "timeBounds": [
+            0.0,
+            6.283185958862305
+        ],
+        "randomGeneratorPaused": false,
+        "iWASD": [
+            -12.702066421508789,
+            11.68089485168457,
+            20.49168586730957
+        ],
+        "iWASDSensitivity": 10.0,
+        "iWASDInputEnabled": true,
+        "iLook": [
+            0.4766142666339874,
+            -0.47101593017578125,
+            -0.7425581216812134
+        ],
+        "iLookSensitivity": 0.2720748484134674,
+        "iLookInputEnabled": true,
+        "iLookInputRequiresLMBHold": true,
+        "iMouseInputEnabled": true,
+        "iMouseInputClampedToWindow": false,
+        "mouseInputRequiresLMBHold": true,
+        "iKeyboardInputEnabled": true,
+        "smoothTimeDelta": false,
+        "resetTimeOnFrameCounterReset": false,
+        "cursorStatus": false,
+        "vSyncEnabled": true,
+        "uniforms": {}
+    },
+    "sharedStorage": {
+        "intDataViewStartIndex": 0,
+        "intDataViewEndIndex": 5,
+        "floatDataViewEndIndex": 5,
+        "floatDataViewStartIndex": 0,
+        "isFloatDataAlsoShownAsColor": false,
+        "floatDataViewPrecision": 3,
+        "floatDataViewExponentialFormat": false,
+        "floatDataViewComponents": [
+            1,
+            1,
+            1,
+            1
+        ],
+        "intType": 0,
+        "floatType": 0,
+        "intDataSize": 16,
+        "floatDataSize": 256,
+        "nFloatComponents": 4
+    },
+    "layers": {
+        "Layer 0": {
+            "renderTarget": 1,
+            "resolution": [
+                1024,
+                1024
+            ],
+            "resolutionRatio": [
+                2.0,
+                2.0
+            ],
+            "isAspectRatioBoundToWindow": true,
+            "rescaleWithWindow": true,
+            "depth": 0.0,
+            "internalFramebuffer": {
+                "format": 9,
+                "wrapModes": [
+                    0,
+                    0
+                ],
+                "magFilterMode": 0,
+                "minFilterMode": 5,
+                "exportClearPolicy": 2
+            },
+            "exportData": {
+                "resolutionScale": 1.0,
+                "rescaleWithOutput": true,
+                "windowResolutionScale": 1.0
+            },
+            "shader": {
+                "fragmentSourceSize": 8896,
+                "fragmentSource": "#define MAX_STEPS 350\n#define MAX_DIST 1e2\n#define MIN_DIST 1e-3\n#define OFFSET (10*MIN_DIST)\n#define SAFETY_FACTOR 2\n#define N_REFLS 2\n#define SHADW_SHARPN 10\n#define MIN_LIGHT .025\n#define TPIT 2.*PI*iTime\n#define LIGHT_POS vec3(0.,20.,-20.)\n#define BACKG_COL vec3(0.1, .4, .6)\n\n#define PI 3.141593\n\nfloat seed;\n\nvec3 random3D(vec3 x) \n{\n    return fract(138912*sin(x*vec3(138.9, 191.2, 695.7)))-.5;\n}\n\nvec3 rotate(vec3 v, float t, vec3 a)\n{\n    vec4 q = vec4(sin(t/2.0)*a.xyz, cos(t/2.0));\n    return v + 2.0*cross(q.xyz, cross(q.xyz, v) + q.w*v);\n}\n\nfloat maxDot(vec3 v0, vec3 v1)\n{\n    return max(dot(v0,v1),0);\n}\n\nfloat sphereSDF(vec3 p, float r)\n{\n    return length(p)-r;\n}\n\nfloat boxSDF(vec3 p, vec3 b)\n{\n    vec3 q = abs(p) - b;\n    return length(max(q, 0.)) + min(max(q.x, max(q.y,q.z)),0.);\n}\n\nstruct Material\n{\n    vec3 co; // Color\n    float f0; // Fresnel reflectance at perpendicular incidence\n    float rg; // Material roughness\n    float mt; // Metallicity\n};\n\nstruct SDM // Signed distance & material\n{\n    float d;\n    Material m;\n};\n\nstruct LitPoint\n{\n    // Coordinates\n    vec3 p;\n    \n    // Material properties\n    Material m;\n    \n    // Surface normal\n    vec3 n;\n\n    // Lighting intensity\n    float i;\n    \n    // Surface reflectance\n    float r;\n    \n    // Reflection direction\n    vec3 er;\n};\n\nMaterial mixMaterials(Material m0, Material m1, float x)\n{\n    return Material\n    (\n        mix(m0.co, m1.co, x), \n        mix(m0.f0, m1.f0, x),\n        mix(m0.rg, m1.rg, x),\n        mix(m0.mt, m1.mt, x)\n    );\n}\n\n// All SDM operations for reference, even if not used, to showcase \n// examples for handling mixing of material properties\n\nSDM intersect(SDM o0, SDM o1)\n{\n    return SDM\n    (\n        max(o0.d, o1.d), \n        mixMaterials(o0.m, o1.m, .5)\n    );\n}\n\nSDM subtract(SDM o0, SDM o1)\n{\n    return SDM(max(o0.d, -o1.d), o0.m);\n}\n\nSDM unite(SDM o0, SDM o1)\n{\n    if (o0.d < o1.d)\n        return o0;\n    return o1;\n}\n\nSDM smoothUnite(SDM o0, SDM o1, float s)\n{\n    float h = clamp(0.5+0.5*(o0.d-o1.d)/s, 0.0, 1.0);\n    return SDM\n    (\n        mix(o0.d, o1.d, h)-s*h*(1.0-h), \n        mixMaterials(o0.m, o1.m, smoothstep(0,1,h))\n    );\n}\n\n// Subtract o0 from o1\nSDM smoothSubtract(SDM o0, SDM o1, float s)\n{\n    float h = clamp(0.5-0.5*(o0.d+o1.d)/s, 0.0, 1.0);\n    return SDM\n    (\n        mix(o1.d, -o0.d, h) + s*h*(1.0-h),\n        o1.m\n    );\n}\n\nfloat smoothSubtract(float sdf1, float sdf2, float s)\n{\n    float h = clamp(0.5-0.5*(sdf2+sdf1)/s, 0.0, 1.0);\n    return mix(sdf2, -sdf1, h) + s*h*(1.0-h);\n}\n\nSDM smoothIntersect(SDM o0, SDM o1, float s)\n{\n    float h = clamp(0.5-0.5*(o1.d-o0.d)/s, 0.0, 1.0);\n    return SDM\n    (\n        mix(o1.d, o0.d, h)+s*h*(1.0-h),\n        mixMaterials(o0.m, o1.m, .5)\n    );\n}\n\nfloat smoothIntersect(float sdf1, float sdf2, float s)\n{\n    float h = clamp(0.5-0.5*(sdf2-sdf1)/s, 0.0, 1.0);\n    return mix(sdf2, sdf1, h)+s*h*(1.0-h);\n}\n\nSDM sceneSDF(vec3 p)\n{\n    // Rotating, orbiting box\n    vec3 pb = \n        rotate\n        (\n            rotate\n            (\n                p-vec3(9*sin(iTime), 0, 9*cos(iTime)), \n                iTime, \n                vec3(0,1,0)\n            ),\n            iTime,\n            vec3(1,0,0)\n        );\n    pb += 5*sin(2*iTime);\n    SDM bx = SDM\n    (\n        boxSDF(pb, vec3(2)), \n        Material(vec3(1.,0.,0.), 0.1, 0., 1.)\n    );\n    // Sphere going up and down\n    SDM sp = SDM\n    (\n        sphereSDF(p+1*vec3(0,3*sin(iTime),0), 3.), \n        Material(vec3(0.75,0.75,0.75), 0.5, roughness, 1.)\n    );\n    // Lower less-than-half-sphere thing\n    SDM pl = SDM\n    (\n        //.5*p.z*p.x+2*PI*fract(iTime)\n        smoothIntersect(p.y+2.+.25*sin(.5*p.z*p.x+2*PI*fract(3*iTime/PI)), sphereSDF(p, 10), 2),\n        Material(vec3(0.5,0.25,0), 0.5, 0.5, 0.)\n    );\n    sp = smoothUnite(sp, pl, 2);\n    // Cut part of lower less-than-half-sphere thing based on \n    // extended cube outline\n    sp.d = smoothSubtract(bx.d-2., sp.d, 5);//max(sp.d, -(bx.d-2.));\n    return unite(sp,bx);\n}\n\nstruct Ray \n{\n    vec3 o; // Ray origin\n    vec3 d; // Ray direction\n    float a; // Attenuation factor\n    int n; // Number of cumulated reflection or refractions\n};\n\nRay newRay(vec3 o, vec3 d)\n{\n    return Ray(o, d, 1., 0);\n}\n\nRay cameraRay(vec2 qc, vec3 cp, vec3 f, float fov)\n{\n    vec3 l = normalize(cross(vec3(0,1,0),f));\n    vec3 u = normalize(cross(f,l));\n    return newRay(cp, normalize(cp+f*fov-qc.x*l+qc.y*u-cp));\n}\n\n// Just like the regular rayMarch, but also computes a penumbra\n// factor for smooth shadows\nSDM rayMarch(Ray ray, out float pn)\n{\n    SDM sdm;\n    float d, dd, dd0 = MIN_DIST;\n    pn = 1.;\n    for (int iter = 0; iter < MAX_STEPS; iter++)\n    {\n        dd0 = dd;\n        sdm = sceneSDF(ray.o + ray.d*d);\n        dd = sdm.d/SAFETY_FACTOR;\n        pn = min(pn, SHADW_SHARPN*sdm.d/d);\n        if (dd > 0 && dd <= MIN_DIST || d >= MAX_DIST)\n            break;\n        d += dd;\n    }\n    sdm.d = d;\n    return sdm;\n}\n\n// Ray march without the penumbra factor\nSDM rayMarch(Ray ray)\n{\n    float pn;\n    return rayMarch(ray, pn);\n}\n\nvec3 getNormal(vec3 p)\n{\n    float d = sceneSDF(p).d;\n    vec2 e = vec2(OFFSET, 0.);\n    vec3 n = d - vec3(\n        sceneSDF(p-e.xyy).d,\n        sceneSDF(p-e.yxy).d,\n        sceneSDF(p-e.yyx).d\n    );\n    return normalize(n);\n}\n\n/*\nfloat getLighting(vec3 p, inout vec3 n)\n{\n    // Light source position\n    n = getNormal(p);\n    p += n*OFFSET;\n    vec3 dir = normalize(LIGHT_POS-p);\n    float pn;\n    if (rayMarch(newRay(p,dir),pn).d<length(LIGHT_POS-p)-OFFSET)\n        return MIN_LIGHT;\n    return max(dot(n, dir)*pn, MIN_LIGHT);\n}\n*/\n\nvoid computeLighting(inout LitPoint lp, vec3 LP, vec3 ev, inout float f)\n{\n    // Compute normal\n    lp.n = getNormal(lp.p);\n    // Adjust pos for ray-marching towards LP\n    lp.p += lp.n*OFFSET;\n    // Light direction (from p to LP)\n    vec3 el = normalize(LP-lp.p);\n    // Reflection direction\n    lp.er = reflect(-ev, lp.n);\n    // Half vector\n    vec3 h = normalize(ev+el);\n    \n    float pn;\n    // Ray-march towards LP to determine if in shade or not\n    if (rayMarch(newRay(lp.p,el),pn).d<length(LP-lp.p)-OFFSET)\n        lp.i = MIN_LIGHT;\n    else\n        lp.i = max(dot(lp.n, el)*pn, MIN_LIGHT);\n        \n    // Compute BRDF\n    // Compute required dot products\n    float vdh = maxDot(ev,h);\n    float ndv = maxDot(lp.n,ev);\n    float ndl = maxDot(lp.n, el);\n    float ndh = maxDot(lp.n, h);\n    // Schlick-approx for F, with mod for no specular if f0 == 0\n    float F = \n        lp.m.f0 + \n        (1.-lp.m.f0)*pow(1.-vdh,5.);\n    // GGX for D\n    float D;\n    float a;\n    float k;\n    {\n        a = lp.m.rg*lp.m.rg;\n        k = a/2.;\n        float a2 = a*a;\n        float ndh2 = ndh*ndh;\n        float b = max(ndh2 * (a2-1.) + 1., 1e-4);\n        D = a2*1.0/PI/b/b;\n    }\n    // G\n    float G = ndl/max(ndl*(1.-k)+k, 1e-4) * ndv/max(ndv*(1.-k)+k, 1e-4);\n    \n    //\n    float s = F*D*G/max(4.0*ndv*ndl, 1e-4);\n    float d = (1.0-F);\n\n    lp.i *= (s+d);\n    lp.r = lp.m.mt*F*float(lp.m.f0>0.);\n    \n    //\n    if (lp.r > 0)\n    {\n        if (f == 0 && lp.m.rg > 0.05)\n            f = integrationFactor*lp.m.mt;\n        vec3 dn = a*random3D(lp.p+seed);\n        dn -= dot(dn, lp.n)*lp.n;\n        lp.er = reflect(-ev, normalize(lp.n+dn));\n    }\n    \n}\n\n// Color from a single ray propagation\nvoid raySubColor(inout Ray ray, inout vec3 col, inout float f)\n{\n    // If the ray is fully attenuated, stop propagating\n    if (ray.a == 0.)\n        return;\n    SDM sdm = rayMarch(ray);\n    LitPoint lp = LitPoint\n    (\n        ray.o + ray.d*sdm.d,\n        sdm.m,\n        vec3(0.0),\n        0.0,\n        0.0,\n        vec3(0.0)\n    );\n    vec3 lCol, n;\n    lCol = BACKG_COL*(.5+.5*dot(ray.d, vec3(0,-1,0)));\n    if (sdm.d < MAX_DIST)\n    {\n        computeLighting(lp, LIGHT_POS, -ray.d, f);\n        lCol = lp.i*sdm.m.co;\n    }\n    // If last reflection, set reflectance of hit \n    // surface to 0 so it is rendered as fully opaque\n    lp.r *= float(ray.n<N_REFLS+1 && sdm.d < MAX_DIST);\n    col = (1-ray.a)*col+lCol*ray.a*(1.0-(lp.r));\n    ray.a *= lp.r;\n    if (ray.a != 0.)\n    {\n        ray.o = lp.p;\n        ray.d = lp.er;\n        ray.n += 1;\n    }\n}\n\nvec3 rayColor(Ray ray, inout float f)\n{\n    vec3 col = vec3(0.);\n    raySubColor(ray, col, f);\n    for (int i=0; i<N_REFLS; i++)\n    {\n        raySubColor(ray, col, f); \n    }\n    return pow(col, vec3(1./2.2));\n}\n\nvoid main(void)\n{\n    // Camera position, look-direction, ray and its final color\n    vec3 cp = iWASD; \n    vec3 ld = iLook;\n    Ray ray = cameraRay(qc, cp, ld, 1.);\n    vec3 c0 = texture(self, tc).xyz;\n    seed = float(iFrame+10*float(iRenderPass))/1000000;\n    float f = 0;\n    vec3 c1 = rayColor(ray, f);\n    if (c0 == vec3(0) || iUserAction)\n        f = 0;\n    //f=.999;\n    fragColor = vec4(f*c0+(1.-f)*c1,1.);\n    if (isnan(fragColor.x) || isnan(fragColor.y) || isnan(fragColor.z) || isnan(fragColor.a))\n        fragColor = vec4(0,0,0,1);\n}",
+                "uniforms": {
+                    "roughness": {
+                        "type": "float",
+                        "shared": false,
+                        "value": 0.42800000309944153,
+                        "min": 0.0,
+                        "max": 1.0
+                    },
+                    "integrationFactor": {
+                        "type": "float",
+                        "shared": false,
+                        "value": 0.746999979019165,
+                        "min": 0.0,
+                        "max": 0.9900000095367432
+                    },
+                    "self": {
+                        "type": "sampler2D",
+                        "shared": false,
+                        "value": "Layer 0"
+                    }
+                }
+            }
+        },
+        "Layer 1": {
+            "renderTarget": 2,
+            "resolution": [
+                256,
+                256
+            ],
+            "resolutionRatio": [
+                0.5,
+                0.5
+            ],
+            "isAspectRatioBoundToWindow": true,
+            "rescaleWithWindow": true,
+            "depth": 0.03125,
+            "internalFramebuffer": {
+                "format": 9,
+                "wrapModes": [
+                    0,
+                    0
+                ],
+                "magFilterMode": 0,
+                "minFilterMode": 1,
+                "exportClearPolicy": 0
+            },
+            "exportData": {
+                "resolutionScale": 1.0,
+                "rescaleWithOutput": true,
+                "windowResolutionScale": 1.0
+            },
+            "shader": {
+                "fragmentSourceSize": 834,
+                "fragmentSource": "void make_kernel(inout vec4 n[9], sampler2D src, vec2 uv)\n{\n    float w = 1.0/srcResolution.x;\n    float h = 1.0/srcResolution.y;\n    n[0] = texture(src, uv+vec2(-w, -h));\n    n[1] = texture(src, uv+vec2(0.0, -h));\n    n[2] = texture(src, uv+vec2(w, -h));\n    n[3] = texture(src, uv+vec2(-w, 0.0));\n    n[4] = texture(src, uv);\n    n[5] = texture(src, uv+vec2(w, 0.0));\n    n[6] = texture(src, uv+vec2(-w, h));\n    n[7] = texture(src, uv+vec2(0.0, h));\n    n[8] = texture(src, uv+vec2(w, h));\n}\n\nvoid main() \n{\n    vec4 n[9];\n    make_kernel(n, src, tc);\n    vec4 sobel_edge_h = n[2]+(2.0*n[5])+n[8]-(n[0]+(2.0*n[3])+n[6]);\n    vec4 sobel_edge_v = n[0]+(2.0*n[1])+n[2]-(n[6]+(2.0*n[7])+n[8]);\n    vec4 sobel = sqrt((sobel_edge_h*sobel_edge_h)+(sobel_edge_v*sobel_edge_v));\n    fragColor = vec4(sobel.rgb, 1.0) + texture(self, tc)/2;\n}",
+                "uniforms": {
+                    "src": {
+                        "type": "sampler2D",
+                        "shared": false,
+                        "value": "Layer 0"
+                    },
+                    "self": {
+                        "type": "sampler2D",
+                        "shared": false,
+                        "value": "Layer 1"
+                    }
+                }
+            },
+            "postProcesses": {
+                "Bloom": {
+                    "active": true,
+                    "mipDepth": 7,
+                    "intensity": 1.2200000286102295,
+                    "threshold": 0.6449999809265137,
+                    "knee": 0.12200000137090683,
+                    "haze": 0.0,
+                    "toneMap": 2,
+                    "reinhardWhitePoint": 1.0
+                },
+                "Quantization": {
+                    "active": true,
+                    "ditherMode": 2,
+                    "ditherThreshold": 0.10239999741315842,
+                    "quantizationTolerance": 0.930604875087738,
+                    "transparencyCutoffThreshold": -1,
+                    "dynamicPalette": false,
+                    "paletteDataSize": 24,
+                    "paletteData": "\b\u0014\u001E\u000F*? 9OöÖ½Ã£Š™uwbqNI_",
+                    "paletteName": "Nyx8"
+                }
+            }
+        }
+    },
+    "exporter": {
+        "type": 1,
+        "outputFilepath": "Z:\\shared\\programming\\C++\\shaderthing\\private\\v1.0.0\\resources\\ct_1.gif",
+        "nRenderPasses": 100,
+        "areRenderPassesOnFirstFrameOnly": false,
+        "resetFrameCounterAfterExport": true,
+        "startTime": 0.0,
+        "endTime": 5.0,
+        "fps": 25.0,
+        "gifPaletteMode": 0,
+        "gifPaletteBitDepth": 4,
+        "gifAlphaCutoff": 255,
+        "gifDitherMode": 0
+    },
+    "sharedPostProcessData": {}
+}

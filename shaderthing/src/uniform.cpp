@@ -844,7 +844,7 @@ motion only if the left mouse button (LMB) is held)");
             return;
         bool isSharedByUser0 = uniform->isSharedByUser;
         auto name0 = uniform->name;
-        auto type0 = uniform->type;
+        auto type0 = uniform->type();
         
         START_ROW
 
@@ -856,6 +856,7 @@ motion only if the left mouse button (LMB) is held)");
             if (ImGui::Button(ICON_FA_TRASH, ImVec2(halfButtonSize, 0)))
             {
                 uniform->gui.markedForDeletion = true;
+                layer->uniformBuffer_->removeUniform(uniform);
                 // The uniform is gonna get deleted, so the layer(s) using it
                 // will have to be recompiled
                 if (uniform->isSharedByUser)
@@ -915,7 +916,10 @@ motion only if the left mouse button (LMB) is held)");
         if (managed)
             ImGui::Text(uniform->name.c_str());
         else
-            ImGui::InputText("##uniformName", &uniform->name);
+        {
+            if (ImGui::InputText("##uniformName", &uniform->name))
+                layer->uniformBuffer_->markUniformForSubmission(uniform);
+        }
         bool named(uniform->name.size() > 0);
         if (showSeparator)
             ImGui::Separator();
@@ -923,161 +927,171 @@ motion only if the left mouse button (LMB) is held)");
 
         START_COLUMN // Type column --------------------------------------------
         if (managed)
-            ImGui::Text(vir::Shader::uniformTypeToName[uniform->type].c_str());
+            ImGui::Text(vir::Shader::uniformTypeToName[uniform->type()].c_str());
         else if 
         (
             ImGui::BeginCombo
             (
                 "##uniformTypeSelector", 
-                vir::Shader::uniformTypeToName[uniform->type].c_str()
+                vir::Shader::uniformTypeToName[uniform->type()].c_str()
             )
         )
         {
             for(auto uniformTypeName : supportedUniformTypeNames)
             {
-                if (ImGui::Selectable(uniformTypeName.c_str()))
+                if (!ImGui::Selectable(uniformTypeName.c_str()))
+                    continue;
+                auto selectedType = 
+                    vir::Shader::uniformNameToType[uniformTypeName];
+                if (selectedType == uniform->type())
+                    continue;
+                bool typeIsSamplerOrImage2D = 
+                (
+                    uniform->type() == 
+                    vir::Shader::Uniform::Type::Sampler2D ||
+                    uniform->type() == 
+                    vir::Shader::Uniform::Type::Image2D
+                );
+                bool selectedTypeIsSamplerOrImage2D = 
+                (
+                    selectedType == 
+                    vir::Shader::Uniform::Type::Sampler2D ||
+                    selectedType == 
+                    vir::Shader::Uniform::Type::Image2D
+                );
+                bool typeIsSamplerOrImage3D = 
+                (
+                    uniform->type() == 
+                    vir::Shader::Uniform::Type::Sampler3D ||
+                    uniform->type() == 
+                    vir::Shader::Uniform::Type::Image3D
+                );
+                bool selectedTypeIsSamplerOrImage3D = 
+                (
+                    selectedType == 
+                    vir::Shader::Uniform::Type::Sampler3D ||
+                    selectedType == 
+                    vir::Shader::Uniform::Type::Image3D
+                );
+                bool typeIsSamplerOrImageCube = 
+                (
+                    uniform->type() == 
+                    vir::Shader::Uniform::Type::SamplerCube ||
+                    uniform->type() == 
+                    vir::Shader::Uniform::Type::ImageCube
+                );
+                bool selectedTypeIsSamplerOrImageCube = 
+                (
+                    selectedType == 
+                    vir::Shader::Uniform::Type::SamplerCube ||
+                    selectedType == 
+                    vir::Shader::Uniform::Type::ImageCube
+                );
+                bool typeChangedFromResourceToNonResourceType =
+                    (
+                        typeIsSamplerOrImage2D ||
+                        typeIsSamplerOrImage3D ||
+                        typeIsSamplerOrImageCube
+                    ) &&
+                    !(
+                        selectedTypeIsSamplerOrImage2D ||
+                        selectedTypeIsSamplerOrImage3D ||
+                        selectedTypeIsSamplerOrImageCube
+                    );
+                bool typeChangedFromNonResourceToResource =
+                    !(
+                        typeIsSamplerOrImage2D ||
+                        typeIsSamplerOrImage3D ||
+                        typeIsSamplerOrImageCube
+                    ) &&
+                    (
+                        selectedTypeIsSamplerOrImage2D ||
+                        selectedTypeIsSamplerOrImage3D ||
+                        selectedTypeIsSamplerOrImageCube
+                    );
+                bool typeChangedFromResourceToIncompatibleResource = 
+                    (
+                        typeIsSamplerOrImage2D && 
+                        (
+                            selectedTypeIsSamplerOrImage3D || 
+                            selectedTypeIsSamplerOrImageCube
+                        )
+                    ) ||
+                    (
+                        typeIsSamplerOrImage3D && 
+                        (
+                            selectedTypeIsSamplerOrImage2D || 
+                            selectedTypeIsSamplerOrImageCube
+                        )
+                    ) ||
+                    (
+                        typeIsSamplerOrImageCube && 
+                        (
+                            selectedTypeIsSamplerOrImage2D || 
+                            selectedTypeIsSamplerOrImage3D
+                        )
+                    );
+                
+                // This is only for setting the inUseByLayers_ member of
+                // the resource, which in turn is only used to determine
+                // whether a full shader recompilation is required
+                // after changing the internal format of any resource
+                // that is actively used by a layer. This is necessary
+                // because, as the choice of using e.g., a 'usampler' or
+                // a 'sampler' qualifier for the uniform is automatic,
+                // changing the internal uniform type might require
+                // changing the qualifier, and this can only be changed
+                // in the shader source code with a recompilation
+                if (typeChangedFromResourceToNonResourceType)
                 {
-                    auto selectedType = 
-                        vir::Shader::uniformNameToType[uniformTypeName];
-                    if (selectedType != uniform->type)
-                    {
-                        bool uniformTypeIsSamplerOrImage2D = 
-                        (
-                            uniform->type == 
-                            vir::Shader::Uniform::Type::Sampler2D ||
-                            uniform->type == 
-                            vir::Shader::Uniform::Type::Image2D
-                        );
-                        bool selectedTypeIsSamplerOrImage2D = 
-                        (
-                            selectedType == 
-                            vir::Shader::Uniform::Type::Sampler2D ||
-                            selectedType == 
-                            vir::Shader::Uniform::Type::Image2D
-                        );
-                        bool uniformTypeIsSamplerOrImage3D = 
-                        (
-                            uniform->type == 
-                            vir::Shader::Uniform::Type::Sampler3D ||
-                            uniform->type == 
-                            vir::Shader::Uniform::Type::Image3D
-                        );
-                        bool selectedTypeIsSamplerOrImage3D = 
-                        (
-                            selectedType == 
-                            vir::Shader::Uniform::Type::Sampler3D ||
-                            selectedType == 
-                            vir::Shader::Uniform::Type::Image3D
-                        );
-                        bool uniformTypeIsSamplerOrImageCube = 
-                        (
-                            uniform->type == 
-                            vir::Shader::Uniform::Type::SamplerCube ||
-                            uniform->type == 
-                            vir::Shader::Uniform::Type::ImageCube
-                        );
-                        bool selectedTypeIsSamplerOrImageCube = 
-                        (
-                            selectedType == 
-                            vir::Shader::Uniform::Type::SamplerCube ||
-                            selectedType == 
-                            vir::Shader::Uniform::Type::ImageCube
-                        );
-                        // This is only for setting the inUseByLayers_ member of
-                        // the resource, which in turn is only used to determine
-                        // whether a full shader recompilation is  required
-                        // after changing the internal format of any resource
-                        // that is actively used by a layer. This is necessary
-                        // because, as the choice of using e.g., a 'usampler' or
-                        // a 'sampler' qualifier for the uniform is automatic,
-                        // changing the internal uniform type might require
-                        // changing the qualifier, and this can only be changed
-                        // in the shader source code with a recompilation
-                        if
-                        (
-                            (
-                                uniformTypeIsSamplerOrImage2D ||
-                                uniformTypeIsSamplerOrImage3D ||
-                                uniformTypeIsSamplerOrImageCube
-                            ) &&
-                            !(
-                                selectedTypeIsSamplerOrImage2D ||
-                                selectedTypeIsSamplerOrImage3D ||
-                                selectedTypeIsSamplerOrImageCube
-                            )
-                        )
-                        {
-                            auto resource = uniform->getValuePtr<Resource>();
-                            if (resource != nullptr)
-                            {
-                                resource->removeClientUniform(uniform);
-                            }
-                        }
-                        else if 
-                        (
-                            !(
-                                uniformTypeIsSamplerOrImage2D ||
-                                uniformTypeIsSamplerOrImage3D ||
-                                uniformTypeIsSamplerOrImageCube
-                            ) &&
-                            (
-                                selectedTypeIsSamplerOrImage2D ||
-                                selectedTypeIsSamplerOrImage3D ||
-                                selectedTypeIsSamplerOrImageCube
-                            )
-                        )
-                        {
-                            auto resource = uniform->getValuePtr<Resource>();
-                            if (resource != nullptr)
-                            {
-                                resource->addClientUniform(uniform);
-                            }
-                        }
-
-                        // Do not reset when swapping between uniform types that
-                        // have the same underlying data types (Sampler2D and
-                        // Image2D uniforms both refer to TextureBuffer2D 
-                        // objects, and the same happens for cube map types and
-                        // 3D textures) 
-                        if
-                        (
-                            !(
-                                uniformTypeIsSamplerOrImage2D &&
-                                selectedTypeIsSamplerOrImage2D
-                            ) &&
-                            !(
-                                uniformTypeIsSamplerOrImage3D &&
-                                selectedTypeIsSamplerOrImage3D
-                            ) &&
-                            !(
-                                uniformTypeIsSamplerOrImageCube &&
-                                selectedTypeIsSamplerOrImageCube
-                            )
-                        )
-                        {
-                            uniform->resetValue();
-                        }
-                        
-                        uniform->type = selectedType;
-                        uniform->gui.showBounds = 
-                        (
-                            selectedType != 
-                                vir::Shader::Uniform::Type::Bool &&
-                            selectedType != 
-                                vir::Shader::Uniform::Type::Sampler2D &&
-                                selectedType != 
-                                vir::Shader::Uniform::Type::Sampler3D &&
-                            selectedType != 
-                                vir::Shader::Uniform::Type::SamplerCube &&
-                            selectedType != 
-                                vir::Shader::Uniform::Type::Image2D &&
-                                selectedType != 
-                                vir::Shader::Uniform::Type::Image3D &&
-                            selectedType != 
-                                vir::Shader::Uniform::Type::ImageCube
-                        );
-                    }
+                    auto resource = uniform->getValuePtr<Resource>();
+                    if (resource != nullptr)
+                        resource->removeClientUniform(uniform);
                 }
+                else if (typeChangedFromNonResourceToResource)
+                    layer->uniformBuffer_->removeUniform(uniform);
+
+                if 
+                (
+                    typeChangedFromResourceToNonResourceType ||
+                    typeChangedFromResourceToIncompatibleResource
+                )
+                    layer->uniformBuffer_->removeUniform
+                    (
+                        uniform->resourceResolution_
+                    );
+                
+                uniform->setType(selectedType, true);
+                uniform->gui.showBounds = 
+                (
+                    selectedType != vir::Shader::Uniform::Type::Bool &&
+                    selectedType != vir::Shader::Uniform::Type::Sampler2D &&
+                    selectedType != vir::Shader::Uniform::Type::Sampler3D &&
+                    selectedType != vir::Shader::Uniform::Type::SamplerCube &&
+                    selectedType != vir::Shader::Uniform::Type::Image2D &&
+                    selectedType != vir::Shader::Uniform::Type::Image3D &&
+                    selectedType != vir::Shader::Uniform::Type::ImageCube
+                );
+
+                // Add uniform to the buffer if it is a non-resource type now
+                // that the type has been set (cannot do it before, as I need
+                // to have the new uniform type already set before adding the
+                // uniform the buffer)
+                if (typeChangedFromResourceToNonResourceType)
+                    layer->uniformBuffer_->addUniform(uniform);
+
+                if 
+                (
+                        selectedTypeIsSamplerOrImage2D ||
+                        selectedTypeIsSamplerOrImage3D ||
+                        selectedTypeIsSamplerOrImageCube
+                )
+                    continue;
+                
+                layer->uniformBuffer_->
+                    recalculateUniformSizesAndOffsets();
+                layer->uniformBuffer_->
+                    markUniformForSubmission(uniform);
             }
             ImGui::EndCombo();
         }
@@ -1092,7 +1106,7 @@ motion only if the left mouse button (LMB) is held)");
         {
             boundsChanged = renderEditUniformBoundsButtonGui
             (
-                uniform->type,
+                uniform->type(),
                 bounds,
                 &(uniform->gui.dragStep),
                 uniform->isLogarithmic ? 
@@ -1109,13 +1123,13 @@ motion only if the left mouse button (LMB) is held)");
 
 #define SET_UNIFORM_VALUE(Type)                                             \
     if (!isSharedByUser0)                                                   \
-        layer->rendering_.shader->setUniform##Type(uniform->name, value);   \
+    {                                                                       \
+        layer->uniformBuffer_->markUniformForSubmission(uniform);           \
+    }                                                                       \
     else                                                                    \
-        for (auto l : layers)                                               \
-        {                                                                   \
-            l->rendering_.shader->bind();                                   \
-            l->rendering_.shader->setUniform##Type(uniform->name, value);   \
-        }                                                                   \
+    {                                                                       \
+        /*mark for sub in new shared uniforms*/                             \
+    }
 
 #define CHECK_RESOURCE_SELECTED                                             \
     if (ImGui::Selectable(r->name().c_str()))                               \
@@ -1133,19 +1147,19 @@ motion only if the left mouse button (LMB) is held)");
             Layer::Flags::requestRecompilation = true;                      \
         if (!r->isUsedByUniform(uniform))                                   \
             r->addClientUniform(uniform);                                   \
-        uniform->setValuePtr<const Resource>(r);                            \
+        uniform->setResourcePtr(r, layer->uniformBuffer_);                  \
         sharedUniforms.setUserAction(true);                                 \
     }
 
         START_COLUMN // Value column -------------------------------------------
-        switch(uniform->type)
+        switch(uniform->type())
         {
             case vir::Shader::Uniform::Type::Bool :
             {
                 auto value = uniform->getValue<bool>();
                 if (ImGui::Checkbox((value) ? "true" : "false", &value))
                 {
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::Bool);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Bool)
@@ -1178,7 +1192,7 @@ motion only if the left mouse button (LMB) is held)");
                         value = std::max((float)value, bounds.x);
                         value = std::min((float)value, bounds.y);
                     }
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::UInt);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Int)
@@ -1211,7 +1225,7 @@ motion only if the left mouse button (LMB) is held)");
                         value = std::max((float)value, bounds.x);
                         value = std::min((float)value, bounds.y);
                     }
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::Int);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Int)
@@ -1278,7 +1292,7 @@ motion only if the left mouse button (LMB) is held)");
                         value.y = std::max(value.y, (int)bounds.x);
                         value.y = std::min(value.y, (int)bounds.y);
                     }
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::Int2);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Int2)
@@ -1319,7 +1333,7 @@ motion only if the left mouse button (LMB) is held)");
                         value.z = std::max(value.z, (int)bounds.x);
                         value.z = std::min(value.z, (int)bounds.y);
                     }
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::Int3);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Int3)
@@ -1364,7 +1378,7 @@ motion only if the left mouse button (LMB) is held)");
                         value.w = std::max(value.z, (int)bounds.x);
                         value.w = std::min(value.z, (int)bounds.y);
                     }
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::Int4);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Int4)
@@ -1437,7 +1451,7 @@ motion only if the left mouse button (LMB) is held)");
                         value = std::max(value, bounds.x);
                         value = std::min(value, bounds.y);
                     }
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::Float);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Float)                                                                
@@ -1465,11 +1479,11 @@ motion only if the left mouse button (LMB) is held)");
                         Uniform::SpecialType::LayerResolution
                 )
                 {
-                    auto ivalue = uniform->getValue<glm::ivec2>();
+                    auto value = uniform->getValue<glm::vec2>();
                     ImGui::Text
                     (
                         "%d x %d",
-                        ivalue.x, ivalue.y
+                        (int)value.x, (int)value.y
                     );
                 }
                 else 
@@ -1522,7 +1536,7 @@ motion only if the left mouse button (LMB) is held)");
                         value.y = std::max(value.y, bounds.x);
                         value.y = std::min(value.y, bounds.y);
                     }
-                    uniform->setValue(value);
+                    uniform->setValue(value, Type::Float2);
                     if (named)
                     {
                         SET_UNIFORM_VALUE(Float2)
@@ -1589,7 +1603,7 @@ motion only if the left mouse button (LMB) is held)");
                         );
                         if (isCameraDirection)
                             value = glm::normalize(value);
-                        uniform->setValue(value);
+                        uniform->setValue(value, Type::Float3);
                         if (named)
                         {
                             SET_UNIFORM_VALUE(Float3)
@@ -1611,7 +1625,7 @@ motion only if the left mouse button (LMB) is held)");
                     {
                         bounds.x = 0.0;
                         bounds.y = 1.0;
-                        uniform->setValue(value);
+                        uniform->setValue(value, Type::Float3);
                         if (named)
                         {
                             SET_UNIFORM_VALUE(Float3);
@@ -1676,7 +1690,7 @@ motion only if the left mouse button (LMB) is held)");
                             value.w = std::max(value.w, bounds.x);
                             value.w = std::min(value.w, bounds.y);
                         }
-                        uniform->setValue(value);
+                        uniform->setValue(value, Type::Float4);
                         if (named)
                         {
                             SET_UNIFORM_VALUE(Float4)
@@ -1698,7 +1712,7 @@ motion only if the left mouse button (LMB) is held)");
                     {
                         bounds.x = 0.0;
                         bounds.y = 1.0;
-                        uniform->setValue(value);
+                        uniform->setValue(value, Type::Float4);
                         if (named)
                         {
                             SET_UNIFORM_VALUE(Float4)
@@ -1788,7 +1802,7 @@ motion only if the left mouse button (LMB) is held)");
         if 
         (
             uniform->name == name0 &&
-            uniform->type == type0
+            uniform->type() == type0
         )
             return;
 
@@ -1856,6 +1870,7 @@ motion only if the left mouse button (LMB) is held)");
     (
         std::vector<Uniform*>& uniforms, 
         std::vector<Uniform*>& uncompiledUniforms, 
+        vir::DynamicUniformBuffer* uniformBuffer,
         int& row
     )
     {
@@ -1867,6 +1882,7 @@ motion only if the left mouse button (LMB) is held)");
             auto uniform = new Uniform{};
             uniforms.emplace_back(uniform);
             uncompiledUniforms.emplace_back(uniform);
+            uniformBuffer->addUniform(uniform);
         }
         if 
         (
@@ -1946,7 +1962,6 @@ motion only if the left mouse button (LMB) is held)");
                 hasSharedByUserChanged = true;
         }
 
-        layer->rendering_.shader->bind();
         for(auto uniform : layer->uniforms_)
         {
             renderUniformGui
@@ -1969,6 +1984,7 @@ motion only if the left mouse button (LMB) is held)");
         (
             layer->uniforms_, 
             layer->cache_.uncompiledUniforms, 
+            layer->uniformBuffer_, 
             row
         );
         ImGui::EndTable();
@@ -1989,12 +2005,12 @@ motion only if the left mouse button (LMB) is held)");
                     (
                         uniform->gui.markedForDeletion &&
                         (
-                            uniform->type == Type::Sampler2D ||
-                            uniform->type == Type::Sampler3D ||
-                            uniform->type == Type::SamplerCube ||
-                            uniform->type == Type::Image2D ||
-                            uniform->type == Type::Image3D ||
-                            uniform->type == Type::ImageCube
+                            uniform->type() == Type::Sampler2D ||
+                            uniform->type() == Type::Sampler3D ||
+                            uniform->type() == Type::SamplerCube ||
+                            uniform->type() == Type::Image2D ||
+                            uniform->type() == Type::Image3D ||
+                            uniform->type() == Type::ImageCube
                         )
                     )
                     {
@@ -2075,6 +2091,7 @@ void Uniform::loadAll
 (
     const ObjectIO& io, 
     std::vector<Uniform*>& uniforms,
+    vir::DynamicUniformBuffer* uniformBuffer,
     const std::vector<Resource*>& resources,
     std::map<Uniform*, std::string>& uninitializedResourceLayers
 )
@@ -2092,41 +2109,41 @@ void Uniform::loadAll
             typeName = "sampler2D";
         else if (typeName == "cubemap")
             typeName = "samplerCube";
-        uniform->type = vir::Shader::uniformNameToType[typeName];
+        auto type = vir::Shader::uniformNameToType[typeName];
         uniform->isSharedByUser = 
             uniformData.readOrDefault<bool>("shared", false);
         uniforms.emplace_back(uniform);
         float min = 0., max = 0.;
 
-#define SET_UNIFORM(type)                   \
-    uniform->setValue<type>(uniformData.read<type>("value"));
-#define READ_MIN_MAX                        \
-    min = uniformData.read<float>("min");   \
-    max = uniformData.read<float>("max");
-
-        switch (uniform->type)
+#define SET_UNIFORM(type, uType)                                             \
+        uniform->setValue<type>(uniformData.read<type>("value"), Type::uType);
+#define READ_MIN_MAX                                                         \
+        min = uniformData.read<float>("min");                                \
+        max = uniformData.read<float>("max");
+        bool setInUniformBuffer = true;
+        switch (type)
         {
             case vir::Shader::Uniform::Type::Bool :
             {
-                SET_UNIFORM(bool)
+                SET_UNIFORM(bool, Bool)
                 uniform->gui.showBounds = false;
                 break;
             }
             case vir::Shader::Uniform::Type::UInt :
             {
-                SET_UNIFORM(unsigned int)
+                SET_UNIFORM(unsigned int, UInt)
                 READ_MIN_MAX
                 break;
             }
             case vir::Shader::Uniform::Type::Int :
             {
-                SET_UNIFORM(int)
+                SET_UNIFORM(int, Int)
                 READ_MIN_MAX
                 break;
             }
             case vir::Shader::Uniform::Type::Int2 :
             {
-                SET_UNIFORM(glm::ivec2)
+                SET_UNIFORM(glm::ivec2, Int2)
                 READ_MIN_MAX
                 uniform->gui.dragStep = 
                     uniformData.readOrDefault<float>("dragStep", 1.f);
@@ -2134,25 +2151,25 @@ void Uniform::loadAll
             }
             case vir::Shader::Uniform::Type::Int3 :
             {
-                SET_UNIFORM(glm::ivec3)
+                SET_UNIFORM(glm::ivec3, Int3)
                 READ_MIN_MAX
                 break;
             }
             case vir::Shader::Uniform::Type::Int4 :
             {
-                SET_UNIFORM(glm::ivec4)
+                SET_UNIFORM(glm::ivec4, Int4)
                 READ_MIN_MAX
                 break;
             }
             case vir::Shader::Uniform::Type::Float :
             {
-                SET_UNIFORM(float)
+                SET_UNIFORM(float, Float)
                 READ_MIN_MAX
                 break;
             }
             case vir::Shader::Uniform::Type::Float2 :
             {
-                SET_UNIFORM(glm::vec2)
+                SET_UNIFORM(glm::vec2, Float2)
                 READ_MIN_MAX
                 uniform->gui.dragStep = 
                     uniformData.readOrDefault<float>("dragStep", 1.f);
@@ -2160,7 +2177,7 @@ void Uniform::loadAll
             }
             case vir::Shader::Uniform::Type::Float3 :
             {
-                SET_UNIFORM(glm::vec3)
+                SET_UNIFORM(glm::vec3, Float3)
                 READ_MIN_MAX
                 uniform->gui.usesColorPicker = uniformData.read<bool>(
                     "usesColorPicker");
@@ -2169,7 +2186,7 @@ void Uniform::loadAll
             }
             case vir::Shader::Uniform::Type::Float4 :
             {
-                SET_UNIFORM(glm::vec4)
+                SET_UNIFORM(glm::vec4, Float4)
                 READ_MIN_MAX
                 uniform->gui.usesColorPicker = uniformData.read<bool>(
                     "usesColorPicker");
@@ -2183,14 +2200,15 @@ void Uniform::loadAll
             case vir::Shader::Uniform::Type::Image3D :
             case vir::Shader::Uniform::Type::ImageCube :
             {
-                std::string resourceName = uniformData.read("value", false);
+                uniform->setType(type);
                 uniform->gui.showBounds = false;
+                std::string resourceName = uniformData.read("value", false);
                 bool found = false;
                 for (auto resource : resources)
                 {
                     if (resource->name() == resourceName)
                     {
-                        uniform->setValuePtr<Resource>(resource);
+                        uniform->setResourcePtr(resource, uniformBuffer);
                         found = true;
                         break;
                     }
@@ -2200,6 +2218,7 @@ void Uniform::loadAll
                     (
                         {uniform, resourceName}
                     );
+                setInUniformBuffer = false;
                 break;
             }
             default:
@@ -2207,7 +2226,137 @@ void Uniform::loadAll
         }
         uniform->gui.bounds = {min, max};
         uniform->name = uniformName;
+        if (setInUniformBuffer && uniformBuffer != nullptr)
+            uniformBuffer->addUniform(uniform);
     }
+}
+
+void Uniform::deleteValue(bool deleteCache)
+{
+    vir::Shader::Uniform::deleteValue(deleteCache);
+    DELETE_IF_NOT_NULLPTR(resourceResolution_)
+}
+
+void Uniform::setResourcePtr
+(
+    Resource* resource, 
+    vir::DynamicUniformBuffer* uniformBuffer
+)
+{
+    bool is3D;
+    switch(type())
+    {
+        case vir::Shader::Uniform::Type::Sampler2D :
+        case vir::Shader::Uniform::Type::Image2D :
+        case vir::Shader::Uniform::Type::SamplerCube :
+        case vir::Shader::Uniform::Type::ImageCube :
+            is3D = false;
+            break;
+        case vir::Shader::Uniform::Type::Sampler3D :
+        case vir::Shader::Uniform::Type::Image3D :
+            is3D = true;
+            break;
+        default :
+            return;
+    }
+
+    vir::Shader::Uniform::setValuePtr(resource, type(), false);
+    if (resource == nullptr)
+        return;
+
+    // Also set resolution uniform
+    if (resourceResolution_ == nullptr)
+        resourceResolution_ = new Uniform{};
+    resourceResolution_->name = name+"Resolution";
+    if (is3D)
+        resourceResolution_->setValue
+        (
+            glm::vec3
+            (
+                resource->width(), 
+                resource->height(),
+                resource->depth()
+            ),
+            Type::Float3
+        );
+    else
+        resourceResolution_->setValue
+        (
+            glm::vec2
+            (
+                resource->width(), 
+                resource->height()
+            ),
+            Type::Float2
+        );
+    if (uniformBuffer != nullptr)
+        uniformBuffer->addUniform(resourceResolution_);
+}
+
+void Uniform::updateResourceResolution
+(
+    vir::DynamicUniformBuffer* uniformBuffer
+)
+{
+    if (resourceResolution_ == nullptr)
+        return;
+    switch(type())
+    {
+        case vir::Shader::Uniform::Type::Sampler2D :
+        case vir::Shader::Uniform::Type::Image2D :
+        case vir::Shader::Uniform::Type::SamplerCube :
+        case vir::Shader::Uniform::Type::ImageCube :
+        case vir::Shader::Uniform::Type::Sampler3D :
+        case vir::Shader::Uniform::Type::Image3D :
+            break;
+        default :
+            return;
+    }
+    auto* resource = getValuePtr<Resource>();
+    if (resource == nullptr)
+        return;
+    if (resourceResolution_->type() == Uniform::Type::Float2)
+    {
+        auto* value = resourceResolution_->getValuePtr<glm::vec2>();
+        if 
+        (
+            value->x != resource->width() || 
+            value->y != resource->height()
+        )
+        {
+            value->x = resource->width();
+            value->y = resource->height();
+            uniformBuffer->markUniformForSubmission
+            (
+                resourceResolution_
+            );
+        }
+    }
+    else if (resourceResolution_->type() == Uniform::Type::Float3)
+    {
+        auto* value = resourceResolution_->getValuePtr<glm::vec3>();
+        if 
+        (
+            value->x != resource->width() || 
+            value->y != resource->height() ||
+            value->z != resource->depth()
+        )
+        {
+            value->x = resource->width();
+            value->y = resource->height();
+            value->z = resource->depth();
+            uniformBuffer->markUniformForSubmission
+            (
+                resourceResolution_
+            );
+        }
+    }
+}
+
+void Uniform::updateResourceResolutionName()
+{
+    if (resourceResolution_ != nullptr)
+        resourceResolution_->name = name+"Resolution";
 }
 
 void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
@@ -2224,14 +2373,14 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
         )
             continue;
         io.writeObjectStart(u->name.c_str());
-        io.write("type", vir::Shader::uniformTypeToName[u->type].c_str());
+        io.write("type", vir::Shader::uniformTypeToName[u->type()].c_str());
         io.write("shared", u->isSharedByUser);
 
 #define WRITE_MIN_MAX           \
         io.write("min", min);   \
-        io.write("max", max);   \
+        io.write("max", max);
 
-        switch(u->type)
+        switch(u->type())
         {
             case vir::Shader::Uniform::Type::Bool :
             {
@@ -2298,7 +2447,8 @@ void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
             case vir::Shader::Uniform::Type::ImageCube :
             {
                 auto r = u->getValuePtr<Resource>();
-                io.write("value", r->name().c_str());
+                if (r != nullptr)
+                    io.write("value", r->name().c_str());
                 break;
             }
             default:

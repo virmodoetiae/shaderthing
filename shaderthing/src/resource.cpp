@@ -106,7 +106,11 @@ void Resource::update(std::vector<Resource*>& resources, const UpdateArgs& args)
         {
             for (auto uniform : resource->clientUniforms_)
             {
-                uniform->setValuePtr<const Resource>(newResource);
+                // When replacing a resource, I keep the existing
+                // resourceResolution_ in it, which stays bound to its
+                // buffer, so nothing changes
+                // TODO: Update resourceResolution_ values
+                uniform->setResourcePtr(newResource);
             }
             if (resource != nullptr)
                 delete resource;

@@ -117,25 +117,25 @@ std::unordered_map<std::string, bool>
 
 Shader::Uniform::~Uniform()
 {
-    resetValue();
+    deleteValue();
 }
 
-void Shader::Uniform::resetValue()
+void Shader::Uniform::deleteValue(bool deleteCache)
 {
-    auto reset = [](void*& value, Shader::Uniform::Type type)
+    auto _delete = [](void*& value, Type type)
     {
         if (value == nullptr)
             return;
         switch(type)
         {
             case Uniform::Type::Bool :
-                delete static_cast<bool*>(value);
+                delete static_cast<bool*>(value); 
                 break;
             case Uniform::Type::UInt :
                 delete static_cast<uint32_t*>(value);
                 break;
             case Uniform::Type::Int :
-                delete static_cast<int*>(value);
+                delete static_cast<int32_t*>(value);
                 break;
             case Uniform::Type::Int2 :
                 delete static_cast<glm::ivec2*>(value);
@@ -180,13 +180,88 @@ void Shader::Uniform::resetValue()
         value = nullptr;
     };
 
-    reset(cache_, type);
-    if (!isValueOwner_)
+    if (deleteCache)
+        _delete(cache_, type_);
+    if (isValueOwner_)
+        _delete(value_, type_);
+    value_ = nullptr;
+}
+
+void Shader::Uniform::setType
+(
+    Type type, 
+    bool doNotReinitializeIfImageOrSampler
+)
+{
+    if (value_ != nullptr && type == type_)
+        return;
+    if 
+    (
+        doNotReinitializeIfImageOrSampler && 
+        (
+            (type == Type::Image2D      && type_ == Type::Sampler2D)    || 
+            (type == Type::Sampler2D    && type_ == Type::Image2D)      ||
+            (type == Type::Image3D      && type_ == Type::Sampler3D)    || 
+            (type == Type::Sampler3D    && type_ == Type::Image3D)      ||
+            (type == Type::ImageCube    && type_ == Type::SamplerCube)  || 
+            (type == Type::SamplerCube  && type_ == Type::ImageCube)
+        )
+    )
     {
-        value_ = nullptr;
+        type_ = type;
         return;
     }
-    reset(value_, type);
+
+    if (value_ != nullptr)
+        deleteValue(type != type_);
+    isValueOwner_ = true;
+    type_ = type;
+    switch(type)
+    {
+        case Uniform::Type::Bool :
+            value_ = new bool();
+            break;
+        case Uniform::Type::UInt :
+            value_ = new uint32_t();
+            break;
+        case Uniform::Type::Int :
+            value_ = new int32_t();
+            break;
+        case Uniform::Type::Int2 :
+            value_ = new glm::ivec2();
+            break;
+        case Uniform::Type::Int3 :
+            value_ = new glm::ivec3();
+            break;
+        case Uniform::Type::Int4 :
+            value_ = new glm::ivec4();
+            break;
+        case Uniform::Type::Float :
+            value_ = new float();
+            break;
+        case Uniform::Type::Float2 :
+            value_ = new glm::vec2();
+            break;
+        case Uniform::Type::Float3 :
+            value_ = new glm::vec3();
+            break;
+        case Uniform::Type::Float4 :
+            value_ = new glm::vec4();
+            break;
+        case Uniform::Type::Mat3 :
+            value_ = new glm::mat3();
+            break;
+        case Uniform::Type::Mat4 :
+            value_ = new glm::mat4();
+            break;
+        case Uniform::Type::Sampler2D :
+        case Uniform::Type::Image2D :
+        case Uniform::Type::Sampler3D :
+        case Uniform::Type::Image3D :
+        case Uniform::Type::SamplerCube :
+        case Uniform::Type::ImageCube :
+            break;
+    }
 }
 
 Shader* Shader::create

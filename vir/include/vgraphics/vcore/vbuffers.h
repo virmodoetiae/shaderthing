@@ -595,6 +595,8 @@ public :
     uint32_t id() const {return id_;}
     bool addUniform(const Shader::Uniform* uniform);
     bool removeUniform(const Shader::Uniform* uniform);
+    // To be called if the type of a uniform in this wrapper has changed
+    void recalculateUniformSizesAndOffsets();
     // Marks a uniform for submission to the GPU on the next invokation of 
     // submitData(false)
     bool markUniformForSubmission(const Shader::Uniform* uniform);

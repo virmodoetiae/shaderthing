@@ -21,6 +21,7 @@
 #include "shaderthing/include/macros.h"
 
 #include "vir/include/vgraphics/vcore/vshader.h"
+#include "vir/include/vgraphics/vcore/vbuffers.h"
 
 #include "thirdparty/glm/glm.hpp"
 
@@ -34,6 +35,14 @@ class SharedUniforms;
 
 class Uniform : public vir::Shader::Uniform
 {
+protected:
+
+    // For Resource-type uniforms only
+    Uniform* resourceResolution_ = nullptr;
+
+     // Overridden to also correctly delete resourceResolution, if managed
+    void deleteValue(bool deleteCache=true) override;
+
 public:
 
     typedef vir::Shader::Uniform::Type Type;
@@ -67,8 +76,8 @@ public:
     {
         bool markedForDeletion = false;
 
-        // True if this uniform is of Type::Float3 or Type::Float4 and its value
-        // is set via an ImGui color picker tool
+        // True if this uniform is of vec3 or vec4 and its value is set via an
+        // ImGui color picker tool
         bool usesColorPicker = false;
 
         // True if this uniform's bounds are to be displayed in the GUI
@@ -80,7 +89,9 @@ public:
         // by uniforms which have a specialType
         glm::vec2 bounds = {0.f, 1.f};
 
-        //
+        // Only for vec2, ivec2 type uniforms that can be set by dragging an
+        // arrow over the screen. This is a scaling factor from on-screen-arrow
+        // size to actual uniform value increment
         float dragStep = 1.;
         
         // For floats only: smallest (absolute) value that can be represented
@@ -89,7 +100,18 @@ public:
     };
     GUI gui;
 
+    Uniform() = default;
     DELETE_COPY_MOVE(Uniform)
+
+    // 
+    void setResourcePtr
+    (
+        Resource* value, 
+        vir::DynamicUniformBuffer* uniformBuffer = nullptr
+    );
+
+    void updateResourceResolution(vir::DynamicUniformBuffer* uniformBuffer);
+    void updateResourceResolutionName();
 
     // Render the Uniforms tab bar GUI, which allows to add/remove/modify
     // existing layer uniforms and shared uniforms. It also sets the uniform
@@ -108,6 +130,7 @@ public:
     (
         const ObjectIO& io, 
         std::vector<Uniform*>& uniforms,
+        vir::DynamicUniformBuffer* uniformBuffer,
         const std::vector<Resource*>& resources,
         std::map<Uniform*, std::string>& uninitializedResourceLayers
     );

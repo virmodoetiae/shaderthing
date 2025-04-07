@@ -1096,34 +1096,72 @@ bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
             uniformWrappers_.begin(),
             uniformWrappers_.end(),
             [&uniform](const auto* uw){return uw->uniform==uniform;}
-        ) != uniformWrappers_.end()
+        ) != uniformWrappers_.end() ||
+        size_ + sizeOf(uniform) >= maxSize_
     )
         return false;
-    auto uw = new UniformWrapper{uniform, sizeOf(uniform)};
-    if (!uniformWrappers_.empty()) // Compute offset
-    {
-        auto* uw0 = uniformWrappers_.back();
-        uw->offset = uw0->offset + uw0->size;
-        auto alignment = alignmentOf(uniform);
-        auto delta = uw->offset % alignment;
-        if (delta > 0)
-            uw->offset += alignment - delta;
-    }
-    size_ = uw->offset + uw->size; 
-    if (size_ >= maxSize_)
-        return false;
+    auto uw = new UniformWrapper{uniform};
     if (!uniformWrappers_.empty()) // Set previous/next
     {
-        auto* uw0 = uniformWrappers_[uniformWrappers_.size()-1];
-        uw->previous = uw0;
-        uw0->next = uw;
+        uw->previous = uniformWrappers_.back();
+        uniformWrappers_.back()->next = uw;
     }
     if (!uniform->name.empty())
     {
         uw->markedForSubmission = true;
         nUniformsMarkedForSubmission_++;
     }
+    /*const void* pValue = uniform->getNativeValue();
+    if (pValue != nullptr)
+    {
+        switch (uniform->type)
+        {
+        case Shader::Uniform::Type::Int :
+        {
+            auto ivalue = *((const int*)pValue);
+            break;
+        }
+        case Shader::Uniform::Type::Int2 :
+        {
+            auto i2value = *((const glm::ivec2*)pValue);
+            break;
+        }
+        case Shader::Uniform::Type::Int3 :
+        {
+            auto i3value = *((const glm::ivec3*)pValue);
+            break;
+        }
+        case Shader::Uniform::Type::Int4 :
+        {
+            auto i4value = *((const glm::ivec4*)pValue);
+            break;
+        }
+        case Shader::Uniform::Type::Float :
+        {
+            auto fvalue = *((const float*)pValue);
+            break;
+        }
+        case Shader::Uniform::Type::Float2 :
+        {
+            auto f2value = *((const glm::vec2*)pValue);
+            break;
+        }
+        case Shader::Uniform::Type::Float3 :
+        {
+            auto f3value = *((const glm::vec3*)pValue);
+            break;
+        }
+        case Shader::Uniform::Type::Float4 :
+        {
+            auto f4value = *((const glm::vec4*)pValue);
+            break;
+        }
+        default :
+            break;
+        }
+    }*/
     uniformWrappers_.emplace_back(uw);
+    recalculateUniformSizesAndOffsets();
     return true;
 }
 
@@ -1137,33 +1175,39 @@ bool DynamicUniformBuffer::removeUniform(const Shader::Uniform* uniform)
     );
     if (it == uniformWrappers_.end())
         return false;
-    
-    // Recalculate all offsets of uniforms that come after the one to be 
-    // deleted, and remove from uniforms_
     auto uw = *it;
-    bool updateNextPrevious = true;
     if (uw->markedForSubmission)
         nUniformsMarkedForSubmission_--;
-    while (uw->next != nullptr)
-    {
-        auto puw0 = uw->previous;
-        uw = uw->next;
-        if (updateNextPrevious)
-        {
-            uw->previous = puw0;
-            puw0->next = uw;
-            updateNextPrevious = false;
-        }
-        uw->offset = uw->previous->offset + uw->previous->size;
-        uw->offset += uw->offset % alignmentOf(uw->uniform);
-    }
-    // Remove last elements since the while loop has shifted all those
-    // after the one to be removed by 1 in the direction of that to be
-    // removed, overwriting it
+    auto puw0 = uw->previous;
+    uw = uw->next;
+    if (uw != nullptr)
+        uw->previous = puw0;
+    puw0->next = uw;
     delete uniformWrappers_.back();
     uniformWrappers_.resize(uniformWrappers_.size()-1); 
-    size_ = uniformWrappers_.empty() ? 0u : uw->offset + uw->size;
+    recalculateUniformSizesAndOffsets();
     return true;
+}
+
+// In theory I could run this before submitData so to free the user
+// form the necessity of doing this himself. The only drawback is
+// the extra overhead of doing this every time. To be considered
+void DynamicUniformBuffer::recalculateUniformSizesAndOffsets()
+{
+    uint32_t offset = 0;
+    for (auto* uw : uniformWrappers_)
+    {
+        auto alignment = alignmentOf(uw->uniform);
+        if (offset % alignment > 0)
+            offset += alignment - (offset % alignment);
+        uw->offset = offset;
+        uw->size = sizeOf(uw->uniform);
+        offset += uw->size;
+    }
+    size_ = offset;
+    // Minor issue: the maxSize_ can be exceeded even without adding new
+    // uniforms: it is sufficient to change the types of uniforms already
+    // in the buffer. How to handle this case?
 }
 
 bool DynamicUniformBuffer::markUniformForSubmission
@@ -1209,24 +1253,30 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
         }
         submitData(data, size_, 0u);
         delete[] data;
+        nUniformsMarkedForSubmission_ = 0u;
     }
     else // Only update data of uniforms marked for submission. The most
          // efficient way is to chop the data into contiguous blocks of
-         // uniforms marked for submissions, and upload said blocks in
+         // uniforms marked for submission, and upload said blocks in
          // one go each. This is more efficient than submitting every uniform
-         // individually
+         // as a separate block
     {
         auto* wu = uniformWrappers_[0];
         UniformWrapper* blockStart = nullptr;
         UniformWrapper* blockEnd = nullptr;
         do
         {
-            if (wu->markedForSubmission)
+            if 
+            (
+                wu->markedForSubmission && 
+                wu->uniform->getNativeValue() != nullptr
+            )
             {
                 if (blockStart == nullptr)
                     blockStart = wu;
                 blockEnd = wu;
                 wu->markedForSubmission = false;
+                nUniformsMarkedForSubmission_--;
             }
             if 
             (
@@ -1242,6 +1292,12 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
                     blockEnd->size + blockEnd->offset - blockStart->offset;
                 auto data = new unsigned char[blockSize];
                 auto* blockItem = blockStart;
+                if (blockItem->uniform->type() == Shader::Uniform::Type::Bool)
+                {
+                    auto pValue = blockItem->uniform->getNativeValue();
+                    bool value = *((const bool*)pValue);
+                    int breakpoint = 0;
+                }
                 while (true)
                 {
                     std::memcpy
@@ -1263,7 +1319,6 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
         }
         while (wu != nullptr);
     }
-    nUniformsMarkedForSubmission_ = 0u;
 }
 
 bool DynamicUniformBuffer::submitData(const Shader::Uniform* uniform)
