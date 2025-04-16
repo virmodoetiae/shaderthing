@@ -185,6 +185,22 @@ Layer::Layer
         u->gui.showBounds = false;
         uniforms_.emplace_back(u);
         uniformBuffer_->addUniform(u);
+        
+        /* This was just a very quick test for array uniforms
+        static float array[17];
+        array[0] = 1;
+        array[1] = 1.5;
+        array[2] = 2.0;
+        array[3] = 3.0;
+        array[4] = 4.0;
+        array[5] = 5.0;
+        array[6] = 6.0;
+        array[7] = 7.0;
+        u = new Uniform{};
+        u->name = "iArray";
+        u->setValuePtr(&array, Uniform::Type::Float, 17);
+        uniforms_.emplace_back(u);
+        uniformBuffer_->addUniform(u);*/
     };
 
     setName("Layer "+std::to_string(id_));
@@ -1023,6 +1039,7 @@ bool Layer::compileShader
         sharedUniforms.bindShader(rendering_.shader);
         Rendering::sharedStorage->bindShader(rendering_.shader);
         rendering_.shader->bind();
+        /*
         #define CASE(ST, T, F)                                              \
         case Uniform::Type::ST :                                            \
         {                                                                   \
@@ -1074,6 +1091,7 @@ bool Layer::compileShader
             "iResolution", 
             resolution_
         );
+        */
         return true;
     }
     // Else if shader not valid

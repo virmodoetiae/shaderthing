@@ -122,48 +122,32 @@ Shader::Uniform::~Uniform()
 
 void Shader::Uniform::deleteValue(bool deleteCache)
 {
-    auto _delete = [](void*& value, Type type)
+    #define CASE_DELETE(type, cppType)                  \
+        case Uniform::Type::type :                      \
+            if (isArray)                                \
+                delete[] static_cast<cppType*>(value);  \
+            else                                        \
+                delete static_cast<cppType*>(value);    \
+            break;
+    
+    auto _delete = [](void*& value, Type type, bool isArray)
     {
         if (value == nullptr)
             return;
         switch(type)
         {
-            case Uniform::Type::Bool :
-                delete static_cast<bool*>(value); 
-                break;
-            case Uniform::Type::UInt :
-                delete static_cast<uint32_t*>(value);
-                break;
-            case Uniform::Type::Int :
-                delete static_cast<int32_t*>(value);
-                break;
-            case Uniform::Type::Int2 :
-                delete static_cast<glm::ivec2*>(value);
-                break;
-            case Uniform::Type::Int3 :
-                delete static_cast<glm::ivec3*>(value);
-                break;
-            case Uniform::Type::Int4 :
-                delete static_cast<glm::ivec4*>(value);
-                break;
-            case Uniform::Type::Float :
-                delete static_cast<float*>(value);
-                break;
-            case Uniform::Type::Float2 :
-                delete static_cast<glm::vec2*>(value);
-                break;
-            case Uniform::Type::Float3 :
-                delete static_cast<glm::vec3*>(value);
-                break;
-            case Uniform::Type::Float4 :
-                delete static_cast<glm::vec4*>(value);
-                break;
-            case Uniform::Type::Mat3 :
-                delete static_cast<glm::mat3*>(value);
-                break;
-            case Uniform::Type::Mat4 :
-                delete static_cast<glm::mat4*>(value);
-                break;
+            CASE_DELETE(Bool, bool)
+            CASE_DELETE(UInt, uint32_t)
+            CASE_DELETE(Int, int)
+            CASE_DELETE(Int2, glm::ivec2)
+            CASE_DELETE(Int3, glm::ivec3)
+            CASE_DELETE(Int4, glm::ivec4)
+            CASE_DELETE(Float, float)
+            CASE_DELETE(Float2, glm::vec2)
+            CASE_DELETE(Float3, glm::vec3)
+            CASE_DELETE(Float4, glm::vec4)
+            CASE_DELETE(Mat3, glm::mat3)
+            CASE_DELETE(Mat4, glm::mat4)
             case Uniform::Type::Sampler2D :
             case Uniform::Type::Image2D :
                 delete static_cast<TextureBuffer2D*>(value);
@@ -181,19 +165,20 @@ void Shader::Uniform::deleteValue(bool deleteCache)
     };
 
     if (deleteCache)
-        _delete(cache_, type_);
+        _delete(cache_, type_, false);
     if (isValueOwner_)
-        _delete(value_, type_);
+        _delete(value_, type_, valueArraySize_ > 1);
     value_ = nullptr;
 }
 
 void Shader::Uniform::setType
 (
     Type type, 
+    uint32_t valueArraySize,
     bool doNotReinitializeIfImageOrSampler
 )
 {
-    if (value_ != nullptr && type == type_)
+    if (value_ != nullptr && type == type_ && valueArraySize == valueArraySize_)
         return;
     if 
     (
@@ -216,44 +201,30 @@ void Shader::Uniform::setType
         deleteValue(type != type_);
     isValueOwner_ = true;
     type_ = type;
+    valueArraySize_ = valueArraySize;
+
+    #define CASE_INITIALIZE(type, cppType)              \
+        case Uniform::Type::type :                      \
+            if (valueArraySize > 1)                     \
+                value_ = new cppType[valueArraySize](); \
+            else                                        \
+                value_ = new cppType();                 \
+            break;
+
     switch(type)
     {
-        case Uniform::Type::Bool :
-            value_ = new bool();
-            break;
-        case Uniform::Type::UInt :
-            value_ = new uint32_t();
-            break;
-        case Uniform::Type::Int :
-            value_ = new int32_t();
-            break;
-        case Uniform::Type::Int2 :
-            value_ = new glm::ivec2();
-            break;
-        case Uniform::Type::Int3 :
-            value_ = new glm::ivec3();
-            break;
-        case Uniform::Type::Int4 :
-            value_ = new glm::ivec4();
-            break;
-        case Uniform::Type::Float :
-            value_ = new float();
-            break;
-        case Uniform::Type::Float2 :
-            value_ = new glm::vec2();
-            break;
-        case Uniform::Type::Float3 :
-            value_ = new glm::vec3();
-            break;
-        case Uniform::Type::Float4 :
-            value_ = new glm::vec4();
-            break;
-        case Uniform::Type::Mat3 :
-            value_ = new glm::mat3();
-            break;
-        case Uniform::Type::Mat4 :
-            value_ = new glm::mat4();
-            break;
+        CASE_INITIALIZE(Bool, bool)
+        CASE_INITIALIZE(UInt, uint32_t)
+        CASE_INITIALIZE(Int, int)
+        CASE_INITIALIZE(Int2, glm::ivec2)
+        CASE_INITIALIZE(Int3, glm::ivec3)
+        CASE_INITIALIZE(Int4, glm::ivec4)
+        CASE_INITIALIZE(Float, float)
+        CASE_INITIALIZE(Float2, glm::vec2)
+        CASE_INITIALIZE(Float3, glm::vec3)
+        CASE_INITIALIZE(Float4, glm::vec4)
+        CASE_INITIALIZE(Mat3, glm::mat3)
+        CASE_INITIALIZE(Mat4, glm::mat4)
         case Uniform::Type::Sampler2D :
         case Uniform::Type::Image2D :
         case Uniform::Type::Sampler3D :
@@ -262,6 +233,15 @@ void Shader::Uniform::setType
         case Uniform::Type::ImageCube :
             break;
     }
+}
+
+void Shader::Uniform::setType
+(
+    Type type, 
+    bool doNotReinitializeIfImageOrSampler
+)
+{
+    setType(type, doNotReinitializeIfImageOrSampler, valueArraySize_);
 }
 
 Shader* Shader::create

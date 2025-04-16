@@ -196,7 +196,8 @@ public :
 class OpenGLDynamicUniformBuffer : public DynamicUniformBuffer
 {
 protected :
-    uint32_t sizeOf(const Shader::Uniform* uniform) const override;
+    uint32_t typeSizeOf(const Shader::Uniform* uniform) const override;
+    uint32_t arrayElementSizeOf(const Shader::Uniform* uniform) const override;
     uint32_t alignmentOf(const Shader::Uniform* uniform) const override;
     void submitData
     (

@@ -562,10 +562,15 @@ protected :
     {
         const Shader::Uniform* uniform = nullptr;
         uint32_t size = 0u;
+        uint32_t typeSize = 0u;
         uint32_t offset = 0u;
+        uint32_t arrayElementSize = 0u;
+        uint32_t arraySubmissionIndexStart = 0u;
+        uint32_t arraySubmissionIndexEnd = 0u;
         UniformWrapper* previous = nullptr;
         UniformWrapper* next = nullptr;
         bool markedForSubmission = false;
+        bool isUniformArray() const {return uniform->isValueArray();}
         bool operator==(const UniformWrapper& other) const 
         {
             return uniform == other.uniform;
@@ -581,7 +586,9 @@ protected :
     std::vector<UniformWrapper*> uniformWrappers_ = {};
     DynamicUniformBuffer(uint32_t maxSize, const std::string& name):
         id_(0), size_(0), maxSize_(maxSize), bindingPoint_(-1), name_(name){};
-    virtual uint32_t sizeOf(const Shader::Uniform* uniform) const = 0;
+    uint32_t sizeOf(const Shader::Uniform* uniform) const;
+    virtual uint32_t typeSizeOf(const Shader::Uniform* uniform) const = 0;
+    virtual uint32_t arrayElementSizeOf(const Shader::Uniform* uniform) const = 0;
     virtual uint32_t alignmentOf(const Shader::Uniform* uniform) const = 0;
     virtual void submitData
     (
@@ -599,7 +606,12 @@ public :
     void recalculateUniformSizesAndOffsets();
     // Marks a uniform for submission to the GPU on the next invokation of 
     // submitData(false)
-    bool markUniformForSubmission(const Shader::Uniform* uniform);
+    bool markUniformForSubmission
+    (
+        const Shader::Uniform* uniform,
+        uint32_t indexStart = 0u,
+        uint32_t indexEnd = 0u
+    );
     // Submit the data of stored uniforms to the GPU. If forceSubmitAllUniforms
     // == true, the entire block will be submitted. If false, only the data of
     // the uniforms marked for submission will be submitted

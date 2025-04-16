@@ -1086,6 +1086,14 @@ DynamicUniformBuffer::~DynamicUniformBuffer()
     }
 }
 
+uint32_t DynamicUniformBuffer::sizeOf(const Shader::Uniform* uniform) const
+{
+    return 
+        uniform->isValueArray() ? 
+        arrayElementSizeOf(uniform) * uniform->valueArraySize() :
+        typeSizeOf(uniform);
+}
+
 bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
 {
     if 
@@ -1110,56 +1118,12 @@ bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
     {
         uw->markedForSubmission = true;
         nUniformsMarkedForSubmission_++;
+        if (uniform->isValueArray())
+        {
+            uw->arraySubmissionIndexStart = 0u;
+            uw->arraySubmissionIndexEnd = uniform->valueArraySize()-1;
+        }
     }
-    /*const void* pValue = uniform->getNativeValue();
-    if (pValue != nullptr)
-    {
-        switch (uniform->type)
-        {
-        case Shader::Uniform::Type::Int :
-        {
-            auto ivalue = *((const int*)pValue);
-            break;
-        }
-        case Shader::Uniform::Type::Int2 :
-        {
-            auto i2value = *((const glm::ivec2*)pValue);
-            break;
-        }
-        case Shader::Uniform::Type::Int3 :
-        {
-            auto i3value = *((const glm::ivec3*)pValue);
-            break;
-        }
-        case Shader::Uniform::Type::Int4 :
-        {
-            auto i4value = *((const glm::ivec4*)pValue);
-            break;
-        }
-        case Shader::Uniform::Type::Float :
-        {
-            auto fvalue = *((const float*)pValue);
-            break;
-        }
-        case Shader::Uniform::Type::Float2 :
-        {
-            auto f2value = *((const glm::vec2*)pValue);
-            break;
-        }
-        case Shader::Uniform::Type::Float3 :
-        {
-            auto f3value = *((const glm::vec3*)pValue);
-            break;
-        }
-        case Shader::Uniform::Type::Float4 :
-        {
-            auto f4value = *((const glm::vec4*)pValue);
-            break;
-        }
-        default :
-            break;
-        }
-    }*/
     uniformWrappers_.emplace_back(uw);
     recalculateUniformSizesAndOffsets();
     return true;
@@ -1202,6 +1166,9 @@ void DynamicUniformBuffer::recalculateUniformSizesAndOffsets()
             offset += alignment - (offset % alignment);
         uw->offset = offset;
         uw->size = sizeOf(uw->uniform);
+        uw->typeSize = typeSizeOf(uw->uniform);
+        if (uw->isUniformArray())
+            uw->arrayElementSize = arrayElementSizeOf(uw->uniform);
         offset += uw->size;
     }
     size_ = offset;
@@ -1212,7 +1179,9 @@ void DynamicUniformBuffer::recalculateUniformSizesAndOffsets()
 
 bool DynamicUniformBuffer::markUniformForSubmission
 (
-    const Shader::Uniform* uniform
+    const Shader::Uniform* uniform,
+    uint32_t indexStart,
+    uint32_t indexEnd
 )
 {
     auto it = std::find_if
@@ -1227,6 +1196,11 @@ bool DynamicUniformBuffer::markUniformForSubmission
     {
         nUniformsMarkedForSubmission_++;
         (*it)->markedForSubmission = true;
+        if (uniform->isValueArray())
+        {
+            (*it)->arraySubmissionIndexStart = indexStart;
+            (*it)->arraySubmissionIndexEnd = indexEnd;
+        }
         return true;
     }
     return false;
@@ -1234,6 +1208,7 @@ bool DynamicUniformBuffer::markUniformForSubmission
 
 void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
 {
+    // Dude all good up to now!
     if (uniformWrappers_.empty() || nUniformsMarkedForSubmission_ == 0u)
         return;
     // if (nUniformsMarkedForSubmission_ == uniformWrappers_.size())
@@ -1243,12 +1218,26 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
         auto data = new unsigned char[size_];
         for (auto& wu : uniformWrappers_)
         {
-            std::memcpy
-            (
-                data + wu->offset, 
-                wu->uniform->getNativeValue(), 
-                wu->size
-            );
+            if (wu->uniform->isValueArray())
+            {
+                auto src = (const unsigned char*)wu->uniform->getNativeValue();
+                for (unsigned int i=0; i<wu->uniform->valueArraySize(); i++)
+                {
+                    std::memcpy
+                    (
+                        data + wu->offset + i*wu->arrayElementSize, 
+                        src + i*wu->typeSize, 
+                        wu->typeSize
+                    );
+                }
+            }
+            else
+                std::memcpy
+                (
+                    data + wu->offset, 
+                    wu->uniform->getNativeValue(), 
+                    wu->size
+                );
             wu->markedForSubmission = false;
         }
         submitData(data, size_, 0u);
@@ -1261,9 +1250,9 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
          // one go each. This is more efficient than submitting every uniform
          // as a separate block
     {
-        auto* wu = uniformWrappers_[0];
-        UniformWrapper* blockStart = nullptr;
-        UniformWrapper* blockEnd = nullptr;
+        UniformWrapper* wu = uniformWrappers_[0];
+        UniformWrapper* wu0 = nullptr; // Block start
+        UniformWrapper* wu1 = nullptr; // Block end
         do
         {
             if 
@@ -1272,48 +1261,79 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
                 wu->uniform->getNativeValue() != nullptr
             )
             {
-                if (blockStart == nullptr)
-                    blockStart = wu;
-                blockEnd = wu;
+                if (wu0 == nullptr)
+                    wu0 = wu;
+                wu1 = wu;
                 wu->markedForSubmission = false;
                 nUniformsMarkedForSubmission_--;
             }
             if 
             (
-                blockStart != nullptr && 
-                blockEnd != nullptr &&
+                wu0 != nullptr && 
+                wu1 != nullptr &&
                 (
-                    blockEnd->next == nullptr || 
-                    blockEnd->next->markedForSubmission == false
+                    wu1->next == nullptr || 
+                    wu1->next->markedForSubmission == false ||
+                    wu1->next->uniform->isValueArray() ||
+                    wu0->uniform->isValueArray()
                 )
             )
             {
-                uint32_t blockSize = 
-                    blockEnd->size + blockEnd->offset - blockStart->offset;
-                auto data = new unsigned char[blockSize];
-                auto* blockItem = blockStart;
-                if (blockItem->uniform->type() == Shader::Uniform::Type::Bool)
+                if (wu0->uniform->isValueArray())
                 {
-                    auto pValue = blockItem->uniform->getNativeValue();
-                    bool value = *((const bool*)pValue);
-                    int breakpoint = 0;
-                }
-                while (true)
-                {
-                    std::memcpy
+                    uint32_t blockSize = 
+                        (
+                            wu0->arraySubmissionIndexEnd-
+                            wu0->arraySubmissionIndexStart+1
+                        ) * wu0->arrayElementSize;
+                    auto data = new unsigned char[blockSize];
+                    auto src = (const unsigned char*)
+                        wu0->uniform->getNativeValue() + 
+                        wu0->arraySubmissionIndexStart * 
+                        wu0->typeSize;
+                    for 
                     (
-                        data + blockItem->offset - blockStart->offset, 
-                        blockItem->uniform->getNativeValue(), 
-                        blockItem->size
-                    );
-                    if (blockItem == blockEnd)
-                        break;
-                    blockItem = blockItem->next;
-                };
-                submitData(data, blockSize, blockStart->offset);
-                delete[] data;
-                blockStart = nullptr;
-                blockEnd = nullptr;
+                        unsigned int i=wu0->arraySubmissionIndexStart; 
+                        i<wu0->arraySubmissionIndexEnd+1; 
+                        i++
+                    )
+                    {
+                        std::memcpy
+                        (
+                            data + i*wu0->arrayElementSize, 
+                            src + i*wu0->typeSize, 
+                            wu0->typeSize
+                        );
+                    }
+                    submitData(data, blockSize, wu0->offset);
+                    delete[] data;
+                    wu0->arraySubmissionIndexStart = 0;
+                    wu0->arraySubmissionIndexEnd = 
+                        wu->uniform->valueArraySize()-1;
+                }
+                else
+                {
+                    uint32_t blockSize = 
+                        wu1->size + wu1->offset - wu0->offset;
+                    auto data = new unsigned char[blockSize];
+                    wu = wu0;
+                    while (true)
+                    {
+                        std::memcpy
+                        (
+                            data + wu->offset - wu0->offset, 
+                            wu->uniform->getNativeValue(), 
+                            wu->size
+                        );
+                        if (wu == wu1)
+                            break;
+                        wu = wu->next;
+                    };
+                    submitData(data, blockSize, wu0->offset);
+                    delete[] data;
+                }
+                wu0 = nullptr;
+                wu1 = nullptr;
             }
             wu = wu->next;
         }

@@ -53,6 +53,7 @@ public:
         
         bool           isValueOwner_ = true;
         void*          value_        = nullptr;
+        uint32_t       valueArraySize_ = 1;
         Type           type_         = Type::Int;
         // The cache serves as an additional back-up storage value that
         // can be read/set via the corresponding methods
@@ -60,6 +61,13 @@ public:
         
         Uniform(const Uniform&) = delete;
         Uniform& operator=(const Uniform& other) = delete;
+
+        void setType
+        (
+            Type type, 
+            uint32_t valueArraySize,
+            bool doNotReinitializeIfImageOrSampler
+        );
 
     protected:
 
@@ -73,16 +81,29 @@ public:
         Uniform() = default;
         virtual ~Uniform();
 
-        void setType(Type type, bool doNotReinitializeIfImageOrSampler = false);
+        void setType
+        (
+            Type type, 
+            bool doNotReinitializeIfImageOrSampler = false 
+        );
 
         const void* getNativeValue() const {return value_;}
+        uint32_t valueArraySize() const {return valueArraySize_;}
+        bool isValueArray() const {return valueArraySize_ > 1;}
         Type type() const {return type_;}
         
         template<class ValueType>
-        void setValuePtr(ValueType* value, Type type, bool isValueOwner=false)
+        void setValuePtr
+        (
+            ValueType* value, 
+            Type type, 
+            uint32_t valueArraySize=1, 
+            bool isValueOwner=false
+        )
         {
             deleteValue(type != type_);
             value_ = (void*)value;
+            valueArraySize_ = valueArraySize;
             type_ = type;
             isValueOwner_ = isValueOwner;
         }
@@ -96,9 +117,9 @@ public:
         }
         
         template<class ValueType>
-        void setValue(ValueType value, Type type)
+        void setValue(ValueType value, Type type, uint32_t valueArraySize=1)
         {
-            setType(type); // Also does reinitialization if type != type_
+            setType(type, valueArraySize, false); // Also does reinitialization if type != type_
             *(ValueType*)(value_) = value;
             isValueOwner_ = true;
         }

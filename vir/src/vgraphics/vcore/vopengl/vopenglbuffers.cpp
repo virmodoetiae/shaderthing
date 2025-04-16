@@ -1375,8 +1375,9 @@ void OpenGLUniformBuffer::setData
 // Dynamic uniform buffer ----------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-uint32_t OpenGLDynamicUniformBuffer::sizeOf(const Shader::Uniform* uniform) const
+uint32_t OpenGLDynamicUniformBuffer::typeSizeOf(const Shader::Uniform* uniform) const
 {
+    // std140 rules
     static std::unordered_map<Shader::Uniform::Type, uint32_t> 
         uniformTypeToSize =
         {
@@ -1403,8 +1404,18 @@ uint32_t OpenGLDynamicUniformBuffer::sizeOf(const Shader::Uniform* uniform) cons
     return uniformTypeToSize.at(uniform->type());
 }
 
+uint32_t OpenGLDynamicUniformBuffer::arrayElementSizeOf
+(
+    const Shader::Uniform* uniform
+) const
+{
+    // std140 rules
+    return 16;
+}
+
 uint32_t OpenGLDynamicUniformBuffer::alignmentOf(const Shader::Uniform* uniform) const
 {
+    // std140 rules
     static std::unordered_map<Shader::Uniform::Type, uint32_t> 
         uniformTypeToAlignment =
         {
@@ -1427,6 +1438,8 @@ uint32_t OpenGLDynamicUniformBuffer::alignmentOf(const Shader::Uniform* uniform)
             {Shader::Uniform::Type::Image3D,     1},
             {Shader::Uniform::Type::ImageCube,   1}
         };
+    if (uniform->isValueArray())
+        return 16; // Also per std140 rules
     return uniformTypeToAlignment.at(uniform->type());
 }
 
@@ -1517,7 +1530,10 @@ std::string OpenGLDynamicUniformBuffer::shaderSource() const
         auto u = uniformWrappers_[i]->uniform;
         if (u->name.empty())
             continue;
-        source += "    "+uniformTypeToName.at(u->type())+" "+u->name+";";
+        source += "    "+uniformTypeToName.at(u->type())+" "+u->name;
+        if (u->isValueArray())
+            source += "["+std::to_string(u->valueArraySize())+"]";
+        source += ";";
         if (i<(int)uniformWrappers_.size()-1)
             source += "\n";
         valid = true;
