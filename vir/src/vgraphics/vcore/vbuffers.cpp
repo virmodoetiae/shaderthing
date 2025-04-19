@@ -1199,14 +1199,42 @@ bool DynamicUniformBuffer::markUniformForSubmission
         if (uniform->isValueArray())
         {
             (*it)->arraySubmissionIndexStart = indexStart;
-            (*it)->arraySubmissionIndexEnd = indexEnd;
+            (*it)->arraySubmissionIndexEnd = std::max(indexEnd, indexStart);
         }
         return true;
     }
     return false;
 }
 
-void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
+bool DynamicUniformBuffer::markUniformForSubmission
+(
+    const Shader::Uniform* uniform
+)
+{
+    markUniformForSubmission
+    (
+        uniform, 
+        0u, 
+        uniform->isValueArray() ? uniform->valueArraySize()-1u : 0u
+    );
+}
+
+bool DynamicUniformBuffer::markArrayUniformRangeForSubmission
+(
+    const Shader::Uniform* uniform,
+    uint32_t arrayIndexStart,
+    uint32_t arrayIndexEnd
+)
+{
+    markUniformForSubmission
+    (
+        uniform, 
+        arrayIndexStart, 
+        arrayIndexEnd
+    );
+}
+
+void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
 {
     // Dude all good up to now!
     if (uniformWrappers_.empty() || nUniformsMarkedForSubmission_ == 0u)
@@ -1279,38 +1307,17 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
                 )
             )
             {
+                // If the uniform is an array, treat its range as a separate
+                // block altogether for simplicity (it can only be merged with
+                // adjacent blocks if the initial or final or whole range are
+                // marked for submission, which might not generally be the case)
                 if (wu0->uniform->isValueArray())
-                {
-                    uint32_t blockSize = 
-                        (
-                            wu0->arraySubmissionIndexEnd-
-                            wu0->arraySubmissionIndexStart+1
-                        ) * wu0->arrayElementSize;
-                    auto data = new unsigned char[blockSize];
-                    auto src = (const unsigned char*)
-                        wu0->uniform->getNativeValue() + 
-                        wu0->arraySubmissionIndexStart * 
-                        wu0->typeSize;
-                    for 
+                    submitArrayUniformRangeNoCheck
                     (
-                        unsigned int i=wu0->arraySubmissionIndexStart; 
-                        i<wu0->arraySubmissionIndexEnd+1; 
-                        i++
-                    )
-                    {
-                        std::memcpy
-                        (
-                            data + i*wu0->arrayElementSize, 
-                            src + i*wu0->typeSize, 
-                            wu0->typeSize
-                        );
-                    }
-                    submitData(data, blockSize, wu0->offset);
-                    delete[] data;
-                    wu0->arraySubmissionIndexStart = 0;
-                    wu0->arraySubmissionIndexEnd = 
-                        wu->uniform->valueArraySize()-1;
-                }
+                        wu0, 
+                        wu0->arraySubmissionIndexStart,
+                        wu0->arraySubmissionIndexEnd
+                    );
                 else
                 {
                     uint32_t blockSize = 
@@ -1341,7 +1348,40 @@ void DynamicUniformBuffer::submitData(bool forceSubmitAllUniforms)
     }
 }
 
-bool DynamicUniformBuffer::submitData(const Shader::Uniform* uniform)
+bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
+(
+    UniformWrapper* wu,
+    uint32_t indexStart,
+    uint32_t indexEnd
+)
+{
+    indexEnd = std::max(indexStart, indexEnd);
+    uint32_t blockSize = (indexEnd-indexStart+1) * wu->arrayElementSize;
+    auto data = new unsigned char[blockSize];
+    auto src = 
+        (const unsigned char*)wu->uniform->getNativeValue() + 
+        indexStart*wu->typeSize;
+    for (unsigned int i=indexStart; i<indexEnd+1; i++)
+    {
+        std::memcpy
+        (
+            data + i*wu->arrayElementSize, 
+            src + i*wu->typeSize, 
+            wu->typeSize
+        );
+    }
+    submitData(data, blockSize, wu->offset);
+    delete[] data;
+    wu->arraySubmissionIndexStart = 0u;
+    wu->arraySubmissionIndexEnd = wu->uniform->valueArraySize()-1u;
+}
+
+bool DynamicUniformBuffer::submitUniform
+(
+    const Shader::Uniform* uniform,
+    uint32_t indexStart,
+    uint32_t indexEnd
+)
 {
     auto it = std::find_if
     (
@@ -1351,19 +1391,53 @@ bool DynamicUniformBuffer::submitData(const Shader::Uniform* uniform)
     );
     if (it == uniformWrappers_.end())
         return false;
-    const auto& wu = *it;
-    submitData
-    (
-        wu->uniform->getNativeValue(),
-        wu->size,
-        wu->offset
-    );
-    if (wu->markedForSubmission)
+    auto& wu = *it;
+    if (wu->uniform->isValueArray())
+        submitArrayUniformRangeNoCheck(wu, indexStart, indexEnd);
+    else
     {
-        wu->markedForSubmission = false;
-        nUniformsMarkedForSubmission_--;
+        submitData
+        (
+            wu->uniform->getNativeValue(),
+            wu->size,
+            wu->offset
+        );
+        if (wu->markedForSubmission)
+        {
+            wu->markedForSubmission = false;
+            nUniformsMarkedForSubmission_--;
+        };
     }
+    
     return true;
+}
+
+bool DynamicUniformBuffer::submitUniform
+(
+    const Shader::Uniform* uniform
+)
+{
+    submitUniform
+    (
+        uniform, 
+        0, 
+        uniform->isValueArray() ? uniform->valueArraySize()-1u : 0u
+    );
+}
+
+bool DynamicUniformBuffer::submitArrayUniformRange
+(
+    const Shader::Uniform* uniform,
+    uint32_t indexStart,
+    uint32_t indexEnd
+)
+{
+    submitUniform
+    (
+        uniform, 
+        indexStart, 
+        indexEnd
+    );
 }
 
 // Shader Storage Buffer Object ----------------------------------------------//

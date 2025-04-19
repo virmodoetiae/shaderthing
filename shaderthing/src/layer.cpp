@@ -1333,7 +1333,7 @@ void Layer::renderShader
     };
     setSamplerUniforms(sharedUniforms.userUniforms(), this, textureUnit, imageUnit);
     setSamplerUniforms(uniforms_, this, textureUnit, imageUnit);
-    uniformBuffer_->submitData();
+    uniformBuffer_->submitUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
     static auto renderer = vir::Renderer::instance();
