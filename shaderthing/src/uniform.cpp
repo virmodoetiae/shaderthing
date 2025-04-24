@@ -832,7 +832,7 @@ motion only if the left mouse button (LMB) is held)");
         int& row,
         const bool showSeparator = false,
         const bool showDefaultUniforms = true
-    )
+    ) -> bool
     {
         int column;
         bool managed
@@ -841,10 +841,10 @@ motion only if the left mouse button (LMB) is held)");
             uniform->specialType == SpecialType::LayerResolution
         );
         if (managed && !showDefaultUniforms)
-            return;
+            return false;
         bool isSharedByUser0 = uniform->isSharedByUser;
-        auto name0 = uniform->name;
-        auto type0 = uniform->type();
+        bool nameChanged = false;
+        bool typeChanged = false;
         
         START_ROW
 
@@ -918,7 +918,10 @@ motion only if the left mouse button (LMB) is held)");
         else
         {
             if (ImGui::InputText("##uniformName", &uniform->name))
+            {
                 layer->uniformBuffer_->markUniformForSubmission(uniform);
+                nameChanged = true;
+            }
         }
         bool named(uniform->name.size() > 0);
         if (showSeparator)
@@ -945,6 +948,7 @@ motion only if the left mouse button (LMB) is held)");
                     vir::Shader::uniformNameToType[uniformTypeName];
                 if (selectedType == uniform->type())
                     continue;
+                typeChanged = true;
                 bool typeIsSamplerOrImage2D = 
                 (
                     uniform->type() == 
@@ -1799,12 +1803,8 @@ motion only if the left mouse button (LMB) is held)");
         
         END_ROW
 
-        if 
-        (
-            uniform->name == name0 &&
-            uniform->type() == type0
-        )
-            return;
+        if (!nameChanged && !typeChanged)
+            return false;
 
         // If the uniform name or type have changed, it should be added to the
         // list of uncompiled uniforms of the layer using this uniform (if this
@@ -1861,8 +1861,10 @@ motion only if the left mouse button (LMB) is held)");
             if (atLeastOneUniformNamed)
                 layer->flags_.uncompiledChanges = true;
         }
+
+        return typeChanged;
         
-    }; // End of renderUniforui lambda
+    }; // End of renderUniform lambda
 
     //--------------------------------------------------------------------------
     auto renderAddUniformButton = 
@@ -1898,9 +1900,12 @@ motion only if the left mouse button (LMB) is held)");
     }; // End of addNewUniform lambda
 
     //--------------------------------------------------------------------------
-    bool atLeastOneUniformMarkedForDeletion(false);
-    bool hasSharedByUserChanged(false);
-    static bool showDefaultUniforms(true);
+    bool atLeastOneUniformMarkedForDeletion = false;
+    bool atLeastOneSharedUniformTypeChanged = false;
+    bool atLeastOneUniformTypeChanged = false;
+
+    bool atLeastOneUniformWasSharedOrUnShared = false;
+    static bool showDefaultUniforms = true;
     if 
     (
         ImGui::Button
@@ -1946,39 +1951,44 @@ motion only if the left mouse button (LMB) is held)");
 
         for (auto uniform : sharedUniforms.userUniforms_)
         {
-            renderUniformGui
-            (
-                sharedUniforms,
-                uniform,
-                layer,
-                layers,
-                resources,
-                row,
-                uniform == sharedUniforms.userUniforms_.back()
-            );
+            atLeastOneSharedUniformTypeChanged = 
+                atLeastOneSharedUniformTypeChanged ||
+                renderUniformGui
+                (
+                    sharedUniforms,
+                    uniform,
+                    layer,
+                    layers,
+                    resources,
+                    row,
+                    atLeastOneSharedUniformTypeChanged,
+                    uniform == sharedUniforms.userUniforms_.back()
+                );
             if (uniform->gui.markedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;
             if (uniform->hasSharedByUserChanged)
-                hasSharedByUserChanged = true;
+                atLeastOneUniformWasSharedOrUnShared = true;
         }
 
         for(auto uniform : layer->uniforms_)
         {
-            renderUniformGui
-            (
-                sharedUniforms,
-                uniform,
-                layer,
-                layers,
-                resources,
-                row,
-                false,
-                showDefaultUniforms
-            );
+            atLeastOneUniformTypeChanged = 
+                atLeastOneUniformTypeChanged ||
+                renderUniformGui
+                (
+                    sharedUniforms,
+                    uniform,
+                    layer,
+                    layers,
+                    resources,
+                    row,
+                    false,
+                    showDefaultUniforms
+                );
             if (uniform->gui.markedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;
             if (uniform->hasSharedByUserChanged)
-                hasSharedByUserChanged = true;
+                atLeastOneUniformWasSharedOrUnShared = true;
         }
         renderAddUniformButton
         (
@@ -2037,7 +2047,17 @@ motion only if the left mouse button (LMB) is held)");
     );
     StatusBar::renderGui();
 
-    if (!hasSharedByUserChanged)
+    // Alternative strategy to cope with uniform block alignment changes after
+    // uniform type changes or deletions (both of which can alter block layout:
+    // compile right away automatically without asking the user
+    if 
+    (
+        atLeastOneUniformTypeChanged ||
+        atLeastOneUniformMarkedForDeletion
+    )
+        layer->compileShader(sharedUniforms);
+
+    if (!atLeastOneUniformWasSharedOrUnShared)
         return;
 
     // Check if the uniform state was changed from non-shared to shared
@@ -2084,6 +2104,17 @@ motion only if the left mouse button (LMB) is held)");
                 l->flags_.uncompiledChanges = true;
             }
         uniform->hasSharedByUserChanged = false;
+    }
+
+    // Alternative strategy to cope with uniform block alignment changes after
+    // uniform type changes or deletions (both of which can alter block layout:
+    // compile right away automatically without asking the user
+    if (atLeastOneSharedUniformTypeChanged)
+    {
+        for (auto* l : layers)
+        {
+            l->compileShader(sharedUniforms);
+        }
     }
 }
 

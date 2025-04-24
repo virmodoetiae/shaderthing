@@ -584,6 +584,8 @@ protected :
     std::string name_;
     uint32_t nUniformsMarkedForSubmission_ = 0u;
     std::vector<UniformWrapper*> uniformWrappers_ = {};
+    std::unordered_map<const Shader::Uniform*, UniformWrapper*> 
+        uniformWrappersMap_ = {};
     DynamicUniformBuffer(uint32_t maxSize, const std::string& name):
         id_(0), size_(0), maxSize_(maxSize), bindingPoint_(-1), name_(name){};
     virtual uint32_t typeSizeOf(const Shader::Uniform* uniform) const = 0;

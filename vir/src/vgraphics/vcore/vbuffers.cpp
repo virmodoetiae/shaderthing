@@ -1099,12 +1099,7 @@ bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
     if 
     (
         !uniform || 
-        std::find_if
-        (
-            uniformWrappers_.begin(),
-            uniformWrappers_.end(),
-            [&uniform](const auto* uw){return uw->uniform==uniform;}
-        ) != uniformWrappers_.end() ||
+        uniformWrappersMap_.find(uniform) != uniformWrappersMap_.end() ||
         size_ + sizeOf(uniform) >= maxSize_
     )
         return false;
@@ -1118,13 +1113,14 @@ bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
     {
         uw->markedForSubmission = true;
         nUniformsMarkedForSubmission_++;
-        if (uniform->isValueArray())
-        {
-            uw->arraySubmissionIndexStart = 0u;
-            uw->arraySubmissionIndexEnd = uniform->valueArraySize()-1;
-        }
     }
+    if (uniform->isValueArray())
+    {
+        uw->arraySubmissionIndexStart = 0u;
+        uw->arraySubmissionIndexEnd = uniform->valueArraySize()-1;
+    }   
     uniformWrappers_.emplace_back(uw);
+    uniformWrappersMap_.insert({uniform, uw});
     recalculateUniformSizesAndOffsets();
     return true;
 }
@@ -1142,39 +1138,65 @@ bool DynamicUniformBuffer::removeUniform(const Shader::Uniform* uniform)
     auto uw = *it;
     if (uw->markedForSubmission)
         nUniformsMarkedForSubmission_--;
-    auto puw0 = uw->previous;
-    uw = uw->next;
-    if (uw != nullptr)
-        uw->previous = puw0;
-    puw0->next = uw;
-    delete uniformWrappers_.back();
-    uniformWrappers_.resize(uniformWrappers_.size()-1); 
+    if (uw->next != nullptr)
+        uw->next->previous = uw->previous;
+    if (uw->previous != nullptr)
+        uw->previous->next = uw->next;
+    delete uw;
+    uniformWrappers_.erase(it);
+    uniformWrappersMap_.erase(uniform);
     recalculateUniformSizesAndOffsets();
     return true;
 }
 
-// In theory I could run this before submitData so to free the user
-// form the necessity of doing this himself. The only drawback is
-// the extra overhead of doing this every time. To be considered
 void DynamicUniformBuffer::recalculateUniformSizesAndOffsets()
 {
     uint32_t offset = 0;
+    // First uniform on which changes in alignment, offsets begin
+    UniformWrapper* uw0 = nullptr;
     for (auto* uw : uniformWrappers_)
     {
         auto alignment = alignmentOf(uw->uniform);
         if (offset % alignment > 0)
             offset += alignment - (offset % alignment);
+        if (uw0 == nullptr && uw->offset != offset)
+            uw0 = uw;
         uw->offset = offset;
-        uw->size = sizeOf(uw->uniform);
+        
+        auto size = sizeOf(uw->uniform);
+        if (uw0 == nullptr && uw->size != size)
+            uw0 = uw;
+        uw->size = size;
+        
+        auto typeSize = typeSizeOf(uw->uniform);
+        if (uw0 == nullptr && uw->typeSize != typeSize)
+            uw0 = uw;
         uw->typeSize = typeSizeOf(uw->uniform);
+        
         if (uw->isUniformArray())
-            uw->arrayElementSize = arrayElementSizeOf(uw->uniform);
+        {
+            auto arrayElementSize = arrayElementSizeOf(uw->uniform);
+            if (uw0 == nullptr && uw->arrayElementSize != arrayElementSize)
+                uw0 = uw;
+            uw->arrayElementSize = arrayElementSize;
+        }
+        else
+            uw->arrayElementSize = 0u;
+        
         offset += uw->size;
     }
     size_ = offset;
     // Minor issue: the maxSize_ can be exceeded even without adding new
     // uniforms: it is sufficient to change the types of uniforms already
-    // in the buffer. How to handle this case?
+    // in the buffer. How to handle this case? For the time being, whatever
+
+    // Reupload the data of all uniforms subsequent to uw0
+    while (uw0 != nullptr)
+    {
+        markUniformForSubmission(uw0->uniform);
+        uw0 = uw0->next;
+    }
+    submitUniforms();
 }
 
 bool DynamicUniformBuffer::markUniformForSubmission
@@ -1184,22 +1206,18 @@ bool DynamicUniformBuffer::markUniformForSubmission
     uint32_t indexEnd
 )
 {
-    auto it = std::find_if
-    (
-        uniformWrappers_.begin(),
-        uniformWrappers_.end(),
-        [&uniform](const auto& uw){return uw->uniform==uniform;}
-    );
-    if (it == uniformWrappers_.end())
+    auto it = uniformWrappersMap_.find(uniform);
+    if (it == uniformWrappersMap_.end())
         return false;
-    if (!(*it)->markedForSubmission)
+    auto* uw = it->second;
+    if (!uw->markedForSubmission)
     {
         nUniformsMarkedForSubmission_++;
-        (*it)->markedForSubmission = true;
+        uw->markedForSubmission = true;
         if (uniform->isValueArray())
         {
-            (*it)->arraySubmissionIndexStart = indexStart;
-            (*it)->arraySubmissionIndexEnd = std::max(indexEnd, indexStart);
+            uw->arraySubmissionIndexStart = indexStart;
+            uw->arraySubmissionIndexEnd = std::max(indexEnd, indexStart);
         }
         return true;
     }
@@ -1236,37 +1254,43 @@ bool DynamicUniformBuffer::markArrayUniformRangeForSubmission
 
 void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
 {
-    // Dude all good up to now!
-    if (uniformWrappers_.empty() || nUniformsMarkedForSubmission_ == 0u)
+    if 
+    (
+        uniformWrappers_.empty() || 
+        (
+            !forceSubmitAllUniforms &&
+            nUniformsMarkedForSubmission_ == 0u
+        )
+    )
         return;
     // if (nUniformsMarkedForSubmission_ == uniformWrappers_.size())
     //     forceSubmitAllUniforms = true;
     if (forceSubmitAllUniforms) // Simple case first
     {
         auto data = new unsigned char[size_];
-        for (auto& wu : uniformWrappers_)
+        for (auto& uw : uniformWrappers_)
         {
-            if (wu->uniform->isValueArray())
+            if (uw->uniform->isValueArray())
             {
-                auto src = (const unsigned char*)wu->uniform->getNativeValue();
-                for (unsigned int i=0; i<wu->uniform->valueArraySize(); i++)
+                auto src = (const unsigned char*)uw->uniform->getNativeValue();
+                for (unsigned int i=0; i<uw->uniform->valueArraySize(); i++)
                 {
                     std::memcpy
                     (
-                        data + wu->offset + i*wu->arrayElementSize, 
-                        src + i*wu->typeSize, 
-                        wu->typeSize
+                        data + uw->offset + i*uw->arrayElementSize, 
+                        src + i*uw->typeSize, 
+                        uw->typeSize
                     );
                 }
             }
             else
                 std::memcpy
                 (
-                    data + wu->offset, 
-                    wu->uniform->getNativeValue(), 
-                    wu->size
+                    data + uw->offset, 
+                    uw->uniform->getNativeValue(), 
+                    uw->size
                 );
-            wu->markedForSubmission = false;
+            uw->markedForSubmission = false;
         }
         submitData(data, size_, 0u);
         delete[] data;
@@ -1278,32 +1302,32 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
          // one go each. This is more efficient than submitting every uniform
          // as a separate block
     {
-        UniformWrapper* wu = uniformWrappers_[0];
-        UniformWrapper* wu0 = nullptr; // Block start
-        UniformWrapper* wu1 = nullptr; // Block end
+        UniformWrapper* uw = uniformWrappers_[0];
+        UniformWrapper* uw0 = nullptr; // Block start
+        UniformWrapper* uw1 = nullptr; // Block end
         do
         {
             if 
             (
-                wu->markedForSubmission && 
-                wu->uniform->getNativeValue() != nullptr
+                uw->markedForSubmission && 
+                uw->uniform->getNativeValue() != nullptr
             )
             {
-                if (wu0 == nullptr)
-                    wu0 = wu;
-                wu1 = wu;
-                wu->markedForSubmission = false;
+                if (uw0 == nullptr)
+                    uw0 = uw;
+                uw1 = uw;
+                uw->markedForSubmission = false;
                 nUniformsMarkedForSubmission_--;
             }
             if 
             (
-                wu0 != nullptr && 
-                wu1 != nullptr &&
+                uw0 != nullptr && 
+                uw1 != nullptr &&
                 (
-                    wu1->next == nullptr || 
-                    wu1->next->markedForSubmission == false ||
-                    wu1->next->uniform->isValueArray() ||
-                    wu0->uniform->isValueArray()
+                    uw1->next == nullptr || 
+                    uw1->next->markedForSubmission == false ||
+                    uw1->next->uniform->isValueArray() ||
+                    uw0->uniform->isValueArray()
                 )
             )
             {
@@ -1311,69 +1335,72 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
                 // block altogether for simplicity (it can only be merged with
                 // adjacent blocks if the initial or final or whole range are
                 // marked for submission, which might not generally be the case)
-                if (wu0->uniform->isValueArray())
+                if (uw0->uniform->isValueArray())
                     submitArrayUniformRangeNoCheck
                     (
-                        wu0, 
-                        wu0->arraySubmissionIndexStart,
-                        wu0->arraySubmissionIndexEnd
+                        uw0, 
+                        uw0->arraySubmissionIndexStart,
+                        uw0->arraySubmissionIndexEnd
                     );
                 else
                 {
                     uint32_t blockSize = 
-                        wu1->size + wu1->offset - wu0->offset;
+                        uw1->size + uw1->offset - uw0->offset;
                     auto data = new unsigned char[blockSize];
-                    wu = wu0;
+                    uw = uw0;
                     while (true)
                     {
                         std::memcpy
                         (
-                            data + wu->offset - wu0->offset, 
-                            wu->uniform->getNativeValue(), 
-                            wu->size
+                            data + uw->offset - uw0->offset, 
+                            uw->uniform->getNativeValue(), 
+                            uw->size
                         );
-                        if (wu == wu1)
+                        if (uw == uw1)
                             break;
-                        wu = wu->next;
+                        uw = uw->next;
                     };
-                    submitData(data, blockSize, wu0->offset);
+                    submitData(data, blockSize, uw0->offset);
                     delete[] data;
                 }
-                wu0 = nullptr;
-                wu1 = nullptr;
+                uw0 = nullptr;
+                uw1 = nullptr;
             }
-            wu = wu->next;
+            uw = uw->next;
         }
-        while (wu != nullptr);
+        while (uw != nullptr);
     }
 }
 
 bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
 (
-    UniformWrapper* wu,
+    UniformWrapper* uw,
     uint32_t indexStart,
     uint32_t indexEnd
 )
 {
     indexEnd = std::max(indexStart, indexEnd);
-    uint32_t blockSize = (indexEnd-indexStart+1) * wu->arrayElementSize;
+    uint32_t blockSize = (indexEnd-indexStart+1) * uw->arrayElementSize;
+    if (blockSize == 0)
+        return false;
     auto data = new unsigned char[blockSize];
     auto src = 
-        (const unsigned char*)wu->uniform->getNativeValue() + 
-        indexStart*wu->typeSize;
+        (const unsigned char*)uw->uniform->getNativeValue() + 
+        indexStart*uw->typeSize;
     for (unsigned int i=indexStart; i<indexEnd+1; i++)
     {
         std::memcpy
         (
-            data + i*wu->arrayElementSize, 
-            src + i*wu->typeSize, 
-            wu->typeSize
+            data + i*uw->arrayElementSize, 
+            src + i*uw->typeSize, 
+            uw->typeSize
         );
     }
-    submitData(data, blockSize, wu->offset);
+    submitData(data, blockSize, uw->offset);
     delete[] data;
-    wu->arraySubmissionIndexStart = 0u;
-    wu->arraySubmissionIndexEnd = wu->uniform->valueArraySize()-1u;
+    uw->arraySubmissionIndexStart = 0u;
+    uw->arraySubmissionIndexEnd = uw->uniform->valueArraySize()-1u;
+    return true;
 }
 
 bool DynamicUniformBuffer::submitUniform
@@ -1383,32 +1410,26 @@ bool DynamicUniformBuffer::submitUniform
     uint32_t indexEnd
 )
 {
-    auto it = std::find_if
-    (
-        uniformWrappers_.begin(),
-        uniformWrappers_.end(),
-        [&uniform](const auto& uw){return uw->uniform==uniform;}
-    );
-    if (it == uniformWrappers_.end())
+    auto it = uniformWrappersMap_.find(uniform);
+    if (it == uniformWrappersMap_.end())
         return false;
-    auto& wu = *it;
-    if (wu->uniform->isValueArray())
-        submitArrayUniformRangeNoCheck(wu, indexStart, indexEnd);
+    auto* uw = it->second;
+    if (uw->uniform->isValueArray())
+        submitArrayUniformRangeNoCheck(uw, indexStart, indexEnd);
     else
     {
         submitData
         (
-            wu->uniform->getNativeValue(),
-            wu->size,
-            wu->offset
+            uw->uniform->getNativeValue(),
+            uw->size,
+            uw->offset
         );
-        if (wu->markedForSubmission)
+        if (uw->markedForSubmission)
         {
-            wu->markedForSubmission = false;
+            uw->markedForSubmission = false;
             nUniformsMarkedForSubmission_--;
         };
     }
-    
     return true;
 }
 
