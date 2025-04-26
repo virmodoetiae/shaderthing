@@ -1381,7 +1381,7 @@ uint32_t OpenGLDynamicUniformBuffer::typeSizeOf(const Shader::Uniform* uniform) 
     static std::unordered_map<Shader::Uniform::Type, uint32_t> 
         uniformTypeToSize =
         {
-            {Shader::Uniform::Type::Bool,        1},
+            {Shader::Uniform::Type::Bool,        4},
             {Shader::Uniform::Type::UInt,        4},
             {Shader::Uniform::Type::Int,         4},
             {Shader::Uniform::Type::Int2,        8},
@@ -1409,6 +1409,7 @@ uint32_t OpenGLDynamicUniformBuffer::arrayElementSizeOf
     const Shader::Uniform* uniform
 ) const
 {
+    (void)uniform;
     // std140 rules
     return 16;
 }
@@ -1523,7 +1524,6 @@ std::string OpenGLDynamicUniformBuffer::shaderSource() const
     std::string source = 
         "layout(std140, binding="+std::to_string(bindingPoint_)+") uniform " + 
         name_ + " {\n";
-    uint32_t location = 0;
     bool valid = false;
     for (auto i=0; i<(int)uniformWrappers_.size(); i++)
     {

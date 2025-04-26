@@ -586,8 +586,8 @@ protected :
     std::vector<UniformWrapper*> uniformWrappers_ = {};
     std::unordered_map<const Shader::Uniform*, UniformWrapper*> 
         uniformWrappersMap_ = {};
-    DynamicUniformBuffer(uint32_t maxSize, const std::string& name):
-        id_(0), size_(0), maxSize_(maxSize), bindingPoint_(-1), name_(name){};
+    unsigned char* rawBuffer_ = nullptr;
+    DynamicUniformBuffer(uint32_t maxSize, const std::string& name);
     virtual uint32_t typeSizeOf(const Shader::Uniform* uniform) const = 0;
     virtual uint32_t arrayElementSizeOf(const Shader::Uniform* uniform) const = 0;
     virtual uint32_t alignmentOf(const Shader::Uniform* uniform) const = 0;
@@ -620,6 +620,7 @@ public :
     virtual ~DynamicUniformBuffer();
     static DynamicUniformBuffer* create(uint32_t size, const std::string& name);
     uint32_t id() const {return id_;}
+    const std::string& name() const {return name_;}
     bool addUniform(const Shader::Uniform* uniform);
     bool removeUniform(const Shader::Uniform* uniform);
     // To be called if the type of a uniform in this wrapper has changed
@@ -636,6 +637,15 @@ public :
         const Shader::Uniform* uniform,
         uint32_t arrayIndexStart,
         uint32_t arrayIndexEnd = 0u
+    );
+    // Marks all uniforms between uniform0 and uniform1 (both included) for
+    // submission. If uniform0 is not found, the submission range will start
+    // from the first uniform in the block. If uniform1 is not found, the 
+    // submission range will end at the last uniform in the block
+    bool markContiguousUniformsForSubmission
+    (
+        const Shader::Uniform* uniform0, 
+        const Shader::Uniform* uniform1
     );
     // Submit the data of a single uniform to the GPU, regardless of whether it
     // has been marked for submission or not. If the uniform is an array, the

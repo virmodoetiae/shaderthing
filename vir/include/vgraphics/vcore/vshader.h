@@ -115,6 +115,14 @@ public:
                 return (ValueType*)value_;
             return (ValueType*)nullptr;
         }
+
+        template<class ValueType>
+        const ValueType* getConstValuePtr() const
+        {       
+            if (value_ != nullptr)
+                return (const ValueType*)value_;
+            return (const ValueType*)nullptr;
+        }
         
         template<class ValueType>
         void setValue(ValueType value, Type type, uint32_t valueArraySize=1)
@@ -125,7 +133,7 @@ public:
         }
         
         template<class ValueType>
-        ValueType getValue()
+        ValueType getValue() const
         {
             if (value_ != nullptr)
                 return *(ValueType*)(value_);

@@ -258,7 +258,7 @@ set by adjusting the slider)");
         NEXT_COLUMN
         // No bounds
         NEXT_COLUMN
-        ImGui::Text("%d", sharedUniforms.fBlock_.iFrame);
+        ImGui::Text("%d", sharedUniforms.iFrame_);
         END_ROW
 
         // iTime --------------------------------------------------------------
@@ -324,14 +324,14 @@ set by adjusting the slider)");
         NEXT_COLUMN
         ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
         NEXT_COLUMN
-        glm::vec2* bounds = &sharedUniforms.bounds_[SpecialType::Time];
+        glm::vec2* bounds = &sharedUniforms.iTimeUniform_.gui.bounds;
         bool boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float, 
-            sharedUniforms.bounds_[SpecialType::Time]
+            sharedUniforms.iTimeUniform_.gui.bounds
         );
         NEXT_COLUMN
-        auto iTimePtr = &sharedUniforms.fBlock_.iTime;
+        auto iTimePtr = &sharedUniforms.iTime_;
         if (!boundsChanged)
         {
             bounds->x = std::min(*iTimePtr, bounds->x);
@@ -432,18 +432,18 @@ set by adjusting the slider)");
             ImGui::InputFloat
             (
                 "##iTimeDeltaSliderFloat", 
-                &sharedUniforms.fBlock_.iTimeDelta,
+                &sharedUniforms.iTimeDelta_,
                 0,
                 0,
                 "%.6f"
             );
-            sharedUniforms.fBlock_.iTimeDelta = 
-                std::max(sharedUniforms.fBlock_.iTimeDelta, 0.f);
+            sharedUniforms.iTimeDelta_ = 
+                std::max(sharedUniforms.iTimeDelta_, 0.f);
             ImGui::SameLine();
             ImGui::Text("s");
         }
         else
-            ImGui::Text("%.6f s", sharedUniforms.fBlock_.iTimeDelta);
+            ImGui::Text("%.6f s", sharedUniforms.iTimeDelta_);
         END_ROW
         ImGui::Dummy({0, 0.1f*fontSize});
 
@@ -469,7 +469,7 @@ set by adjusting the slider)");
         NEXT_COLUMN
         // No bounds
         NEXT_COLUMN
-        ImGui::Text("%.6f", sharedUniforms.fBlock_.iRandom);
+        ImGui::Text("%.6f", sharedUniforms.iRandom_);
         END_ROW
 
         // iWindowAspectRatio --------------------------------------------------
@@ -485,7 +485,7 @@ set by adjusting the slider)");
         NEXT_COLUMN
         ImGui::Text
         (
-            "%.3f", sharedUniforms.fBlock_.iAspectRatio
+            "%.3f", sharedUniforms.iAspectRatio_
         );
         END_ROW
         ImGui::Dummy({0, 0.1f*fontSize});
@@ -504,8 +504,8 @@ set by adjusting the slider)");
         ImGui::Text
         (
             "%d x %d", 
-            (int)sharedUniforms.fBlock_.iResolution.x, 
-            (int)sharedUniforms.fBlock_.iResolution.y
+            (int)sharedUniforms.iResolution_.x, 
+            (int)sharedUniforms.iResolution_.y
         );
         END_ROW
         
@@ -535,7 +535,7 @@ set by adjusting the slider)");
         std::string toggled = "Toggled:";
         for (int key=0; key<255; key++)
         {
-            auto& keyData(sharedUniforms.fBlock_.iKeyboard[key]);
+            auto& keyData(sharedUniforms.iKeyboard_[key]);
             if (keyData.x > 0)
                 pressed += " "+vir::keyCodeToName[key];
             else if (keyData.y > 0)
@@ -608,10 +608,10 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::Text
         (
             "%d, %d, %d, %d", 
-            (int)sharedUniforms.fBlock_.iMouse.x, 
-            (int)sharedUniforms.fBlock_.iMouse.y, 
-            (int)sharedUniforms.fBlock_.iMouse.z, 
-            (int)sharedUniforms.fBlock_.iMouse.w
+            (int)sharedUniforms.iMouse_.x, 
+            (int)sharedUniforms.iMouse_.y, 
+            (int)sharedUniforms.iMouse_.z, 
+            (int)sharedUniforms.iMouse_.w
         );
         if 
         (
@@ -676,7 +676,7 @@ motion only if the left mouse button (LMB) is held)");
         // All cmpts always bounds in [-1, 1]
         NEXT_COLUMN
         {
-            glm::vec3 value = sharedUniforms.fBlock_.iLook.packed();
+            glm::vec3 value = sharedUniforms.iLook_;
             std::string format = Helpers::getFormat(value);
             ImGui::PushItemWidth(-1);
             if 
@@ -692,7 +692,7 @@ motion only if the left mouse button (LMB) is held)");
             )
             {
                 value = glm::normalize(value);
-                sharedUniforms.fBlock_.iLook = value;
+                sharedUniforms.iLook_ = value;
                 sharedUniforms.shaderCamera_->setDirection(value);
                 sharedUniforms.setUserAction(true);
             }
@@ -746,17 +746,17 @@ motion only if the left mouse button (LMB) is held)");
             ImGui::Separator();
         }
         NEXT_COLUMN
-        bounds = &sharedUniforms.bounds_[SpecialType::CameraPosition];
+        bounds = &sharedUniforms.iWASDUniform_.gui.bounds;
         boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float3, 
-            sharedUniforms.bounds_[SpecialType::CameraPosition]
+            sharedUniforms.iWASDUniform_.gui.bounds
         );
         if (showSeparator)
             ImGui::Separator();
         NEXT_COLUMN
         {
-            glm::vec3 value = sharedUniforms.fBlock_.iWASD.packed();
+            glm::vec3 value = sharedUniforms.iWASD_;
             std::string format = Helpers::getFormat(value);
             if (!boundsChanged)
             {
@@ -789,7 +789,7 @@ motion only if the left mouse button (LMB) is held)");
                     value.z = std::max(value.z, bounds->x);
                     value.z = std::min(value.z, bounds->y);
                 }
-                sharedUniforms.fBlock_.iWASD = value;
+                sharedUniforms.iWASD_ = value;
                 sharedUniforms.shaderCamera_->setPosition(value);
                 sharedUniforms.setUserAction(true);
             }

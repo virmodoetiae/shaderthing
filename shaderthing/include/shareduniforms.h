@@ -80,6 +80,7 @@ private:
         float      resolutionScale               = 1.f;
     };
 
+    /*
     // A properly aligned layout-std140 compilant C++ representation of the
     // ShaderThing fragment uniform block. Grouped by update frequency for 
     // convenience of passing only certain ranges of it to the GPU UniformBlock
@@ -139,7 +140,7 @@ private:
         static      uint32_t size()                       {return 4192;}
         
         static constexpr const char* glslName = "sharedBlock";
-        // The order of the uniforms within the block source must be the same as
+        // The order of the uniforms within the block source must be the same asd
         // the order in which they have been delcared in FragmentBlock. On the
         // other hand, the actual uniform names do not matter
         static constexpr const char* glslSource =
@@ -158,8 +159,8 @@ R"(layout(std140) uniform sharedUniformBlock {
         vec2   iWindowResolution;
         ivec3  iKeyboard[256];};
 )";
-    };
-
+    };*/
+    /*
     struct VertexBlock
     {
         glm::mat4 iMVP = glm::mat4(0);
@@ -168,14 +169,12 @@ R"(layout(std140) uniform sharedUniformBlock {
         static constexpr const char* glslSource =
 R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
 )";
-    };
+    };*/
     
     const unsigned int        fBindingPoint_ = 0;
     const unsigned int        vBindingPoint_ = 1;
-          FragmentBlock       fBlock_        = {};
-          VertexBlock         vBlock_        = {};
-          vir::UniformBuffer* fBuffer_       = nullptr;
-          vir::UniformBuffer* vBuffer_       = nullptr;
+          vir::DynamicUniformBuffer* fBuffer_       = nullptr;
+          vir::DynamicUniformBuffer* vBuffer_       = nullptr;
           Flags               flags_         = {};
           ExportData          exportData_    = {};
         
@@ -187,9 +186,6 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
           // used to provide values to cpuBlock.iWASD, cpuBlock.iLook
           vir::Camera*        shaderCamera_   = nullptr;
 
-          std::unordered_map<Uniform::SpecialType, glm::vec2> 
-                              bounds_         = {};
-
           // List of user-created uniforms which are shared by all layers
           std::vector<Uniform*> 
                               userUniforms_   = {};
@@ -199,6 +195,40 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
 
           // FPS below which the rendering should stop
           float               lowerFpsLimit_  = 5.f;
+
+          // Actual uniform data
+
+          int                 iFrame_         = 0;
+          int                 iRenderPass_    = 0;
+          float               iTime_          = 0.f;
+          float               iTimeDelta_     = 0.f;
+          float               iRandom_        = 0.f;
+          bool                iUserAction_    = false;
+          bool                iExport_        = false;
+          glm::vec3           iWASD_          = {0,0,-1};
+          glm::vec3           iLook_          = {0,0,1};
+          glm::vec4           iMouse_         = {0,0,0,0};
+          float               iAspectRatio_   = 1.f;
+          glm::vec2           iResolution_    = {512,512};
+          glm::ivec3          iKeyboard_[256] = {};
+          glm::mat4           iMVP_ = {};
+
+          // Uniforms wrapping uniform data
+
+          Uniform             iFrameUniform_;
+          Uniform             iRenderPassUniform_;
+          Uniform             iTimeUniform_;
+          Uniform             iTimeDeltaUniform_;
+          Uniform             iRandomUniform_;
+          Uniform             iUserActionUniform_;
+          Uniform             iExportUniform_;
+          Uniform             iWASDUniform_;
+          Uniform             iLookUniform_;
+          Uniform             iMouseUniform_;
+          Uniform             iAspectRatioUniform_;
+          Uniform             iResolutionUniform_;
+          Uniform             iKeyboardUniform_;
+          Uniform             iMVPUniform_;
 
     // Only used in the post-loading step
     struct Cache
@@ -269,18 +299,18 @@ public:
 
     void renderWindowMenuGui();
 
-    const char* glslFragmentBlockSource() const {return fBlock_.glslSource;}
-    const char* glslVertexBlockSource() const {return vBlock_.glslSource;}
+    std::string glslFragmentBlockSource() const {return fBuffer_->shaderSource();}
+    std::string glslVertexBlockSource() const {return vBuffer_->shaderSource();}
 
     ExportData& exportData() {return exportData_;}
     
     const bool& stepToNextFrame() const {return flags_.stepToNextFrame;}
     const bool& isRenderingPaused() const {return flags_.isRenderingPaused;}
     const bool& isTimeDeltaSmooth() const {return flags_.isTimeDeltaSmooth;}
-    const float& iTime() const {return fBlock_.iTime;}
-    const int& iFrame() const {return fBlock_.iFrame;}
-    const int& iRenderPass() const {return fBlock_.iRenderPass;}
-    glm::ivec2 iResolution() const {return fBlock_.iResolution;}
+    const float& iTime() const {return iTime_;}
+    const int& iFrame() const {return iFrame_;}
+    const int& iRenderPass() const {return iRenderPass_;}
+    glm::ivec2 iResolution() const {return iResolution_;}
     const std::vector<Uniform*>& userUniforms() const {return userUniforms_;}
     const float& lowerFpsLimit() const {return lowerFpsLimit_;}
 };
