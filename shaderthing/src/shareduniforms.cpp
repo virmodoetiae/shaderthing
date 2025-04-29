@@ -833,7 +833,7 @@ void SharedUniforms::load
     (
         ioSu, 
         su->userUniforms_,
-        nullptr,
+        su->fBuffer_,
         resources,
         su->cache_.uninitializedResourceLayers
     );
@@ -854,7 +854,7 @@ void SharedUniforms::postLoadProcessCachedResourceLayers
             if (resource->name() != layerName)
                 continue;
             // TODO: Once the sharedUniform buffer is set up, pass it
-            uniform->setResourcePtr(resource); 
+            uniform->setResourcePtr(resource, fBuffer_); 
         }
     }
     cache_.uninitializedResourceLayers.clear();
@@ -908,6 +908,40 @@ void SharedUniforms::setMouseCaptured(bool flag)
         vir::Event::Broadcaster::instance()->broadcastNativeQueue();
         StatusBar::queueMessage(mouseCapturedMessage);
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::addUserUniform(Uniform* uniform)
+{
+    fBuffer_->addUniform(uniform);
+    auto it = std::find(userUniforms_.begin(), userUniforms_.end(), uniform);
+    if (it == userUniforms_.end())
+        userUniforms_.emplace_back(uniform);
+    if (uniform->isResource())
+    {
+        auto* resource = uniform->getValuePtr<Resource>();
+        uniform->setResourcePtr(resource, fBuffer_);
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void SharedUniforms::removeUserUniform(Uniform* uniform)
+{
+    fBuffer_->removeUniform(uniform);
+    userUniforms_.erase
+    (
+        std::remove
+        (
+            userUniforms_.begin(),
+            userUniforms_.end(),
+            uniform
+        ),
+        userUniforms_.end()
+    );
+    if (uniform->isResource())
+        uniform->removeResourceResolutionFromUniformBuffer(fBuffer_);
 }
 
 }

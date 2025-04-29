@@ -296,6 +296,8 @@ public:
         bool windowFrameManuallyDragged, 
         bool prepareForExport=false
     );
+    void addUserUniform(Uniform* uniform);
+    void removeUserUniform(Uniform* uniform);
 
     void renderWindowMenuGui();
 
@@ -311,6 +313,7 @@ public:
     const int& iFrame() const {return iFrame_;}
     const int& iRenderPass() const {return iRenderPass_;}
     glm::ivec2 iResolution() const {return iResolution_;}
+    vir::DynamicUniformBuffer* uniformBuffer() {return fBuffer_;}
     const std::vector<Uniform*>& userUniforms() const {return userUniforms_;}
     const float& lowerFpsLimit() const {return lowerFpsLimit_;}
 };

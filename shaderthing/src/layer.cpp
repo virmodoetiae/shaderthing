@@ -174,8 +174,7 @@ Layer::Layer
         u->name = "iAspectRatio";
         u->setValuePtr(&aspectRatio_, Uniform::Type::Float);
         u->gui.showBounds = false;
-        uniforms_.emplace_back(u);
-        uniformBuffer_->addUniform(u);
+        addUniform(u);
 
         u = new Uniform{};
         u->specialType = Uniform::SpecialType::LayerResolution;
@@ -183,8 +182,7 @@ Layer::Layer
         u->setValuePtr(&resolution_, Uniform::Type::Float2);
         u->gui.bounds = glm::vec2(1.0f, 4096.0f);
         u->gui.showBounds = false;
-        uniforms_.emplace_back(u);
-        uniformBuffer_->addUniform(u);
+        addUniform(u);
         
         /* This was just a very quick test for array uniforms
         static float array[17];
@@ -674,7 +672,7 @@ Layer::fragmentShaderHeaderSourceAndLineCount
 
     unsigned int imageBindingPoint = 0;
 
-    auto writeUniformsToHeader = []
+    auto writeResourceUniformsToHeader = []
     (
         const std::vector<Uniform*> uniforms, 
         std::string& header,
@@ -731,38 +729,17 @@ Layer::fragmentShaderHeaderSourceAndLineCount
                 default :
                     break;
             }
-            // header += "uniform "+uniformTypeName+" "+u->name+";\n";
-            // ++nLines;
-            
-            /*
-            // Automatically managed sampler2D or image2D resolution and aspect
-            // ratio uniforms
-            if (u->type == vir::Shader::Uniform::Type::Sampler2D || 
-                u->type == vir::Shader::Uniform::Type::Image2D)
-            {
-                header += "uniform float "+u->name+"AspectRatio;\n";
-                ++nLines;
-                header += "uniform vec2 "+u->name+"Resolution;\n";
-                ++nLines;
-            }
-            else if (u->type == vir::Shader::Uniform::Type::Sampler3D || 
-                     u->type == vir::Shader::Uniform::Type::Image3D)
-            {
-                header += "uniform vec3 "+u->name+"Resolution;\n";
-                ++nLines;
-            }
-            */
         }
     };
 
-    writeUniformsToHeader
+    writeResourceUniformsToHeader
     (
         sharedUniforms.userUniforms(),
         header,
         nLines,
         imageBindingPoint
     );
-    writeUniformsToHeader
+    writeResourceUniformsToHeader
     (
         uniforms_,
         header,
@@ -1099,7 +1076,7 @@ bool Layer::compileShader
     for (const auto& error : shader->compilationErrors().fragmentErrors)
     {
         int sourceLineNo(error.first - nSharedLines - nHeaderLines + 1);
-        int sharedLineNo(error.first - nHeaderLines + 1);
+        int sharedLineNo(error.first - nHeaderLines);
         if (sourceLineNo > 0)
             sourceErrors.insert({sourceLineNo, error.second});
         else if (sharedLineNo > 0)
@@ -1151,7 +1128,7 @@ void Layer::renderShader
 (
     vir::Framebuffer* target,
     const bool clearTarget,
-    const SharedUniforms& sharedUniforms
+    SharedUniforms& sharedUniforms
 )
 {
     auto flipBuffers = [this]()
@@ -1215,6 +1192,7 @@ void Layer::renderShader
     (
         const std::vector<Uniform*>& uniforms,
         Layer* layer, 
+        SharedUniforms& sharedUniforms,
         unsigned int& textureUnit,
         unsigned int& imageUnit
     )
@@ -1245,7 +1223,9 @@ void Layer::renderShader
             auto resource = u->getValuePtr<Resource>();
             if (resource == nullptr)
                 continue;
-            u->updateResourceResolution(layer->uniformBuffer_);
+            auto ubo = u->isSharedByUser ? 
+                sharedUniforms.uniformBuffer() : layer->uniformBuffer_;
+            u->updateResourceResolution(ubo);
             // When reading from your own framebuffer, you should always read
             // from the buffer to which you are NOT writing to (the back buffer
             // is the one that is always being written, so read from the front
@@ -1331,8 +1311,22 @@ void Layer::renderShader
             }
         }
     };
-    setSamplerUniforms(sharedUniforms.userUniforms(), this, textureUnit, imageUnit);
-    setSamplerUniforms(uniforms_, this, textureUnit, imageUnit);
+    setSamplerUniforms
+    (
+        sharedUniforms.userUniforms(), 
+        this, 
+        sharedUniforms, 
+        textureUnit, 
+        imageUnit
+    );
+    setSamplerUniforms
+    (
+        uniforms_, 
+        this, 
+        sharedUniforms, 
+        textureUnit, 
+        imageUnit
+    );
     uniformBuffer_->submitUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
@@ -1434,6 +1428,48 @@ void Layer::resetAfterExport(const std::vector<Layer*>& layers)
 
 //----------------------------------------------------------------------------//
 
+void Layer::addUniform(Uniform* uniform)
+{
+    if (uniform == nullptr)
+        return;
+    uniformBuffer_->addUniform(uniform);
+    uniforms_.emplace_back(uniform);
+    if (uniform->isResource())
+    {
+        auto* resource = uniform->getValuePtr<Resource>();
+        uniform->setResourcePtr(resource, uniformBuffer_);
+    }
+    cache_.uncompiledUniforms.emplace_back(uniform);
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::removeUniform(Uniform* uniform)
+{
+    if (uniform == nullptr)
+        return;
+    uniformBuffer_->removeUniform(uniform);
+    uniforms_.erase
+    (
+        std::remove(uniforms_.begin(), uniforms_.end(), uniform), 
+        uniforms_.end()
+    );
+    if (uniform->isResource())
+        uniform->removeResourceResolutionFromUniformBuffer(uniformBuffer_);
+    cache_.uncompiledUniforms.erase
+    (
+        std::remove
+        (
+            cache_.uncompiledUniforms.begin(), 
+            cache_.uncompiledUniforms.end(), 
+            uniform
+        ), 
+        cache_.uncompiledUniforms.end()
+    );
+}
+
+//----------------------------------------------------------------------------//
+
 bool Layer::removeResourceFromUniforms(const Resource* resource)
 {
     bool result = false;
@@ -1453,7 +1489,8 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
         auto uResource = uniform->getValuePtr<const Resource>();
         if (resource->id() == uResource->id())
         {
-            uniforms_.erase(uniforms_.begin()+i--);
+            //uniforms_.erase(uniforms_.begin()+i--);
+            removeUniform(uniform);
             result = true;
         }
     }

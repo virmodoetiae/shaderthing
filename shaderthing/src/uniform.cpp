@@ -30,6 +30,11 @@
 namespace ShaderThing
 {
 
+Uniform::~Uniform()
+{
+    deleteValue();
+}
+
 void Uniform::renderUniformsGui
 (
     SharedUniforms& sharedUniforms,
@@ -831,7 +836,7 @@ motion only if the left mouse button (LMB) is held)");
         const std::vector<Resource*>& resources,
         int& row,
         const bool showSeparator = false,
-        const bool showDefaultUniforms = true
+        const bool showSharedAndDefaultUniforms = true
     ) -> bool
     {
         int column;
@@ -840,7 +845,7 @@ motion only if the left mouse button (LMB) is held)");
             uniform->specialType == SpecialType::LayerAspectRatio ||
             uniform->specialType == SpecialType::LayerResolution
         );
-        if (managed && !showDefaultUniforms)
+        if (managed && !showSharedAndDefaultUniforms)
             return false;
         bool isSharedByUser0 = uniform->isSharedByUser;
         bool nameChanged = false;
@@ -919,7 +924,10 @@ motion only if the left mouse button (LMB) is held)");
         {
             if (ImGui::InputText("##uniformName", &uniform->name))
             {
-                layer->uniformBuffer_->markUniformForSubmission(uniform);
+                if (!uniform->isSharedByUser)
+                    layer->uniformBuffer_->markUniformForSubmission(uniform);
+                else
+                    sharedUniforms.fBuffer_->markUniformForSubmission(uniform);
                 nameChanged = true;
             }
         }
@@ -1132,7 +1140,7 @@ motion only if the left mouse button (LMB) is held)");
     }                                                                       \
     else                                                                    \
     {                                                                       \
-        /*mark for sub in new shared uniforms*/                             \
+        sharedUniforms.fBuffer_->markUniformForSubmission(uniform);         \
     }
 
 #define CHECK_RESOURCE_SELECTED                                             \
@@ -1151,7 +1159,9 @@ motion only if the left mouse button (LMB) is held)");
             Layer::Flags::requestRecompilation = true;                      \
         if (!r->isUsedByUniform(uniform))                                   \
             r->addClientUniform(uniform);                                   \
-        uniform->setResourcePtr(r, layer->uniformBuffer_);                  \
+        auto ubo = uniform->isSharedByUser ?                                \
+            sharedUniforms.fBuffer_ : layer->uniformBuffer_;                \
+        uniform->setResourcePtr(r, ubo);                                    \
         sharedUniforms.setUserAction(true);                                 \
     }
 
@@ -1870,9 +1880,7 @@ motion only if the left mouse button (LMB) is held)");
     auto renderAddUniformButton = 
     [&fontSize]
     (
-        std::vector<Uniform*>& uniforms, 
-        std::vector<Uniform*>& uncompiledUniforms, 
-        vir::DynamicUniformBuffer* uniformBuffer,
+        Layer* layer,
         int& row
     )
     {
@@ -1880,12 +1888,7 @@ motion only if the left mouse button (LMB) is held)");
         START_ROW
         START_COLUMN
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
-        {
-            auto uniform = new Uniform{};
-            uniforms.emplace_back(uniform);
-            uncompiledUniforms.emplace_back(uniform);
-            uniformBuffer->addUniform(uniform);
-        }
+            layer->addUniform(new Uniform{});
         if 
         (
             ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
@@ -1904,19 +1907,19 @@ motion only if the left mouse button (LMB) is held)");
     bool atLeastOneSharedUniformTypeChanged = false;
     bool atLeastOneUniformTypeChanged = false;
 
-    bool atLeastOneUniformWasSharedOrUnShared = false;
-    static bool showDefaultUniforms = true;
+    bool atLeastOneSharedUniformStateChanged = false;
+    static bool showSharedAndDefaultUniforms = true;
     if 
     (
         ImGui::Button
         (
-            showDefaultUniforms ? 
-            "Hide default uniforms" : 
-            "Show default uniforms",
+            showSharedAndDefaultUniforms ? 
+            "Hide shared and default uniforms" : 
+            "Show shared and uniforms",
             {-1,0}
         )
     )
-        showDefaultUniforms = !showDefaultUniforms;
+        showSharedAndDefaultUniforms = !showSharedAndDefaultUniforms;
 
     std::string uniformFrameName = "##uniformsFrame"+std::to_string(layer->id_);
     ImGui::BeginChild(uniformFrameName.c_str(), ImVec2(-1, -1), false);
@@ -1946,13 +1949,13 @@ motion only if the left mouse button (LMB) is held)");
         );
         ImGui::TableHeadersRow();
         
-        if (showDefaultUniforms)
+        if (showSharedAndDefaultUniforms)
             renderDefaultSharedUniformsGui(sharedUniforms, row);
 
         for (auto uniform : sharedUniforms.userUniforms_)
         {
-            atLeastOneSharedUniformTypeChanged = 
-                atLeastOneSharedUniformTypeChanged ||
+            atLeastOneSharedUniformStateChanged = 
+                atLeastOneSharedUniformStateChanged ||
                 renderUniformGui
                 (
                     sharedUniforms,
@@ -1961,13 +1964,12 @@ motion only if the left mouse button (LMB) is held)");
                     layers,
                     resources,
                     row,
-                    atLeastOneSharedUniformTypeChanged,
                     uniform == sharedUniforms.userUniforms_.back()
                 );
             if (uniform->gui.markedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;
             if (uniform->hasSharedByUserChanged)
-                atLeastOneUniformWasSharedOrUnShared = true;
+                atLeastOneSharedUniformStateChanged = true;
         }
 
         for(auto uniform : layer->uniforms_)
@@ -1983,26 +1985,68 @@ motion only if the left mouse button (LMB) is held)");
                     resources,
                     row,
                     false,
-                    showDefaultUniforms
+                    showSharedAndDefaultUniforms
                 );
             if (uniform->gui.markedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;
             if (uniform->hasSharedByUserChanged)
-                atLeastOneUniformWasSharedOrUnShared = true;
+                atLeastOneSharedUniformStateChanged = true;
         }
         renderAddUniformButton
         (
-            layer->uniforms_, 
-            layer->cache_.uncompiledUniforms, 
-            layer->uniformBuffer_, 
+            layer, 
             row
         );
         ImGui::EndTable();
     }
 
+    ImGui::EndChild();
+
+    ImGui::SetCursorPosY
+    (
+        ImGui::GetCursorPosY()+
+        ImGui::GetContentRegionAvail().y-
+        ImGui::GetTextLineHeightWithSpacing()
+    );
+    StatusBar::renderGui();
+
     // Remove uniforms marked for deletion
     if (atLeastOneUniformMarkedForDeletion)
     {
+        for (unsigned int i=0; i<layer->uniforms_.size(); i++)
+        {
+            auto u = layer->uniforms_[i];
+            if (!u->gui.markedForDeletion)
+                continue;
+            if (u->isResource())
+            {
+                auto resource = u->getValuePtr<Resource>();
+                if (resource->isUsedByUniform(u))
+                    resource->removeClientUniform(u);
+                resource->unbind();
+            }
+            layer->removeUniform(u);
+            delete u;
+            i--;
+        }
+        for (unsigned int i=0; i<sharedUniforms.userUniforms_.size(); i++)
+        {
+            auto u = sharedUniforms.userUniforms_[i];
+            if (!u->gui.markedForDeletion)
+                continue;
+            if (u->isResource())
+            {
+                auto resource = u->getValuePtr<Resource>();
+                if (resource->isUsedByUniform(u))
+                    resource->removeClientUniform(u);
+                resource->unbind();
+            }
+            sharedUniforms.removeUserUniform(u);
+            delete u;
+            i--;
+            atLeastOneSharedUniformStateChanged = true;
+        }
+        /*
         layer->uniforms_.erase
         (
             std::remove_if
@@ -2035,17 +2079,8 @@ motion only if the left mouse button (LMB) is held)");
         );
         // The uncompiledChanges flag of the relevant layers have already
         // been set earlier, where the uniform markedForDeletion flag is set
+        */
     }
-
-    ImGui::EndChild();
-
-    ImGui::SetCursorPosY
-    (
-        ImGui::GetCursorPosY()+
-        ImGui::GetContentRegionAvail().y-
-        ImGui::GetTextLineHeightWithSpacing()
-    );
-    StatusBar::renderGui();
 
     // Alternative strategy to cope with uniform block alignment changes after
     // uniform type changes or deletions (both of which can alter block layout:
@@ -2057,7 +2092,7 @@ motion only if the left mouse button (LMB) is held)");
     )
         layer->compileShader(sharedUniforms);
 
-    if (!atLeastOneUniformWasSharedOrUnShared)
+    if (!atLeastOneSharedUniformStateChanged)
         return;
 
     // Check if the uniform state was changed from non-shared to shared
@@ -2065,21 +2100,8 @@ motion only if the left mouse button (LMB) is held)");
     {
         if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
             continue;
-        sharedUniforms.userUniforms_.emplace_back(uniform);
-        layer->uniforms_.erase
-        (
-            std::remove_if
-            (
-                layer->uniforms_.begin(),
-                layer->uniforms_.end(),
-                [uniform](Uniform* u){return uniform == u;}
-            )
-        );
-        if (uniform->name.size() > 0)
-            for (auto l : layers)
-            {
-                l->flags_.uncompiledChanges = true;
-            }
+        layer->removeUniform(uniform);
+        sharedUniforms.addUserUniform(uniform);
         uniform->hasSharedByUserChanged = false;
     }
 
@@ -2088,33 +2110,17 @@ motion only if the left mouse button (LMB) is held)");
     {
         if (!(uniform->hasSharedByUserChanged && !uniform->isSharedByUser))
             continue;
-        layer->uniforms_.emplace_back(uniform);
-        sharedUniforms.userUniforms_.erase
-        (
-            std::remove_if
-            (
-                sharedUniforms.userUniforms_.begin(),
-                sharedUniforms.userUniforms_.end(),
-                [uniform](Uniform* u){return uniform == u;}
-            )
-        );
-        if (uniform->name.size() > 0)
-            for (auto l : layers)
-            {
-                l->flags_.uncompiledChanges = true;
-            }
+        sharedUniforms.removeUserUniform(uniform);
+        layer->addUniform(uniform);
         uniform->hasSharedByUserChanged = false;
     }
 
     // Alternative strategy to cope with uniform block alignment changes after
     // uniform type changes or deletions (both of which can alter block layout:
     // compile right away automatically without asking the user
-    if (atLeastOneSharedUniformTypeChanged)
+    for (auto* l : layers)
     {
-        for (auto* l : layers)
-        {
-            l->compileShader(sharedUniforms);
-        }
+        l->compileShader(sharedUniforms);
     }
 }
 
@@ -2268,6 +2274,22 @@ void Uniform::deleteValue(bool deleteCache)
     DELETE_IF_NOT_NULLPTR(resourceResolution_)
 }
 
+bool Uniform::isResource() const 
+{
+    switch(type())
+    {
+        case vir::Shader::Uniform::Type::Sampler2D :
+        case vir::Shader::Uniform::Type::Image2D :
+        case vir::Shader::Uniform::Type::SamplerCube :
+        case vir::Shader::Uniform::Type::ImageCube :
+        case vir::Shader::Uniform::Type::Sampler3D :
+        case vir::Shader::Uniform::Type::Image3D :
+            return true;
+        default :
+            return false;
+    }
+}
+
 void Uniform::setResourcePtr
 (
     Resource* resource, 
@@ -2322,6 +2344,16 @@ void Uniform::setResourcePtr
         );
     if (uniformBuffer != nullptr)
         uniformBuffer->addUniform(resourceResolution_);
+}
+
+void Uniform::removeResourceResolutionFromUniformBuffer
+(
+    vir::DynamicUniformBuffer* uniformBuffer
+)
+{
+    if (resourceResolution_ == nullptr)
+        return;
+    uniformBuffer->removeUniform(resourceResolution_);
 }
 
 void Uniform::updateResourceResolution

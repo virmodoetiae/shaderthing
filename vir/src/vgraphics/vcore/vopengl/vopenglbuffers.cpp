@@ -1409,9 +1409,31 @@ uint32_t OpenGLDynamicUniformBuffer::arrayElementSizeOf
     const Shader::Uniform* uniform
 ) const
 {
-    (void)uniform;
     // std140 rules
-    return 16;
+    static std::unordered_map<Shader::Uniform::Type, uint32_t> 
+        uniformTypeToArrayElementSize =
+        {
+            {Shader::Uniform::Type::Bool,        16},
+            {Shader::Uniform::Type::UInt,        16},
+            {Shader::Uniform::Type::Int,         16},
+            {Shader::Uniform::Type::Int2,        16},
+            {Shader::Uniform::Type::Int3,        16},
+            {Shader::Uniform::Type::Int4,        16},
+            {Shader::Uniform::Type::Float,       16},
+            {Shader::Uniform::Type::Float2,      16},
+            {Shader::Uniform::Type::Float3,      16},
+            {Shader::Uniform::Type::Float4,      16},
+            {Shader::Uniform::Type::Mat3,        16},
+            {Shader::Uniform::Type::Mat4,        16},
+            {Shader::Uniform::Type::Sampler2D,   0},
+            {Shader::Uniform::Type::Sampler3D,   0},
+            {Shader::Uniform::Type::SamplerCube, 0},
+            {Shader::Uniform::Type::Image2D,     0},
+            {Shader::Uniform::Type::Image3D,     0},
+            {Shader::Uniform::Type::ImageCube,   0}
+        };
+
+    return uniformTypeToArrayElementSize.at(uniform->type());
 }
 
 uint32_t OpenGLDynamicUniformBuffer::alignmentOf(const Shader::Uniform* uniform) const

@@ -102,14 +102,18 @@ public:
 
     Uniform() = default;
     DELETE_COPY_MOVE(Uniform)
+    ~Uniform();
 
-    // 
+    bool isResource() const;
     void setResourcePtr
     (
         Resource* value, 
         vir::DynamicUniformBuffer* uniformBuffer = nullptr
+    );    
+    void removeResourceResolutionFromUniformBuffer
+    (
+        vir::DynamicUniformBuffer* uniformBuffer
     );
-
     void updateResourceResolution(vir::DynamicUniformBuffer* uniformBuffer);
     void updateResourceResolutionName();
 

@@ -234,6 +234,8 @@ public:
     static void prepareForExport(const std::vector<Layer*>& layers);
     static void resetAfterExport(const std::vector<Layer*>& layers);
 
+    void addUniform(Uniform* uniform);
+    void removeUniform(Uniform* uniform);
     bool removeResourceFromUniforms(const Resource* resource);
     
     bool compileShader
@@ -245,7 +247,7 @@ public:
     (
         vir::Framebuffer* target, 
         const bool clearTarget, 
-        const SharedUniforms& sharedUniforms
+        SharedUniforms& sharedUniforms
     );
     void renderInternalFramebufferToTarget
     (
