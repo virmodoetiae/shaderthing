@@ -1322,7 +1322,7 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
                 {
                     auto boolArray = uw->uniform->getConstValuePtr<bool>();
                     auto intArray = new int[uw->uniform->valueArraySize()];
-                    for (int i = 0; i < uw->uniform->valueArraySize(); i++) 
+                    for (unsigned int i=0; i<uw->uniform->valueArraySize(); i++)
                     {
                         intArray[i] = static_cast<int>(boolArray[i]);
                     }
@@ -1473,7 +1473,7 @@ bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
     {
         auto boolArray = uw->uniform->getConstValuePtr<bool>();
         auto intArray = new int[nElements];
-        for (int i = 0; i < nElements; i++) 
+        for (unsigned int i = 0; i < nElements; i++) 
         {
             intArray[i] = static_cast<int>(boolArray[i+indexStart]);
         }
@@ -1530,7 +1530,7 @@ bool DynamicUniformBuffer::submitUniform
             uw->offset
         );
         if (uw->uniform->type() == Shader::Uniform::Type::Bool)
-            delete src;
+            delete static_cast<const bool*>(src);
         if (uw->markedForSubmission)
         {
             uw->markedForSubmission = false;
@@ -1545,7 +1545,7 @@ bool DynamicUniformBuffer::submitUniform
     const Shader::Uniform* uniform
 )
 {
-    submitUniform
+    return submitUniform
     (
         uniform, 
         0, 
@@ -1560,7 +1560,7 @@ bool DynamicUniformBuffer::submitArrayUniformRange
     uint32_t indexEnd
 )
 {
-    submitUniform
+    return submitUniform
     (
         uniform, 
         indexStart, 
