@@ -158,12 +158,11 @@ TextureBuffer2D* TextureBuffer2D::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLTextureBuffer2D
@@ -186,8 +185,7 @@ TextureBuffer2D* TextureBuffer2D::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     unsigned char* data = nullptr;
     TextureBuffer2D* buffer = nullptr;
@@ -211,7 +209,7 @@ TextureBuffer2D* TextureBuffer2D::create
             );
         ENFORCE_CHANNEL_FORMAT_CONSISTENCY
     
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 buffer =  new OpenGLTextureBuffer2D
@@ -238,8 +236,7 @@ TextureBuffer2D* TextureBuffer2D::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     unsigned char* data = nullptr;
     TextureBuffer2D* buffer = nullptr;
@@ -262,7 +259,7 @@ TextureBuffer2D* TextureBuffer2D::create
             );
         ENFORCE_CHANNEL_FORMAT_CONSISTENCY
     
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 buffer =  new OpenGLTextureBuffer2D
@@ -428,8 +425,7 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     unsigned char* data = nullptr;
     int* delays = nullptr;
@@ -457,7 +453,7 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
             );
         ENFORCE_CHANNEL_FORMAT_CONSISTENCY
         
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 buffer = new OpenGLAnimatedTextureBuffer2D
@@ -500,12 +496,11 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLAnimatedTextureBuffer2D
@@ -528,12 +523,11 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     bool gainFrameOwnership
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLAnimatedTextureBuffer2D
@@ -645,8 +639,7 @@ CubeMapBuffer* CubeMapBuffer::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     CubeMapBuffer* buffer = nullptr;
     const unsigned char* faceData[6] = 
@@ -711,8 +704,7 @@ CubeMapBuffer* CubeMapBuffer::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     CubeMapBuffer* buffer = nullptr;
     const unsigned char* faceData[6] = 
@@ -780,12 +772,11 @@ CubeMapBuffer* CubeMapBuffer::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLCubeMapBuffer
@@ -847,12 +838,11 @@ TextureBuffer3D* TextureBuffer3D::create
     InternalFormat internalFormat
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLTextureBuffer3D
@@ -871,12 +861,11 @@ TextureBuffer3D* TextureBuffer3D::create
 
 uint32_t TextureBuffer3D::maxSideSize()
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return 0;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return OpenGLTextureBuffer3D::maxSideSize();
@@ -908,12 +897,11 @@ Framebuffer* Framebuffer::create
     TextureBuffer::InternalFormat format
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLFramebuffer(width, height, format);
@@ -946,12 +934,11 @@ elements_(elements)
 
 VertexBuffer* VertexBuffer::create(float* vertices, uint32_t size)
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLVertexBuffer(vertices, size);
@@ -990,12 +977,11 @@ void VertexBuffer::setLayout()
 
 IndexBuffer* IndexBuffer::create(uint32_t* indices, uint32_t size)
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLIndexBuffer(indices, size);
@@ -1019,12 +1005,11 @@ VertexArray* VertexArray::activeOne_ = nullptr;
 
 VertexArray* VertexArray::create()
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLVertexArray();
@@ -1038,12 +1023,11 @@ VertexArray* VertexArray::create()
 
 UniformBuffer* UniformBuffer::create(uint32_t size)
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLUniformBuffer(size);
@@ -1075,12 +1059,11 @@ DynamicUniformBuffer* DynamicUniformBuffer::create
     const std::string& name
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLDynamicUniformBuffer(size, name);
@@ -1589,12 +1572,11 @@ bool DynamicUniformBuffer::submitArrayUniformRange
 
 ShaderStorageBuffer* ShaderStorageBuffer::create(uint32_t size)
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
     try
     {
-        switch(window->context()->type())
+        switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
                 return new OpenGLShaderStorageBuffer(size);

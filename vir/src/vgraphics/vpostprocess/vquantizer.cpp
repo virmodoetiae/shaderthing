@@ -27,10 +27,9 @@ std::unordered_map<DitherMode, std::string>
 
 Quantizer* Quantizer::create()
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
-    switch(window->context()->type())
+    switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
             return new OpenGLQuantizer();

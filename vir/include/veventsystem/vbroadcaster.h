@@ -3,7 +3,7 @@
 
 #include <map>
 #include "veventsystem/vevent.h"
-#include "vglobalptr.h"
+#include "vpointers.h"
 
 namespace vir
 {
@@ -53,7 +53,7 @@ public:
     template<typename T>
     static Broadcaster* initialize()
     {
-        return GlobalPtr<Broadcaster>::instance(new T());
+        return GlobalPtr<Broadcaster>::set(new T());
     }
 
     virtual ~Broadcaster(){}
@@ -125,7 +125,7 @@ public:
     bool broadcastInReversedOrder() const {return broadcastInReversedOrder_;}
     bool& broadcastInReversedOrder() {return broadcastInReversedOrder_;}
 
-    static Broadcaster* instance() {return GlobalPtr<Broadcaster>::instance();}
+    static Broadcaster* instance() {return GlobalPtr<Broadcaster>::get();}
 
 protected:
 

@@ -112,9 +112,8 @@ void Camera::setZPlusIsLookDirection(const bool flag)
 
 float Camera::aspectRatio()
 {
-    Window* window;
-    if (GlobalPtr<Window>::valid(window))
-        return window->aspectRatio();
+    if (GlobalPtr<Window>::valid())
+        return GlobalPtr<Window>::get()->aspectRatio();
     return 1.0f;
 }
 
@@ -221,10 +220,9 @@ void Camera::update()
     if (updated_)
         return;
 
-    Window* window;
-    if (GlobalPtr<Window>::valid(window))
+    if (GlobalPtr<Window>::valid())
     {
-        if (window->iconified())
+        if (Window::instance()->iconified())
             return;
     }
     

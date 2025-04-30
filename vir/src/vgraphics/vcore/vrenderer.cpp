@@ -24,13 +24,12 @@ Renderer::~Renderer()
 
 Renderer* Renderer::initialize()
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
-    switch(window->context()->type())
+    switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return GlobalPtr<Renderer>::instance(new OpenGLRenderer());
+            return GlobalPtr<Renderer>::set(new OpenGLRenderer());
     }
     return nullptr;
 }

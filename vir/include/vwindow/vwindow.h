@@ -3,7 +3,7 @@
 
 #include "veventsystem/vevent.h"
 #include "vgraphics/vcore/vgraphicscontext.h"
-#include "vglobalptr.h"
+#include "vpointers.h"
 
 namespace vir
 {
@@ -65,7 +65,7 @@ public:
         bool r=true
     )
     {
-        return GlobalPtr<Window>::instance(new WT(w, h, t, r));
+        return GlobalPtr<Window>::set(new WT(w, h, t, r));
     }
 
     virtual ~Window();
@@ -155,7 +155,7 @@ public:
     const bool& VSync() const {return VSync_;}
 
     //
-    static Window* instance() {return GlobalPtr<Window>::instance();}
+    static Window* instance() {return GlobalPtr<Window>::get();}
 };
 
 }

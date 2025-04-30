@@ -15,10 +15,6 @@ GLFWWrapper::GLFWWrapper()
         glfwInit();
         glfwInitialized_ = true;
     }
-    #if (DEBUG)
-    std::cout << "Created GLWWrapper, current count " 
-        << glfwWrapperCount_ << std::endl;
-    #endif
 }
 
 GLFWWrapper::~GLFWWrapper()
@@ -28,14 +24,7 @@ GLFWWrapper::~GLFWWrapper()
     {
         glfwInitialized_ = false;
         glfwTerminate();
-        #if (DEBUG)
-        std::cout << "GLFW terminated " << std::endl;
-        #endif
     }
-    #if (DEBUG)
-    std::cout << "GLWWrapper destroyed, current count " 
-        << glfwWrapperCount_ << std::endl;
-    #endif
 }
 
 }

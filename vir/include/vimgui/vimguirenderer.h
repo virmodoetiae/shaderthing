@@ -72,7 +72,7 @@ public:
         render();
     }
 
-    static ImGuiRenderer* instance() {return GlobalPtr<ImGuiRenderer>::instance();}
+    static ImGuiRenderer* instance() {return GlobalPtr<ImGuiRenderer>::get();}
 
     /*
     // Recursive case for handling multiple arguments

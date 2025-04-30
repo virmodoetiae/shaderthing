@@ -1,7 +1,7 @@
 #ifndef V_INPUT_STATE_H
 #define V_INPUT_STATE_H
 
-#include "vglobalptr.h"
+#include "vpointers.h"
 #include "vinput/vinputcodes.h"
 #include "veventsystem/vevent.h"
 
@@ -62,7 +62,7 @@ public:
 
     static InputState* initialize()
     {
-        auto inputState = GlobalPtr<InputState>::instance(new InputState());
+        auto inputState = GlobalPtr<InputState>::set(new InputState());
         inputState->tuneIntoEventBroadcaster(VIR_INPUT_PRIORITY);
         return inputState;
     }
@@ -105,7 +105,7 @@ public:
     // Simulate a left mouse button click on the host system
     void leftMouseButtonClickNativeOS(int msDelay=10);
 
-    static InputState* instance() {return GlobalPtr<InputState>::instance();}
+    static InputState* instance() {return GlobalPtr<InputState>::get();}
 };
 
 }

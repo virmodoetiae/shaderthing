@@ -1,7 +1,7 @@
 #ifndef V_TIME_H
 #define V_TIME_H
 
-#include "vglobalptr.h"
+#include "vpointers.h"
 
 namespace vir
 {
@@ -37,7 +37,7 @@ public :
     template<class DerivedTime>
     static Time* initialize()
     {
-        return GlobalPtr<Time>::instance(new DerivedTime());
+        return GlobalPtr<Time>::set(new DerivedTime());
     }
 
     Time(){}
@@ -60,7 +60,7 @@ public :
     float innerTimestep(){return innerTimestep_;}
     float smoothOuterTimestep(){return smoothOuterTimestep_;}
 
-    static Time* instance() {return GlobalPtr<Time>::instance();}
+    static Time* instance() {return GlobalPtr<Time>::get();}
 };
 
 }

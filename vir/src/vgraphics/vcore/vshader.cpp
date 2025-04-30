@@ -251,10 +251,9 @@ Shader* Shader::create
     ConstructFrom cf
 )
 {
-    Window* window = nullptr;
-    if (!GlobalPtr<Window>::valid(window))
+    if (!GlobalPtr<Window>::valid())
         return nullptr;
-    switch(window->context()->type())
+    switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
             return new OpenGLShader(vs, fs, cf);
@@ -266,8 +265,9 @@ Shader* Shader::create
 
 std::string Shader::currentContextShadingLanguageDirectives()
 {
-    static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();
-    switch (context->type())
+    if (!GlobalPtr<Window>::valid())
+        return nullptr;
+    switch (Window::instance()->context()->type())
     {
     case GraphicsContext::Type::OpenGL :
         return OpenGLShader::currentContextShadingLanguageDirectives();
@@ -282,8 +282,9 @@ bool Shader::setExtensionStatusInCurrentContextShadingLanguageDirectives
     bool status
 )
 {
-    static auto* context = vir::GlobalPtr<vir::Window>::instance()->context();
-    switch (context->type())
+    if (!GlobalPtr<Window>::valid())
+        return false;
+    switch (Window::instance()->context()->type())
     {
     case GraphicsContext::Type::OpenGL :
         return OpenGLShader::

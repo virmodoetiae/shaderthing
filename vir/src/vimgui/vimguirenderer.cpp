@@ -88,7 +88,7 @@ ImGuiRenderer* ImGuiRenderer::initialize()
     {
         case PlatformType::GLFWOpenGL :
         {
-            instance = GlobalPtr<ImGuiRenderer>::instance
+            instance = GlobalPtr<ImGuiRenderer>::set
             (
                 new GLFWOpenGLImGuiRenderer()
             );

@@ -37,7 +37,7 @@
 
 #include "veventsystem/vevent.h"
 
-#include "vglobalptr.h"
+#include "vpointers.h"
 #include "vtime/vtime.h"
 #include "veventsystem/vbroadcaster.h"
 #include "vwindow/vwindow.h"
