@@ -74,6 +74,11 @@ public:
 
     // Get a naked pointer to the internally managed object
     T* operator->() const { return get(); }
+
+    bool operator==(const T* other) const {return this->get()==other;}
+    bool operator==(const Ptr& other) const {return this->get()==other.get();}
+    bool operator!=(const T* other) const {return !(*this)==other;}
+    bool operator!=(const Ptr& other) const {return !(*this)==other;}
 };
 
 //----------------------------------------------------------------------------//
