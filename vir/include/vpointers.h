@@ -5,8 +5,202 @@
 
 //----------------------------------------------------------------------------//
 
+// Forward declarations
+template<typename T>
+class Ptr;
+template<typename T>
+class WeakPtr;
+template<typename T>
+class EnableWeakFromThis;
+template<typename T>
+class UniquePtr;
+
+// Smart ptr base class for UniquePtr and WeakPtr. Currently not thread-safe
+template<typename T>
+class Ptr
+{
+public:
+
+    Ptr(const Ptr&) = delete;
+    Ptr& operator=(const Ptr&) = delete;
+    Ptr(Ptr&& other) = delete;
+    Ptr& operator=(Ptr&& other) = delete;
+    virtual ~Ptr() = default;
+
+    // Returns true if this Ptr is a UniquePtr, false if a WeakPtr
+    virtual bool owner() const = 0;
+
+    // Returns true if the owner is still valid. Always true for UniquePtr
+    virtual bool valid() const = 0;
+
+    // Get a naked pointer to the internally managed object
+    virtual T* get() const = 0;
+
+    // Return a weak-like ptr to safely access and check for the existence 
+    // of the internally managed object
+    virtual WeakPtr<T> getWeak() const = 0;
+
+    // Get a naked pointer to the internally managed object
+    T* operator->() const { return get(); }
+
+    bool operator==(const T* other) const {return this->get()==other;}
+    bool operator==(const Ptr& other) const {return this->get()==other.get();}
+    bool operator!=(const T* other) const {return !((*this)==other);}
+    bool operator!=(const Ptr& other) const {return !((*this)==other);}
+};
+
+//----------------------------------------------------------------------------//
+
+// Smart ptr to an object owned by another UniquePtr. Enables validity checks
+// on the lifetime of the onwer (i.e., is the owner is alive?) via the .valid()
+// method. Currently not thread-safe
+template<typename T>
+class WeakPtr : public Ptr<T>
+{
+private:
+
+    T* ptr_;
+    std::weak_ptr<void> valid_;
+
+public:
+
+    WeakPtr(T* p, std::shared_ptr<void> flag) : ptr_(p), valid_(flag) {}
+
+    // WeakPtr are never owners
+    bool owner() const override {return false;}
+
+    // Returns false if the owner was destroyed
+    bool valid() const override{return !valid_.expired();}
+    
+    // Returns ptr to the owner or nullptr if the owner was destroyed
+    T* get() const override {return valid() ? ptr_ : nullptr;}
+
+    // Return a weak-like ptr to safely access and check for the existence 
+    // of the internally managed object
+    WeakPtr<T> getWeak() const override {return *this;}
+};
+
+//----------------------------------------------------------------------------//
+
+// Base class to grant any UniquePtr-owned derived class the ability to obtain
+// a WeakPtr to the UniquePtr owner from within the derived class. Follows the
+// spirit of std::enable_shared_from_this. Currently not thread-safe
+template<typename T>
+class EnableWeakFromThis 
+{
+friend class UniquePtr<T>; 
+private:
+    std::weak_ptr<void> valid_;
+protected:
+    void setValid(const std::shared_ptr<void>& valid) {valid_ = valid;}
+public:
+    WeakPtr<T> weakFromThis() const
+    {
+        return WeakPtr<T>(static_cast<T*>(this), valid_.lock());
+    }
+};
+
+//----------------------------------------------------------------------------//
+
+// Smart ptr that fundamentally acts like std::unique_ptr<T> but which allows
+// taking weak ptrs to it. Currently not thread-safe
+template<typename T>
+class UniquePtr : public Ptr<T>
+{
+private:
+
+    std::unique_ptr<T> ptr_;
+    std::shared_ptr<void> valid_;
+    static constexpr bool weakFromThisEnabled_ = 
+        std::is_base_of_v<EnableWeakFromThis<T>, T>;
+
+public:
+
+    UniquePtr() : 
+        ptr_(nullptr), 
+        valid_(nullptr) 
+        {}
+
+    UniquePtr(T* ptr) : 
+        ptr_(ptr), 
+        valid_(ptr ? std::make_shared<void>() : nullptr) 
+        {
+            if constexpr (weakFromThisEnabled_) 
+            {
+                ptr_->setValid(valid_);
+            }
+        }
+
+    UniquePtr(UniquePtr&& other) = default;
+    UniquePtr& operator=(UniquePtr&& other) = default;
+    UniquePtr(const UniquePtr&) = delete;
+    UniquePtr& operator=(const UniquePtr&) = delete;
+    
+    ~UniquePtr() {valid_.reset();}
+
+    // UniquePtrs are always owners
+    bool owner() const override {return true;}
+
+    // UniquePtrs are always valid
+    bool valid() const override {return true;}
+
+    // Get naked ptr to internally managed object
+    T* get() const override { return ptr_.get(); }
+
+    // Get ref to internally managed object
+    T& operator*() const { return *ptr_; }
+
+    // Release ownership without destroying the object
+    T* release() 
+    {
+        T* ptr = ptr_.release();
+        valid_.reset(); // Invalidate all existing WeakPtrs to this
+        return ptr;
+    }
+
+    // Reset to nullptr
+    void reset()
+    {
+        if (ptr_) 
+        {
+            valid_.reset(); // Invalidate all existing WeakPtrs to this
+            ptr_.reset();
+        }
+    }
+    
+    // Reset to new pointer
+    void reset(T* ptr) 
+    {
+        if (ptr_.get() != ptr) 
+        {
+            valid_.reset();  // Invalidate all existing WeakPtrs to this
+            ptr_ = std::unique_ptr<T>(ptr);
+            valid_ = ptr ? std::make_shared<void>() : nullptr;
+            if constexpr (weakFromThisEnabled_) 
+            {
+                ptr_->setValid(valid_);
+            }
+        }
+    }
+
+    // Return a weak-like ptr to safely access and check for the existence 
+    // of the internally managed object
+    WeakPtr<T> getWeak() const override {return WeakPtr<T>(ptr_.get(), valid_);}
+};
+
+//----------------------------------------------------------------------------//
+
+// Factory method to init any T as wrapped by a UniquePtr
+template<typename T, typename... Args>
+UniquePtr<T> makeUnique(Args&&... args)
+{
+    return UniquePtr<T>(new T(std::forward<Args>(args)...));
+}
+
+//----------------------------------------------------------------------------//
+
 // Smart ptr that enables treating any class instance like a singleton. 
-// Ownership is transferred
+// Ownership is transferred. Currently not thread-safe
 template<class T>
 class GlobalPtr
 {
@@ -38,6 +232,15 @@ public:
         return ptr_.get();
     }
 
+    // Initialize with a specific instance and take ownership.
+    // Any WeakPtrs to ptr are invalidated once ptr is made
+    static T* set(UniquePtr<T>&& ptr)
+    {
+        if (!ptr_ && ptr != nullptr)
+            ptr_.reset(ptr.release());
+        return ptr_.get();
+    }
+
     // Get a naked pointer to the internally managed object
     static T* get() {return ptr_.get();}
     
@@ -47,134 +250,5 @@ public:
 
 template<class T>
 std::unique_ptr<T> GlobalPtr<T>::ptr_ = nullptr;
-
-//----------------------------------------------------------------------------//
-
-// Smart ptr base class for UniquePtr and WeakPtr
-template<typename T>
-class Ptr
-{
-public:
-
-    Ptr(const Ptr&) = delete;
-    Ptr& operator=(const Ptr&) = delete;
-    Ptr(Ptr&& other) = delete;
-    Ptr& operator=(Ptr&& other) = delete;
-
-    virtual ~Ptr(){}
-
-    // Returns true if this Ptr is a UniquePtr, false if a WeakPtr
-    virtual bool owner() const = 0;
-
-    // Returns true if the owner is still valid. Always true for UniquePtr
-    virtual bool valid() const = 0;
-
-    // Get a naked pointer to the internally managed object
-    virtual T* get() const = 0;
-
-    // Get a naked pointer to the internally managed object
-    T* operator->() const { return get(); }
-
-    bool operator==(const T* other) const {return this->get()==other;}
-    bool operator==(const Ptr& other) const {return this->get()==other.get();}
-    bool operator!=(const T* other) const {return !(*this)==other;}
-    bool operator!=(const Ptr& other) const {return !(*this)==other;}
-};
-
-//----------------------------------------------------------------------------//
-
-// Smart ptr to an object owned by another UniquePtr. Enables validity checks
-// on the lifetime of the onwer (i.e., is the owner is alive?) via the .valid()
-// method
-template<typename T>
-class WeakPtr : public Ptr<T>
-{
-private:
-
-    T* ptr_;
-    std::weak_ptr<void> valid_;
-
-public:
-
-    WeakPtr(T* p, std::shared_ptr<void> flag) : ptr_(p), valid_(flag) {}
-
-    // WeakPtr are never owners
-    bool owner() const override {return false;}
-
-    // Returns false if the owner was destroyed
-    bool valid() const override{return !valid_.expired();}
-    
-    // Returns ptr to the owner or nullptr if the owner was destroyed
-    T* get() const override {return valid() ? ptr_ : nullptr;}
-};
-
-//----------------------------------------------------------------------------//
-
-// Smart ptr that fundamentally acts like std::unique_ptr<T> but which allows
-// taking weak ptrs to it
-template<typename T>
-class UniquePtr : public Ptr<T>
-{
-private:
-
-    std::unique_ptr<T> ptr_;
-    std::shared_ptr<void> valid_;
-
-public:
-
-    UniquePtr() : 
-        ptr_(nullptr), 
-        valid_(nullptr) 
-        {}
-
-    UniquePtr(T* ptr) : 
-        ptr_(ptr), 
-        valid_(ptr ? std::make_shared<void>() : nullptr) 
-        {}
-
-    UniquePtr(UniquePtr&& other) = default;
-    UniquePtr& operator=(UniquePtr&& other) = default;
-    UniquePtr(const UniquePtr&) = delete;
-    UniquePtr& operator=(const UniquePtr&) = delete;
-    
-    ~UniquePtr() {valid_.reset();}
-
-    // UniquePtrs are always owners
-    bool owner() const override {return true;}
-
-    // UniquePtrs are always valid
-    bool valid() const override {return true;}
-
-    // Get naked ptr to internally managed object
-    T* get() const override { return ptr_.get(); }
-
-    // Get ref to internally managed object
-    T& operator*() { return *ptr_; }
-
-    // Reset to nullptr
-    void reset()
-    {
-        if (ptr_) 
-        {
-            valid_.reset(); // Invalidate all existing WeakPtrs to this
-            ptr_.reset();
-        }
-    }
-    
-    // Reset to new pointer
-    void reset(T* ptr) 
-    {
-        if (ptr_.get() != ptr) 
-        {
-            valid_.reset();  // Invalidate all existing WeakPtrs to this
-            ptr_.reset(ptr);
-            valid_ = ptr ? std::make_shared<void>() : nullptr;
-        }
-    }
-
-    // Return a weak-like ptr to safely access and check for the existence 
-    // of the internally managed object
-    WeakPtr<T> getWeak() {return WeakPtr<T>(ptr_.get(), valid_);}
-};
 
 #endif
