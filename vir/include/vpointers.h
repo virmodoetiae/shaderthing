@@ -5,6 +5,9 @@
 
 //----------------------------------------------------------------------------//
 
+namespace vir
+{
+
 // Forward declarations
 template<typename T>
 class Ptr;
@@ -21,6 +24,7 @@ class Ptr
 {
 public:
 
+    Ptr() = default;
     Ptr(const Ptr&) = delete;
     Ptr& operator=(const Ptr&) = delete;
     Ptr(Ptr&& other) = delete;
@@ -60,13 +64,20 @@ class WeakPtr : public Ptr<T>
 private:
 
     T* ptr_;
-    std::weak_ptr<void> valid_;
+    std::weak_ptr<bool> valid_;
 
 public:
 
-    WeakPtr(T* p, std::shared_ptr<void> flag) : ptr_(p), valid_(flag) {}
+    WeakPtr(T* p, std::shared_ptr<bool> valid) : ptr_(p), valid_(valid) {}
+    WeakPtr(const WeakPtr& other) : ptr_(other.ptr_), valid_(other.valid_) {}
+    WeakPtr& operator=(const WeakPtr& other)
+    {
+        ptr_ = other.ptr_;
+        valid_ = other.valid_;
+        return *this;
+    };
 
-    // WeakPtr are never owners
+    // WeakPtr cannot own
     bool owner() const override {return false;}
 
     // Returns false if the owner was destroyed
@@ -90,9 +101,9 @@ class EnableWeakFromThis
 {
 friend class UniquePtr<T>; 
 private:
-    std::weak_ptr<void> valid_;
+    std::weak_ptr<bool> valid_;
 protected:
-    void setValid(const std::shared_ptr<void>& valid) {valid_ = valid;}
+    void setValid(const std::shared_ptr<bool>& valid) {valid_ = valid;}
 public:
     WeakPtr<T> weakFromThis() const
     {
@@ -110,29 +121,47 @@ class UniquePtr : public Ptr<T>
 private:
 
     std::unique_ptr<T> ptr_;
-    std::shared_ptr<void> valid_;
+    std::shared_ptr<bool> valid_;
     static constexpr bool weakFromThisEnabled_ = 
         std::is_base_of_v<EnableWeakFromThis<T>, T>;
 
 public:
 
-    UniquePtr() : 
-        ptr_(nullptr), 
-        valid_(nullptr) 
-        {}
-
+    UniquePtr() : ptr_(nullptr), valid_(nullptr) {}
     UniquePtr(T* ptr) : 
         ptr_(ptr), 
-        valid_(ptr ? std::make_shared<void>() : nullptr) 
+        valid_(ptr ? std::make_shared<bool>(true) : nullptr) 
+    {
+        if constexpr (weakFromThisEnabled_) 
         {
+            ptr_->setValid(valid_);
+        }
+    }
+    UniquePtr(UniquePtr&& other) : 
+        ptr_(std::move(other.ptr_)), 
+        valid_(std::move(other.valid_))
+    {
+        if constexpr (weakFromThisEnabled_) 
+        {
+            if (ptr_) 
+                ptr_->setValid(valid_);
+        }
+    }
+    UniquePtr& operator=(UniquePtr&& other) noexcept
+    {
+        if (this != &other) 
+        {
+            reset();
+            ptr_ = std::move(other.ptr_);
+            valid_ = std::move(other.valid_);
             if constexpr (weakFromThisEnabled_) 
             {
-                ptr_->setValid(valid_);
+                if (ptr_) 
+                    ptr_->setValid(valid_);
             }
         }
-
-    UniquePtr(UniquePtr&& other) = default;
-    UniquePtr& operator=(UniquePtr&& other) = default;
+        return *this;
+    }
     UniquePtr(const UniquePtr&) = delete;
     UniquePtr& operator=(const UniquePtr&) = delete;
     
@@ -158,7 +187,7 @@ public:
         return ptr;
     }
 
-    // Reset to nullptr
+    // Destroy the managed object and reset to nullptr
     void reset()
     {
         if (ptr_) 
@@ -175,7 +204,7 @@ public:
         {
             valid_.reset();  // Invalidate all existing WeakPtrs to this
             ptr_ = std::unique_ptr<T>(ptr);
-            valid_ = ptr ? std::make_shared<void>() : nullptr;
+            valid_ = ptr ? std::make_shared<bool>(true) : nullptr;
             if constexpr (weakFromThisEnabled_) 
             {
                 ptr_->setValid(valid_);
@@ -190,11 +219,24 @@ public:
 
 //----------------------------------------------------------------------------//
 
-// Factory method to init any T as wrapped by a UniquePtr
+// Factory method to create a new T wrapped by a UniquePtr
 template<typename T, typename... Args>
-UniquePtr<T> makeUnique(Args&&... args)
+static UniquePtr<T> makeUnique(Args&&... args)
 {
     return UniquePtr<T>(new T(std::forward<Args>(args)...));
+}
+
+// Factory method to create a new D wrapped by a UniquePtr<T>, where D is
+// derived from T
+template<typename T, typename D, typename... Args>
+static UniquePtr<T> makeUnique(Args&&... args)
+{
+    static_assert
+    (
+        std::is_base_of_v<D>, 
+        "vir::makeUnique<T, D> - D must derive from T"
+    );
+    return UniquePtr<T>(new D(std::forward<Args>(args)...));
 }
 
 //----------------------------------------------------------------------------//
@@ -250,5 +292,7 @@ public:
 
 template<class T>
 std::unique_ptr<T> GlobalPtr<T>::ptr_ = nullptr;
+
+}
 
 #endif
