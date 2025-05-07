@@ -17,8 +17,8 @@ GLFWOpenGLWindow::GLFWOpenGLWindow
 ) :
     Window(width, height, name, resizable)
 {
-    time_ = Time::initialize<GLFWTime>();
-    context_ = new OpenGLContext();
+    time_ = makeUnique<Time, GLFWTime>();
+    context_ = makeUnique<GraphicsContext, OpenGLContext>();
 
     // This is a very peculiar (read 'stupid') approach to finding the
     // highest supported OpenGL version on the system. Actually untested on

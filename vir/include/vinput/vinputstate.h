@@ -60,9 +60,11 @@ protected:
 
 public:
 
-    static InputState* initialize()
+    static GlobalPtr<InputState> initialize()
     {
-        auto inputState = GlobalPtr<InputState>::set(new InputState());
+        if (GlobalPtr<InputState>::valid())
+            return GlobalPtr<InputState>::get();
+        auto inputState = GlobalPtr<InputState>(new InputState());
         inputState->tuneIntoEventBroadcaster(VIR_INPUT_PRIORITY);
         return inputState;
     }

@@ -85,7 +85,7 @@ void InputCamera::update()
     if (updated_)
         return;
 
-    float dt = Time::instance()->smoothOuterTimestep();
+    float dt = Window::instance()->time()->smoothOuterTimestep();
     dTheta_ *= mouseSensitivity_;
     dPhi_ *= mouseSensitivity_;
 

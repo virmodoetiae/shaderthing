@@ -51,9 +51,11 @@ public:
 
     // T should be a derived class of Broadcaster
     template<typename T>
-    static Broadcaster* initialize()
+    static GlobalPtr<Broadcaster> initialize()
     {
-        return GlobalPtr<Broadcaster>::set(new T());
+        if (GlobalPtr<Broadcaster>::valid())
+            return GlobalPtr<Broadcaster>::get();
+        return GlobalPtr<Broadcaster>(new T());
     }
 
     virtual ~Broadcaster(){}

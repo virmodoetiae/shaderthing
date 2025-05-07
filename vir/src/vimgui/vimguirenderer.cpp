@@ -79,16 +79,16 @@ void ImGuiRenderer::onReceive(Event::KeyCharEvent& event)
         event.handled = true;
 }
 
-ImGuiRenderer* ImGuiRenderer::initialize()
+GlobalPtr<ImGuiRenderer> ImGuiRenderer::initialize()
 {
     if (initialized_)
         return ImGuiRenderer::instance();
-    ImGuiRenderer* instance = nullptr;
+    GlobalPtr<ImGuiRenderer> instance = nullptr;
     switch (vir::platform)
     {
         case PlatformType::GLFWOpenGL :
         {
-            instance = GlobalPtr<ImGuiRenderer>::set
+            instance = GlobalPtr<ImGuiRenderer>
             (
                 new GLFWOpenGLImGuiRenderer()
             );

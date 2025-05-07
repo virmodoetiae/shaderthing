@@ -132,8 +132,11 @@ OpenGLShader::OpenGLShader
     static bool currentContextExtensionStatusMapInitialized = false;
     if (!currentContextExtensionStatusMapInitialized)
     {
-        static auto* context = Window::instance()->context();
-        for (const auto& extension : context->supportedExtensions())
+        for 
+        (
+            const auto& extension : 
+            Window::instance()->context()->supportedExtensions()
+        )
             currentContextExtensionsStatusMap_.insert({extension, false});
         currentContextExtensionStatusMapInitialized = true;
     }
@@ -350,10 +353,9 @@ void OpenGLShader::bindShaderStorageBlock
 
 std::string OpenGLShader::currentContextShadingLanguageDirectives()
 {
-    static auto* context = Window::instance()->context();
     std::string version = 
-        std::to_string(context->versionMajor()) +
-        std::to_string(context->versionMinor()) +
+        std::to_string(Window::instance()->context()->versionMajor()) +
+        std::to_string(Window::instance()->context()->versionMinor()) +
         "0";
     std::string directives =
         "#version "+version+" core\n";

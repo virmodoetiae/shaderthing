@@ -14,10 +14,4 @@ iconified_(false),
 resizable_(r)
 {}
 
-Window::~Window()
-{
-    delete context_;
-    context_ = nullptr;
-}
-
 }

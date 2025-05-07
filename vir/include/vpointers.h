@@ -128,7 +128,7 @@ private:
 public:
 
     UniquePtr() : ptr_(nullptr), valid_(nullptr) {}
-    UniquePtr(T* ptr) : 
+    explicit UniquePtr(T* ptr) : 
         ptr_(ptr), 
         valid_(ptr ? std::make_shared<bool>(true) : nullptr) 
     {
@@ -147,7 +147,7 @@ public:
                 ptr_->setValid(valid_);
         }
     }
-    UniquePtr& operator=(UniquePtr&& other) noexcept
+    UniquePtr& operator=(UniquePtr&& other)
     {
         if (this != &other) 
         {
@@ -233,7 +233,7 @@ static UniquePtr<T> makeUnique(Args&&... args)
 {
     static_assert
     (
-        std::is_base_of_v<D>, 
+        std::is_base_of_v<T, D>, 
         "vir::makeUnique<T, D> - D must derive from T"
     );
     return UniquePtr<T>(new D(std::forward<Args>(args)...));
@@ -242,7 +242,7 @@ static UniquePtr<T> makeUnique(Args&&... args)
 //----------------------------------------------------------------------------//
 
 // Smart ptr that enables treating any class instance like a singleton. 
-// Ownership is transferred. Currently not thread-safe
+// Ownership is transferred
 template<class T>
 class GlobalPtr
 {
@@ -250,44 +250,38 @@ protected:
 
     static std::unique_ptr<T> ptr_;
 
-    GlobalPtr() = delete;
-    GlobalPtr(const GlobalPtr&) = delete;
-    GlobalPtr(GlobalPtr&&) = delete;
-    GlobalPtr& operator=(const GlobalPtr&) = delete;
-    GlobalPtr& operator=(GlobalPtr&&) = delete;
-
 public:
 
-    // Initialize with a specific instance and take ownership
-    static T* set(T* ptr)
+    GlobalPtr() = default;
+    
+    // Initialize given an instance and take ownership
+    GlobalPtr(T* ptr)
     {
         if (!ptr_ && ptr)
             ptr_.reset(ptr);
-        return ptr_.get();
     }
-
-    // Initialize with a specific instance and take ownership
-    static T* set(std::unique_ptr<T>&& ptr)
-    {
-        if (!ptr_ && ptr)
-            ptr_ = ptr;
-        return ptr_.get();
-    }
-
-    // Initialize with a specific instance and take ownership.
-    // Any WeakPtrs to ptr are invalidated once ptr is made
-    static T* set(UniquePtr<T>&& ptr)
+    
+    // Initialize given an instance and take ownership. Any WeakPtrs to ptr are
+    // invalidated
+    GlobalPtr(UniquePtr<T>&& ptr)
     {
         if (!ptr_ && ptr != nullptr)
             ptr_.reset(ptr.release());
-        return ptr_.get();
     }
+
+    // Returns true if the internally managed object exists
+    static bool valid() {return ptr_ != nullptr;}
 
     // Get a naked pointer to the internally managed object
     static T* get() {return ptr_.get();}
-    
-    // Returns true if the internally managed object exists
-    static bool valid() {return ptr_ != nullptr;}
+
+    // Get a naked pointer to the internally managed object
+    T* operator->() const { return get(); }
+
+    bool operator==(const T* other) const {return this->get()==other;}
+    bool operator==(const GlobalPtr& other) const {return this->get()==other.get();}
+    bool operator!=(const T* other) const {return !((*this)==other);}
+    bool operator!=(const GlobalPtr& other) const {return !((*this)==other);}
 };
 
 template<class T>

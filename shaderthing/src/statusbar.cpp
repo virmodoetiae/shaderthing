@@ -38,7 +38,7 @@ void StatusBar::renderGui(bool withSeparator)
     // its specified time duration
     auto& message = messageQueue_[0];
 
-    message.duration -= vir::Time::instance()->outerTimestep();;
+    message.duration -= vir::Window::instance()->time()->outerTimestep();;
     if (message.duration < 0)
     {
         if (!message.isPersistent)

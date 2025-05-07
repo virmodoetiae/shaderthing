@@ -33,13 +33,8 @@ public :
 
 protected :
 
-    // Time (not owned by Window, managed by GlobalPtr)
-    Time* time_;
-
-    // Graphics context (owned by Window)
-    GraphicsContext* context_;
-
-    // Window properties
+    UniquePtr<Time> time_;
+    UniquePtr<GraphicsContext> context_;
     std::string title_;
     uint32_t width_;
     uint32_t height_;
@@ -56,8 +51,8 @@ public:
 
     // Create window classes via this, where WT is the actual Window type to be 
     // instanced and CT the actual GraphicsContext type
-    template<class WT>
-    static Window* initialize
+    template<class T>
+    static GlobalPtr<Window> initialize
     (
         uint32_t w, 
         uint32_t h, 
@@ -65,10 +60,17 @@ public:
         bool r=true
     )
     {
-        return GlobalPtr<Window>::set(new WT(w, h, t, r));
+        static_assert
+        (
+            std::is_base_of_v<Window, T>, 
+            "Window::initialize<T>() - T must derive from Window"
+        );
+        if (GlobalPtr<Window>::valid())
+            return GlobalPtr<Window>::get();
+        return GlobalPtr<Window>(new T(w, h, t, r));
     }
 
-    virtual ~Window();
+    virtual ~Window() = default;
 
     // Runs the provided function with the provided arguments on every window
     // frame while the window is open
@@ -142,8 +144,8 @@ public:
     virtual void update(bool swapBuffers=true) = 0; 
 
     // Accessors
-    Time* time() {return time_;}
-    GraphicsContext* context() {return context_;}
+    const UniquePtr<Time>& time() {return time_;}
+    const UniquePtr<GraphicsContext>& context() {return context_;}
     const std::string& title() const {return title_;}
     uint32_t width() const {return width_;}
     uint32_t height() const {return height_;}

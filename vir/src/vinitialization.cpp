@@ -11,7 +11,7 @@ PlatformType platform = PlatformType::None;
 void initialize(const Settings& settings)
 {
     platform = settings.platform;
-    Window* window = nullptr;
+    GlobalPtr<Window> window = nullptr;
     switch(platform)
     {
         case PlatformType::GLFWOpenGL :

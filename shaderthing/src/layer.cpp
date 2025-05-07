@@ -2074,7 +2074,7 @@ void Layer::renderLayersTabBarGui // Static
     }
     if (anyUncompiledChanges || compilationErrors) // Render compilation button 
     {
-        float time = vir::Time::instance()->outerTime();
+        float time = vir::Window::instance()->time()->outerTime();
         ImVec4 compileButtonColor = 
         {
             .5f*glm::sin(6.283f*(time/3+0.f/3))+.3f,
@@ -2449,8 +2449,6 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
 {
     if (ImGui::BeginMenu("OpenGL extensions"))
     {
-        static auto* context = 
-            vir::Window::instance()->context();
         float fontSize(ImGui::GetFontSize());
         float textWidth(40.0f*fontSize);
         float vSpace = .25*ImGui::GetTextLineHeightWithSpacing();
@@ -2473,7 +2471,7 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
 "context (%s), yet their status is never correctly reported and there is no "
 "possibility of disabling them: enabling/disabling such extensions from here is "
 "inconsequential.", 
-        context->name().c_str());
+        vir::Window::instance()->context()->name().c_str());
         ImGui::Dummy(ImVec2(-1, vSpace));
         ImGui::Text(
 "The previously listed issues are due to the impossibility to query the "
@@ -2486,7 +2484,7 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
         static std::string filter = "";
         static bool caseSensitive = false;
         const auto& supportedExtensions = 
-            context->supportedExtensions();
+            vir::Window::instance()->context()->supportedExtensions();
         static std::vector<std::string> filteredExtensions = 
             supportedExtensions;
 

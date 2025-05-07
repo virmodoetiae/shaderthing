@@ -47,7 +47,7 @@ public:
     const std::string& deviceName() const {return deviceName_;}
 
     // Use this to initialize the GlobalPtr to Renderer
-    static Renderer* initialize();
+    static GlobalPtr<Renderer> initialize();
 
     // Low-level accessors (just in case...)
     void clear(float r=.0f, float g=.0f, float b=.0f, float a=.0f) 

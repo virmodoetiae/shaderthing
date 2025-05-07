@@ -15,14 +15,13 @@ GLuint findFreeSSBOBindingPoint();
 // Set the canRunOnDeviceInUse_, errorMessage_ variables of OpenGL-based
 // PostProcess-derived objects
 #define CHECK_OPENGL_COMPUTE_SHADERS_AVAILABLE                               \
-    auto context = Window::instance()->context();                            \
+    const auto& context = Window::instance()->context();                     \
     if (context->versionMajor() < 4)                                         \
         canRunOnDeviceInUse_ = false;                                        \
     else if (context->versionMinor() < 3)                                    \
         canRunOnDeviceInUse_ = false;                                        \
     if (!canRunOnDeviceInUse_)                                               \
     {                                                                        \
-        auto* context(Window::instance()->context());                        \
         std::string glVersion                                                \
         (                                                                    \
             std::to_string(context->versionMajor())+"."+                     \

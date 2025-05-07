@@ -22,16 +22,16 @@ Renderer::~Renderer()
     api_ = nullptr;
 }
 
-Renderer* Renderer::initialize()
+GlobalPtr<Renderer> Renderer::initialize()
 {
-    if (!GlobalPtr<Window>::valid())
-        return nullptr;
+    if (!GlobalPtr<Window>::valid() || GlobalPtr<Renderer>::valid())
+        return GlobalPtr<Renderer>();
     switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return GlobalPtr<Renderer>::set(new OpenGLRenderer());
+            return GlobalPtr<Renderer>(new OpenGLRenderer());
     }
-    return nullptr;
+    return GlobalPtr<Renderer>();
 }
 
 void Renderer::submit

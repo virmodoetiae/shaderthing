@@ -26,7 +26,7 @@ protected:
 
 public:
 
-    static ImGuiRenderer* initialize();
+    static GlobalPtr<ImGuiRenderer> initialize();
     virtual ~ImGuiRenderer();
 
     DECLARE_RECEIVABLE_EVENTS

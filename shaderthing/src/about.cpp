@@ -92,7 +92,7 @@ void About::renderGui()
     }
 
     // Time & position dependent color
-    float time = vir::Time::instance()->outerTime();
+    float time = vir::Window::instance()->time()->outerTime();
     for (int i=0; i < nv; i++)
     {
         colorDict[i].second =

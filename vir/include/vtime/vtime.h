@@ -34,15 +34,7 @@ protected :
 
 public : 
 
-    template<class DerivedTime>
-    static Time* initialize()
-    {
-        return GlobalPtr<Time>::set(new DerivedTime());
-    }
-
-    Time(){}
-
-    virtual ~Time(){}
+    virtual ~Time() = default;
 
     void setConstantInnerTimeStep(float);
     void setAdaptiveInnerTimeStep(float);
@@ -59,8 +51,6 @@ public :
     float outerTimestep(){return outerTimestep_;}
     float innerTimestep(){return innerTimestep_;}
     float smoothOuterTimestep(){return smoothOuterTimestep_;}
-
-    static Time* instance() {return GlobalPtr<Time>::get();}
 };
 
 }
