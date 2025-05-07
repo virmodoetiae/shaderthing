@@ -15,14 +15,15 @@ public:
         OpenGL
     };
 protected:
+    Type type_; 
     std::string name_;
     int versionMajor_;
     int versionMinor_;
     std::vector<std::string> supportedExtensions_;
+    GraphicsContext(Type type) : type_(type) {};
 public:
-    GraphicsContext() = default;
-    virtual ~GraphicsContext(){}
-
+    GraphicsContext() = delete;
+    virtual ~GraphicsContext() = default;
     const std::string& name() const {return name_;}
     int versionMajor() const {return versionMajor_;}
     int versionMinor() const {return versionMinor_;}
@@ -39,9 +40,8 @@ public:
             extensionName
         ) != supportedExtensions_.end();
     }
-    virtual Type type() const = 0;
-    virtual void initialize(void* nativeWindow) = 0;
-    virtual void printErrors() const = 0;
+    Type type() const {return type_;}
+    virtual std::vector<std::string> retrieveErrors() const = 0;
 };
 
 }

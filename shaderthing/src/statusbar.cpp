@@ -17,7 +17,7 @@
 
 #include "shaderthing/include/statusbar.h"
 
-#include "vir/include/vtime/vtime.h"
+#include "vir/include/vir.h"
 
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"

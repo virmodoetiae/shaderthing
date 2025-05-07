@@ -17,9 +17,6 @@ GLFWOpenGLWindow::GLFWOpenGLWindow
 ) :
     Window(width, height, name, resizable)
 {
-    time_ = makeUnique<Time, GLFWTime>();
-    context_ = makeUnique<GraphicsContext, OpenGLContext>();
-
     // This is a very peculiar (read 'stupid') approach to finding the
     // highest supported OpenGL version on the system. Actually untested on
     // systems that do not support 4.6, so I am not sure this will work, but
@@ -56,7 +53,8 @@ GLFWOpenGLWindow::GLFWOpenGLWindow
         glfwTerminate();
         throw std::runtime_error("Failed to create GLFW window");
     }
-    context_->initialize(glfwWindow_); 
+    time_ = makeUnique<Time, GLFWTime>();
+    context_ = makeUnique<GraphicsContext, OpenGLContext>(glfwWindow_);
     setVSync(true);
 }
 

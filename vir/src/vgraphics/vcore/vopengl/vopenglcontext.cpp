@@ -6,10 +6,10 @@ namespace vir
 
 bool OpenGLContext::gladInitialized_ = false;
 
-void OpenGLContext::initialize(void* nativeWindow)
+OpenGLContext::OpenGLContext(void* nativeWindow) : 
+GraphicsContext(GraphicsContext::Type::OpenGL)
 {
-    glfwWindow_ = static_cast<GLFWwindow*>(nativeWindow);
-    glfwMakeContextCurrent(glfwWindow_);
+    glfwMakeContextCurrent(static_cast<GLFWwindow*>(nativeWindow));
     if (!gladInitialized_)
     {
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -36,36 +36,41 @@ void OpenGLContext::initialize(void* nativeWindow)
     }
 }
 
-void OpenGLContext::printErrors() const
+std::vector<std::string> OpenGLContext::retrieveErrors() const
 {
-    GLenum err;
-    while((err = glGetError()) != GL_NO_ERROR)
+    GLenum error;
+    std::vector<std::string> errors = {};
+    while((error = glGetError()) != GL_NO_ERROR)
     {
-        switch (err)
+        switch (error)
         {
         case GL_INVALID_ENUM:
-            std::cout << "GL_INVALID_ENUM" << std::endl;
+            errors.emplace_back("GL_INVALID_ENUM");
             break;
         case GL_INVALID_VALUE:
-            std::cout << "GL_INVALID_VALUE" << std::endl;
+            errors.emplace_back("GL_INVALID_VALUE");
             break;
         case GL_INVALID_OPERATION:
-            std::cout << "GL_INVALID_OPERATION" << std::endl;
+            errors.emplace_back("GL_INVALID_OPERATION");
             break;
         case GL_STACK_UNDERFLOW:
-            std::cout << "GL_STACK_UNDERFLOW" << std::endl;
+            errors.emplace_back("GL_STACK_UNDERFLOW");
+            break;
+        case GL_STACK_OVERFLOW:
+            errors.emplace_back("GL_STACK_OVERFLOW");
             break;
         case GL_OUT_OF_MEMORY:
-            std::cout << "GL_OUT_OF_MEMORY" << std::endl;
+            errors.emplace_back("GL_OUT_OF_MEMORY");
             break;
         case GL_INVALID_FRAMEBUFFER_OPERATION:
-            std::cout << "GL_INVALID_FRAMEBUFFER_OPERATION" << std::endl;
+            errors.emplace_back("GL_INVALID_FRAMEBUFFER_OPERATION");
             break;
         case GL_CONTEXT_LOST:
-            std::cout << "GL_CONTEXT_LOST" << std::endl;
+            errors.emplace_back("GL_CONTEXT_LOST");
             break;
         }
     }
+    return errors;
 }
 
 }
