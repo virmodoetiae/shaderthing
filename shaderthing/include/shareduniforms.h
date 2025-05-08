@@ -180,11 +180,11 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
         
           // Fixed camera used to retrieve the value of the projection view 
           // matrix iMVP
-          vir::Camera*        screenCamera_   = nullptr;
+          vir::UniquePtr<vir::Camera> screenCamera_;
 
           // Movable camera which responds to keyboard and mouse controls and is
           // used to provide values to cpuBlock.iWASD, cpuBlock.iLook
-          vir::Camera*        shaderCamera_   = nullptr;
+          vir::UniquePtr<vir::Camera> shaderCamera_;
 
           // List of user-created uniforms which are shared by all layers
           std::vector<Uniform*> 

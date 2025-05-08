@@ -42,9 +42,9 @@ SharedUniforms::SharedUniforms()
 
     // Init cameras
     if (screenCamera_ == nullptr)
-        screenCamera_ = vir::Camera::create<vir::Camera>();
+        screenCamera_ = vir::makeUnique<vir::Camera>();
     if (shaderCamera_ == nullptr)
-        shaderCamera_ = vir::Camera::create<vir::InputCamera>();
+        shaderCamera_ = vir::makeUnique<vir::Camera, vir::InputCamera>();
     screenCamera_->setProjectionType
     (
         vir::Camera::ProjectionType::Orthographic
@@ -216,8 +216,8 @@ SharedUniforms::~SharedUniforms()
 {
     DELETE_IF_NOT_NULLPTR(fBuffer_)
     DELETE_IF_NOT_NULLPTR(vBuffer_)
-    DELETE_IF_NOT_NULLPTR(screenCamera_)
-    DELETE_IF_NOT_NULLPTR(shaderCamera_)
+    //DELETE_IF_NOT_NULLPTR(screenCamera_)
+    //DELETE_IF_NOT_NULLPTR(shaderCamera_)
     DELETE_IF_NOT_NULLPTR(random_)
 }
 
@@ -336,7 +336,7 @@ void SharedUniforms::toggleKeyboardInputs()
 
 void SharedUniforms::toggleCameraKeyboardInputs()
 {
-    auto camera = (vir::InputCamera*)shaderCamera_;
+    auto camera = (vir::InputCamera*)shaderCamera_.get();
     flags_.isCameraKeyboardInputEnabled = !flags_.isCameraKeyboardInputEnabled;
     if (flags_.isCameraKeyboardInputEnabled)
         camera->resumeEventReception(vir::Event::Type::KeyPress);
@@ -348,7 +348,7 @@ void SharedUniforms::toggleCameraKeyboardInputs()
 
 void SharedUniforms::toggleCameraMouseInputs()
 {
-    auto camera = (vir::InputCamera*)shaderCamera_;
+    auto camera = (vir::InputCamera*)shaderCamera_.get();
     flags_.isCameraMouseInputEnabled = !flags_.isCameraMouseInputEnabled;
     if (flags_.isCameraMouseInputEnabled)
         camera->resumeEventReception(vir::Event::Type::MouseMotion);
@@ -894,7 +894,7 @@ void SharedUniforms::setMouseCaptured(bool flag)
         pauseForOneBroadcast(this, vir::Event::Type::MouseButtonRelease);
         pauseForOneBroadcast
         (
-            (vir::InputCamera*)this->shaderCamera_, 
+            (vir::InputCamera*)this->shaderCamera_.get(), 
             vir::Event::Type::MouseMotion
         );
         window->setCursorStatus(vir::Window::CursorStatus::Hidden);

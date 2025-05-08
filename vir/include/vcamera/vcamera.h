@@ -95,13 +95,7 @@ protected:
 public:
 
     Camera();
-    virtual ~Camera(){}
-
-    template<class CameraType = Camera>
-    static Camera* create()
-    {
-        return new CameraType();
-    }
+    virtual ~Camera() = default;
     
     void lockYAxis(){yAxisType_ = YAxisType::Locked;}
     void unlockYAxis(){yAxisType_ = YAxisType::Free;}

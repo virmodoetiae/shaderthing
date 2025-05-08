@@ -17,7 +17,7 @@ protected:
 public:
 
     InputCamera();
-    virtual ~InputCamera(){}
+    ~InputCamera() override = default;
 
     DECLARE_RECEIVABLE_EVENTS
     (
