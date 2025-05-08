@@ -248,6 +248,24 @@ public:
         }
     }
 
+    // Reset to new pointer of a derived type
+    template<typename D, typename = std::enable_if_t<
+        std::is_base_of_v<T, D> && 
+        !std::is_same_v<T, D>>>
+    void reset(D* ptr) 
+    {
+        if (ptr_.get() != static_cast<T*>(ptr)) 
+        {
+            valid_.reset();  // Invalidate all existing WeakPtrs to this
+            ptr_ = std::unique_ptr<T>(ptr);
+            valid_ = ptr ? std::make_shared<bool>(true) : nullptr;
+            if constexpr (weakFromThisEnabled_) 
+            {
+                ptr_->setValid(valid_);
+            }
+        }
+    }
+
     // Return a weak-like ptr to safely access and check for the existence 
     // of the internally managed object
     WeakPtr<T> getWeak() const override {return WeakPtr<T>(ptr_.get(), valid_);}

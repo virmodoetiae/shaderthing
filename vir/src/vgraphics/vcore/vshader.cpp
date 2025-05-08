@@ -244,7 +244,7 @@ void Shader::Uniform::setType
     setType(type, doNotReinitializeIfImageOrSampler, valueArraySize_);
 }
 
-Shader* Shader::create
+UniquePtr<Shader> Shader::create
 (
     const std::string& vs, 
     const std::string& fs, 
@@ -252,13 +252,13 @@ Shader* Shader::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return UniquePtr<Shader>();
     switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLShader(vs, fs, cf);
+            return makeUnique<OpenGLShader>(vs, fs, cf);
     }
-    return nullptr;
+    return UniquePtr<Shader>();
 }
 
 //----------------------------------------------------------------------------//

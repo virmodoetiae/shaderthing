@@ -65,7 +65,7 @@ public:
         vir::Framebuffer*               frontFramebuffer    = nullptr;
         vir::Framebuffer*               backFramebuffer     = nullptr;
         vir::Framebuffer*               resourceFramebuffer = nullptr;
-        vir::Shader*                    shader              = nullptr;
+        vir::UniquePtr<vir::Shader>     shader;
         std::vector<PostProcess*>       postProcesses       = {};
 
         struct TileData
@@ -96,7 +96,7 @@ public:
         
         // I only use unique_ptrs to conveniently manage the lifetime of static
         // ptr-type resources
-        static std::unique_ptr<vir::Shader>
+        static vir::UniquePtr<vir::Shader>
                                         textureMapperShader;
         static std::unique_ptr<SharedStorage> 
                                         sharedStorage;
@@ -180,7 +180,7 @@ private:
         ) const;
     void setResolution
     (
-        const glm::ivec2& resolution,
+        glm::ivec2 resolution,
         const bool windowFrameManuallyDragged,
         const bool tryEnfoceWindowAspectRatio=false,
         const bool setExportResolution=true

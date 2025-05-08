@@ -144,7 +144,7 @@ TextEditor Layer::GUI::sharedSourceEditor =
 
 // Shader for mapping the contents of a framebuffer to another one, potentially
 // at a different resolution and/or internal format
-std::unique_ptr<vir::Shader> Layer::Rendering::textureMapperShader = nullptr;
+vir::UniquePtr<vir::Shader> Layer::Rendering::textureMapperShader;
 
 // Shared storage buffer for all layers
 std::unique_ptr<SharedStorage> Layer::Rendering::sharedStorage     = nullptr;
@@ -255,8 +255,7 @@ R"(void main()
     // Initialize std::unique_ptrs to manage static shaders
     if (Layer::Rendering::textureMapperShader != nullptr)
         return;
-    Layer::Rendering::textureMapperShader = std::unique_ptr<vir::Shader>
-    (
+    Layer::Rendering::textureMapperShader =
         vir::Shader::create
         (
             vertexShaderSource(sharedUniforms),
@@ -267,9 +266,8 @@ in      vec2      tc;
 uniform sampler2D tx;
 void main(){fragColor = texture(tx, tc);})",
             vir::Shader::ConstructFrom::SourceCode
-        )
-    );
-    sharedUniforms.bindShader(Layer::Rendering::textureMapperShader.get());
+        );
+    sharedUniforms.bindShader(Layer::Rendering::textureMapperShader.get()); // TODO, do not pass raw ptrs
 }
 
 //----------------------------------------------------------------------------//
@@ -278,7 +276,7 @@ Layer::~Layer()
 {
     DELETE_IF_NOT_NULLPTR(rendering_.framebufferA)
     DELETE_IF_NOT_NULLPTR(rendering_.framebufferB)
-    DELETE_IF_NOT_NULLPTR(rendering_.shader)
+    //DELETE_IF_NOT_NULLPTR(rendering_.shader)
     DELETE_IF_NOT_NULLPTR(rendering_.quad)
     for (auto postProcess : rendering_.postProcesses)
     {
@@ -401,6 +399,10 @@ Layer* Layer::load
     layer->resolution_ = (glm::vec2)io.read<glm::ivec2>("resolution");
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
     layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
+    // Ensure iAspectRatio and iResolution values are actually updated
+    layer->uniformBuffer_->markUniformForSubmission(layer->uniforms_[0]);
+    layer->uniformBuffer_->markUniformForSubmission(layer->uniforms_[1]); 
+    
     layer->flags_.rescaleWithWindow = 
         io.readOrDefault<bool>("rescaleWithWindow", true);
     
@@ -757,13 +759,12 @@ Layer::fragmentShaderHeaderSourceAndLineCount
 
 void Layer::setResolution
 (
-    const glm::ivec2& iResolution,
+    glm::ivec2 resolution,
     const bool windowFrameManuallyDragged,
     const bool tryEnfoceWindowAspectRatio,
     const bool setExportResolution
 )
 {
-    glm::ivec2 resolution = iResolution;
     static const auto* window(vir::Window::instance());
     glm::vec2 windowResolution(window->width(), window->height());
     if (windowFrameManuallyDragged)
@@ -821,10 +822,8 @@ void Layer::setResolution
     if (rendering_.shader == nullptr)
         return;
     rendering_.shader->bind();
-    rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
-    rendering_.shader->setUniformFloat2("iResolution", resolution_);
-    uniformBuffer_->markUniformForSubmission(uniforms_[0]);
-    uniformBuffer_->markUniformForSubmission(uniforms_[1]);
+    uniformBuffer_->markUniformForSubmission(uniforms_[0]); // iAspectRatio
+    uniformBuffer_->markUniformForSubmission(uniforms_[1]); // iResolution
 }
 
 //----------------------------------------------------------------------------//
@@ -920,7 +919,7 @@ void Layer::rebuildFramebuffers
                 vir::Renderer::instance()->submit
                 (
                     *quad, 
-                    Layer::Rendering::textureMapperShader.get(), 
+                    Layer::Rendering::textureMapperShader.get(), // TODO, do not pass raw ptrs
                     newFramebuffer
                 );
             framebuffer->unbind();
@@ -995,8 +994,8 @@ bool Layer::compileShader
     );
     if (shader->valid())
     {
-        delete rendering_.shader;
-        rendering_.shader = shader;
+        //delete rendering_.shader;
+        rendering_.shader = std::move(shader);
         gui_.headerErrors.clear();
         gui_.sourceEditor.setErrorMarkers({});
         gui_.sharedSourceEditor.setErrorMarkers({});
@@ -1012,9 +1011,9 @@ bool Layer::compileShader
         );
         flags_.uncompiledChanges = false;
         // Re-set uniforms
-        shader->bindUniformBlock("privateUniformBlock", uniformBufferBindingPoint_);
-        sharedUniforms.bindShader(rendering_.shader);
-        Rendering::sharedStorage->bindShader(rendering_.shader);
+        rendering_.shader->bindUniformBlock("privateUniformBlock", uniformBufferBindingPoint_);
+        sharedUniforms.bindShader(rendering_.shader.get()); // TODO, do not pass raw ptrs
+        Rendering::sharedStorage->bindShader(rendering_.shader.get()); // TODO, do not pass raw ptrs
         rendering_.shader->bind();
         /*
         #define CASE(ST, T, F)                                              \
@@ -1100,7 +1099,7 @@ bool Layer::compileShader
     };
     setEditorErrors(gui_.sourceEditor, sourceErrors);
     setEditorErrors(gui_.sharedSourceEditor, sharedErrors);
-    delete shader;
+    //delete shader;
     if (setBlankShaderOnError)
     {
         // Initialize the shader with a blank shader source if any compilation
@@ -1197,7 +1196,7 @@ void Layer::renderShader
         unsigned int& imageUnit
     )
     {
-        vir::Shader* shader(layer->rendering_.shader);
+        const auto& shader = layer->rendering_.shader;
         for (auto u : uniforms)
         {
             bool isSampler
@@ -1344,7 +1343,7 @@ void Layer::renderShader
     renderer->submit
     (
         *rendering_.quad,
-        rendering_.shader,
+        rendering_.shader.get(), // TODO
         target,
         allowClearTargetAndPostProcess && 
         (
@@ -1379,7 +1378,7 @@ void Layer::renderShader
     renderer->submit
     (
         *rendering_.quad, 
-        Layer::Rendering::textureMapperShader.get(), 
+        Layer::Rendering::textureMapperShader.get(), // TODO, do not pass raw ptrs
         target0,
         allowClearTargetAndPostProcess && clearTarget
     );
@@ -1597,8 +1596,7 @@ Layer::Rendering::Result Layer::renderShaders // Static
         blankQuad->update(viewport.x, viewport.y, 0);
         auto constructBlankShader = [&sharedUniforms]()
         {
-            auto shader = std::unique_ptr<vir::Shader>
-            (
+            auto shader = 
                 vir::Shader::create
                 (
                     vertexShaderSource(sharedUniforms),
@@ -1608,9 +1606,8 @@ in     vec2 qc;
 in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})",
                     vir::Shader::ConstructFrom::SourceCode
-                )
-            );
-            sharedUniforms.bindShader(shader.get());
+                );
+            sharedUniforms.bindShader(shader.get()); // TODO, do not pass raw ptrs
             return shader;
         };
         static auto blankShader = constructBlankShader();

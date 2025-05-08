@@ -6,6 +6,8 @@
 #include <variant>
 #include <vector>
 
+#include "vir/include/vmacros.h"
+#include "vir/include/vpointers.h"
 #include "thirdparty/glm/glm.hpp"
 
 namespace vir
@@ -187,14 +189,16 @@ protected:
     // shadingLanguageDirectives()? Only useful for OpenGL (as far as I know)
     static std::unordered_map<std::string, bool> 
         currentContextExtensionsStatusMap_;
+    Shader() = default;
+    DELETE_COPY_MOVE(Shader)
 public:
-    static Shader* create
+    static UniquePtr<Shader> create
     (
         const std::string& vertexSource, 
         const std::string& fragmentSource, 
         ConstructFrom constructFrom
     ); 
-    virtual ~Shader(){}
+    virtual ~Shader() = default;
     virtual void bind() const = 0;
     virtual void unbind() const = 0;
 
