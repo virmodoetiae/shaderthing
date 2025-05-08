@@ -118,6 +118,9 @@ public:
 template<typename T>
 class UniquePtr : public Ptr<T>
 {
+template<typename U>
+friend class UniquePtr; // To enable move ctor with UniquePtr<D> where T is 
+                        // a base of D
 private:
 
     std::unique_ptr<T> ptr_;
@@ -147,12 +150,45 @@ public:
                 ptr_->setValid(valid_);
         }
     }
+    // To enable move ctor via UniquePtr<D> where T is a base of D
+    template<typename D, typename = std::enable_if_t<
+        std::is_base_of_v<T, D> && 
+        !std::is_same_v<T, D>>>
+    UniquePtr(UniquePtr<D>&& other) : 
+        ptr_(other.ptr_.release()), 
+        valid_(std::move(other.valid_))
+    {
+        if constexpr (weakFromThisEnabled_) 
+        {
+            if (ptr_) 
+                ptr_->setValid(valid_);
+        }
+    }
     UniquePtr& operator=(UniquePtr&& other)
     {
         if (this != &other) 
         {
             reset();
             ptr_ = std::move(other.ptr_);
+            valid_ = std::move(other.valid_);
+            if constexpr (weakFromThisEnabled_) 
+            {
+                if (ptr_) 
+                    ptr_->setValid(valid_);
+            }
+        }
+        return *this;
+    }
+    // To enable move assignment via UniquePtr<D> where T is a base of D
+    template<typename D, typename = std::enable_if_t<
+        std::is_base_of_v<T, D> && 
+        !std::is_same_v<T, D>>>
+    UniquePtr& operator=(UniquePtr<D>&& other)
+    {
+        if (this->get() != static_cast<T*>(other.get()))
+        {
+            reset();
+            ptr_.reset(other.ptr_.release());
             valid_ = std::move(other.valid_);
             if constexpr (weakFromThisEnabled_) 
             {
@@ -224,19 +260,6 @@ template<typename T, typename... Args>
 static UniquePtr<T> makeUnique(Args&&... args)
 {
     return UniquePtr<T>(new T(std::forward<Args>(args)...));
-}
-
-// Factory method to create a new D wrapped by a UniquePtr<T>, where D is
-// derived from T
-template<typename T, typename D, typename... Args>
-static UniquePtr<T> makeUnique(Args&&... args)
-{
-    static_assert
-    (
-        std::is_base_of_v<T, D>, 
-        "vir::makeUnique<T, D> - D must derive from T"
-    );
-    return UniquePtr<T>(new D(std::forward<Args>(args)...));
 }
 
 //----------------------------------------------------------------------------//

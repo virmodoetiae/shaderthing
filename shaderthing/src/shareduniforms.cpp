@@ -44,7 +44,7 @@ SharedUniforms::SharedUniforms()
     if (screenCamera_ == nullptr)
         screenCamera_ = vir::makeUnique<vir::Camera>();
     if (shaderCamera_ == nullptr)
-        shaderCamera_ = vir::makeUnique<vir::Camera, vir::InputCamera>();
+        shaderCamera_ = vir::makeUnique<vir::InputCamera>();
     screenCamera_->setProjectionType
     (
         vir::Camera::ProjectionType::Orthographic

@@ -53,8 +53,8 @@ GLFWOpenGLWindow::GLFWOpenGLWindow
         glfwTerminate();
         throw std::runtime_error("Failed to create GLFW window");
     }
-    time_ = makeUnique<Time, GLFWTime>();
-    context_ = makeUnique<GraphicsContext, OpenGLContext>(glfwWindow_);
+    time_ = makeUnique<GLFWTime>();
+    context_ = makeUnique<OpenGLContext>(glfwWindow_);
     setVSync(true);
 }
 
