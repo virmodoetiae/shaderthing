@@ -12,7 +12,7 @@ bool Broadcaster::addReceiver(Receiver& receiver)
     bool added = false;
     for (Type te : receiver.receivableEvents_)
     {
-        if (!(receivers_.find(te)==receivers_.end()))
+        if (receivers_.find(te)==receivers_.end())
         {
             receivers_.insert
             (
