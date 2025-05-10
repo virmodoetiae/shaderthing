@@ -247,7 +247,7 @@ class Texture2DResource : public Resource
     friend AnimatedTexture2DResource;
     friend           CubemapResource;
     
-    vir::TextureBuffer2D* native_      = nullptr;
+    vir::UniquePtr<vir::TextureBuffer2D> native_;
     const unsigned char*  rawData_     = nullptr;
     unsigned int          rawDataSize_ = 0;
     std::string           originalFileExtension_;
@@ -277,7 +277,7 @@ class AnimatedTexture2DResource : public Resource
 {
     friend Resource;
     
-    vir::AnimatedTextureBuffer2D*   native_                       = nullptr;
+    vir::UniquePtr<vir::AnimatedTextureBuffer2D> native_;
     const unsigned char*            rawData_                      = nullptr;
     unsigned int                    rawDataSize_                  = 0;
     std::string                     originalFileExtension_;
@@ -312,7 +312,7 @@ class CubemapResource : public Resource
 {
     friend Resource;
     
-    vir::CubeMapBuffer*      native_ = nullptr;
+    vir::UniquePtr<vir::CubeMapBuffer> native_;
     const Texture2DResource* unmanagedFaces_[6];
     
     CubemapResource():Resource(Type::Cubemap){}
@@ -335,7 +335,7 @@ class Texture3DResource : public Resource
 {
     friend                  Resource;
     
-    vir::TextureBuffer3D* native_      = nullptr;
+    vir::UniquePtr<vir::TextureBuffer3D> native_;
     
     Texture3DResource():Resource(Type::Texture3D){}
     DELETE_COPY_MOVE(Texture3DResource)

@@ -35,7 +35,7 @@ protected:
     static OpenGLComputeShader adderUI8_;
 
     // Intermediate results texture used for a variety of purposes
-    TextureBuffer2D* bloom_;
+    vir::UniquePtr<TextureBuffer2D> bloom_;
 
     // Delete copy-construction & copy-assignment ops
     OpenGLBloomer(const OpenGLBloomer&) = delete;

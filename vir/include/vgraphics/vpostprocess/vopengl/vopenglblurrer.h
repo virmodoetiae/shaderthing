@@ -22,7 +22,7 @@ protected:
     static OpenGLComputeShader blurrerUI8_;
 
     // An intermediate processing texture
-    TextureBuffer2D* buffer_;
+    vir::UniquePtr<TextureBuffer2D> buffer_;
 
     // Delete copy-construction & copy-assignment ops
     OpenGLBlurrer(const OpenGLBlurrer&) = delete;

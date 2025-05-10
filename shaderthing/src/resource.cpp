@@ -380,8 +380,7 @@ void Resource::resetAnimationsAfterExport
 //----------------------------------------------------------------------------//
 
 #define SET_NATIVE_AND_RAW_AND_RETURN(data, size)                           \
-    if (native_ != nullptr) delete native_;                                 \
-    native_ = native;                                                       \
+    native_ = std::move(native);                                            \
     if (rawData_ != nullptr) delete[] rawData_;                             \
     rawData_ = data;                                                        \
     rawDataSize_ = size;                                                    \
@@ -442,7 +441,7 @@ Texture2DResource::~Texture2DResource()
             this->unbind();
         if (imageUnit_ != -1)
             this->unbindImage();
-        delete native_;
+        //delete native_;
     }
     if (rawData_ != nullptr) 
         delete[] rawData_;
@@ -528,8 +527,7 @@ bool AnimatedTexture2DResource::set
     unsigned int size
 )
 {
-    vir::AnimatedTextureBuffer2D* native = nullptr;
-    native = vir::AnimatedTextureBuffer2D::create
+    auto native = vir::AnimatedTextureBuffer2D::create
     (
         rawData,
         size,
@@ -547,9 +545,8 @@ bool AnimatedTexture2DResource::set
 {
     std::vector<vir::TextureBuffer2D*> nativeFrames(frames.size());
     for(int i=0; i<(int)frames.size(); i++)
-        nativeFrames[i] = frames[i]->native_;
-    vir::AnimatedTextureBuffer2D* native = nullptr;
-    native = vir::AnimatedTextureBuffer2D::create
+        nativeFrames[i] = frames[i]->native_.get();
+    auto native = vir::AnimatedTextureBuffer2D::create
     (
         nativeFrames,
         false
@@ -571,7 +568,7 @@ AnimatedTexture2DResource::~AnimatedTexture2DResource()
             this->unbind();
         if (imageUnit_ != -1)
             this->unbindImage();
-        delete native_;
+        //delete native_;
     }
     if (rawData_ != nullptr)
         delete[] rawData_;
@@ -678,7 +675,7 @@ bool CubemapResource::set(const Texture2DResource* faces[6])
 {
     const vir::TextureBuffer2D* nativeFaces[6];
     for (int i=0; i<6; i++)
-        nativeFaces[i] = (faces[i])->native_;
+        nativeFaces[i] = (faces[i])->native_.get();
     if (!vir::CubeMapBuffer::validFaces(nativeFaces))
         return false;
     const unsigned char* nativeFaceData[6];
@@ -694,9 +691,9 @@ bool CubemapResource::set(const Texture2DResource* faces[6])
     );
     if (native == nullptr)
         return false;
-    if (native_ != nullptr) 
-        delete native_;
-    native_ = native;
+    //if (native_ != nullptr) 
+        //delete native_;
+    native_ = std::move(native);
     for (int i=0; i<6; i++)
         unmanagedFaces_[i] = faces[i];
     return true;
@@ -710,7 +707,7 @@ CubemapResource::~CubemapResource()
             this->unbind();
         if (imageUnit_ != -1)
             this->unbindImage();
-        delete native_;
+        //delete native_;
     }
 }
 
@@ -778,9 +775,9 @@ bool Texture3DResource::set
     );
     if (native == nullptr)
         return false;
-    if (native_ != nullptr) 
-        delete native_;
-    native_ = native;
+    //if (native_ != nullptr) 
+        //delete native_;
+    native_ = std::move(native);
     return true;
 }
 
@@ -792,7 +789,7 @@ Texture3DResource::~Texture3DResource()
             this->unbind();
         if (imageUnit_ != -1)
             this->unbindImage();
-        delete native_;
+        //delete native_;
     }
 }
 
@@ -2047,7 +2044,7 @@ bool Resource::createOrEditCubemapButtonGui
                     auto r = (const Texture2DResource*)resources[j-1];
                     if 
                     (
-                        !vir::CubeMapBuffer::validFace(r->native_)
+                        !vir::CubeMapBuffer::validFace(r->native_.get())
                     )
                         continue;
                     if 
@@ -2247,7 +2244,7 @@ affect any cubemaps or animations using this texture)");
                     //----------------------------------------------------------
                     auto animation = 
                         (AnimatedTexture2DResource*)resource;
-                    auto nativeAnimation = animation->native_;
+                    const auto& nativeAnimation = animation->native_;
                     unsigned int frameIndex = nativeAnimation->frameIndex();
                     unsigned int nFrames = nativeAnimation->nFrames();
                     ImGui::Text("Animation frame     ");

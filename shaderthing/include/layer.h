@@ -56,17 +56,15 @@ public:
             InternalFramebuffer,
             InternalFramebufferAndWindow
         };
-        Target                          target              = Target::Window;
-        vir::TiledQuad*                 quad                = nullptr;
-        vir::Framebuffer*               framebufferA        = nullptr;
-        vir::Framebuffer*               framebufferB        = nullptr;
-        // Only framebuffers A and B are allocated. All other framebuffer ptrs
-        // are either equal to framebufferA or framebufferB
-        vir::Framebuffer*               frontFramebuffer    = nullptr;
-        vir::Framebuffer*               backFramebuffer     = nullptr;
-        vir::Framebuffer*               resourceFramebuffer = nullptr;
-        vir::UniquePtr<vir::Shader>     shader;
-        std::vector<PostProcess*>       postProcesses       = {};
+        Target                           target              = Target::Window;
+        vir::TiledQuad*                  quad                = nullptr;
+        vir::UniquePtr<vir::Framebuffer> framebufferA;
+        vir::UniquePtr<vir::Framebuffer> framebufferB;
+        vir::Framebuffer*                frontFramebuffer    = nullptr;
+        vir::Framebuffer*                backFramebuffer     = nullptr;
+        vir::Framebuffer*                resourceFramebuffer = nullptr;
+        vir::UniquePtr<vir::Shader>      shader;
+        std::vector<PostProcess*>        postProcesses       = {};
 
         struct TileData
         {
@@ -157,7 +155,7 @@ private:
           float                         aspectRatio_;
           float                         depth_;
           std::vector<Uniform*>         uniforms_;
-          vir::DynamicUniformBuffer*    uniformBuffer_;
+          vir::UniquePtr<vir::DynamicUniformBuffer> uniformBuffer_;
           unsigned int                  uniformBufferBindingPoint_;
           Rendering                     rendering_;
           GUI                           gui_;

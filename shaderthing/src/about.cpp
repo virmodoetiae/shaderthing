@@ -107,13 +107,10 @@ void About::renderGui()
     Helpers::oneLineColorfulText(fancyVirmodoetiae.c_str(), colorDict);
 
     static auto virmodoetiaeImage = 
-        std::unique_ptr<vir::TextureBuffer2D>
+        vir::TextureBuffer2D::create
         (
-            vir::TextureBuffer2D::create
-            (
-                ByteData::Image::virmodoetiaeData,
-                ByteData::Image::virmodoetiaeSize
-            )
+            ByteData::Image::virmodoetiaeData,
+            ByteData::Image::virmodoetiaeSize
         );
     if 
     (

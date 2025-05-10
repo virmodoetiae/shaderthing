@@ -274,15 +274,15 @@ void main(){fragColor = texture(tx, tc);})",
 
 Layer::~Layer()
 {
-    DELETE_IF_NOT_NULLPTR(rendering_.framebufferA)
-    DELETE_IF_NOT_NULLPTR(rendering_.framebufferB)
+    //DELETE_IF_NOT_NULLPTR(rendering_.framebufferA)
+    //DELETE_IF_NOT_NULLPTR(rendering_.framebufferB)
     //DELETE_IF_NOT_NULLPTR(rendering_.shader)
     DELETE_IF_NOT_NULLPTR(rendering_.quad)
     for (auto postProcess : rendering_.postProcesses)
     {
         DELETE_IF_NOT_NULLPTR(postProcess)
     }
-    DELETE_IF_NOT_NULLPTR(uniformBuffer_)
+    //DELETE_IF_NOT_NULLPTR(uniformBuffer_)
 }
 
 //----------------------------------------------------------------------------//
@@ -430,7 +430,7 @@ Layer* Layer::load
     (
         shaderData,
         layer->uniforms_,
-        layer->uniformBuffer_,
+        layer->uniformBuffer_.get(),
         resources,
         layer->cache_.uninitializedResourceLayers
     );
@@ -546,7 +546,7 @@ void Layer::loadAll
             {
                 if (resource->name() != layerName)
                     continue;
-                uniform->setResourcePtr(resource, layer->uniformBuffer_);
+                uniform->setResourcePtr(resource, layer->uniformBuffer_.get());
             }
         }
         layer->cache_.uninitializedResourceLayers.clear();
@@ -888,7 +888,7 @@ void Layer::rebuildFramebuffers
 {
     auto rebuildFramebuffer = []
     (
-        vir::Framebuffer*& framebuffer, 
+        vir::UniquePtr<vir::Framebuffer>& framebuffer, 
         vir::GeometricPrimitive* quad,
         const vir::TextureBuffer::InternalFormat& internalFormat, 
         const glm::ivec2& resolution
@@ -920,11 +920,11 @@ void Layer::rebuildFramebuffers
                 (
                     *quad, 
                     Layer::Rendering::textureMapperShader.get(), // TODO, do not pass raw ptrs
-                    newFramebuffer
+                    newFramebuffer.get()
                 );
             framebuffer->unbind();
-            DELETE_IF_NOT_NULLPTR(framebuffer)
-            framebuffer = newFramebuffer;
+            //DELETE_IF_NOT_NULLPTR(framebuffer)
+            framebuffer = std::move(newFramebuffer);
 
             framebuffer->setColorBufferWrapMode(0, wrapModeX);
             framebuffer->setColorBufferWrapMode(1, wrapModeY);
@@ -953,8 +953,8 @@ void Layer::rebuildFramebuffers
         internalFormat, 
         glm::max(resolution, {1,1})
     );
-    rendering_.backFramebuffer = rendering_.framebufferA;
-    rendering_.frontFramebuffer = rendering_.framebufferB;
+    rendering_.backFramebuffer = rendering_.framebufferA.get();
+    rendering_.frontFramebuffer = rendering_.framebufferB.get();
     rendering_.resourceFramebuffer = 
             Layer::Rendering::TileController::tiledRenderingEnabled ?
             rendering_.frontFramebuffer :
@@ -1133,14 +1133,14 @@ void Layer::renderShader
     auto flipBuffers = [this]()
     {
         rendering_.backFramebuffer = 
-            rendering_.backFramebuffer == rendering_.framebufferB ? 
-            rendering_.framebufferA :
-            rendering_.framebufferB;
+            rendering_.backFramebuffer == rendering_.framebufferB.get() ? 
+            rendering_.framebufferA.get() :
+            rendering_.framebufferB.get();
 
         rendering_.frontFramebuffer = 
-            rendering_.backFramebuffer == rendering_.framebufferB ? 
-            rendering_.framebufferA :
-            rendering_.framebufferB;
+            rendering_.backFramebuffer == rendering_.framebufferB.get() ? 
+            rendering_.framebufferA.get() :
+            rendering_.framebufferB.get();
 
         rendering_.resourceFramebuffer = 
             Layer::Rendering::TileController::tiledRenderingEnabled ?
@@ -1223,7 +1223,7 @@ void Layer::renderShader
             if (resource == nullptr)
                 continue;
             auto ubo = u->isSharedByUser ? 
-                sharedUniforms.uniformBuffer() : layer->uniformBuffer_;
+                sharedUniforms.uniformBuffer().get() : layer->uniformBuffer_.get();
             u->updateResourceResolution(ubo);
             // When reading from your own framebuffer, you should always read
             // from the buffer to which you are NOT writing to (the back buffer
@@ -1436,7 +1436,7 @@ void Layer::addUniform(Uniform* uniform)
     if (uniform->isResource())
     {
         auto* resource = uniform->getValuePtr<Resource>();
-        uniform->setResourcePtr(resource, uniformBuffer_);
+        uniform->setResourcePtr(resource, uniformBuffer_.get());
     }
     cache_.uncompiledUniforms.emplace_back(uniform);
 }
@@ -1454,7 +1454,7 @@ void Layer::removeUniform(Uniform* uniform)
         uniforms_.end()
     );
     if (uniform->isResource())
-        uniform->removeResourceResolutionFromUniformBuffer(uniformBuffer_);
+        uniform->removeResourceResolutionFromUniformBuffer(uniformBuffer_.get());
     cache_.uncompiledUniforms.erase
     (
         std::remove

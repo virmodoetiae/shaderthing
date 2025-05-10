@@ -31,10 +31,10 @@ void SharedStorage::resetBlockAndSSBO
     const unsigned int floatDataSize
 )
 {
-    if (block_ != nullptr)
-        delete block_;
-    if (buffer_ != nullptr)
-        delete buffer_;
+    //if (block_ != nullptr)
+    //    delete block_;
+    //if (buffer_ != nullptr)
+    //    delete buffer_;
 
     // Preprocessor madness to have dynamic types for the TypedBlock (4*2*4 = 32
     // different combinations)
@@ -99,15 +99,7 @@ default :                                                                   \
 
 SharedStorage::SharedStorage()
 {
-    auto isSupported = [&]()
-    {
-        bool result = false;
-        auto* ssbo = vir::ShaderStorageBuffer::create(1);
-        result = ssbo->canRunOnDeviceInUse();
-        delete ssbo;
-        return result;
-    };
-    isSupported_ = isSupported();
+    isSupported_ = vir::ShaderStorageBuffer::create(1)->canRunOnDeviceInUse();
     if (isSupported_)
     {
         resetBlockAndSSBO(Block::IntType::I32, Block::FloatType::F32);
@@ -124,10 +116,10 @@ SharedStorage::SharedStorage()
 
 SharedStorage::~SharedStorage()
 {
-    if (buffer_ != nullptr)
+    if (buffer_.valid())
     {
         buffer_->unbind();
-        delete buffer_;
+        //delete buffer_;
     }
     DELETE_IF_NOT_NULLPTR(block_)
 }

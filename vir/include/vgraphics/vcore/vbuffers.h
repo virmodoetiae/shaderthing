@@ -4,7 +4,8 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
-#include "vgraphics/vcore/vshader.h"
+#include "vir/include/vpointers.h"
+#include "vir/include/vgraphics/vcore/vshader.h"
 
 namespace vir
 {
@@ -200,7 +201,7 @@ protected:
     }
 public:
     virtual ~TextureBuffer2D(){}
-    static TextureBuffer2D* create
+    static UniquePtr<TextureBuffer2D> create
     (
         const unsigned char* data, 
         uint32_t width,
@@ -211,7 +212,7 @@ public:
     // e.g., .png, .jpg, .jpeg, etc. The appropriate format will be deduced when
     // possibile if internalFormat == InternalFormat::Undefined, otherwise the
     // file format will be enforced. A nullptr is returned if the creation fails
-    static TextureBuffer2D* create
+    static UniquePtr<TextureBuffer2D> create
     (
         const unsigned char* fileData, 
         uint32_t size,
@@ -221,7 +222,7 @@ public:
     // e.g., .png, .jpg, .jpeg, etc. The appropriate format will be deduced when
     // possibile if internalFormat == InternalFormat::Undefined, otherwise the
     // file format will be enforced. A nullptr is returned if the creation fails
-    static TextureBuffer2D* create
+    static UniquePtr<TextureBuffer2D> create
     (
         std::string filepath, 
         InternalFormat internalFormat = InternalFormat::Undefined
@@ -280,7 +281,7 @@ protected:
     );
 public:
     virtual ~AnimatedTextureBuffer2D();
-    static AnimatedTextureBuffer2D* create // From raw data
+    static UniquePtr<AnimatedTextureBuffer2D> create // From raw data
     (
         const unsigned char* data, 
         uint32_t width,
@@ -288,18 +289,18 @@ public:
         uint32_t nFrames,
         InternalFormat internalFormat
     );
-    static AnimatedTextureBuffer2D* create // From file data
+    static UniquePtr<AnimatedTextureBuffer2D> create // From file data
     (
         const unsigned char* fileData, 
         uint32_t size,
         InternalFormat internalFormat = InternalFormat::Undefined
     );
-    static AnimatedTextureBuffer2D* create // From file (GIF image)
+    static UniquePtr<AnimatedTextureBuffer2D> create // From file (GIF image)
     (
         std::string filepath, 
         InternalFormat internalFormat = InternalFormat::Undefined
     );
-    static AnimatedTextureBuffer2D* create // From existing TextureBuffer2Ds
+    static UniquePtr<AnimatedTextureBuffer2D> create // From existing TextureBuffer2Ds
     (
         std::vector<TextureBuffer2D*>& frames,
         bool gainFrameOwnership = false
@@ -357,18 +358,18 @@ protected:
     ):TextureBuffer2D(nullptr, width, height, internalFormat){}
 public:
     virtual ~CubeMapBuffer(){}
-    static CubeMapBuffer* create
+    static UniquePtr<CubeMapBuffer> create
     (
         std::string filepaths[6], 
         InternalFormat internalFormat = InternalFormat::Undefined
     );
-    static CubeMapBuffer* create
+    static UniquePtr<CubeMapBuffer> create
     (
         const unsigned char* fileData[6], 
         uint32_t size,
         InternalFormat internalFormat = InternalFormat::Undefined
     );
-    static CubeMapBuffer* create
+    static UniquePtr<CubeMapBuffer> create
     (
         const unsigned char* faceData[6], 
         uint32_t width,
@@ -404,7 +405,7 @@ protected:
 public:
     virtual ~TextureBuffer3D(){}
     static uint32_t maxSideSize();
-    static TextureBuffer3D* create
+    static UniquePtr<TextureBuffer3D> create
     (
         const unsigned char* data, 
         uint32_t width,
@@ -436,17 +437,17 @@ class Framebuffer
 {
 protected:
     //
-    static Framebuffer* activeOne_;
+    static Framebuffer* activeOne_; // Could transition to WeakPtr
     uint32_t id_;
     uint32_t colorBufferId_;
     uint32_t depthBufferId_;
     uint32_t width_;
     uint32_t height_;
-    TextureBuffer2D* colorBuffer_;
+    UniquePtr<TextureBuffer2D> colorBuffer_;
     Framebuffer():id_(0){};
 public:
     virtual ~Framebuffer(){}
-    static Framebuffer* create
+    static UniquePtr<Framebuffer> create
     (
         uint32_t width, 
         uint32_t height, 
@@ -539,7 +540,7 @@ protected :
     UniformBuffer(uint32_t size=0):id_(0), size_(size){};
 public :
     virtual ~UniformBuffer(){}
-    static UniformBuffer* create(uint32_t size);
+    static UniquePtr<UniformBuffer> create(uint32_t size);
     uint32_t id() const {return id_;}
     virtual void bind() = 0;
     virtual void unbind() = 0;
@@ -618,7 +619,7 @@ protected :
     );
 public :
     virtual ~DynamicUniformBuffer();
-    static DynamicUniformBuffer* create(uint32_t size, const std::string& name);
+    static UniquePtr<DynamicUniformBuffer> create(uint32_t size, const std::string& name);
     uint32_t id() const {return id_;}
     const std::string& name() const {return name_;}
     bool addUniform(const Shader::Uniform* uniform);
@@ -683,7 +684,7 @@ protected :
     ShaderStorageBuffer(uint32_t size=0):id_(0), size_(size){};
 public :
     virtual ~ShaderStorageBuffer(){}
-    static ShaderStorageBuffer* create(uint32_t size);
+    static UniquePtr<ShaderStorageBuffer> create(uint32_t size);
     uint32_t id() const {return id_;}
     virtual bool canRunOnDeviceInUse() const = 0;
     virtual void bind() = 0;
@@ -836,14 +837,14 @@ protected:
     VertexArrayPtrVector vertexArrays_;
 
     // Layout of this vertex buffer (always tied to the shader)
-    VertexBufferLayout* layout_ = nullptr;
+    UniquePtr<VertexBufferLayout> layout_;
 
     virtual void setLayout(const VertexBufferLayout&) = 0;
 
 public:
 
     // Static virtual-like constructor
-    static VertexBuffer* create(float*, uint32_t);
+    static UniquePtr<VertexBuffer> create(float*, uint32_t);
     
     virtual ~VertexBuffer();
     
@@ -870,7 +871,7 @@ protected:
 public:
 
     // Static virtual-like constructor
-    static IndexBuffer* create(uint32_t*, uint32_t);
+    static UniquePtr<IndexBuffer> create(uint32_t*, uint32_t);
     
     virtual ~IndexBuffer();
 
@@ -902,7 +903,7 @@ public:
 
     static VertexArray*& activeOne(){return activeOne_;}
 
-    static VertexArray* create();
+    static UniquePtr<VertexArray> create();
     
     virtual ~VertexArray(){}
     

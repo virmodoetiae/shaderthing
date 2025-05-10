@@ -173,8 +173,8 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
     
     const unsigned int        fBindingPoint_ = 0;
     const unsigned int        vBindingPoint_ = 1;
-          vir::DynamicUniformBuffer* fBuffer_       = nullptr;
-          vir::DynamicUniformBuffer* vBuffer_       = nullptr;
+          vir::UniquePtr<vir::DynamicUniformBuffer> fBuffer_;
+          vir::UniquePtr<vir::DynamicUniformBuffer> vBuffer_;
           Flags               flags_         = {};
           ExportData          exportData_    = {};
         
@@ -313,7 +313,7 @@ public:
     const int& iFrame() const {return iFrame_;}
     const int& iRenderPass() const {return iRenderPass_;}
     glm::ivec2 iResolution() const {return iResolution_;}
-    vir::DynamicUniformBuffer* uniformBuffer() {return fBuffer_;}
+    const vir::UniquePtr<vir::DynamicUniformBuffer>& uniformBuffer() {return fBuffer_;}
     const std::vector<Uniform*>& userUniforms() const {return userUniforms_;}
     const float& lowerFpsLimit() const {return lowerFpsLimit_;}
 };

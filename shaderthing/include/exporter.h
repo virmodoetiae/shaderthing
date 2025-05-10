@@ -72,7 +72,7 @@ private:
     Cache              cache_                          = {};
 
     ExportType         exportType_                     = ExportType::Image;
-    vir::Framebuffer*  framebuffer_                    = nullptr;
+    vir::UniquePtr<vir::Framebuffer> framebuffer_;
     unsigned char*     framebufferData_                = nullptr;
     vir::GifEncoder*   gifEncoder_                     = nullptr;
     FileDialog         fileDialog_;
@@ -119,7 +119,10 @@ public:
     bool isRunning() const {return isRunning_;}
     float timeStep() const {return timeStep_;}
     unsigned int nRenderPasses() const {return settings_.nRenderPasses;}
-    vir::Framebuffer* framebuffer() const {return framebuffer_;}
+    const vir::UniquePtr<vir::Framebuffer>& framebuffer() const 
+    {
+        return framebuffer_;
+    }
 };
 
 }

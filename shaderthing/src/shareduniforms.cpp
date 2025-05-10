@@ -214,8 +214,8 @@ SharedUniforms::SharedUniforms()
 
 SharedUniforms::~SharedUniforms()
 {
-    DELETE_IF_NOT_NULLPTR(fBuffer_)
-    DELETE_IF_NOT_NULLPTR(vBuffer_)
+    //DELETE_IF_NOT_NULLPTR(fBuffer_)
+    //DELETE_IF_NOT_NULLPTR(vBuffer_)
     //DELETE_IF_NOT_NULLPTR(screenCamera_)
     //DELETE_IF_NOT_NULLPTR(shaderCamera_)
     DELETE_IF_NOT_NULLPTR(random_)
@@ -833,7 +833,7 @@ void SharedUniforms::load
     (
         ioSu, 
         su->userUniforms_,
-        su->fBuffer_,
+        su->fBuffer_.get(),
         resources,
         su->cache_.uninitializedResourceLayers
     );
@@ -854,7 +854,7 @@ void SharedUniforms::postLoadProcessCachedResourceLayers
             if (resource->name() != layerName)
                 continue;
             // TODO: Once the sharedUniform buffer is set up, pass it
-            uniform->setResourcePtr(resource, fBuffer_); 
+            uniform->setResourcePtr(resource, fBuffer_.get()); 
         }
     }
     cache_.uninitializedResourceLayers.clear();
@@ -921,7 +921,7 @@ void SharedUniforms::addUserUniform(Uniform* uniform)
     if (uniform->isResource())
     {
         auto* resource = uniform->getValuePtr<Resource>();
-        uniform->setResourcePtr(resource, fBuffer_);
+        uniform->setResourcePtr(resource, fBuffer_.get());
     }
 }
 
@@ -941,7 +941,7 @@ void SharedUniforms::removeUserUniform(Uniform* uniform)
         userUniforms_.end()
     );
     if (uniform->isResource())
-        uniform->removeResourceResolutionFromUniformBuffer(fBuffer_);
+        uniform->removeResourceResolutionFromUniformBuffer(fBuffer_.get());
 }
 
 }

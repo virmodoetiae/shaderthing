@@ -89,7 +89,7 @@ void Exporter::update
         }
         settings_.outputResolution = sharedUniforms.exportData().resolution;
 
-        DELETE_IF_NOT_NULLPTR(framebuffer_);
+        //DELETE_IF_NOT_NULLPTR(framebuffer_);
         auto outputResolution = sharedUniforms.exportData().resolution;
         framebuffer_ = vir::Framebuffer::create
         (
@@ -146,7 +146,7 @@ void Exporter::update
         {
             isRunning_ = false;
             
-            DELETE_IF_NOT_NULLPTR(framebuffer_)
+            //DELETE_IF_NOT_NULLPTR(framebuffer_)
             DELETE_IF_NOT_NULLPTR(framebufferData_)
 
             if (gifEncoder_->isFileOpen())
@@ -214,11 +214,11 @@ void Exporter::writeOutput()
                 settings_.gifPaletteMode == PaletteMode::StaticAveraged &&
                 !isAveragedPaletteReady_
             )
-                gifEncoder_->cumulatePaletteForAveraging(framebuffer_);
+                gifEncoder_->cumulatePaletteForAveraging(framebuffer_.get());
             else
                 gifEncoder_->encodeFrame
                 (
-                    framebuffer_,
+                    framebuffer_.get(),
                     {   // Encoding options
                         std::max(int(100.0f/settings_.fps), 1), // fps
                         true,                                   // flip Y

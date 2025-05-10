@@ -11,13 +11,13 @@ class IndexBuffer;
 class GeometricPrimitive
 {
 protected:
-    VertexArray* vertexArray_   = nullptr;
-    VertexBuffer* vertexBuffer_ = nullptr;
-    IndexBuffer* indexBuffer_   = nullptr;
+    UniquePtr<VertexArray> vertexArray_;
+    UniquePtr<VertexBuffer> vertexBuffer_;
+    UniquePtr<IndexBuffer> indexBuffer_;
     GeometricPrimitive() = default;
 public:
     virtual ~GeometricPrimitive();
-    VertexArray* vertexArray() {return vertexArray_;}
+    VertexArray* vertexArray() {return vertexArray_.get();}
 };
 
 // Class to manage a quad that is always perpendicular to the Z axis of a

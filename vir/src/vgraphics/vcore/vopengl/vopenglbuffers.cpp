@@ -1119,9 +1119,9 @@ OpenGLFramebuffer::OpenGLFramebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, id_);
 
     // Create color attachment texture
-    colorBuffer_ = new OpenGLTextureBuffer2D
+    colorBuffer_ = makeUnique<OpenGLTextureBuffer2D>
     (
-        NULL, 
+        nullptr, 
         width, 
         height, 
         internalFormat
@@ -1174,8 +1174,7 @@ OpenGLFramebuffer::~OpenGLFramebuffer()
         activeOne_ = nullptr;
     }
     glDeleteRenderbuffers(1, &depthBufferId_);
-    //glDeleteTextures(1, &colorBufferId_);
-    delete colorBuffer_;
+    //delete colorBuffer_;
     glDeleteFramebuffers(1, &id_);
 }
 

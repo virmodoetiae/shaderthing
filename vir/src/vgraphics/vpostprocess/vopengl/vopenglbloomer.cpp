@@ -364,9 +364,9 @@ bloom_(nullptr)
 //
 OpenGLBloomer::~OpenGLBloomer()
 {
-    if (bloom_ != nullptr)
-        delete bloom_;
-    bloom_ = nullptr;
+    //if (bloom_ != nullptr)
+    //    delete bloom_;
+    //bloom_ = nullptr;
 }
 
 //
@@ -401,8 +401,8 @@ void OpenGLBloomer::bloom
             bloom_->height() != input->height();
     if (sizeChangedOrInitRequired)
     {
-        if (bloom_ != nullptr)
-            delete bloom_;
+        //if (bloom_ != nullptr)
+        //    delete bloom_;
         bloom_ = TextureBuffer2D::create
         (
             nullptr,

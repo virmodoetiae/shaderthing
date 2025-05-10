@@ -22,9 +22,9 @@ errorMessage_()
 
 PostProcess::~PostProcess()
 {
-    if (output_ != nullptr)
-        delete output_;
-    output_ = nullptr;
+    //if (output_ != nullptr)
+    //    delete output_;
+    //output_ = nullptr;
 }
 
 void PostProcess::prepareOutput(const Framebuffer* input)
@@ -39,7 +39,7 @@ void PostProcess::prepareOutput(const Framebuffer* input)
             input->colorBufferInternalFormat()
     )
     {
-        delete output_;
+        //delete output_;
         output_ = Framebuffer::create
         (
             input->width(), 
@@ -70,7 +70,7 @@ void PostProcess::prepareOutput(const TextureBuffer2D* input)
             input->internalFormat()
     )
     {
-        delete output_;
+        //delete output_;
         output_ = Framebuffer::create
         (
             input->width(), 

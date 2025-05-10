@@ -1160,7 +1160,7 @@ motion only if the left mouse button (LMB) is held)");
         if (!r->isUsedByUniform(uniform))                                   \
             r->addClientUniform(uniform);                                   \
         auto ubo = uniform->isSharedByUser ?                                \
-            sharedUniforms.fBuffer_ : layer->uniformBuffer_;                \
+            sharedUniforms.fBuffer_.get() : layer->uniformBuffer_.get();    \
         uniform->setResourcePtr(r, ubo);                                    \
         sharedUniforms.setUserAction(true);                                 \
     }

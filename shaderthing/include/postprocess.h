@@ -73,7 +73,7 @@ public:
 
     // Return access to the output framebuffer with the applied post-processing
     // effect
-    vir::Framebuffer* outputFramebuffer(){return native_->output();}
+    vir::Framebuffer* outputFramebuffer(){return native_->output().get();}
 
     // Assign the address of the post-processing output framebuffer to the 
     // input layer writeonly framebuffer. In this way, the post-processed

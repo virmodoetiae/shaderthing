@@ -93,10 +93,10 @@ buffer_(nullptr)
 //
 OpenGLBlurrer::~OpenGLBlurrer()
 {
-    if (buffer_ == nullptr)
-        return;
-    delete buffer_;
-    buffer_ = nullptr;
+    //if (buffer_ == nullptr)
+    //    return;
+    //delete buffer_;
+    //buffer_ = nullptr;
 }
 
 //
@@ -123,7 +123,7 @@ void OpenGLBlurrer::blur
     )
     {
         updateBuffer = true;
-        delete buffer_;
+        //delete buffer_;
     }
     if (updateBuffer)
     {

@@ -5,23 +5,23 @@ namespace vir
 
 GeometricPrimitive::~GeometricPrimitive()
 {
-    if (vertexArray_ != nullptr)
+    if (vertexArray_.valid())
     {
         vertexArray_->unbind();
-        delete vertexArray_;
-        vertexArray_ = nullptr;
+        //delete vertexArray_;
+        //vertexArray_ = nullptr;
     }
-    if (vertexBuffer_ != nullptr)
+    if (vertexBuffer_.valid())
     {
         vertexBuffer_->unbind();
-        delete vertexBuffer_;
-        vertexBuffer_ = nullptr;
+        //delete vertexBuffer_;
+        //vertexBuffer_ = nullptr;
     }
-    if (indexBuffer_ != nullptr)
+    if (indexBuffer_.valid())
     {
         indexBuffer_->unbind();
-        delete indexBuffer_;
-        indexBuffer_ = nullptr;
+        //delete indexBuffer_;
+        //indexBuffer_ = nullptr;
     }
 }
 
@@ -50,13 +50,13 @@ depth_(depth)
             {"textureCoordinates", VertexBufferLayout::Float2()}
         }
     );
-    vertexArray_->bindVertexBuffer(vertexBuffer_);
+    vertexArray_->bindVertexBuffer(vertexBuffer_.get());
     unsigned int indices[] = {
         0, 1, 2,
         2, 3, 0,
     };
     indexBuffer_ = IndexBuffer::create(indices, sizeof(indices));
-    vertexArray_->bindIndexBuffer(indexBuffer_);
+    vertexArray_->bindIndexBuffer(indexBuffer_.get());
 }
 
 void Quad::update(float width, float height, float depth)
@@ -140,10 +140,10 @@ void TiledQuad::updateBuffers(uint32_t nTilesX, uint32_t nTilesY)
     nTilesX_ = nTilesX;
     nTilesY_ = nTilesY;
 
-    if (vertexBuffer_ != nullptr)
+    if (vertexBuffer_.valid())
     {
         vertexBuffer_->unbind();
-        delete vertexBuffer_;
+        //delete vertexBuffer_;
     }
     vertexBuffer_ = VertexBuffer::create
     (
@@ -157,12 +157,12 @@ void TiledQuad::updateBuffers(uint32_t nTilesX, uint32_t nTilesY)
             {"textureCoordinates", VertexBufferLayout::Float2()}
         }
     );
-    vertexArray_->bindVertexBuffer(vertexBuffer_);
+    vertexArray_->bindVertexBuffer(vertexBuffer_.get());
 
     if (indexBuffer_ == nullptr)
     {
         indexBuffer_ = IndexBuffer::create(nullptr, 6*sizeof(uint32_t));
-        vertexArray_->bindIndexBuffer(indexBuffer_);
+        vertexArray_->bindIndexBuffer(indexBuffer_.get());
     }
     selectVisibleTiles(0, 0, nTilesX-1, nTilesY-1);
 }

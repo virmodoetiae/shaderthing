@@ -143,7 +143,7 @@ class SharedStorage
 
         static constexpr const char* glslName   = "sharedStorageBlock";
 
-        void initialize(vir::ShaderStorageBuffer* buffer)
+        void initialize(const vir::UniquePtr<vir::ShaderStorageBuffer>& buffer)
         {
             dataStart = buffer->mapData();
             intData = (T_IntType*)dataStart;
@@ -281,7 +281,7 @@ class SharedStorage
     };
     
     Block*                    block_         = nullptr;
-    vir::ShaderStorageBuffer* buffer_        = nullptr;
+    vir::UniquePtr<vir::ShaderStorageBuffer> buffer_;
     GUI                       gui_           = {};
     bool                      isSupported_   = false;
     const unsigned int        bindingPoint_  = 2;

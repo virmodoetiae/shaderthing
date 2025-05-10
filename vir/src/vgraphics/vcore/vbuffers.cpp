@@ -150,7 +150,7 @@ const std::unordered_map<TextureBuffer::FilterMode, std::string>
 
 // Texture2D -----------------------------------------------------------------//
 
-TextureBuffer2D* TextureBuffer2D::create
+UniquePtr<TextureBuffer2D> TextureBuffer2D::create
 (
     const unsigned char* data, 
     uint32_t width,
@@ -159,13 +159,13 @@ TextureBuffer2D* TextureBuffer2D::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<TextureBuffer2D>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLTextureBuffer2D
+                return makeUnique<OpenGLTextureBuffer2D>
                 (
                     data, 
                     width, 
@@ -175,10 +175,10 @@ TextureBuffer2D* TextureBuffer2D::create
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<TextureBuffer2D>();
 }
 
-TextureBuffer2D* TextureBuffer2D::create
+UniquePtr<TextureBuffer2D> TextureBuffer2D::create
 (
     const unsigned char* fileData, 
     uint32_t size,
@@ -186,9 +186,9 @@ TextureBuffer2D* TextureBuffer2D::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<TextureBuffer2D>();
     unsigned char* data = nullptr;
-    TextureBuffer2D* buffer = nullptr;
+    UniquePtr<TextureBuffer2D> buffer;
     try
     {
         int width, height, nChannels;
@@ -212,7 +212,7 @@ TextureBuffer2D* TextureBuffer2D::create
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                buffer =  new OpenGLTextureBuffer2D
+                buffer = makeUnique<OpenGLTextureBuffer2D>
                 (
                     data, 
                     width, 
@@ -230,16 +230,16 @@ TextureBuffer2D* TextureBuffer2D::create
     return buffer;
 }
 
-TextureBuffer2D* TextureBuffer2D::create
+UniquePtr<TextureBuffer2D> TextureBuffer2D::create
 (
     std::string filepath, 
     InternalFormat internalFormat
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<TextureBuffer2D>();
     unsigned char* data = nullptr;
-    TextureBuffer2D* buffer = nullptr;
+    UniquePtr<TextureBuffer2D> buffer;
     try
     {
         int width = 0, height = 0, nChannels = 0;
@@ -262,7 +262,7 @@ TextureBuffer2D* TextureBuffer2D::create
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                buffer =  new OpenGLTextureBuffer2D
+                buffer = makeUnique<OpenGLTextureBuffer2D>
                 (
                     data, 
                     width, 
@@ -381,7 +381,7 @@ AnimatedTextureBuffer2D::~AnimatedTextureBuffer2D()
     frames_.resize(0);
 }
 
-AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+UniquePtr<AnimatedTextureBuffer2D> AnimatedTextureBuffer2D::create
 (
     std::string filepath, 
     InternalFormat internalFormat
@@ -406,7 +406,7 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     {
         if (fileData != nullptr)
             delete[] fileData;
-        return nullptr;
+        return nullUniquePtr<AnimatedTextureBuffer2D>();
     }
     auto buffer = AnimatedTextureBuffer2D::create
     (
@@ -414,11 +414,12 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
         size,
         internalFormat
     );
-    delete[] fileData;
+    if (fileData != nullptr)
+        delete[] fileData;
     return buffer;
 }
 
-AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+UniquePtr<AnimatedTextureBuffer2D> AnimatedTextureBuffer2D::create
 (
     const unsigned char* fileData, 
     uint32_t size,
@@ -426,10 +427,10 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<AnimatedTextureBuffer2D>();
     unsigned char* data = nullptr;
     int* delays = nullptr;
-    AnimatedTextureBuffer2D* buffer = nullptr;
+    UniquePtr<AnimatedTextureBuffer2D> buffer;
     try
     {
         // Unpack raw gif data in memory
@@ -456,7 +457,7 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                buffer = new OpenGLAnimatedTextureBuffer2D
+                buffer = makeUnique<OpenGLAnimatedTextureBuffer2D>
                 (
                     data,
                     width,
@@ -487,7 +488,7 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
     return buffer;
 }
 
-AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+UniquePtr<AnimatedTextureBuffer2D> AnimatedTextureBuffer2D::create
 (
     const unsigned char* data, 
     uint32_t width,
@@ -497,13 +498,13 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<AnimatedTextureBuffer2D>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLAnimatedTextureBuffer2D
+                return makeUnique<OpenGLAnimatedTextureBuffer2D>
                 (
                     data, 
                     width, 
@@ -514,30 +515,30 @@ AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<AnimatedTextureBuffer2D>();
 }
 
-AnimatedTextureBuffer2D* AnimatedTextureBuffer2D::create
+UniquePtr<AnimatedTextureBuffer2D> AnimatedTextureBuffer2D::create
 (
     std::vector<TextureBuffer2D*>& frames,
     bool gainFrameOwnership
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<AnimatedTextureBuffer2D>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLAnimatedTextureBuffer2D
+                return makeUnique<OpenGLAnimatedTextureBuffer2D>
                 (
                     frames, gainFrameOwnership
                 );
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<AnimatedTextureBuffer2D>();
 }
 
 uint64_t AnimatedTextureBuffer2D::maxMemoryFootprint() const
@@ -633,15 +634,15 @@ void AnimatedTextureBuffer2D::advanceTime(float dt)
 
 // CubeMap -------------------------------------------------------------------//
 
-CubeMapBuffer* CubeMapBuffer::create
+UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 (
     std::string filepaths[6], 
     InternalFormat internalFormat
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
-    CubeMapBuffer* buffer = nullptr;
+        return nullUniquePtr<CubeMapBuffer>();
+    UniquePtr<CubeMapBuffer> buffer;
     const unsigned char* faceData[6] = 
         {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
     int i = 0;
@@ -697,7 +698,7 @@ CubeMapBuffer* CubeMapBuffer::create
     return buffer;
 }
 
-CubeMapBuffer* CubeMapBuffer::create
+UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 (
     const unsigned char* fileData[6], 
     uint32_t size,
@@ -705,8 +706,8 @@ CubeMapBuffer* CubeMapBuffer::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
-    CubeMapBuffer* buffer = nullptr;
+        return nullUniquePtr<CubeMapBuffer>();
+    UniquePtr<CubeMapBuffer> buffer;
     const unsigned char* faceData[6] = 
         {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
     int i = 0;
@@ -764,7 +765,7 @@ CubeMapBuffer* CubeMapBuffer::create
     return buffer;
 }
 
-CubeMapBuffer* CubeMapBuffer::create
+UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 (
     const unsigned char* faceData[6], 
     uint32_t width,
@@ -773,13 +774,13 @@ CubeMapBuffer* CubeMapBuffer::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<CubeMapBuffer>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLCubeMapBuffer
+                return makeUnique<OpenGLCubeMapBuffer>
                 (
                     faceData, 
                     width, 
@@ -789,7 +790,7 @@ CubeMapBuffer* CubeMapBuffer::create
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<CubeMapBuffer>();
 }
 
 bool CubeMapBuffer::validFace(const TextureBuffer2D* face)
@@ -829,7 +830,7 @@ uint64_t CubeMapBuffer::maxMemoryFootprint() const
 
 // Texture3D -----------------------------------------------------------------//
 
-TextureBuffer3D* TextureBuffer3D::create
+UniquePtr<TextureBuffer3D> TextureBuffer3D::create
 (
     const unsigned char* data, 
     uint32_t width,
@@ -839,13 +840,13 @@ TextureBuffer3D* TextureBuffer3D::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<TextureBuffer3D>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLTextureBuffer3D
+                return makeUnique<OpenGLTextureBuffer3D>
                 (
                     data, 
                     width, 
@@ -856,7 +857,7 @@ TextureBuffer3D* TextureBuffer3D::create
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<TextureBuffer3D>();
 }
 
 uint32_t TextureBuffer3D::maxSideSize()
@@ -890,7 +891,7 @@ uint64_t TextureBuffer3D::maxMemoryFootprint() const
 
 Framebuffer* Framebuffer::activeOne_ = nullptr;
 
-Framebuffer* Framebuffer::create
+UniquePtr<Framebuffer> Framebuffer::create
 (
     uint32_t width, 
     uint32_t height,
@@ -898,17 +899,17 @@ Framebuffer* Framebuffer::create
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<Framebuffer>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLFramebuffer(width, height, format);
+                return makeUnique<OpenGLFramebuffer>(width, height, format);
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<Framebuffer>();
 }
 
 // Vertex Buffer layout ------------------------------------------------------//
@@ -932,26 +933,26 @@ elements_(elements)
 
 // Vertex Buffer -------------------------------------------------------------//
 
-VertexBuffer* VertexBuffer::create(float* vertices, uint32_t size)
+UniquePtr<VertexBuffer> VertexBuffer::create(float* vertices, uint32_t size)
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<VertexBuffer>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLVertexBuffer(vertices, size);
+                return makeUnique<OpenGLVertexBuffer>(vertices, size);
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<VertexBuffer>();
 }
 
 VertexBuffer::~VertexBuffer()
 {
-    if (layout_ != nullptr)
-        delete layout_;
+    //if (layout_ != nullptr)
+    //    delete layout_;
     for (VertexArray* va : vertexArrays_)
     {
         va->unbindVertexBuffer(this);
@@ -963,32 +964,32 @@ void VertexBuffer::setLayout
     const std::initializer_list<VertexBufferLayout::Element>& elements
 )
 {
-    layout_ = new VertexBufferLayout(elements);
+    layout_ = makeUnique<VertexBufferLayout>(elements);
     setLayout(*layout_);
 }
 
 void VertexBuffer::setLayout()
 {
-    if (layout_ != nullptr)
+    if (layout_.valid())
         setLayout(*layout_);
 }
 
 // Index buffer --------------------------------------------------------------//
 
-IndexBuffer* IndexBuffer::create(uint32_t* indices, uint32_t size)
+UniquePtr<IndexBuffer> IndexBuffer::create(uint32_t* indices, uint32_t size)
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<IndexBuffer>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLIndexBuffer(indices, size);
+                return makeUnique<OpenGLIndexBuffer>(indices, size);
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<IndexBuffer>();
 }
 
 IndexBuffer::~IndexBuffer()
@@ -1003,38 +1004,38 @@ IndexBuffer::~IndexBuffer()
 
 VertexArray* VertexArray::activeOne_ = nullptr;
 
-VertexArray* VertexArray::create()
+UniquePtr<VertexArray> VertexArray::create()
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<VertexArray>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLVertexArray();
+                return makeUnique<OpenGLVertexArray>();
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<VertexArray>();
 }
 
 // Uniform Buffer Object -----------------------------------------------------//
 
-UniformBuffer* UniformBuffer::create(uint32_t size)
+UniquePtr<UniformBuffer> UniformBuffer::create(uint32_t size)
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<UniformBuffer>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLUniformBuffer(size);
+                return makeUnique<OpenGLUniformBuffer>(size);
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<UniformBuffer>();
 }
 
 // Uniform Buffer Object  2 --------------------------------------------------//
@@ -1053,25 +1054,25 @@ name_(name)
     rawBuffer_ = new unsigned char[maxSize];
 };
 
-DynamicUniformBuffer* DynamicUniformBuffer::create
+UniquePtr<DynamicUniformBuffer> DynamicUniformBuffer::create
 (
     uint32_t size, 
     const std::string& name
 )
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<DynamicUniformBuffer>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLDynamicUniformBuffer(size, name);
+                return makeUnique<OpenGLDynamicUniformBuffer>(size, name);
                 break;
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<DynamicUniformBuffer>();
 }
 
 DynamicUniformBuffer::~DynamicUniformBuffer()
@@ -1570,20 +1571,20 @@ bool DynamicUniformBuffer::submitArrayUniformRange
 
 // Shader Storage Buffer Object ----------------------------------------------//
 
-ShaderStorageBuffer* ShaderStorageBuffer::create(uint32_t size)
+UniquePtr<ShaderStorageBuffer> ShaderStorageBuffer::create(uint32_t size)
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<ShaderStorageBuffer>();
     try
     {
         switch(Window::instance()->context()->type())
         {
             case (GraphicsContext::Type::OpenGL) :
-                return new OpenGLShaderStorageBuffer(size);
+                return makeUnique<OpenGLShaderStorageBuffer>(size);
         }
     }
     catch(...){}
-    return nullptr;
+    return nullUniquePtr<ShaderStorageBuffer>();
 }
 
 }

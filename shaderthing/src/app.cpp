@@ -66,7 +66,7 @@ App::App()
         auto result = Layer::renderShaders
         (
             layers_, 
-            exporter_->isRunning() ? exporter_->framebuffer() : nullptr, 
+            exporter_->isRunning() ? exporter_->framebuffer().get() : nullptr, 
             *sharedUniforms_,
             exporter_->isRunning() ? exporter_->nRenderPasses() : 1
         );

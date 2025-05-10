@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "vpointers.h"
+
 namespace vir
 {
 
@@ -30,7 +32,7 @@ protected:
     const Type type_ = Type::Undefined;
 
     // Output framebuffer
-    Framebuffer* output_;
+    vir::UniquePtr<Framebuffer> output_;
 
     // Depending on the post-process implementation, it might not be able to
     // run under certain systems. For example, the current implementation of
@@ -67,7 +69,7 @@ public:
     std::string typeName() const {return typeToName.at(type_);}
 
     // Output framebuffer for this post-processing effect
-    Framebuffer* output() {return output_;}
+    const UniquePtr<Framebuffer>& output() {return output_;}
 
     // True if this post-processing effect can run on this device. This might be
     // false for those post-processing effects which run e.g., on compute shaders

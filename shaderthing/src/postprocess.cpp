@@ -40,7 +40,7 @@ PostProcess::~PostProcess()
     DELETE_IF_NOT_NULLPTR(native_)
     if (isActive_)
         *inputFramebuffer_ = 
-            inputLayer_->rendering_.framebufferA;
+            inputLayer_->rendering_.framebufferA.get();
 }
 
 //----------------------------------------------------------------------------//

@@ -206,8 +206,7 @@ public:
     // UniquePtrs are always owners
     bool owner() const override {return true;}
 
-    // UniquePtrs are always valid
-    bool valid() const override {return true;}
+    bool valid() const override {return ptr_.get() != nullptr;}
 
     // Get naked ptr to internally managed object
     T* get() const override { return ptr_.get(); }
@@ -271,13 +270,18 @@ public:
     WeakPtr<T> getWeak() const override {return WeakPtr<T>(ptr_.get(), valid_);}
 };
 
-//----------------------------------------------------------------------------//
-
 // Factory method to create a new T wrapped by a UniquePtr
 template<typename T, typename... Args>
 static UniquePtr<T> makeUnique(Args&&... args)
 {
     return UniquePtr<T>(new T(std::forward<Args>(args)...));
+}
+
+// Just for code clarity to represent nullptrs when working with UniquePtrs
+template<typename T>
+static UniquePtr<T> nullUniquePtr()
+{
+    return UniquePtr<T>();
 }
 
 //----------------------------------------------------------------------------//
@@ -327,6 +331,13 @@ public:
 
 template<class T>
 std::unique_ptr<T> GlobalPtr<T>::ptr_ = nullptr;
+
+// Just for code clarity to represent nullptrs when working with UniquePtrs
+template<typename T>
+static GlobalPtr<T> nullGlobalPtr()
+{
+    return GlobalPtr<T>();
+}
 
 }
 
