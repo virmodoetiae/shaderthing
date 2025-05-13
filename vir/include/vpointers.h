@@ -123,7 +123,7 @@ friend class UniquePtr; // To enable move ctor with UniquePtr<D> where T is
                         // a base of D
 private:
 
-    std::unique_ptr<T> ptr_;
+    T* ptr_;
     std::shared_ptr<bool> valid_;
     static constexpr bool weakFromThisEnabled_ = 
         std::is_base_of_v<EnableWeakFromThis<T>, T>;
@@ -131,6 +131,7 @@ private:
 public:
 
     UniquePtr() : ptr_(nullptr), valid_(nullptr) {}
+
     explicit UniquePtr(T* ptr) : 
         ptr_(ptr), 
         valid_(ptr ? std::make_shared<bool>(true) : nullptr) 
@@ -140,36 +141,42 @@ public:
             ptr_->setValid(valid_);
         }
     }
+
     UniquePtr(UniquePtr&& other) : 
-        ptr_(std::move(other.ptr_)), 
+        ptr_(other.ptr_), 
         valid_(std::move(other.valid_))
     {
+        other.ptr_ = nullptr;
         if constexpr (weakFromThisEnabled_) 
         {
             if (ptr_) 
                 ptr_->setValid(valid_);
         }
     }
+
     // To enable move ctor via UniquePtr<D> where T is a base of D
     template<typename D, typename = std::enable_if_t<
         std::is_base_of_v<T, D> && 
         !std::is_same_v<T, D>>>
     UniquePtr(UniquePtr<D>&& other) : 
-        ptr_(other.ptr_.release()), 
+        ptr_(other.ptr_), 
         valid_(std::move(other.valid_))
     {
+        other.ptr_ = nullptr;
         if constexpr (weakFromThisEnabled_) 
         {
             if (ptr_) 
                 ptr_->setValid(valid_);
         }
     }
+
     UniquePtr& operator=(UniquePtr&& other)
     {
         if (this != &other) 
         {
             reset();
-            ptr_ = std::move(other.ptr_);
+            ptr_ = other.ptr_;
+            other.ptr_ = nullptr;
             valid_ = std::move(other.valid_);
             if constexpr (weakFromThisEnabled_) 
             {
@@ -179,6 +186,7 @@ public:
         }
         return *this;
     }
+
     // To enable move assignment via UniquePtr<D> where T is a base of D
     template<typename D, typename = std::enable_if_t<
         std::is_base_of_v<T, D> && 
@@ -188,7 +196,8 @@ public:
         if (this->get() != static_cast<T*>(other.get()))
         {
             reset();
-            ptr_.reset(other.ptr_.release());
+            ptr_ = other.ptr_;
+            other.ptr_ = nullptr;
             valid_ = std::move(other.valid_);
             if constexpr (weakFromThisEnabled_) 
             {
@@ -198,18 +207,19 @@ public:
         }
         return *this;
     }
+    
     UniquePtr(const UniquePtr&) = delete;
     UniquePtr& operator=(const UniquePtr&) = delete;
     
-    ~UniquePtr() {valid_.reset();}
+    ~UniquePtr() {reset();}
 
     // UniquePtrs are always owners
     bool owner() const override {return true;}
 
-    bool valid() const override {return ptr_.get() != nullptr;}
+    bool valid() const override {return ptr_ != nullptr;}
 
     // Get naked ptr to internally managed object
-    T* get() const override { return ptr_.get(); }
+    T* get() const override { return ptr_; }
 
     // Get ref to internally managed object
     T& operator*() const { return *ptr_; }
@@ -217,9 +227,14 @@ public:
     // Release ownership without destroying the object
     T* release() 
     {
-        T* ptr = ptr_.release();
-        valid_.reset(); // Invalidate all existing WeakPtrs to this
-        return ptr;
+        if (ptr_)
+        {
+            T* ptr = ptr_;
+            ptr_ = nullptr;
+            valid_.reset(); // Invalidate all existing WeakPtrs to this
+            return ptr;
+        }
+        return nullptr;
     }
 
     // Destroy the managed object and reset to nullptr
@@ -228,22 +243,21 @@ public:
         if (ptr_) 
         {
             valid_.reset(); // Invalidate all existing WeakPtrs to this
-            ptr_.reset();
+            delete ptr_;
+            ptr_ = nullptr;
         }
     }
     
     // Reset to new pointer
     void reset(T* ptr) 
     {
-        if (ptr_.get() != ptr) 
+        if (ptr_ != ptr) 
         {
             valid_.reset();  // Invalidate all existing WeakPtrs to this
-            ptr_ = std::unique_ptr<T>(ptr);
+            ptr_ = ptr;
             valid_ = ptr ? std::make_shared<bool>(true) : nullptr;
             if constexpr (weakFromThisEnabled_) 
-            {
                 ptr_->setValid(valid_);
-            }
         }
     }
 
@@ -253,21 +267,19 @@ public:
         !std::is_same_v<T, D>>>
     void reset(D* ptr) 
     {
-        if (ptr_.get() != static_cast<T*>(ptr)) 
+        if (ptr_ != static_cast<T*>(ptr)) 
         {
             valid_.reset();  // Invalidate all existing WeakPtrs to this
             ptr_ = std::unique_ptr<T>(ptr);
             valid_ = ptr ? std::make_shared<bool>(true) : nullptr;
             if constexpr (weakFromThisEnabled_) 
-            {
                 ptr_->setValid(valid_);
-            }
         }
     }
 
     // Return a weak-like ptr to safely access and check for the existence 
     // of the internally managed object
-    WeakPtr<T> getWeak() const override {return WeakPtr<T>(ptr_.get(), valid_);}
+    WeakPtr<T> getWeak() const override {return WeakPtr<T>(ptr_, valid_);}
 };
 
 // Factory method to create a new T wrapped by a UniquePtr
@@ -275,6 +287,14 @@ template<typename T, typename... Args>
 static UniquePtr<T> makeUnique(Args&&... args)
 {
     return UniquePtr<T>(new T(std::forward<Args>(args)...));
+}
+
+// A reinterpret cast of a UniquePtr<D>& to a UniquePtr<T>& if D derives fromT
+template<typename T, typename D, typename = 
+    std::enable_if_t<std::is_base_of_v<T, D> && !std::is_same_v<T, D>>>
+UniquePtr<T>& castUnique(UniquePtr<D>& derived) 
+{
+    return *reinterpret_cast<UniquePtr<T>*>(&derived);
 }
 
 // Just for code clarity to represent nullptrs when working with UniquePtrs
@@ -293,7 +313,7 @@ class GlobalPtr
 {
 protected:
 
-    static std::unique_ptr<T> ptr_;
+    static UniquePtr<T> ptr_;
 
 public:
 
@@ -302,7 +322,7 @@ public:
     // Initialize given an instance and take ownership
     GlobalPtr(T* ptr)
     {
-        if (!ptr_ && ptr)
+        if (ptr_ == nullptr && ptr != nullptr)
             ptr_.reset(ptr);
     }
     
@@ -310,7 +330,7 @@ public:
     // invalidated
     GlobalPtr(UniquePtr<T>&& ptr)
     {
-        if (!ptr_ && ptr != nullptr)
+        if (ptr_ == nullptr && ptr != nullptr)
             ptr_.reset(ptr.release());
     }
 
@@ -330,7 +350,7 @@ public:
 };
 
 template<class T>
-std::unique_ptr<T> GlobalPtr<T>::ptr_ = nullptr;
+UniquePtr<T> GlobalPtr<T>::ptr_;
 
 // Just for code clarity to represent nullptrs when working with UniquePtrs
 template<typename T>

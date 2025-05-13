@@ -33,10 +33,10 @@ protected:
 public:
 
     //
-    static Blurrer* create();
+    static UniquePtr<Blurrer> create();
 
     // Destructor
-    virtual ~Blurrer(){}
+    virtual ~Blurrer() = default;
 
     //
     virtual void blur

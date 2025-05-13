@@ -28,12 +28,9 @@ protected:
     std::string deviceName_;
 
     // Actual (low-level) api-specific rendering commands
-    RendererAPI* api_;
+    UniquePtr<RendererAPI> api_;
 
-    // Protected constructor
-    Renderer(){}
-
-    // Delete all other constructors
+    Renderer() = default;
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer& other) = delete;
     Renderer(Renderer&&) = delete;
@@ -41,7 +38,7 @@ protected:
 
 public:
 
-    virtual ~Renderer();
+    virtual ~Renderer() = default;;
 
     // Accessors
     const std::string& deviceName() const {return deviceName_;}

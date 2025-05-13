@@ -61,7 +61,7 @@ protected:
     PaletteMode    paletteMode_;
     IndexMode      indexMode_;
 
-    Quantizer*     quantizer_;
+    UniquePtr<Quantizer>     quantizer_;
     
     void writePaletteData();
     void encodeIndexedFrame(int delay, bool flipVertically);
@@ -69,7 +69,7 @@ protected:
 public:
 
     GifEncoder();
-    ~GifEncoder();
+    ~GifEncoder() = default;
 
     bool isFileOpen() const {return file_ != nullptr;}
     bool canRunOnDeviceInUse() const {return quantizer_->canRunOnDeviceInUse();}

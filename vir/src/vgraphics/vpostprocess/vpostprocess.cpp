@@ -20,13 +20,6 @@ canRunOnDeviceInUse_(true),
 errorMessage_()
 {}
 
-PostProcess::~PostProcess()
-{
-    //if (output_ != nullptr)
-    //    delete output_;
-    //output_ = nullptr;
-}
-
 void PostProcess::prepareOutput(const Framebuffer* input)
 {
     if (output_ == nullptr)

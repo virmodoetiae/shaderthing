@@ -298,15 +298,9 @@ GifEncoder::GifEncoder():
     paletteSize_(0),
     frameCounter_(0),
     paletteMode_(PaletteMode::Dynamic),
-    indexMode_(IndexMode::Default)
-{
-    quantizer_ = Quantizer::create();
-}
-
-GifEncoder::~GifEncoder()
-{
-    delete quantizer_;
-}
+    indexMode_(IndexMode::Default),
+    quantizer_(Quantizer::create())
+{}
 
 bool GifEncoder::openFile
 (

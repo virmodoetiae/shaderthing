@@ -49,10 +49,10 @@ protected:
 public:
 
     // Create a Quantizer-type object
-    static Bloomer* create();
+    static UniquePtr<Bloomer> create();
 
     // Destructor
-    virtual ~Bloomer(){}
+    virtual ~Bloomer() = default;
 
     // Return the maximum possible mip level on which we can operate for the
     // provided Framebuffer

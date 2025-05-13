@@ -25,16 +25,16 @@ std::unordered_map<DitherMode, std::string>
         {DitherMode::None, "None"}
     };
 
-Quantizer* Quantizer::create()
+UniquePtr<Quantizer> Quantizer::create()
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<Quantizer>();
     switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLQuantizer();
+            return  makeUnique<OpenGLQuantizer>();
     }
-    return nullptr;
+    return nullUniquePtr<Quantizer>();
 }
 
 }

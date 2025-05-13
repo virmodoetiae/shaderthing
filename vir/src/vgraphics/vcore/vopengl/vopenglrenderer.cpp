@@ -68,7 +68,7 @@ void OpenGLRendererAPI::setBlending(bool flag)
 
 OpenGLRenderer::OpenGLRenderer()
 {
-    api_ = new OpenGLRendererAPI();
+    api_ = makeUnique<OpenGLRendererAPI>();
     deviceName_ = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
 }
 

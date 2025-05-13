@@ -161,10 +161,10 @@ protected:
 public:
 
     // Create a Quantizer-type object
-    static Quantizer* create();
+    static UniquePtr<Quantizer> create();
 
     // Destructor
-    virtual ~Quantizer(){}
+    virtual ~Quantizer() = default;
 
     // Accessors
     uint32_t width(){return width_;}

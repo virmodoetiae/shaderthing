@@ -60,7 +60,7 @@ protected:
 public:
 
     // Destructor
-    virtual ~PostProcess();
+    virtual ~PostProcess() = default;
 
     //
     Type type() const {return type_;}

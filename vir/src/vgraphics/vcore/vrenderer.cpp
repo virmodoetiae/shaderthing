@@ -16,12 +16,6 @@ extern "C" {
 namespace vir
 {
 
-Renderer::~Renderer()
-{
-    delete api_;
-    api_ = nullptr;
-}
-
 GlobalPtr<Renderer> Renderer::initialize()
 {
     if (!GlobalPtr<Window>::valid() || GlobalPtr<Renderer>::valid())

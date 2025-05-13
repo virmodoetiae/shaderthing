@@ -272,18 +272,14 @@ void main(){fragColor = texture(tx, tc);})",
 
 //----------------------------------------------------------------------------//
 
-Layer::~Layer()
+/*Layer::~Layer()
 {
     //DELETE_IF_NOT_NULLPTR(rendering_.framebufferA)
     //DELETE_IF_NOT_NULLPTR(rendering_.framebufferB)
     //DELETE_IF_NOT_NULLPTR(rendering_.shader)
-    DELETE_IF_NOT_NULLPTR(rendering_.quad)
-    for (auto postProcess : rendering_.postProcesses)
-    {
-        DELETE_IF_NOT_NULLPTR(postProcess)
-    }
+    //DELETE_IF_NOT_NULLPTR(rendering_.quad)
     //DELETE_IF_NOT_NULLPTR(uniformBuffer_)
-}
+}*/
 
 //----------------------------------------------------------------------------//
 
@@ -346,7 +342,7 @@ void Layer::save(ObjectIO& io) const
     if (rendering_.postProcesses.size() > 0)
     {
         io.writeObjectStart("postProcesses");
-        for (auto postProcess : rendering_.postProcesses)
+        for (auto& postProcess : rendering_.postProcesses)
             postProcess->save(io);
         io.writeObjectEnd(); // End of postProcesses
     }
@@ -850,7 +846,8 @@ void Layer::setDepth(const float depth)
     else
     {
         auto viewport = Helpers::normalizedWindowResolution();
-        rendering_.quad = new vir::TiledQuad(viewport.x, viewport.y, depth_);
+        rendering_.quad = 
+            vir::makeUnique<vir::TiledQuad>(viewport.x, viewport.y, depth_);
     }
 }
 
@@ -889,7 +886,7 @@ void Layer::rebuildFramebuffers
     auto rebuildFramebuffer = []
     (
         vir::UniquePtr<vir::Framebuffer>& framebuffer, 
-        vir::GeometricPrimitive* quad,
+        vir::UniquePtr<vir::TiledQuad>& quad,
         const vir::TextureBuffer::InternalFormat& internalFormat, 
         const glm::ivec2& resolution
     )
@@ -1233,7 +1230,7 @@ void Layer::renderShader
             {
                 vir::Framebuffer* sourceFramebuffer = 
                     layer->rendering_.frontFramebuffer;
-                for (auto* postProcess : layer->rendering_.postProcesses)
+                for (auto& postProcess : layer->rendering_.postProcesses)
                 {
                     if 
                     (
@@ -1361,7 +1358,7 @@ void Layer::renderShader
     // Apply post-processing effects, if any
     if (allowClearTargetAndPostProcess)
     {
-        for (auto postProcess : rendering_.postProcesses)
+        for (auto& postProcess : rendering_.postProcesses)
             postProcess->run();
     }
 
@@ -1935,7 +1932,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
             auto& postProcesses = rendering_.postProcesses;
             for (int i = 0; i < (int)postProcesses.size(); i++)
             {
-                PostProcess* postProcess = postProcesses[i];
+                auto& postProcess = postProcesses[i];
                 ImGui::PushID(i);
                 if (ImGui::SmallButton(ICON_FA_TRASH))
                     iDelete = i;
@@ -1958,8 +1955,9 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                             iActive = i;
                         else if (iActive != i)
                         {
-                            postProcesses[i] = postProcesses[iActive];
-                            postProcesses[iActive] = postProcess;
+                            std::swap(postProcesses[i], postProcesses[iActive]);
+                            //postProcesses[i] = postProcesses[iActive];
+                            //postProcesses[iActive] = postProcess;
                             iActive = -1;
                         }
                     }
@@ -1980,9 +1978,9 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
             }
             if (iDelete != -1)
             {
-                auto* postProcess = postProcesses[iDelete];
-                delete postProcess;
-                postProcess = nullptr;
+                //auto& postProcess = postProcesses[iDelete];
+                //delete postProcess;
+                //postProcess = nullptr;
                 postProcesses.erase(postProcesses.begin()+iDelete);
             }
             
@@ -2014,7 +2012,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                 }
                 std::vector<vir::PostProcess::Type> 
                     availableTypes(allAvailableTypes);
-                for (auto* postProcess : postProcesses)
+                for (auto& postProcess : postProcesses)
                 {
                     auto it = std::find
                     (
@@ -2035,10 +2033,10 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                         )
                     )
                     {
-                        PostProcess* postProcess = 
+                        auto postProcess = 
                             PostProcess::create(this, type);
                         if (postProcess != nullptr)
-                            postProcesses.emplace_back(postProcess);
+                            postProcesses.emplace_back(std::move(postProcess));
                     }
                 }
                 ImGui::EndCombo();

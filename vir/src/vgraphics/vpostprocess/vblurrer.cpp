@@ -5,15 +5,15 @@
 namespace vir
 {
 
-Blurrer* Blurrer::create()
+UniquePtr<Blurrer> Blurrer::create()
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<Blurrer>();
     switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLBlurrer();
+            return makeUnique<OpenGLBlurrer>();
     }
-    return nullptr;
+    return nullUniquePtr<Blurrer>();
 }
 }

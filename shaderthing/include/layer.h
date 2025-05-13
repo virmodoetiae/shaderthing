@@ -57,14 +57,14 @@ public:
             InternalFramebufferAndWindow
         };
         Target                           target              = Target::Window;
-        vir::TiledQuad*                  quad                = nullptr;
+        vir::UniquePtr<vir::TiledQuad>   quad;
         vir::UniquePtr<vir::Framebuffer> framebufferA;
         vir::UniquePtr<vir::Framebuffer> framebufferB;
         vir::Framebuffer*                frontFramebuffer    = nullptr;
         vir::Framebuffer*                backFramebuffer     = nullptr;
         vir::Framebuffer*                resourceFramebuffer = nullptr;
         vir::UniquePtr<vir::Shader>      shader;
-        std::vector<PostProcess*>        postProcesses       = {};
+        std::vector<vir::UniquePtr<PostProcess>> postProcesses = {};
 
         struct TileData
         {
@@ -215,7 +215,6 @@ public:
         const SharedUniforms& sharedUniforms,
         const bool compileShader = true
     );
-    ~Layer();
     
     static void saveAll(const std::vector<Layer*>& layers, ObjectIO& io);
     static void loadAll

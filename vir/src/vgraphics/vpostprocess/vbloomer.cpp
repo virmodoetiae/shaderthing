@@ -14,16 +14,16 @@ const std::unordered_map<Bloomer::Settings::ToneMap, std::string>
         {Settings::ToneMap::None, "None"}
     };
 
-Bloomer* Bloomer::create()
+UniquePtr<Bloomer> Bloomer::create()
 {
     if (!GlobalPtr<Window>::valid())
-        return nullptr;
+        return nullUniquePtr<Bloomer>();
     switch(Window::instance()->context()->type())
     {
         case (GraphicsContext::Type::OpenGL) :
-            return new OpenGLBloomer();
+            return makeUnique<OpenGLBloomer>();
     }
-    return nullptr;
+    return nullUniquePtr<Bloomer>();
 }
 
 // Just a fancy integer log2(x)-1 implementation

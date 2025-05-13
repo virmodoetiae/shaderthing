@@ -38,7 +38,7 @@ protected:
     Layer*             inputLayer_        = nullptr;
     vir::Framebuffer** inputFramebuffer_  = nullptr;
     // Native post-process which also holds the target output framebuffer
-    vir::PostProcess*  native_            = nullptr;
+    vir::UniquePtr<vir::PostProcess> native_;
     bool               isActive_          = false;
 
     DELETE_COPY_MOVE(PostProcess)
@@ -46,14 +46,14 @@ protected:
     PostProcess
     (
         Layer* inputLayer, 
-        vir::PostProcess* nativePostProcess
+        vir::UniquePtr<vir::PostProcess>&& nativePostProcess
     );
 
 public:
     
     virtual ~PostProcess();
 
-    static PostProcess* create
+    static vir::UniquePtr<PostProcess> create
     (
         Layer* inputLayer, 
         Type type

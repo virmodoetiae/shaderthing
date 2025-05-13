@@ -1,0 +1,159 @@
+{
+    "UIScale": 0.6000000238418579,
+    "autoSaveEnabled": true,
+    "autoSaveInterval": 60.0,
+    "vSyncEnabled": true,
+    "resources": {},
+    "sharedUniforms": {
+        "windowResolution": [
+            512.0,
+            512.0
+        ],
+        "exportWindowResolutionScale": 1.0,
+        "time": 1243.774658203125,
+        "timePaused": false,
+        "timeLooped": false,
+        "timeBounds": [
+            0.0,
+            2588.654541015625
+        ],
+        "randomGeneratorPaused": false,
+        "iWASD": [
+            0.0,
+            0.0,
+            -1.0
+        ],
+        "iWASDSensitivity": 10.0,
+        "iWASDInputEnabled": true,
+        "iLook": [
+            -0.003490651957690716,
+            0.0,
+            0.9999939203262329
+        ],
+        "iLookSensitivity": 0.20000000298023224,
+        "iLookInputEnabled": true,
+        "iLookInputRequiresLMBHold": true,
+        "iMouseInputEnabled": true,
+        "iMouseInputClampedToWindow": false,
+        "mouseInputRequiresLMBHold": true,
+        "iKeyboardInputEnabled": true,
+        "smoothTimeDelta": false,
+        "resetTimeOnFrameCounterReset": true,
+        "cursorStatus": false,
+        "uniforms": {
+            "reset": {
+                "type": "bool",
+                "shared": true,
+                "value": false
+            }
+        }
+    },
+    "graphicsExtensions": [
+        "GL_NV_gpu_shader5"
+    ],
+    "sharedStorage": {
+        "intDataViewStartIndex": 0,
+        "intDataViewEndIndex": 5,
+        "floatDataViewEndIndex": 5,
+        "floatDataViewStartIndex": 0,
+        "isFloatDataAlsoShownAsColor": false,
+        "floatDataViewPrecision": 7,
+        "floatDataViewExponentialFormat": false,
+        "floatDataViewComponents": [
+            1,
+            1,
+            1,
+            1
+        ],
+        "intType": 3,
+        "floatType": 0,
+        "intDataSize": 16,
+        "floatDataSize": 256,
+        "nFloatComponents": 4
+    },
+    "layers": {
+        "Resetter": {
+            "renderTarget": 1,
+            "resolution": [
+                1,
+                1
+            ],
+            "resolutionRatio": [
+                0.001953125,
+                0.001953125
+            ],
+            "isAspectRatioBoundToWindow": true,
+            "rescaleWithWindow": true,
+            "depth": 0.0,
+            "internalFramebuffer": {
+                "format": 9,
+                "wrapModes": [
+                    0,
+                    0
+                ],
+                "magFilterMode": 0,
+                "minFilterMode": 1,
+                "exportClearPolicy": 0
+            },
+            "exportData": {
+                "resolutionScale": 1.0,
+                "rescaleWithOutput": true,
+                "windowResolutionScale": 1.0
+            },
+            "shader": {
+                "fragmentSourceSize": 249,
+                "fragmentSource": "void main()\n{\n    fragColor.a = 1;\n    if (ssiData[0] == 8)\n        fragColor.rgb = vec3(1,0,0);\n    else\n        fragColor.rgb = vec3(1,1,0);\n    if (reset)\n    {\n        atomicExchange(ssiData[0], 0);\n        atomicExchange(ssiData[1], 0);\n    }\n}",
+                "uniforms": {}
+            }
+        },
+        "Adder": {
+            "renderTarget": 2,
+            "resolution": [
+                256,
+                256
+            ],
+            "resolutionRatio": [
+                0.5,
+                0.5
+            ],
+            "isAspectRatioBoundToWindow": true,
+            "rescaleWithWindow": true,
+            "depth": 0.03125,
+            "internalFramebuffer": {
+                "format": 9,
+                "wrapModes": [
+                    0,
+                    0
+                ],
+                "magFilterMode": 0,
+                "minFilterMode": 1,
+                "exportClearPolicy": 0
+            },
+            "exportData": {
+                "resolutionScale": 1.0,
+                "rescaleWithOutput": true,
+                "windowResolutionScale": 1.0
+            },
+            "shader": {
+                "fragmentSourceSize": 1559,
+                "fragmentSource": "// Example test case to check the usage of long unsigned int variables (which\n// may require shader extensions, and the GL_NV_GPU_shader5 has been enabled\n// here for this purpose) in the shared storage buffer (ssiData) for a test \n// purpose, namely calculating the value of pi with random sampling (the value\n// can be see in cell index 0 of the ssfData array, see Resources->Shared \n// storage viewer). This is also, this, a quick test for the validity of \n// the random number generator hereby found, although that is a GLSL test and \n// not a ShaderThing-proper test. It converges reasonably quickly to the first\n// 4 digits of pi (3.1415)\n\nuint gSeed = floatBitsToUint(1.389*qc.x) +\n             floatBitsToUint(1.918*qc.y) +\n             0x13891918u*iFrame + 0x19181389u*iRenderPass;\n                            // Base prng for all others, inspired by Murmur1\nfloat prng(inout uint seed) // [Stateless] uint seed -> float in [0, 1]\n{\n    const uint m = 0x5bd1e995u;\n    uint r = seed ^ 4u; seed *= m; seed ^= seed >> 24u; seed*= m;\n    r *= m; r ^= seed; r ^= r >> 11u; r *= m;\n    return float(r)/0xffffffffu;\n}\nfloat prng1() {return prng(gSeed);}\nvec2 prng2() {return vec2(prng1(), prng1());}\n\nvoid main()\n{\n    vec2 point = prng2();\n    if (length(point) < 1)\n        atomicAdd(ssiData[0], 1ul); // Inside a unit circle\n    atomicAdd(ssiData[1], 1ul); // Outside a unit circle\n    fragColor = vec4(point.rg, sin(iTime), 1);\n    \n    if (int(fragCoord.x) == 0 && int(fragCoord.y) == 0)\n        ssfData[0].x = 4*float(ssiData[0])/float(ssiData[1]);\n}",
+                "uniforms": {}
+            }
+        }
+    },
+    "exporter": {
+        "type": 0,
+        "outputFilepath": "",
+        "nRenderPasses": 1,
+        "areRenderPassesOnFirstFrameOnly": false,
+        "resetFrameCounterAfterExport": true,
+        "startTime": 0.0,
+        "endTime": 1.0,
+        "fps": 60.0,
+        "gifPaletteMode": 0,
+        "gifPaletteBitDepth": 8,
+        "gifAlphaCutoff": 255,
+        "gifDitherMode": 0
+    },
+    "sharedPostProcessData": {}
+}

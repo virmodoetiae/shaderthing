@@ -450,10 +450,9 @@ edited and used for learning purposes or as starting points for other projects)"
     static std::string errorMessage;
     static auto canRunOnDeviceInUse = []() -> bool
     {
-        auto* nativeBloom = vir::Bloomer::create();
+        auto nativeBloom = vir::Bloomer::create();
         bool result = nativeBloom->canRunOnDeviceInUse();
         errorMessage = std::string(nativeBloom->errorMessage());
-        delete nativeBloom;
         return result;
     };
     static bool bloom(canRunOnDeviceInUse());

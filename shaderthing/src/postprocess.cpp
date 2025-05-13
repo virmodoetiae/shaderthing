@@ -26,18 +26,17 @@ namespace ShaderThing
 PostProcess::PostProcess
 (
     Layer* inputLayer,
-    vir::PostProcess* native
-):
+    vir::UniquePtr<vir::PostProcess>&& native
+) :
 inputLayer_(inputLayer),
 inputFramebuffer_(&inputLayer->rendering_.resourceFramebuffer),
-native_(native)
+native_(std::move(native))
 {}
 
 //----------------------------------------------------------------------------//
 
 PostProcess::~PostProcess()
 {
-    DELETE_IF_NOT_NULLPTR(native_)
     if (isActive_)
         *inputFramebuffer_ = 
             inputLayer_->rendering_.framebufferA.get();
@@ -45,7 +44,7 @@ PostProcess::~PostProcess()
 
 //----------------------------------------------------------------------------//
 
-PostProcess* PostProcess::create
+vir::UniquePtr<PostProcess> PostProcess::create
 (
     Layer* inputLayer,
     Type type
@@ -54,15 +53,15 @@ PostProcess* PostProcess::create
     switch(type)
     {
         case Type::Quantization :
-            return new QuantizationPostProcess(inputLayer);
+            return vir::makeUnique<QuantizationPostProcess>(inputLayer);
         case Type::Bloom :
-            return new BloomPostProcess(inputLayer);
+            return vir::makeUnique<BloomPostProcess>(inputLayer);
         case Type::Blur :
-            return new BlurPostProcess(inputLayer);
+            return vir::makeUnique<BlurPostProcess>(inputLayer);
         default :
-            return nullptr;
+            return vir::nullUniquePtr<PostProcess>();
     }
-    return nullptr;
+    return vir::nullUniquePtr<PostProcess>();
 }
 
 //----------------------------------------------------------------------------//
@@ -599,7 +598,7 @@ void QuantizationPostProcess::run()
     else
         settings_.regenerateMipmap = false;
     //settings_.cumulatePalette = true;
-    ((nativeType*)native_)->quantize
+    ((nativeType*)native_.get())->quantize
     (
         *inputFramebuffer_,
         currentPalette_.nColors,
@@ -609,7 +608,7 @@ void QuantizationPostProcess::run()
     if (paletteSizeModified_)
         currentPalette_.clear();
     if (refreshPalette_ || settings_.recalculatePalette || paletteSizeModified_)
-        ((nativeType*)native_)->getPalette
+        ((nativeType*)native_.get())->getPalette
         (
             currentPalette_.data, 
             paletteSizeModified_
@@ -1154,7 +1153,7 @@ void BloomPostProcess::run()
 {
     CHECK_SHOULD_RUN
 
-    ((nativeType*)native_)->bloom
+    ((nativeType*)native_.get())->bloom
     (
         *inputFramebuffer_,
         settings_
@@ -1345,7 +1344,7 @@ void BlurPostProcess::run()
 {
     CHECK_SHOULD_RUN
 
-    ((nativeType*)native_)->blur
+    ((nativeType*)native_.get())->blur
     (
         *inputFramebuffer_,
         settings_
