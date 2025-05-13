@@ -1928,14 +1928,35 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
 
             ImGui::SeparatorText("Post-processing effects");
             int iDelete = -1;
-            static int iActive = -1;
-            auto& postProcesses = rendering_.postProcesses;
-            for (int i = 0; i < (int)postProcesses.size(); i++)
+            int iSrc = -1; 
+            int iTrg = -1;
+            int nPostProcesses = rendering_.postProcesses.size();
+            for (int i = 0; i < nPostProcesses; i++)
             {
-                auto& postProcess = postProcesses[i];
+                auto& postProcess = rendering_.postProcesses[i];
                 ImGui::PushID(i);
                 if (ImGui::SmallButton(ICON_FA_TRASH))
                     iDelete = i;
+                ImGui::SameLine();
+                if (i == 0)
+                    ImGui::BeginDisabled();
+                if (ImGui::SmallButton(ICON_FA_ARROW_UP))
+                {
+                    iSrc = i;
+                    iTrg = std::max(i-1, 0);
+                }
+                if (i == 0)
+                    ImGui::EndDisabled();
+                ImGui::SameLine();
+                if (i == nPostProcesses-1)
+                    ImGui::BeginDisabled();
+                if (ImGui::SmallButton(ICON_FA_ARROW_DOWN))
+                {
+                    iSrc = i;
+                    iTrg = std::min(i+1, nPostProcesses-1);
+                }
+                if (i == nPostProcesses-1)
+                    ImGui::EndDisabled();
                 ImGui::SameLine();
                 if 
                 (
@@ -1948,41 +1969,30 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                     )
                 )
                 {
-                    // This part here is for the click & drag re-order mechanics
-                    if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-                    {
-                        if (iActive == -1)
-                            iActive = i;
-                        else if (iActive != i)
-                        {
-                            std::swap(postProcesses[i], postProcesses[iActive]);
-                            //postProcesses[i] = postProcesses[iActive];
-                            //postProcesses[iActive] = postProcess;
-                            iActive = -1;
-                        }
-                    }
-                    else
-                        iActive = -1;
                     // Render post-processing effect GUI
-                    if (!postProcess->canRunOnDeviceInUse())
+                    if (postProcess->canRunOnDeviceInUse())
+                        postProcess->renderGui();
+                    else
                     {
                         ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
                         ImGui::Text(postProcess->errorMessage().c_str());
                         ImGui::PopTextWrapPos();
                     }
-                    else
-                        postProcess->renderGui();
                     ImGui::EndMenu();
                 }
                 ImGui::PopID();
             }
             if (iDelete != -1)
-            {
-                //auto& postProcess = postProcesses[iDelete];
-                //delete postProcess;
-                //postProcess = nullptr;
-                postProcesses.erase(postProcesses.begin()+iDelete);
-            }
+                rendering_.postProcesses.erase
+                (
+                    rendering_.postProcesses.begin() + iDelete
+                );
+            else if (iSrc != iTrg)
+                std::swap
+                (
+                    rendering_.postProcesses[iSrc], 
+                    rendering_.postProcesses[iTrg]
+                );
             
             // Selector for adding a new post-processing effect with the 
             // constraint that each layer may have at most one 
@@ -2012,7 +2022,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                 }
                 std::vector<vir::PostProcess::Type> 
                     availableTypes(allAvailableTypes);
-                for (auto& postProcess : postProcesses)
+                for (auto& postProcess : rendering_.postProcesses)
                 {
                     auto it = std::find
                     (
@@ -2036,13 +2046,15 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                         auto postProcess = 
                             PostProcess::create(this, type);
                         if (postProcess != nullptr)
-                            postProcesses.emplace_back(std::move(postProcess));
+                            rendering_.postProcesses.emplace_back
+                            (
+                                std::move(postProcess)
+                            );
                     }
                 }
                 ImGui::EndCombo();
             }
             ImGui::PopItemWidth();
-            
         }
         ImGui::EndMenu();
     }
