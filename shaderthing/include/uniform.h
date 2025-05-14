@@ -20,6 +20,7 @@
 
 #include "shaderthing/include/macros.h"
 
+#include "vir/include/vpointers.h"
 #include "vir/include/vgraphics/vcore/vshader.h"
 #include "vir/include/vgraphics/vcore/vbuffers.h"
 
@@ -38,7 +39,7 @@ class Uniform : public vir::Shader::Uniform
 protected:
 
     // For Resource-type uniforms only
-    Uniform* resourceResolution_ = nullptr;
+    vir::UniquePtr<Uniform> resourceResolution_;
 
      // Overridden to also correctly delete resourceResolution, if managed
     void deleteValue(bool deleteCache=true) override;

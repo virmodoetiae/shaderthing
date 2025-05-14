@@ -1070,7 +1070,7 @@ motion only if the left mouse button (LMB) is held)");
                 )
                     layer->uniformBuffer_->removeUniform
                     (
-                        uniform->resourceResolution_
+                        uniform->resourceResolution_.get()
                     );
                 
                 uniform->setType(selectedType, true);
@@ -2271,7 +2271,8 @@ void Uniform::loadAll
 void Uniform::deleteValue(bool deleteCache)
 {
     vir::Shader::Uniform::deleteValue(deleteCache);
-    DELETE_IF_NOT_NULLPTR(resourceResolution_)
+    //DELETE_IF_NOT_NULLPTR(resourceResolution_)
+    resourceResolution_.reset();
 }
 
 bool Uniform::isResource() const 
@@ -2319,7 +2320,7 @@ void Uniform::setResourcePtr
 
     // Also set resolution uniform
     if (resourceResolution_ == nullptr)
-        resourceResolution_ = new Uniform{};
+        resourceResolution_ = vir::makeUnique<Uniform>();
     resourceResolution_->name = name+"Resolution";
     if (is3D)
         resourceResolution_->setValue
@@ -2343,7 +2344,7 @@ void Uniform::setResourcePtr
             Type::Float2
         );
     if (uniformBuffer != nullptr)
-        uniformBuffer->addUniform(resourceResolution_);
+        uniformBuffer->addUniform(resourceResolution_.get());
 }
 
 void Uniform::removeResourceResolutionFromUniformBuffer
@@ -2353,7 +2354,7 @@ void Uniform::removeResourceResolutionFromUniformBuffer
 {
     if (resourceResolution_ == nullptr)
         return;
-    uniformBuffer->removeUniform(resourceResolution_);
+    uniformBuffer->removeUniform(resourceResolution_.get());
 }
 
 void Uniform::updateResourceResolution
@@ -2391,7 +2392,7 @@ void Uniform::updateResourceResolution
             value->y = resource->height();
             uniformBuffer->markUniformForSubmission
             (
-                resourceResolution_
+                resourceResolution_.get()
             );
         }
     }
@@ -2410,7 +2411,7 @@ void Uniform::updateResourceResolution
             value->z = resource->depth();
             uniformBuffer->markUniformForSubmission
             (
-                resourceResolution_
+                resourceResolution_.get()
             );
         }
     }

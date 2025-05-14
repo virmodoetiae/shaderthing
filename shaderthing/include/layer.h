@@ -139,7 +139,7 @@ public:
             // each frame)
             ClearOnEveryFrameExport
         };
-        FramebufferClearPolicy          clearPolicy           = FramebufferClearPolicy::None;
+        FramebufferClearPolicy          clearPolicy = FramebufferClearPolicy::None;
         glm::ivec2                      originalResolution;
         glm::ivec2                      resolution;
         float                           resolutionScale       = 1.f;
