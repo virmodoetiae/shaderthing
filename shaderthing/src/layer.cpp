@@ -167,22 +167,20 @@ Layer::Layer
 
     // Add default uniforms
     {
-        Uniform* u = nullptr;
-        
-        u = new Uniform{};
+        auto u = vir::makeUnique<Uniform>();
         u->specialType = Uniform::SpecialType::LayerAspectRatio;
         u->name = "iAspectRatio";
         u->setValuePtr(&aspectRatio_, Uniform::Type::Float);
         u->gui.showBounds = false;
-        addUniform(u);
+        addUniform(std::move(u));
 
-        u = new Uniform{};
+        u = vir::makeUnique<Uniform>();
         u->specialType = Uniform::SpecialType::LayerResolution;
         u->name = "iResolution";
         u->setValuePtr(&resolution_, Uniform::Type::Float2);
         u->gui.bounds = glm::vec2(1.0f, 4096.0f);
         u->gui.showBounds = false;
-        addUniform(u);
+        addUniform(std::move(u));
         
         /* This was just a very quick test for array uniforms
         static float array[17];
@@ -396,8 +394,8 @@ Layer* Layer::load
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
     layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
     // Ensure iAspectRatio and iResolution values are actually updated
-    layer->uniformBuffer_->markUniformForSubmission(layer->uniforms_[0]);
-    layer->uniformBuffer_->markUniformForSubmission(layer->uniforms_[1]); 
+    layer->uniformBuffer_->markUniformForSubmission(layer->uniforms_[0].get());
+    layer->uniformBuffer_->markUniformForSubmission(layer->uniforms_[1].get()); 
     
     layer->flags_.rescaleWithWindow = 
         io.readOrDefault<bool>("rescaleWithWindow", true);
@@ -556,7 +554,7 @@ void Layer::loadAll
     // within each resource
     for (auto* layer : layers)
     {
-        for (auto* uniform : layer->uniforms_)
+        for (auto& uniform : layer->uniforms_)
         {
             if 
             (
@@ -571,8 +569,8 @@ void Layer::loadAll
                 auto resource = uniform->getValuePtr<Resource>();
                 if (resource != nullptr)
                 {
-                    if (!resource->isUsedByUniform(uniform))
-                        resource->addClientUniform(uniform);
+                    if (!resource->isUsedByUniform(uniform.get()))
+                        resource->addClientUniform(uniform.get());
                 }
             }
         }
@@ -672,13 +670,13 @@ Layer::fragmentShaderHeaderSourceAndLineCount
 
     auto writeResourceUniformsToHeader = []
     (
-        const std::vector<Uniform*> uniforms, 
+        const std::vector<vir::UniquePtr<Uniform>>& uniforms, 
         std::string& header,
         unsigned int& nLines,
         unsigned int& imageBindingPoint
     )
     {
-        for (auto* u : uniforms)
+        for (auto& u : uniforms)
         {
             // If the uniform has no name, I can't add it to the source
             if (u->name.size() == 0)
@@ -818,8 +816,8 @@ void Layer::setResolution
     if (rendering_.shader == nullptr)
         return;
     rendering_.shader->bind();
-    uniformBuffer_->markUniformForSubmission(uniforms_[0]); // iAspectRatio
-    uniformBuffer_->markUniformForSubmission(uniforms_[1]); // iResolution
+    uniformBuffer_->markUniformForSubmission(uniforms_[0].get()); // iAspectRatio
+    uniformBuffer_->markUniformForSubmission(uniforms_[1].get()); // iResolution
 }
 
 //----------------------------------------------------------------------------//
@@ -1186,7 +1184,7 @@ void Layer::renderShader
 
     auto setSamplerUniforms = []
     (
-        const std::vector<Uniform*>& uniforms,
+        const std::vector<vir::UniquePtr<Uniform>>& uniforms,
         Layer* layer, 
         SharedUniforms& sharedUniforms,
         unsigned int& textureUnit,
@@ -1194,7 +1192,7 @@ void Layer::renderShader
     )
     {
         const auto& shader = layer->rendering_.shader;
-        for (auto u : uniforms)
+        for (auto& u : uniforms)
         {
             bool isSampler
             (
@@ -1424,32 +1422,45 @@ void Layer::resetAfterExport(const std::vector<Layer*>& layers)
 
 //----------------------------------------------------------------------------//
 
-void Layer::addUniform(Uniform* uniform)
+void Layer::addUniform(vir::UniquePtr<Uniform>&& uniform)
 {
     if (uniform == nullptr)
         return;
-    uniformBuffer_->addUniform(uniform);
-    uniforms_.emplace_back(uniform);
-    if (uniform->isResource())
+    auto& u = uniforms_.emplace_back(std::move(uniform));
+    uniformBuffer_->addUniform(vir::castUnique<vir::Shader::Uniform>(u));
+    if (u->isResource())
     {
-        auto* resource = uniform->getValuePtr<Resource>();
-        uniform->setResourcePtr(resource, uniformBuffer_.get());
+        auto* resource = u->getValuePtr<Resource>();
+        u->setResourcePtr(resource, uniformBuffer_.get());
     }
-    cache_.uncompiledUniforms.emplace_back(uniform);
+    cache_.uncompiledUniforms.emplace_back(u.get());
 }
 
 //----------------------------------------------------------------------------//
 
-void Layer::removeUniform(Uniform* uniform)
+vir::UniquePtr<Uniform> Layer::removeUniform(Uniform* uniform)
 {
     if (uniform == nullptr)
-        return;
+        return vir::nullUniquePtr<Uniform>();
     uniformBuffer_->removeUniform(uniform);
-    uniforms_.erase
+    int index = -1;
+    for (unsigned int i = 0; i<uniforms_.size(); i++)
+    {
+        if (uniforms_[i] == uniform)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1)
+        return vir::nullUniquePtr<Uniform>();
+    auto u = std::move(uniforms_[index]);
+    uniforms_.erase(uniforms_.begin()+index);
+    /*uniforms_.erase
     (
         std::remove(uniforms_.begin(), uniforms_.end(), uniform), 
         uniforms_.end()
-    );
+    );*/
     if (uniform->isResource())
         uniform->removeResourceResolutionFromUniformBuffer(uniformBuffer_.get());
     cache_.uncompiledUniforms.erase
@@ -1462,6 +1473,7 @@ void Layer::removeUniform(Uniform* uniform)
         ), 
         cache_.uncompiledUniforms.end()
     );
+    return std::move(u);
 }
 
 //----------------------------------------------------------------------------//
@@ -1471,7 +1483,7 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
     bool result = false;
     for (int i=0; i<(int)uniforms_.size(); i++)
     {
-        auto uniform = uniforms_[i];
+        auto& uniform = uniforms_[i];
         if 
         (
             uniform->type() != Uniform::Type::Sampler2D &&
@@ -1486,7 +1498,7 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
         if (resource->id() == uResource->id())
         {
             //uniforms_.erase(uniforms_.begin()+i--);
-            removeUniform(uniform);
+            removeUniform(uniform.get());
             result = true;
         }
     }

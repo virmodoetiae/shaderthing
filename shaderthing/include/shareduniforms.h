@@ -187,7 +187,7 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
           vir::UniquePtr<vir::Camera> shaderCamera_;
 
           // List of user-created uniforms which are shared by all layers
-          std::vector<Uniform*> 
+          std::vector<vir::UniquePtr<Uniform>> 
                               userUniforms_   = {};
 
           // For generating random numbers for iSeed
@@ -215,20 +215,20 @@ R"(layout(std140) uniform vertexUniformBlock {mat4 iMVP;};
 
           // Uniforms wrapping uniform data
 
-          Uniform             iFrameUniform_;
-          Uniform             iRenderPassUniform_;
-          Uniform             iTimeUniform_;
-          Uniform             iTimeDeltaUniform_;
-          Uniform             iRandomUniform_;
-          Uniform             iUserActionUniform_;
-          Uniform             iExportUniform_;
-          Uniform             iWASDUniform_;
-          Uniform             iLookUniform_;
-          Uniform             iMouseUniform_;
-          Uniform             iAspectRatioUniform_;
-          Uniform             iResolutionUniform_;
-          Uniform             iKeyboardUniform_;
-          Uniform             iMVPUniform_;
+          vir::UniquePtr<Uniform> iFrameUniform_;
+          vir::UniquePtr<Uniform> iRenderPassUniform_;
+          vir::UniquePtr<Uniform> iTimeUniform_;
+          vir::UniquePtr<Uniform> iTimeDeltaUniform_;
+          vir::UniquePtr<Uniform> iRandomUniform_;
+          vir::UniquePtr<Uniform> iUserActionUniform_;
+          vir::UniquePtr<Uniform> iExportUniform_;
+          vir::UniquePtr<Uniform> iWASDUniform_;
+          vir::UniquePtr<Uniform> iLookUniform_;
+          vir::UniquePtr<Uniform> iMouseUniform_;
+          vir::UniquePtr<Uniform> iAspectRatioUniform_;
+          vir::UniquePtr<Uniform> iResolutionUniform_;
+          vir::UniquePtr<Uniform> iKeyboardUniform_;
+          vir::UniquePtr<Uniform> iMVPUniform_;
 
     // Only used in the post-loading step
     struct Cache
@@ -296,8 +296,8 @@ public:
         bool windowFrameManuallyDragged, 
         bool prepareForExport=false
     );
-    void addUserUniform(Uniform* uniform);
-    void removeUserUniform(Uniform* uniform);
+    void addUserUniform(vir::UniquePtr<Uniform>&& uniform);
+    vir::UniquePtr<Uniform> removeUserUniform(Uniform* uniform);
 
     void renderWindowMenuGui();
 
@@ -314,7 +314,7 @@ public:
     const int& iRenderPass() const {return iRenderPass_;}
     glm::ivec2 iResolution() const {return iResolution_;}
     const vir::UniquePtr<vir::DynamicUniformBuffer>& uniformBuffer() {return fBuffer_;}
-    const std::vector<Uniform*>& userUniforms() const {return userUniforms_;}
+    const std::vector<vir::UniquePtr<Uniform>>& userUniforms() const {return userUniforms_;}
     const float& lowerFpsLimit() const {return lowerFpsLimit_;}
 };
 

@@ -109,7 +109,7 @@ public:
     void                 setNamePtr(std::string* namePtr);
     unsigned int         textureUnit() const {return textureUnit_;}
     unsigned int         imageUnit() const {return imageUnit_;}
-    void                 addClientUniform(Uniform* u) {clientUniforms_.push_back(u);}
+    void                 addClientUniform(Uniform* u) {clientUniforms_.emplace_back(u);}
     void                 removeClientUniform(Uniform* u) {clientUniforms_.erase(std::remove(clientUniforms_.begin(), clientUniforms_.end(), u), clientUniforms_.end());}
     bool                 isUsedByUniform(const Uniform* u) const {return std::find(clientUniforms_.begin(), clientUniforms_.end(), u) != clientUniforms_.end();}
 

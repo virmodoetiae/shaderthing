@@ -134,12 +134,12 @@ public:
     static void loadAll
     (
         const ObjectIO& io, 
-        std::vector<Uniform*>& uniforms,
+        std::vector<vir::UniquePtr<Uniform>>& uniforms,
         vir::DynamicUniformBuffer* uniformBuffer,
         const std::vector<Resource*>& resources,
         std::map<Uniform*, std::string>& uninitializedResourceLayers
     );
-    static void saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms);
+    static void saveAll(ObjectIO& io, const std::vector<vir::UniquePtr<Uniform>>& uniforms);
 };
 
 }

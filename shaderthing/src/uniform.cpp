@@ -329,11 +329,11 @@ set by adjusting the slider)");
         NEXT_COLUMN
         ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
         NEXT_COLUMN
-        glm::vec2* bounds = &sharedUniforms.iTimeUniform_.gui.bounds;
+        glm::vec2* bounds = &sharedUniforms.iTimeUniform_->gui.bounds;
         bool boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float, 
-            sharedUniforms.iTimeUniform_.gui.bounds
+            sharedUniforms.iTimeUniform_->gui.bounds
         );
         NEXT_COLUMN
         auto iTimePtr = &sharedUniforms.iTime_;
@@ -751,11 +751,11 @@ motion only if the left mouse button (LMB) is held)");
             ImGui::Separator();
         }
         NEXT_COLUMN
-        bounds = &sharedUniforms.iWASDUniform_.gui.bounds;
+        bounds = &sharedUniforms.iWASDUniform_->gui.bounds;
         boundsChanged = renderEditUniformBoundsButtonGui
         (
             Type::Float3, 
-            sharedUniforms.iWASDUniform_.gui.bounds
+            sharedUniforms.iWASDUniform_->gui.bounds
         );
         if (showSeparator)
             ImGui::Separator();
@@ -830,7 +830,7 @@ motion only if the left mouse button (LMB) is held)");
     [&fontSize, &renderEditUniformBoundsButtonGui]
     (
         SharedUniforms& sharedUniforms,
-        Uniform* uniform,
+        const vir::UniquePtr<Uniform>& uniform,
         Layer* layer,
         const std::vector<Layer*>& layers,
         const std::vector<Resource*>& resources,
@@ -861,7 +861,7 @@ motion only if the left mouse button (LMB) is held)");
             if (ImGui::Button(ICON_FA_TRASH, ImVec2(halfButtonSize, 0)))
             {
                 uniform->gui.markedForDeletion = true;
-                layer->uniformBuffer_->removeUniform(uniform);
+                layer->uniformBuffer_->removeUniform(uniform.get());
                 // The uniform is gonna get deleted, so the layer(s) using it
                 // will have to be recompiled
                 if (uniform->isSharedByUser)
@@ -925,9 +925,9 @@ motion only if the left mouse button (LMB) is held)");
             if (ImGui::InputText("##uniformName", &uniform->name))
             {
                 if (!uniform->isSharedByUser)
-                    layer->uniformBuffer_->markUniformForSubmission(uniform);
+                    layer->uniformBuffer_->markUniformForSubmission(uniform.get());
                 else
-                    sharedUniforms.fBuffer_->markUniformForSubmission(uniform);
+                    sharedUniforms.fBuffer_->markUniformForSubmission(uniform.get());
                 nameChanged = true;
             }
         }
@@ -1058,10 +1058,10 @@ motion only if the left mouse button (LMB) is held)");
                 {
                     auto resource = uniform->getValuePtr<Resource>();
                     if (resource != nullptr)
-                        resource->removeClientUniform(uniform);
+                        resource->removeClientUniform(uniform.get());
                 }
                 else if (typeChangedFromNonResourceToResource)
-                    layer->uniformBuffer_->removeUniform(uniform);
+                    layer->uniformBuffer_->removeUniform(uniform.get());
 
                 if 
                 (
@@ -1103,7 +1103,7 @@ motion only if the left mouse button (LMB) is held)");
                 layer->uniformBuffer_->
                     recalculateUniformSizesAndOffsets();
                 layer->uniformBuffer_->
-                    markUniformForSubmission(uniform);
+                    markUniformForSubmission(uniform.get());
             }
             ImGui::EndCombo();
         }
@@ -1136,11 +1136,11 @@ motion only if the left mouse button (LMB) is held)");
 #define SET_UNIFORM_VALUE(Type)                                             \
     if (!isSharedByUser0)                                                   \
     {                                                                       \
-        layer->uniformBuffer_->markUniformForSubmission(uniform);           \
+        layer->uniformBuffer_->markUniformForSubmission(uniform.get());     \
     }                                                                       \
     else                                                                    \
     {                                                                       \
-        sharedUniforms.fBuffer_->markUniformForSubmission(uniform);         \
+        sharedUniforms.fBuffer_->markUniformForSubmission(uniform.get());    \
     }
 
 #define CHECK_RESOURCE_SELECTED                                             \
@@ -1152,13 +1152,13 @@ motion only if the left mouse button (LMB) is held)");
                 Layer::Flags::requestRecompilation ||                       \
                 resource->isInternalFormatUnsigned() !=                     \
                 r->isInternalFormatUnsigned();                              \
-            if (resource->isUsedByUniform(uniform))                         \
-                resource->removeClientUniform(uniform);                     \
+            if (resource->isUsedByUniform(uniform.get()))                   \
+                resource->removeClientUniform(uniform.get());               \
         }                                                                   \
         else                                                                \
             Layer::Flags::requestRecompilation = true;                      \
-        if (!r->isUsedByUniform(uniform))                                   \
-            r->addClientUniform(uniform);                                   \
+        if (!r->isUsedByUniform(uniform.get()))                             \
+            r->addClientUniform(uniform.get());                             \
         auto ubo = uniform->isSharedByUser ?                                \
             sharedUniforms.fBuffer_.get() : layer->uniformBuffer_.get();    \
         uniform->setResourcePtr(r, ubo);                                    \
@@ -1832,10 +1832,10 @@ motion only if the left mouse button (LMB) is held)");
                     (
                         l->cache_.uncompiledUniforms.begin(), 
                         l->cache_.uncompiledUniforms.end(), 
-                        uniform
+                        uniform.get()
                     ) == l->cache_.uncompiledUniforms.end()
                 )
-                    l->cache_.uncompiledUniforms.emplace_back(uniform);
+                    l->cache_.uncompiledUniforms.emplace_back(uniform.get());
                 bool atLeastOneUniformNamed = false;
                 for (auto* u : l->cache_.uncompiledUniforms)
                 {
@@ -1856,10 +1856,10 @@ motion only if the left mouse button (LMB) is held)");
                 (
                     layer->cache_.uncompiledUniforms.begin(), 
                     layer->cache_.uncompiledUniforms.end(), 
-                    uniform
+                    uniform.get()
                 ) == layer->cache_.uncompiledUniforms.end()
             )
-                layer->cache_.uncompiledUniforms.emplace_back(uniform);
+                layer->cache_.uncompiledUniforms.emplace_back(uniform.get());
             bool atLeastOneUniformNamed = false;
             for (auto* u : layer->cache_.uncompiledUniforms)
             {
@@ -1888,7 +1888,7 @@ motion only if the left mouse button (LMB) is held)");
         START_ROW
         START_COLUMN
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
-            layer->addUniform(new Uniform{});
+            layer->addUniform(vir::makeUnique<Uniform>());
         if 
         (
             ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
@@ -1952,7 +1952,7 @@ motion only if the left mouse button (LMB) is held)");
         if (showSharedAndDefaultUniforms)
             renderDefaultSharedUniformsGui(sharedUniforms, row);
 
-        for (auto uniform : sharedUniforms.userUniforms_)
+        for (auto& uniform : sharedUniforms.userUniforms_)
         {
             atLeastOneSharedUniformStateChanged = 
                 atLeastOneSharedUniformStateChanged ||
@@ -1972,7 +1972,7 @@ motion only if the left mouse button (LMB) is held)");
                 atLeastOneSharedUniformStateChanged = true;
         }
 
-        for(auto uniform : layer->uniforms_)
+        for(auto& uniform : layer->uniforms_)
         {
             atLeastOneUniformTypeChanged = 
                 atLeastOneUniformTypeChanged ||
@@ -2015,34 +2015,34 @@ motion only if the left mouse button (LMB) is held)");
     {
         for (unsigned int i=0; i<layer->uniforms_.size(); i++)
         {
-            auto u = layer->uniforms_[i];
+            auto& u = layer->uniforms_[i];
             if (!u->gui.markedForDeletion)
                 continue;
             if (u->isResource())
             {
                 auto resource = u->getValuePtr<Resource>();
-                if (resource->isUsedByUniform(u))
-                    resource->removeClientUniform(u);
+                if (resource->isUsedByUniform(u.get()))
+                    resource->removeClientUniform(u.get());
                 resource->unbind();
             }
-            layer->removeUniform(u);
-            delete u;
+            layer->removeUniform(u.get());
+            //delete u;
             i--;
         }
         for (unsigned int i=0; i<sharedUniforms.userUniforms_.size(); i++)
         {
-            auto u = sharedUniforms.userUniforms_[i];
+            auto& u = sharedUniforms.userUniforms_[i];
             if (!u->gui.markedForDeletion)
                 continue;
             if (u->isResource())
             {
                 auto resource = u->getValuePtr<Resource>();
-                if (resource->isUsedByUniform(u))
-                    resource->removeClientUniform(u);
+                if (resource->isUsedByUniform(u.get()))
+                    resource->removeClientUniform(u.get());
                 resource->unbind();
             }
-            sharedUniforms.removeUserUniform(u);
-            delete u;
+            sharedUniforms.removeUserUniform(u.get());
+            //delete u;
             i--;
             atLeastOneSharedUniformStateChanged = true;
         }
@@ -2096,23 +2096,25 @@ motion only if the left mouse button (LMB) is held)");
         return;
 
     // Check if the uniform state was changed from non-shared to shared
-    for (auto uniform : layer->uniforms_)
+    for (unsigned int i=0; i<layer->uniforms_.size(); i++)
     {
+        auto& uniform = layer->uniforms_[i];
         if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
             continue;
-        layer->removeUniform(uniform);
-        sharedUniforms.addUserUniform(uniform);
         uniform->hasSharedByUserChanged = false;
+        sharedUniforms.addUserUniform(layer->removeUniform(uniform.get()));
+        i--;
     }
 
     // Check if the uniform state was changed from shared to non-shared
-    for (auto uniform : sharedUniforms.userUniforms_)
+    for (unsigned int i=0; i<sharedUniforms.userUniforms_.size(); i++)
     {
+        auto& uniform = sharedUniforms.userUniforms_[i];
         if (!(uniform->hasSharedByUserChanged && !uniform->isSharedByUser))
             continue;
-        sharedUniforms.removeUserUniform(uniform);
-        layer->addUniform(uniform);
         uniform->hasSharedByUserChanged = false;
+        layer->addUniform(sharedUniforms.removeUserUniform(uniform.get()));
+        i--;
     }
 
     // Alternative strategy to cope with uniform block alignment changes after
@@ -2127,7 +2129,7 @@ motion only if the left mouse button (LMB) is held)");
 void Uniform::loadAll
 (
     const ObjectIO& io, 
-    std::vector<Uniform*>& uniforms,
+    std::vector<vir::UniquePtr<Uniform>>& uniforms,
     vir::DynamicUniformBuffer* uniformBuffer,
     const std::vector<Resource*>& resources,
     std::map<Uniform*, std::string>& uninitializedResourceLayers
@@ -2139,7 +2141,7 @@ void Uniform::loadAll
     for(auto uniformName : uniformsData.members())
     {
         auto uniformData = uniformsData.readObject(uniformName);
-        auto uniform = new Uniform{};
+        auto& uniform = uniforms.emplace_back(vir::makeUnique<Uniform>());
         // Mapping for compatibility with previous version .stf files
         std::string typeName = uniformData.read<std::string>("type");
         if (typeName == "texture2D")
@@ -2149,7 +2151,6 @@ void Uniform::loadAll
         auto type = vir::Shader::uniformNameToType[typeName];
         uniform->isSharedByUser = 
             uniformData.readOrDefault<bool>("shared", false);
-        uniforms.emplace_back(uniform);
         float min = 0., max = 0.;
 
 #define SET_UNIFORM(type, uType)                                             \
@@ -2253,7 +2254,7 @@ void Uniform::loadAll
                 if (!found)
                     uninitializedResourceLayers.insert
                     (
-                        {uniform, resourceName}
+                        {uniform.get(), resourceName}
                     );
                 setInUniformBuffer = false;
                 break;
@@ -2344,7 +2345,7 @@ void Uniform::setResourcePtr
             Type::Float2
         );
     if (uniformBuffer != nullptr)
-        uniformBuffer->addUniform(resourceResolution_.get());
+        uniformBuffer->addUniform(resourceResolution_);
 }
 
 void Uniform::removeResourceResolutionFromUniformBuffer
@@ -2423,10 +2424,10 @@ void Uniform::updateResourceResolutionName()
         resourceResolution_->name = name+"Resolution";
 }
 
-void Uniform::saveAll(ObjectIO& io, const std::vector<Uniform*>& uniforms)
+void Uniform::saveAll(ObjectIO& io, const std::vector<vir::UniquePtr<Uniform>>& uniforms)
 {
     io.writeObjectStart("uniforms");
-    for (auto u : uniforms)
+    for (auto& u : uniforms)
     {
         float& min(u->gui.bounds.x);
         float& max(u->gui.bounds.y);

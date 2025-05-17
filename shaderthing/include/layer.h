@@ -154,7 +154,7 @@ private:
           glm::vec2                     resolutionRatio_ = {1.f, 1.f};
           float                         aspectRatio_;
           float                         depth_;
-          std::vector<Uniform*>         uniforms_;
+          std::vector<vir::UniquePtr<Uniform>> uniforms_;
           vir::UniquePtr<vir::DynamicUniformBuffer> uniformBuffer_;
           unsigned int                  uniformBufferBindingPoint_;
           Rendering                     rendering_;
@@ -231,8 +231,8 @@ public:
     static void prepareForExport(const std::vector<Layer*>& layers);
     static void resetAfterExport(const std::vector<Layer*>& layers);
 
-    void addUniform(Uniform* uniform);
-    void removeUniform(Uniform* uniform);
+    void addUniform(vir::UniquePtr<Uniform>&& uniform);
+    vir::UniquePtr<Uniform> removeUniform(Uniform* uniform);
     bool removeResourceFromUniforms(const Resource* resource);
     
     bool compileShader

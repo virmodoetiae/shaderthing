@@ -77,10 +77,11 @@ SharedUniforms::SharedUniforms()
     vBuffer_->bind();
     vBuffer_->setBindingPoint(vBindingPoint_);
 
-    iMVPUniform_.name = "iMVP";
-    iMVPUniform_.setValuePtr(&iMVP_, Uniform::Type::Mat4);
-    iMVPUniform_.gui.showBounds = false;
-    vBuffer_->addUniform(&iMVPUniform_);
+    iMVPUniform_ = vir::makeUnique<Uniform>();
+    iMVPUniform_->name = "iMVP";
+    iMVPUniform_->setValuePtr(&iMVP_, Uniform::Type::Mat4);
+    iMVPUniform_->gui.showBounds = false;
+    vBuffer_->addUniform(iMVPUniform_);
 
     if (fBuffer_ == nullptr)
         fBuffer_ = 
@@ -95,78 +96,91 @@ SharedUniforms::SharedUniforms()
     );*/
 
         // Init uniform wrappers
-    iFrameUniform_.name = "iFrame";
-    iFrameUniform_.setValuePtr(&iFrame_, Uniform::Type::Int);
-    iFrameUniform_.gui.showBounds = false;
-    iFrameUniform_.specialType = Uniform::SpecialType::Frame;
-    fBuffer_->addUniform(&iFrameUniform_);
+    iFrameUniform_ = vir::makeUnique<Uniform>();
+    iFrameUniform_->name = "iFrame";
+    iFrameUniform_->setValuePtr(&iFrame_, Uniform::Type::Int);
+    iFrameUniform_->gui.showBounds = false;
+    iFrameUniform_->specialType = Uniform::SpecialType::Frame;
+    fBuffer_->addUniform(iFrameUniform_);
 
-    iRenderPassUniform_.name = "iRenderPass";
-    iRenderPassUniform_.setValuePtr(&iRenderPass_, Uniform::Type::Int);
-    iRenderPassUniform_.gui.showBounds = false;
-    iRenderPassUniform_.specialType = Uniform::SpecialType::RenderPass;
-    fBuffer_->addUniform(&iRenderPassUniform_);
+    iRenderPassUniform_ = vir::makeUnique<Uniform>();
+    iRenderPassUniform_->name = "iRenderPass";
+    iRenderPassUniform_->setValuePtr(&iRenderPass_, Uniform::Type::Int);
+    iRenderPassUniform_->gui.showBounds = false;
+    iRenderPassUniform_->specialType = Uniform::SpecialType::RenderPass;
+    fBuffer_->addUniform(iRenderPassUniform_);
     
-    iTimeUniform_.name = "iTime";
-    iTimeUniform_.setValuePtr(&iTime_, Uniform::Type::Float);
-    iTimeUniform_.specialType = Uniform::SpecialType::Time;
-    fBuffer_->addUniform(&iTimeUniform_);
+    iTimeUniform_ = vir::makeUnique<Uniform>();
+    iTimeUniform_->name = "iTime";
+    iTimeUniform_->setValuePtr(&iTime_, Uniform::Type::Float);
+    iTimeUniform_->specialType = Uniform::SpecialType::Time;
+    fBuffer_->addUniform(iTimeUniform_);
     
-    iTimeDeltaUniform_.name = "iTimeDelta";
-    iTimeDeltaUniform_.setValuePtr(&iTimeDelta_, Uniform::Type::Float);
-    iTimeDeltaUniform_.gui.showBounds = false;
-    fBuffer_->addUniform(&iTimeDeltaUniform_);
+    iTimeDeltaUniform_ = vir::makeUnique<Uniform>();
+    iTimeDeltaUniform_->name = "iTimeDelta";
+    iTimeDeltaUniform_->setValuePtr(&iTimeDelta_, Uniform::Type::Float);
+    iTimeDeltaUniform_->gui.showBounds = false;
+    fBuffer_->addUniform(iTimeDeltaUniform_);
 
-    iRandomUniform_.name = "iRandom";
-    iRandomUniform_.setValuePtr(&iRandom_, Uniform::Type::Float);
-    iRandomUniform_.gui.showBounds = false;
-    fBuffer_->addUniform(&iRandomUniform_);
+    iRandomUniform_ = vir::makeUnique<Uniform>();
+    iRandomUniform_->name = "iRandom";
+    iRandomUniform_->setValuePtr(&iRandom_, Uniform::Type::Float);
+    iRandomUniform_->gui.showBounds = false;
+    fBuffer_->addUniform(iRandomUniform_);
 
-    iUserActionUniform_.name = "iUserAction";
-    iUserActionUniform_.setValuePtr(&iUserAction_, Uniform::Type::Bool);
-    iUserActionUniform_.gui.showBounds = false;
-    iUserActionUniform_.specialType = Uniform::SpecialType::UserAction;
-    fBuffer_->addUniform(&iUserActionUniform_);
+    iUserActionUniform_ = vir::makeUnique<Uniform>();
+    iUserActionUniform_->name = "iUserAction";
+    iUserActionUniform_->setValuePtr(&iUserAction_, Uniform::Type::Bool);
+    iUserActionUniform_->gui.showBounds = false;
+    iUserActionUniform_->specialType = Uniform::SpecialType::UserAction;
+    fBuffer_->addUniform(iUserActionUniform_);
 
-    iExportUniform_.name = "iExport";
-    iExportUniform_.setValuePtr(&iExport_, Uniform::Type::Bool);
-    iExportUniform_.gui.showBounds = false;
-    fBuffer_->addUniform(&iExportUniform_);
+    iExportUniform_ = vir::makeUnique<Uniform>();
+    iExportUniform_->name = "iExport";
+    iExportUniform_->setValuePtr(&iExport_, Uniform::Type::Bool);
+    iExportUniform_->gui.showBounds = false;
+    fBuffer_->addUniform(iExportUniform_);
 
-    iWASDUniform_.name = "iWASD";
-    iWASDUniform_.setValuePtr(&iWASD_, Uniform::Type::Float3);
-    iWASDUniform_.specialType = Uniform::SpecialType::CameraPosition;
-    fBuffer_->addUniform(&iWASDUniform_);
+    iWASDUniform_ = vir::makeUnique<Uniform>();
+    iWASDUniform_->name = "iWASD";
+    iWASDUniform_->setValuePtr(&iWASD_, Uniform::Type::Float3);
+    iWASDUniform_->specialType = Uniform::SpecialType::CameraPosition;
+    fBuffer_->addUniform(iWASDUniform_);
 
-    iLookUniform_.name = "iLook";
-    iLookUniform_.setValuePtr(&iLook_, Uniform::Type::Float3);
-    iLookUniform_.gui.showBounds = false;
-    iLookUniform_.specialType = Uniform::SpecialType::CameraDirection;
-    fBuffer_->addUniform(&iLookUniform_);
+    iLookUniform_ = vir::makeUnique<Uniform>();
+    iLookUniform_->name = "iLook";
+    iLookUniform_->setValuePtr(&iLook_, Uniform::Type::Float3);
+    iLookUniform_->gui.showBounds = false;
+    iLookUniform_->specialType = Uniform::SpecialType::CameraDirection;
+    fBuffer_->addUniform(iLookUniform_);
 
-    iMouseUniform_.name = "iMouse";
-    iMouseUniform_.setValuePtr(&iMouse_, Uniform::Type::Float4);
-    iMouseUniform_.gui.showBounds = false;
-    iMouseUniform_.specialType = Uniform::SpecialType::Mouse;
-    fBuffer_->addUniform(&iMouseUniform_);
+    iMouseUniform_ = vir::makeUnique<Uniform>();
+    iMouseUniform_->name = "iMouse";
+    iMouseUniform_->setValuePtr(&iMouse_, Uniform::Type::Float4);
+    iMouseUniform_->gui.showBounds = false;
+    iMouseUniform_->specialType = Uniform::SpecialType::Mouse;
+    fBuffer_->addUniform(iMouseUniform_);
 
-    iAspectRatioUniform_.name = "iWindowAspectRatio";
-    iAspectRatioUniform_.setValuePtr(&iAspectRatio_, Uniform::Type::Float);
-    iAspectRatioUniform_.gui.showBounds = false;
-    iAspectRatioUniform_.specialType = Uniform::SpecialType::WindowAspectRatio;
-    fBuffer_->addUniform(&iAspectRatioUniform_);
+    iAspectRatioUniform_ = vir::makeUnique<Uniform>();
+    iAspectRatioUniform_->name = "iWindowAspectRatio";
+    iAspectRatioUniform_->setValuePtr(&iAspectRatio_, Uniform::Type::Float);
+    iAspectRatioUniform_->gui.showBounds = false;
+    iAspectRatioUniform_->specialType = Uniform::SpecialType::WindowAspectRatio;
+    fBuffer_->addUniform(iAspectRatioUniform_);
 
-    iResolutionUniform_.name = "iWindowResolution";
-    iResolutionUniform_.setValuePtr(&iResolution_, Uniform::Type::Float2);
-    iResolutionUniform_.gui.showBounds = false;
-    iResolutionUniform_.specialType = Uniform::SpecialType::WindowResolution;
-    fBuffer_->addUniform(&iResolutionUniform_);
+    iResolutionUniform_ = vir::makeUnique<Uniform>();
+    iResolutionUniform_->name = "iWindowResolution";
+    iResolutionUniform_->setValuePtr(&iResolution_, Uniform::Type::Float2);
+    iResolutionUniform_->gui.showBounds = false;
+    iResolutionUniform_->specialType = Uniform::SpecialType::WindowResolution;
+    fBuffer_->addUniform(iResolutionUniform_);
 
-    iKeyboardUniform_.name = "iKeyboard";
-    iKeyboardUniform_.setValuePtr(&iKeyboard_, Uniform::Type::Int3, 256);
-    iKeyboardUniform_.gui.showBounds = false;
-    iKeyboardUniform_.specialType = Uniform::SpecialType::Keyboard;
-    fBuffer_->addUniform(&iKeyboardUniform_);
+    iKeyboardUniform_ = vir::makeUnique<Uniform>();
+    iKeyboardUniform_->name = "iKeyboard";
+    iKeyboardUniform_->setValuePtr(&iKeyboard_, Uniform::Type::Int3, 256);
+    iKeyboardUniform_->gui.showBounds = false;
+    iKeyboardUniform_->specialType = Uniform::SpecialType::Keyboard;
+    fBuffer_->addUniform(iKeyboardUniform_);
 
     // Init bounds
     //bounds_.insert({Uniform::SpecialType::Time, {0, 1}});
@@ -263,9 +277,9 @@ void SharedUniforms::setResolution
     );
     screenCamera_->update();
     iMVP_ = screenCamera_->projectionViewMatrix();
-    vBuffer_->markUniformForSubmission(&iMVPUniform_);
-    fBuffer_->markUniformForSubmission(&iAspectRatioUniform_);
-    fBuffer_->markUniformForSubmission(&iResolutionUniform_);
+    vBuffer_->markUniformForSubmission(iMVPUniform_.get());
+    fBuffer_->markUniformForSubmission(iAspectRatioUniform_.get());
+    fBuffer_->markUniformForSubmission(iResolutionUniform_.get());
     
     // Let's try updating these instantly
     //fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIIISize(), 0);
@@ -301,7 +315,7 @@ void SharedUniforms::setMouseInputsClamped(bool flag)
 void SharedUniforms::setUserAction(bool flag)
 {
     iUserAction_ = int(flag);
-    fBuffer_->markUniformForSubmission(&iUserActionUniform_);
+    fBuffer_->markUniformForSubmission(iUserActionUniform_.get());
     flags_.updateDataRangeII = true;
 }
 
@@ -395,8 +409,8 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonPressEvent& event)
         return;
     iUserAction_ = true;
     iMouse_ = mouse;
-    fBuffer_->markUniformForSubmission(&iUserActionUniform_);
-    fBuffer_->markUniformForSubmission(&iMouseUniform_);
+    fBuffer_->markUniformForSubmission(iUserActionUniform_.get());
+    fBuffer_->markUniformForSubmission(iMouseUniform_.get());
     flags_.updateDataRangeII = true;
 }
 
@@ -435,8 +449,8 @@ void SharedUniforms::onReceive(vir::Event::MouseMotionEvent& event)
         return;
     iUserAction_ = true;
     iMouse_ = mouse;
-    fBuffer_->markUniformForSubmission(&iUserActionUniform_);
-    fBuffer_->markUniformForSubmission(&iMouseUniform_);
+    fBuffer_->markUniformForSubmission(iUserActionUniform_.get());
+    fBuffer_->markUniformForSubmission(iMouseUniform_.get());
     flags_.updateDataRangeII = true;
 }
 
@@ -459,8 +473,8 @@ void SharedUniforms::onReceive(vir::Event::MouseButtonReleaseEvent& event)
         return;
     iUserAction_ = true;
     iMouse_.z = mouse.z;
-    fBuffer_->markUniformForSubmission(&iUserActionUniform_);
-    fBuffer_->markUniformForSubmission(&iMouseUniform_);
+    fBuffer_->markUniformForSubmission(iUserActionUniform_.get());
+    fBuffer_->markUniformForSubmission(iMouseUniform_.get());
     flags_.updateDataRangeII = true;
 }
 
@@ -486,7 +500,7 @@ void SharedUniforms::onReceive(vir::Event::KeyPressEvent& event)
     data.x = (int)status.isPressed();
     data.y = (int)status.isHeld();
     data.z = (int)status.isToggled();
-    fBuffer_->markArrayUniformRangeForSubmission(&iKeyboardUniform_, stKeyCode);
+    fBuffer_->markArrayUniformRangeForSubmission(iKeyboardUniform_.get(), stKeyCode);
     /*// Only exception where I set the data immediately in the event callback in
     // order to avoid having to update the whole 4kB of key memory all at once
     // at every SharedUniforms::update call
@@ -514,7 +528,7 @@ void SharedUniforms::onReceive(vir::Event::KeyReleaseEvent& event)
     data.x = 0;
     data.y = 0;
     data.z = (int)inputState->keyState(event.keyCode).isToggled();
-    fBuffer_->markArrayUniformRangeForSubmission(&iKeyboardUniform_, stKeyCode);
+    fBuffer_->markArrayUniformRangeForSubmission(iKeyboardUniform_.get(), stKeyCode);
     /*// Only exception where I set the data immediately in the event callback in
     // order to avoid having to update the whole 4kB of key memory all at once
     // at every SharedUniforms::update call
@@ -562,7 +576,7 @@ void SharedUniforms::update(const UpdateArgs& args)
     )
         iTime_ += iTimeDelta_;
 
-    const glm::vec2& timeLoopBounds(iTimeUniform_.gui.bounds);
+    const glm::vec2& timeLoopBounds(iTimeUniform_->gui.bounds);
     if (flags_.isTimeLooped && iTime_ >= timeLoopBounds.y)
     {
         auto duration = timeLoopBounds.y-timeLoopBounds.x;
@@ -617,7 +631,7 @@ void SharedUniforms::update(const UpdateArgs& args)
     // Data range I is always updated, data range III is updated on the spot
     // in setResolution, the keyboard data range is updated on the spot in
     // onReceive(KeyPressEvent/KeyReleaseEvent)
-    fBuffer_->markContiguousUniformsForSubmission(&iFrameUniform_, &iRandomUniform_);
+    fBuffer_->markContiguousUniformsForSubmission(iFrameUniform_.get(), iRandomUniform_.get());
     /*
     if (!flags_.updateDataRangeII)
         fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
@@ -628,7 +642,7 @@ void SharedUniforms::update(const UpdateArgs& args)
     }*/
     if (flags_.updateDataRangeII)
     {
-        fBuffer_->markContiguousUniformsForSubmission(&iUserActionUniform_, &iMouseUniform_);
+        fBuffer_->markContiguousUniformsForSubmission(iUserActionUniform_.get(), iMouseUniform_.get());
         flags_.updateDataRangeII = false;
     }
 
@@ -650,7 +664,7 @@ void SharedUniforms::nextRenderPass(unsigned int nMaxRenderPasses)
         ++iRenderPass_;
     else
         iRenderPass_ = 0;
-    fBuffer_->markUniformForSubmission(&iRenderPassUniform_);
+    fBuffer_->markUniformForSubmission(iRenderPassUniform_.get());
     //fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
 }
 
@@ -752,7 +766,7 @@ void SharedUniforms::save(ObjectIO& io) const
         flags_.isTimePaused && flags_.isTimePausedBecauseRenderingPaused ? 
         false : flags_.isTimePaused);
     io.write("timeLooped", flags_.isTimeLooped);
-    io.write("timeBounds", iTimeUniform_.gui.bounds);
+    io.write("timeBounds", iTimeUniform_->gui.bounds);
     io.write("randomGeneratorPaused", flags_.isRandomNumberGeneratorPaused);
     io.write("iWASD", shaderCamera_->position());
     io.write("iWASDSensitivity", shaderCamera_->keySensitivityRef());
@@ -792,7 +806,7 @@ void SharedUniforms::load
     su->setResolution(resolution, false);
     su->iTime_ = ioSu.read<float>("time");
     su->flags_.resetFrameCounter = false;
-    su->iTimeUniform_.gui.bounds = ioSu.read<glm::vec2>("timeBounds");
+    su->iTimeUniform_->gui.bounds = ioSu.read<glm::vec2>("timeBounds");
     su->iWASD_ = ioSu.read<glm::vec3>("iWASD");
     su->iLook_ = ioSu.read<glm::vec3>("iLook");
     su->flags_.isTimePaused = ioSu.read<bool>("timePaused");
@@ -912,25 +926,41 @@ void SharedUniforms::setMouseCaptured(bool flag)
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::addUserUniform(Uniform* uniform)
+void SharedUniforms::addUserUniform(vir::UniquePtr<Uniform>&& uniform)
 {
-    fBuffer_->addUniform(uniform);
+    fBuffer_->addUniform(vir::castUnique<vir::Shader::Uniform>(uniform));
     auto it = std::find(userUniforms_.begin(), userUniforms_.end(), uniform);
     if (it == userUniforms_.end())
-        userUniforms_.emplace_back(uniform);
-    if (uniform->isResource())
     {
-        auto* resource = uniform->getValuePtr<Resource>();
-        uniform->setResourcePtr(resource, fBuffer_.get());
+        auto& u = userUniforms_.emplace_back(std::move(uniform));
+        if (u->isResource())
+        {
+            auto* resource = u->getValuePtr<Resource>();
+            u->setResourcePtr(resource, fBuffer_.get());
+        }
     }
 }
 
 //----------------------------------------------------------------------------//
 
-void SharedUniforms::removeUserUniform(Uniform* uniform)
+vir::UniquePtr<Uniform> SharedUniforms::removeUserUniform(Uniform* uniform)
 {
     fBuffer_->removeUniform(uniform);
-    userUniforms_.erase
+
+    int index = -1;
+    for (unsigned int i = 0; i<userUniforms_.size(); i++)
+    {
+        if (userUniforms_[i] == uniform)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1)
+        return vir::nullUniquePtr<Uniform>();
+    auto u = std::move(userUniforms_[index]);
+    userUniforms_.erase(userUniforms_.begin()+index);
+    /*userUniforms_.erase
     (
         std::remove
         (
@@ -939,9 +969,10 @@ void SharedUniforms::removeUserUniform(Uniform* uniform)
             uniform
         ),
         userUniforms_.end()
-    );
+    );*/
     if (uniform->isResource())
         uniform->removeResourceResolutionFromUniformBuffer(fBuffer_.get());
+    return std::move(u);
 }
 
 }
