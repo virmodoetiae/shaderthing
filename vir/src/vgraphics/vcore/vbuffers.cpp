@@ -1096,13 +1096,13 @@ uint32_t DynamicUniformBuffer::sizeOf(const Shader::Uniform* uniform) const
         typeSizeOf(uniform);
 }
 
-bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
+bool DynamicUniformBuffer::addUniform(WeakPtr<Shader::Uniform> uniform)
 {
-    auto size = sizeOf(uniform);
+    auto size = sizeOf(uniform.get());
     if 
     (
-        !uniform || 
-        uniformWrappersMap_.find(uniform) != uniformWrappersMap_.end() ||
+        !uniform.valid() || 
+        uniformWrappersMap_.find(uniform.get()) != uniformWrappersMap_.end() ||
         size == 0 ||
         size_ + size > maxSize_
     )
@@ -1124,7 +1124,7 @@ bool DynamicUniformBuffer::addUniform(const Shader::Uniform* uniform)
         uw->arraySubmissionIndexEnd = uniform->valueArraySize()-1;
     }   
     uniformWrappers_.emplace_back(uw);
-    uniformWrappersMap_.insert({uniform, uw});
+    uniformWrappersMap_.insert({uniform.get(), uw});
     recalculateUniformSizesAndOffsets();
     return true;
 }
@@ -1160,26 +1160,26 @@ void DynamicUniformBuffer::recalculateUniformSizesAndOffsets()
     UniformWrapper* uw0 = nullptr;
     for (auto* uw : uniformWrappers_)
     {
-        auto alignment = alignmentOf(uw->uniform);
+        auto alignment = alignmentOf(uw->uniform.get());
         if (offset % alignment > 0)
             offset += alignment - (offset % alignment);
         if (uw0 == nullptr && uw->offset != offset)
             uw0 = uw;
         uw->offset = offset;
         
-        auto size = sizeOf(uw->uniform);
+        auto size = sizeOf(uw->uniform.get());
         if (uw0 == nullptr && uw->size != size)
             uw0 = uw;
         uw->size = size;
         
-        auto typeSize = typeSizeOf(uw->uniform);
+        auto typeSize = typeSizeOf(uw->uniform.get());
         if (uw0 == nullptr && uw->typeSize != typeSize)
             uw0 = uw;
-        uw->typeSize = typeSizeOf(uw->uniform);
+        uw->typeSize = typeSizeOf(uw->uniform.get());
         
         if (uw->isUniformArray())
         {
-            auto arrayElementSize = arrayElementSizeOf(uw->uniform);
+            auto arrayElementSize = arrayElementSizeOf(uw->uniform.get());
             if (uw0 == nullptr && uw->arrayElementSize != arrayElementSize)
                 uw0 = uw;
             uw->arrayElementSize = arrayElementSize;
@@ -1197,7 +1197,7 @@ void DynamicUniformBuffer::recalculateUniformSizesAndOffsets()
     // Reupload the data of all uniforms subsequent to uw0
     while (uw0 != nullptr)
     {
-        markUniformForSubmission(uw0->uniform);
+        markUniformForSubmission(uw0->uniform.get());
         uw0 = uw0->next;
     }
     submitUniforms();
@@ -1218,7 +1218,7 @@ bool DynamicUniformBuffer::markUniformForSubmission
     {
         nUniformsMarkedForSubmission_++;
         uw->markedForSubmission = true;
-        if (uniform->isValueArray())
+        if (uw->uniform.valid() && uniform->isValueArray())
         {
             uw->arraySubmissionIndexStart = indexStart;
             uw->arraySubmissionIndexEnd = std::max(indexEnd, indexStart);
@@ -1284,7 +1284,7 @@ bool DynamicUniformBuffer::markContiguousUniformsForSubmission
         }
         nUniformsMarkedForSubmission_++;
         uw->markedForSubmission = true;
-        if (uw->uniform->isValueArray())
+        if (uw->uniform.valid() && uw->uniform->isValueArray())
         {
             uw->arraySubmissionIndexStart = 0;
             uw->arraySubmissionIndexEnd = uw->uniform->valueArraySize()-1;
@@ -1296,6 +1296,7 @@ bool DynamicUniformBuffer::markContiguousUniformsForSubmission
 
 void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
 {
+    bool someUniformsToBeDeleted = false;
     if 
     (
         uniformWrappers_.empty() || 
@@ -1311,6 +1312,12 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
     {
         for (auto& uw : uniformWrappers_)
         {
+            if (!uw->uniform.valid())
+            {
+                uw->markedForDeletion = true;
+                someUniformsToBeDeleted = true;
+                continue;
+            }
             if (uw->uniform->isValueArray())
             {
                 const unsigned char* src;
@@ -1366,90 +1373,111 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
         }
         submitData(rawBuffer_, size_, 0u);
         nUniformsMarkedForSubmission_ = 0u;
-        return;
     }
-    // Only update data of uniforms marked for submission. The most
-    // efficient way is to chop the data into contiguous blocks of
-    // uniforms marked for submission, and upload said blocks in
-    // one go each. This is more efficient than submitting every uniform
-    // as a separate block
-    UniformWrapper* uw = uniformWrappers_[0];
-    UniformWrapper* uw0 = nullptr; // Block start
-    UniformWrapper* uw1 = nullptr; // Block end
-    do
+    else
     {
-        if 
-        (
-            uw->markedForSubmission && 
-            uw->uniform->getNativeValue() != nullptr
-        )
+        // Only update data of uniforms marked for submission. The most
+        // efficient way is to chop the data into contiguous blocks of
+        // uniforms marked for submission, and upload said blocks in
+        // one go each. This is more efficient than submitting every uniform
+        // as a separate block
+        UniformWrapper* uw = uniformWrappers_[0];
+        UniformWrapper* uw0 = nullptr; // Block start
+        UniformWrapper* uw1 = nullptr; // Block end
+        do
         {
-            if (uw0 == nullptr)
-                uw0 = uw;
-            uw1 = uw;
-            uw->markedForSubmission = false;
-            nUniformsMarkedForSubmission_--;
-        }
-        if 
-        (
-            uw0 != nullptr && 
-            uw1 != nullptr &&
-            (
-                uw1->next == nullptr || 
-                uw1->next->markedForSubmission == false ||
-                uw1->next->uniform->isValueArray() ||
-                uw0->uniform->isValueArray()
-            )
-        )
-        {
-            // If the uniform is an array, treat its range as a separate
-            // block altogether for simplicity (it can only be merged with
-            // adjacent blocks if the initial or final or whole range are
-            // marked for submission, which might not generally be the case)
-            if (uw0->uniform->isValueArray())
-                submitArrayUniformRangeNoCheck
-                (
-                    uw0, 
-                    uw0->arraySubmissionIndexStart,
-                    uw0->arraySubmissionIndexEnd
-                );
-            else
+            if (!uw->uniform.valid())
             {
-                uint32_t blockSize = 
-                    uw1->size + uw1->offset - uw0->offset;
-                uw = uw0;
-                while (true)
-                {
-                    const unsigned char* src = 
-                        uw->uniform->type() != Shader::Uniform::Type::Bool ?
-                        reinterpret_cast<const unsigned char*>
-                        (
-                            uw->uniform->getNativeValue()
-                        ) :
-                        reinterpret_cast<const unsigned char*>
-                        (
-                            new int(uw->uniform->getValue<bool>())
-                        );
-                    std::memcpy
-                    (
-                        rawBuffer_ + uw->offset - uw0->offset, 
-                        src, 
-                        uw->size
-                    );
-                    if (uw->uniform->type() == Shader::Uniform::Type::Bool)
-                        delete src;
-                    if (uw == uw1)
-                        break;
-                    uw = uw->next;
-                };
-                submitData(rawBuffer_, blockSize, uw0->offset);
+                uw->markedForDeletion = true;
+                someUniformsToBeDeleted = true;
+                uw = uw->next;
+                continue;
             }
-            uw0 = nullptr;
-            uw1 = nullptr;
+            if 
+            (
+                uw->markedForSubmission && 
+                uw->uniform->getNativeValue() != nullptr
+            )
+            {
+                if (uw0 == nullptr)
+                    uw0 = uw;
+                uw1 = uw;
+                uw->markedForSubmission = false;
+                nUniformsMarkedForSubmission_--;
+            }
+            if 
+            (
+                uw0 != nullptr && 
+                uw1 != nullptr &&
+                (
+                    uw1->next == nullptr || 
+                    uw1->next->markedForSubmission == false ||
+                    uw1->next->uniform->isValueArray() ||
+                    uw0->uniform->isValueArray()
+                )
+            )
+            {
+                // If the uniform is an array, treat its range as a separate
+                // block altogether for simplicity (it can only be merged with
+                // adjacent blocks if the initial or final or whole range are
+                // marked for submission, which might not generally be the case)
+                if (uw0->uniform->isValueArray())
+                    submitArrayUniformRangeNoCheck
+                    (
+                        uw0, 
+                        uw0->arraySubmissionIndexStart,
+                        uw0->arraySubmissionIndexEnd
+                    );
+                else
+                {
+                    uint32_t blockSize = 
+                        uw1->size + uw1->offset - uw0->offset;
+                    uw = uw0;
+                    while (true)
+                    {
+                        const unsigned char* src = 
+                            uw->uniform->type() != Shader::Uniform::Type::Bool ?
+                            reinterpret_cast<const unsigned char*>
+                            (
+                                uw->uniform->getNativeValue()
+                            ) :
+                            reinterpret_cast<const unsigned char*>
+                            (
+                                new int(uw->uniform->getValue<bool>())
+                            );
+                        std::memcpy
+                        (
+                            rawBuffer_ + uw->offset - uw0->offset, 
+                            src, 
+                            uw->size
+                        );
+                        if (uw->uniform->type() == Shader::Uniform::Type::Bool)
+                            delete src;
+                        if (uw == uw1)
+                            break;
+                        uw = uw->next;
+                    };
+                    submitData(rawBuffer_, blockSize, uw0->offset);
+                }
+                uw0 = nullptr;
+                uw1 = nullptr;
+            }
+            uw = uw->next;
         }
-        uw = uw->next;
+        while (uw != nullptr && nUniformsMarkedForSubmission_ > 0);
     }
-    while (uw != nullptr && nUniformsMarkedForSubmission_ > 0);
+    if (someUniformsToBeDeleted)
+    {
+        for (uint32_t i=0; i<uniformWrappers_.size(); i++)
+        {
+            auto* uw = uniformWrappers_[i];
+            if (uw->markedForDeletion)
+            {
+                removeUniform(uw->uniform.get());
+                i--;
+            }
+        }
+    }
 }
 
 bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
@@ -1464,6 +1492,11 @@ bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
     uint32_t blockSize = nElements*uw->arrayElementSize;
     if (blockSize == 0)
         return false;
+    if (!uw->uniform.valid())
+    {
+        removeUniform(uw->uniform.get());
+        return false;
+    }
     const unsigned char* src;
     if (uw->uniform->type() != Shader::Uniform::Type::Bool)
         src = reinterpret_cast<const unsigned char*>
@@ -1513,6 +1546,11 @@ bool DynamicUniformBuffer::submitUniform
     if (it == uniformWrappersMap_.end())
         return false;
     auto* uw = it->second;
+    if (!uw->uniform.valid())
+    {
+        removeUniform(uw->uniform.get());
+        return false;
+    }
     if (uw->uniform->isValueArray())
         submitArrayUniformRangeNoCheck(uw, indexStart, indexEnd);
     else

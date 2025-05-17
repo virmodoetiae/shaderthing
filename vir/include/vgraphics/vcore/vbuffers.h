@@ -561,7 +561,7 @@ protected :
 
     struct UniformWrapper
     {
-        const Shader::Uniform* uniform = nullptr;
+        WeakPtr<Shader::Uniform> uniform;
         uint32_t size = 0u;
         uint32_t typeSize = 0u;
         uint32_t offset = 0u;
@@ -571,6 +571,7 @@ protected :
         UniformWrapper* previous = nullptr;
         UniformWrapper* next = nullptr;
         bool markedForSubmission = false;
+        bool markedForDeletion = false;
         bool isUniformArray() const {return uniform->isValueArray();}
         bool operator==(const UniformWrapper& other) const 
         {
@@ -622,7 +623,15 @@ public :
     static UniquePtr<DynamicUniformBuffer> create(uint32_t size, const std::string& name);
     uint32_t id() const {return id_;}
     const std::string& name() const {return name_;}
-    bool addUniform(const Shader::Uniform* uniform);
+    bool addUniform(WeakPtr<Shader::Uniform> uniform);
+    bool addUniform(const UniquePtr<Shader::Uniform>& uniform) 
+    {
+        addUniform(uniform.getWeak());
+    };
+    bool addUniform(UniquePtr<Shader::Uniform>&& uniform) 
+    {
+        addUniform(uniform.getWeak());
+    };
     bool removeUniform(const Shader::Uniform* uniform);
     // To be called if the type of a uniform in this wrapper has changed
     void recalculateUniformSizesAndOffsets();

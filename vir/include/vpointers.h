@@ -76,6 +76,13 @@ public:
         valid_ = other.valid_;
         return *this;
     };
+    template<typename B, typename = std::enable_if_t<
+        std::is_base_of_v<B, T> && 
+        !std::is_same_v<B, T>>>
+    operator const WeakPtr<B>&() const
+    {
+        return *reinterpret_cast<const WeakPtr<B>*>(this);
+    }
 
     // WeakPtr cannot own
     bool owner() const override {return false;}
@@ -212,6 +219,30 @@ public:
     UniquePtr& operator=(const UniquePtr&) = delete;
     
     ~UniquePtr() {reset();}
+
+    // Enable converting UniquePtr<T> to const UniquePtr<B>& if B is a base of T
+    template<typename B, typename = std::enable_if_t<
+        std::is_base_of_v<B, T> && 
+        !std::is_same_v<B, T>>>
+    operator const UniquePtr<B>&() const
+    {
+        return *reinterpret_cast<const UniquePtr<B>*>(this);
+    }
+
+    // Enable converting UniquePtr<T> to UniquePtr<B>&& if B is a base of T
+    template<typename B, typename = std::enable_if_t<
+        std::is_base_of_v<B, T> && 
+        !std::is_same_v<B, T> &&
+        std::is_rvalue_reference_v<UniquePtr<T>&&> &&
+        // Only when move ctor doesn't apply, to avoid ambiguity when e.g., when
+        // returning a UniquePtr<B>&& from a ctor function that actually
+        // instantiates a UniquePtr<T>, e.g., most of the ::create() functions
+        // in vbuffers.cpp
+        !std::is_constructible_v<UniquePtr<B>, UniquePtr<T>&&>>> 
+    operator UniquePtr<B>&&()
+    {
+        return std::move(*reinterpret_cast<UniquePtr<B>*>(this));
+    }
 
     // UniquePtrs are always owners
     bool owner() const override {return true;}

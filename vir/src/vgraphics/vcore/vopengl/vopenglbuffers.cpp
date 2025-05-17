@@ -1548,7 +1548,7 @@ std::string OpenGLDynamicUniformBuffer::shaderSource() const
     bool valid = false;
     for (auto i=0; i<(int)uniformWrappers_.size(); i++)
     {
-        auto u = uniformWrappers_[i]->uniform;
+        auto& u = uniformWrappers_[i]->uniform;
         if (u->name.empty())
             continue;
         source += "    "+uniformTypeToName.at(u->type())+" "+u->name;
