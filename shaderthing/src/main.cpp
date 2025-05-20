@@ -18,14 +18,11 @@
 #include <windows.h>
 #endif
 
-#include "shaderthing/include/app.h"
-
 int main()
 {
     // Hide console if running on Windows
     #if (defined(WIN32) || defined(_WIN32)) && NDEBUG
         FreeConsole();
     #endif
-    ShaderThing::App();
     return 0;
 }
