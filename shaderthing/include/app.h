@@ -60,7 +60,7 @@ private:
     mutable Project        project_         = {};
     std::string            imGuiTitle_      = "Control panel###CP";
     SharedUniforms*        sharedUniforms_  = nullptr;
-    std::vector<Layer*>    layers_          = {};
+    std::vector<vir::UniquePtr<Layer>> layers_ = {};
     std::vector<Resource*> resources_       = {};
     Exporter*              exporter_        = nullptr;
     FileDialog             fileDialog_;

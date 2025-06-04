@@ -39,7 +39,7 @@ void Uniform::renderUniformsGui
 (
     SharedUniforms& sharedUniforms,
     Layer* layer,
-    const std::vector<Layer*>& layers,
+    const std::vector<vir::UniquePtr<Layer>>& layers,
     const std::vector<Resource*>& resources
 )
 {
@@ -832,7 +832,7 @@ motion only if the left mouse button (LMB) is held)");
         SharedUniforms& sharedUniforms,
         const vir::UniquePtr<Uniform>& uniform,
         Layer* layer,
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         const std::vector<Resource*>& resources,
         int& row,
         const bool showSeparator = false,
@@ -866,7 +866,7 @@ motion only if the left mouse button (LMB) is held)");
                 // will have to be recompiled
                 if (uniform->isSharedByUser)
                 {
-                    for (auto l : layers)
+                    for (auto& l : layers)
                         l->flags_.uncompiledChanges = true;
                 }
                 else
@@ -1824,7 +1824,7 @@ motion only if the left mouse button (LMB) is held)");
         // still unnamed are simply ignored)
         if (isSharedByUser0)
         {
-            for (auto l : layers)
+            for (auto& l : layers)
             {
                 if 
                 (
@@ -2120,7 +2120,7 @@ motion only if the left mouse button (LMB) is held)");
     // Alternative strategy to cope with uniform block alignment changes after
     // uniform type changes or deletions (both of which can alter block layout:
     // compile right away automatically without asking the user
-    for (auto* l : layers)
+    for (auto& l : layers)
     {
         l->compileShader(sharedUniforms);
     }

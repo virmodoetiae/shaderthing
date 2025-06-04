@@ -68,8 +68,13 @@ private:
 
 public:
 
-    WeakPtr(T* p, std::shared_ptr<bool> valid) : ptr_(p), valid_(valid) {}
-    WeakPtr(const WeakPtr& other) : ptr_(other.ptr_), valid_(other.valid_) {}
+    WeakPtr() = default;
+    WeakPtr(T* p, std::shared_ptr<bool> valid) : 
+        ptr_(p), valid_(valid) {}
+    WeakPtr(const T* p, std::shared_ptr<bool> valid) : 
+        ptr_(const_cast<T*>(p)), valid_(valid) {}
+    WeakPtr(const WeakPtr& other) : 
+        ptr_(other.ptr_), valid_(other.valid_) {}
     WeakPtr& operator=(const WeakPtr& other)
     {
         ptr_ = other.ptr_;
@@ -109,12 +114,14 @@ class EnableWeakFromThis
 friend class UniquePtr<T>; 
 private:
     std::weak_ptr<bool> valid_;
-protected:
     void setValid(const std::shared_ptr<bool>& valid) {valid_ = valid;}
+protected:
+    // Prevent accidental deletion through base pointer
+    ~EnableWeakFromThis() = default;
 public:
     WeakPtr<T> weakFromThis() const
     {
-        return WeakPtr<T>(static_cast<T*>(this), valid_.lock());
+        return WeakPtr<T>(static_cast<const T*>(this), valid_.lock());
     }
 };
 

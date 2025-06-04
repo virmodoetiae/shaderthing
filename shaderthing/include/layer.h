@@ -41,7 +41,7 @@ class SharedStorage;
 class SharedUniforms;
 class Uniform;
 
-class Layer : vir::Event::Receiver
+class Layer : public vir::Event::Receiver, public vir::EnableWeakFromThis<Layer>
 {
 friend LayerResource;
 friend PostProcess;
@@ -165,7 +165,7 @@ private:
 
     //------------------------------------------------------------------------//
 
-    static unsigned int findFreeId(const std::vector<Layer*>& layers);
+    static unsigned int findFreeId(const std::vector<vir::UniquePtr<Layer>>& layers);
     static std::string glslDirectives();
     static std::string vertexShaderSource
     (
@@ -195,10 +195,10 @@ private:
     );
     void clearFramebuffers();
     void save(ObjectIO& io) const;
-    static Layer* load
+    static vir::UniquePtr<Layer> load
     (
         const ObjectIO& io,
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         const SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
@@ -211,16 +211,16 @@ public:
 
     Layer
     (
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         const SharedUniforms& sharedUniforms,
         const bool compileShader = true
     );
     
-    static void saveAll(const std::vector<Layer*>& layers, ObjectIO& io);
+    static void saveAll(const std::vector<vir::UniquePtr<Layer>>& layers, ObjectIO& io);
     static void loadAll
     (
         const ObjectIO& io,
-        std::vector<Layer*>& layers,
+        std::vector<vir::UniquePtr<Layer>>& layers,
         SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
@@ -228,8 +228,8 @@ public:
     DECLARE_RECEIVABLE_EVENTS(vir::Event::Type::WindowResize)
     void onReceive(vir::Event::WindowResizeEvent& event) override;
 
-    static void prepareForExport(const std::vector<Layer*>& layers);
-    static void resetAfterExport(const std::vector<Layer*>& layers);
+    static void prepareForExport(const std::vector<vir::UniquePtr<Layer>>& layers);
+    static void resetAfterExport(const std::vector<vir::UniquePtr<Layer>>& layers);
 
     void addUniform(vir::UniquePtr<Uniform>&& uniform);
     vir::UniquePtr<Uniform> removeUniform(Uniform* uniform);
@@ -253,7 +253,7 @@ public:
     );
     static Rendering::Result renderShaders
     (
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         vir::Framebuffer* target, 
         SharedUniforms& sharedUniforms,
         const unsigned int nRenderPasses = 1
@@ -263,13 +263,13 @@ public:
     void renderPropertiesMenuGui(std::vector<Resource*>& resources);
     void renderTabBarGui
     (
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
     static void renderLayersTabBarGui
     (
-        std::vector<Layer*>& layers,
+        std::vector<vir::UniquePtr<Layer>>& layers,
         SharedUniforms& sharedUniforms,
         std::vector<Resource*>& resources
     );
@@ -278,13 +278,13 @@ public:
 
     static void renderShaderLanguangeExtensionsMenuGui
     (
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         SharedUniforms& sharedUniforms
     );
 
     static void setRenderingTiles
     (
-        const std::vector<Layer*>& layers, 
+        const std::vector<vir::UniquePtr<Layer>>& layers, 
         unsigned int nTiles
     );
 

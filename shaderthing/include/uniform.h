@@ -127,7 +127,7 @@ public:
     (
         SharedUniforms& sharedUniforms,
         Layer* layer,
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         const std::vector<Resource*>& resources
     );
 

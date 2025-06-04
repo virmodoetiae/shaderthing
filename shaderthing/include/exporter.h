@@ -104,7 +104,7 @@ public:
     void update
     (
         SharedUniforms& sharedUniforms,
-        const std::vector<Layer*>& layers,
+        const std::vector<vir::UniquePtr<Layer>>& layers,
         const std::vector<Resource*>& resources
     );
 
@@ -113,7 +113,7 @@ public:
     void renderGui
     (
         SharedUniforms& sharedUniforms, 
-        const std::vector<Layer*>& layers
+        const std::vector<vir::UniquePtr<Layer>>& layers
     );
 
     bool isRunning() const {return isRunning_;}

@@ -972,7 +972,7 @@ vir::UniquePtr<Uniform> SharedUniforms::removeUserUniform(Uniform* uniform)
     );*/
     if (uniform->isResource())
         uniform->removeResourceResolutionFromUniformBuffer(fBuffer_.get());
-    return std::move(u);
+    return u;
 }
 
 }

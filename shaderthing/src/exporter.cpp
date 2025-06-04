@@ -58,7 +58,7 @@ void Exporter::onReceive(vir::Event::WindowResizeEvent& event)
 void Exporter::update
 (
     SharedUniforms& sharedUniforms,
-    const std::vector<Layer*>& layers,
+    const std::vector<vir::UniquePtr<Layer>>& layers,
     const std::vector<Resource*>& resources
 )
 {
@@ -237,7 +237,7 @@ void Exporter::writeOutput()
 void Exporter::renderGui
 (
     SharedUniforms& sharedUniforms,
-    const std::vector<Layer*>& layers
+    const std::vector<vir::UniquePtr<Layer>>& layers
 )
 {
     float fontSize(ImGui::GetFontSize());
@@ -522,7 +522,7 @@ transparency)");
                 continue;
             }
             
-            auto layer = layers[row-1];
+            auto& layer = layers[row-1];
             bool layerRendersToWindow
             (
                 layer->renderingTarget() == Layer::Rendering::Target::Window

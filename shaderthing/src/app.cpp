@@ -86,10 +86,6 @@ App::~App()
     {
         DELETE_IF_NOT_NULLPTR(resource)
     }
-    for (auto layer : layers_)
-    {
-        DELETE_IF_NOT_NULLPTR(layer)
-    }
 }
 
 //----------------------------------------------------------------------------//
@@ -282,10 +278,6 @@ void App::newProject()
         DELETE_IF_NOT_NULLPTR(resource)
     }
     resources_.clear();
-    for (auto layer : layers_)
-    {
-        DELETE_IF_NOT_NULLPTR(layer)
-    }
     layers_.clear();
     
     vir::Window::instance()->setSize(512, 512);
@@ -293,7 +285,7 @@ void App::newProject()
     sharedUniforms_ = new SharedUniforms();
     Layer::Rendering::sharedStorage.reset();
     Layer::resetSharedSourceEditor();
-    layers_.emplace_back(new Layer(layers_, *sharedUniforms_));
+    layers_.emplace_back(vir::makeUnique<Layer>(layers_, *sharedUniforms_));
     Layer::setRenderingTiles(layers_, 1); // Turn tiled rendering off
     exporter_ = new Exporter();
 }
@@ -845,7 +837,7 @@ project exports)");
                 ImGui::EndMenu();
             }
 
-            for (auto layer : layers_)
+            for (auto& layer : layers_)
                 layer->renderPropertiesMenuGui(resources_);
             ImGui::Separator();
             Layer::renderShaderLanguangeExtensionsMenuGui
@@ -935,7 +927,7 @@ project exports)");
 
     if (shadersRequireRecompilation)
     {
-        for (auto layer : layers_)
+        for (auto& layer : layers_)
         {
             layer->compileShader(*sharedUniforms_);
         }

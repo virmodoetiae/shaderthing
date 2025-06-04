@@ -229,7 +229,7 @@ Resource* Resource::create(const Texture2DResource* faces[6])
     return nullptr;
 }
 
-Resource* Resource::create(Layer* layer)
+Resource* Resource::create(const vir::WeakPtr<Layer>& layer)
 {
     auto resource = new LayerResource();
     if (resource->set(layer))
@@ -840,7 +840,7 @@ void Texture3DResource::update(const UpdateArgs& args)
 
 //----------------------------------------------------------------------------//
 
-bool LayerResource::set(Layer* layer)
+bool LayerResource::set(const vir::WeakPtr<Layer>& layer)
 {
     if (layer == nullptr || layer->rendering_.resourceFramebuffer== nullptr)
         return false;
@@ -870,7 +870,7 @@ bool Resource::isGuiDetachedFromMenu = true;
 void Resource::renderResourcesGui
 (
     std::vector<Resource*>& resources,
-    const std::vector<Layer*>& layers
+    const std::vector<vir::UniquePtr<Layer>>& layers
 )
 {
     if (!Resource::isGuiOpen)
@@ -1162,7 +1162,7 @@ void Resource::renderResourcesGui
         if (deleteRow != -1)
         {
             auto resource = resources[deleteRow];
-            for (auto layer : layers)
+            for (auto& layer : layers)
                 layer->removeResourceFromUniforms(resource);
             resources.erase(resources.begin()+deleteRow);
             delete resource;
@@ -1179,7 +1179,7 @@ void Resource::renderResourcesGui
 void Resource::renderResourcesMenuItemGui
 (
     std::vector<Resource*>& resources,
-    const std::vector<Layer*>& layers
+    const std::vector<vir::UniquePtr<Layer>>& layers
 )
 {
     if 
@@ -1208,9 +1208,9 @@ void Resource::renderResourcesMenuItemGui
     ImGui::MenuItem("Resource manager", NULL, &Resource::isGuiOpen);
 }
 
-bool LayerResource::insertInResources
+bool Resource::insertLayerInResources
 (
-    Layer* layer,
+    const vir::WeakPtr<Layer>& layer,
     std::vector<Resource*>& resources
 )
 {
@@ -1227,7 +1227,7 @@ bool LayerResource::insertInResources
     return true;
 }
 
-bool LayerResource::removeFromResources
+bool Resource::removeLayerFromResources
 (
     const Layer* layer,
     std::vector<Resource*>& resources

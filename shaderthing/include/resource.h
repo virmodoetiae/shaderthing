@@ -79,7 +79,7 @@ public:
     static Resource*     create(unsigned int width, unsigned int height, unsigned int depth, InternalFormat internalFormat);
     static Resource*     create(const std::vector<Texture2DResource*>& frames);
     static Resource*     create(const Texture2DResource* faces[6]);
-    static Resource*     create(Layer* layer);
+    static Resource*     create(const vir::WeakPtr<Layer>& layer);
     
     Type                 type() const {return type_;}
     virtual void         bind(unsigned int unit) = 0;
@@ -107,8 +107,6 @@ public:
     std::string          name() const {return namePtr_ == nullptr? "" : *namePtr_;}
     void                 setName(const std::string& name);
     void                 setNamePtr(std::string* namePtr);
-    unsigned int         textureUnit() const {return textureUnit_;}
-    unsigned int         imageUnit() const {return imageUnit_;}
     void                 addClientUniform(Uniform* u) {clientUniforms_.emplace_back(u);}
     void                 removeClientUniform(Uniform* u) {clientUniforms_.erase(std::remove(clientUniforms_.begin(), clientUniforms_.end(), u), clientUniforms_.end());}
     bool                 isUsedByUniform(const Uniform* u) const {return std::find(clientUniforms_.begin(), clientUniforms_.end(), u) != clientUniforms_.end();}
@@ -118,12 +116,12 @@ public:
     static void renderResourcesGui
     (
         std::vector<Resource*>& resources, 
-        const std::vector<Layer*>& layers
+        const std::vector<vir::UniquePtr<Layer>>& layers
     );
     static void renderResourcesMenuItemGui
     (
         std::vector<Resource*>& resources,
-        const std::vector<Layer*>& layers
+        const std::vector<vir::UniquePtr<Layer>>& layers
     );
     static void update
     (
@@ -155,6 +153,16 @@ public:
     static void resetAnimationsAfterExport
     (
         const std::vector<Resource*>& resources
+    );
+    static bool insertLayerInResources
+    (
+        const vir::WeakPtr<Layer>& layer,
+        std::vector<Resource*>& resources
+    );
+    static bool removeLayerFromResources
+    (
+        const Layer* layer,
+        std::vector<Resource*>& resources
     );
 
 private:
@@ -360,7 +368,7 @@ class Layer;
 class LayerResource : public Resource
 {
     friend Resource;
-    Layer*             layer_  = nullptr;
+    vir::WeakPtr<Layer> layer_;
     vir::Framebuffer** native_ = nullptr;
     LayerResource():Resource(Type::Framebuffer){isNameManaged_=false;}
     
@@ -369,7 +377,7 @@ class LayerResource : public Resource
     virtual void save(ObjectIO& io){(void)io;}
 public:
     ~LayerResource();
-    bool         set(Layer* layer);
+    bool         set(const vir::WeakPtr<Layer>& layer);
     void         bind(unsigned int unit) override {(*native_)->bindColorBuffer(unit); textureUnit_=unit;}
     void         unbind() override {(*native_)->unbindColorBuffer(); textureUnit_=-1;};
     void         bindImage(unsigned int unit, unsigned int level, ImageBindMode mode) override {(*native_)->bindColorBufferToImage(unit, level, mode); imageUnit_=unit;}
@@ -390,17 +398,6 @@ public:
     void         setMagFilterMode(FilterMode mode) override {(*native_)->setColorBufferMagFilterMode(mode);}
     void         setMinFilterMode(FilterMode mode) override {(*native_)->setColorBufferMinFilterMode(mode);}
     void         updateMipmap() override {(*native_)->updateColorBufferMipmap(true);}
-
-    static bool insertInResources
-    (
-        Layer* layer,
-        std::vector<Resource*>& resources
-    );
-    static bool removeFromResources
-    (
-        const Layer* layer,
-        std::vector<Resource*>& resources
-    );
 };
 
 }

@@ -153,7 +153,7 @@ std::unique_ptr<SharedStorage> Layer::Rendering::sharedStorage     = nullptr;
 
 Layer::Layer
 (
-    const std::vector<Layer*>& layers,
+    const std::vector<vir::UniquePtr<Layer>>& layers,
     const SharedUniforms& sharedUniforms,
     const bool compileShader
 ) :
@@ -181,22 +181,6 @@ Layer::Layer
         u->gui.bounds = glm::vec2(1.0f, 4096.0f);
         u->gui.showBounds = false;
         addUniform(std::move(u));
-        
-        /* This was just a very quick test for array uniforms
-        static float array[17];
-        array[0] = 1;
-        array[1] = 1.5;
-        array[2] = 2.0;
-        array[3] = 3.0;
-        array[4] = 4.0;
-        array[5] = 5.0;
-        array[6] = 6.0;
-        array[7] = 7.0;
-        u = new Uniform{};
-        u->name = "iArray";
-        u->setValuePtr(&array, Uniform::Type::Float, 17);
-        uniforms_.emplace_back(u);
-        uniformBuffer_->addUniform(u);*/
     };
 
     setName("Layer "+std::to_string(id_));
@@ -350,7 +334,7 @@ void Layer::save(ObjectIO& io) const
 
 //----------------------------------------------------------------------------//
 
-void Layer::saveAll(const std::vector<Layer*>& layers, ObjectIO& io)
+void Layer::saveAll(const std::vector<vir::UniquePtr<Layer>>& layers, ObjectIO& io)
 {
     auto sharedSource = Layer::GUI::sharedSourceEditor.getText();
     auto enabledExtensions = 
@@ -369,22 +353,22 @@ void Layer::saveAll(const std::vector<Layer*>& layers, ObjectIO& io)
         );
     Layer::Rendering::sharedStorage->save(io);
     io.writeObjectStart("layers");
-    for (auto layer : layers)
+    for (auto& layer : layers)
         layer->save(io);
     io.writeObjectEnd();
 }
 
 //----------------------------------------------------------------------------//
 
-Layer* Layer::load
+vir::UniquePtr<Layer> Layer::load
 (
     const ObjectIO& io,
-    const std::vector<Layer*>& layers,
+    const std::vector<vir::UniquePtr<Layer>>& layers,
     const SharedUniforms& sharedUniforms,
     std::vector<Resource*>& resources
 )
 {
-    auto layer = new Layer(layers, sharedUniforms, false);
+    auto layer = vir::makeUnique<Layer>(layers, sharedUniforms, false);
 
     layer->setName(io.name());
     layer->flags_.rename = true; // <- hack to prevent layer tab bar re-ordering
@@ -463,16 +447,16 @@ Layer* Layer::load
             ObjectIO data(postProcessData.readObject(name));
             layer->rendering_.postProcesses.emplace_back
             (
-                PostProcess::load(data, layer)
+                PostProcess::load(data, layer.get()) // TODO update signature
             );
         }
     }
 
     //
     if (layer->rendering_.target != Rendering::Target::Window)
-        LayerResource::insertInResources
+        Resource::insertLayerInResources
         (
-            layer,
+            layer.getWeak(), // TODO update signature
             resources
         );
     return layer;
@@ -483,14 +467,12 @@ Layer* Layer::load
 void Layer::loadAll
 (
     const ObjectIO& io,
-    std::vector<Layer*>& layers, 
+    std::vector<vir::UniquePtr<Layer>>& layers, 
     SharedUniforms& sharedUniforms,
     std::vector<Resource*>& resources
 )
 {
     // Clear state
-    for (auto layer : layers)
-        delete layer;
     layers.clear();
 
     if (io.hasMember("graphicsExtensions"))
@@ -525,12 +507,12 @@ void Layer::loadAll
     {   
         auto ioLayer = ioLayers.readObject(ioLayerName);
         auto layer = Layer::load(ioLayer, layers, sharedUniforms, resources);
-        layers.emplace_back(layer);
+        layers.emplace_back(std::move(layer));
     };
 
     // Re-establish dependencies between Layers (i.e., when a layer is
     // being used as a sampler2D uniform by another layer)
-    for (auto* layer : layers)
+    for (auto& layer : layers)
     {
         for (auto& entry : layer->cache_.uninitializedResourceLayers)
         {
@@ -552,7 +534,7 @@ void Layer::loadAll
 
     // Reset the lists of layers using each image- or sampler-type resource
     // within each resource
-    for (auto* layer : layers)
+    for (auto& layer : layers)
     {
         for (auto& uniform : layer->uniforms_)
         {
@@ -577,7 +559,7 @@ void Layer::loadAll
     }
 
     // Compile all layer shaders after dependencies have been re-established
-    for (auto* layer : layers)
+    for (auto& layer : layers)
     {
         // If the project was saved in a state such that the shader has 
         // compilation errors, then initialize the shader with the blank shader 
@@ -602,11 +584,11 @@ void Layer::onReceive(vir::Event::WindowResizeEvent& event)
 
 //----------------------------------------------------------------------------//
 
-unsigned int Layer::findFreeId(const std::vector<Layer*>& layers)
+unsigned int Layer::findFreeId(const std::vector<vir::UniquePtr<Layer>>& layers)
 {
     std::vector<unsigned int> ids(layers.size());
     unsigned int id(0);
-    for (auto l : layers)
+    for (auto& l : layers)
         ids[id++] = l->id_;
     std::sort(ids.begin(), ids.end());
     for (id=0; id<layers.size(); id++)
@@ -1006,63 +988,14 @@ bool Layer::compileShader
         );
         flags_.uncompiledChanges = false;
         // Re-set uniforms
-        rendering_.shader->bindUniformBlock("privateUniformBlock", uniformBufferBindingPoint_);
+        rendering_.shader->bindUniformBlock
+        (
+            "privateUniformBlock", 
+            uniformBufferBindingPoint_
+        );
         sharedUniforms.bindShader(rendering_.shader.get()); // TODO, do not pass raw ptrs
         Rendering::sharedStorage->bindShader(rendering_.shader.get()); // TODO, do not pass raw ptrs
         rendering_.shader->bind();
-        /*
-        #define CASE(ST, T, F)                                              \
-        case Uniform::Type::ST :                                            \
-        {                                                                   \
-            T value = u->getValue<T>();                                     \
-            u->setValue(value, Uniform::Type::ST);                          \
-            if (named)                                                      \
-                rendering_.shader->F(u->name, value);                       \
-            break;                                                          \
-        }   
-        for (auto u : uniforms_)
-        {
-            bool named(u->name.size() > 0);
-            switch(u->type())
-            {
-                CASE(Bool, bool, setUniformBool)
-                CASE(Int, int, setUniformInt)
-                CASE(Int2, glm::ivec2, setUniformInt2)
-                CASE(Int3, glm::ivec3, setUniformInt3)
-                CASE(Int4, glm::ivec4, setUniformInt4)
-                CASE(Float, float, setUniformFloat)
-                CASE(Float2, glm::vec2, setUniformFloat2)
-                CASE(Float3, glm::vec3, setUniformFloat3)
-                CASE(Float4, glm::vec4, setUniformFloat4)
-                default:
-                    continue;
-            }
-        }
-        for (auto u : sharedUniforms.userUniforms())
-        {
-            bool named(u->name.size() > 0);
-            switch(u->type())
-            {
-                CASE(Bool, bool, setUniformBool)
-                CASE(Int, int, setUniformInt)
-                CASE(Int2, glm::ivec2, setUniformInt2)
-                CASE(Int3, glm::ivec3, setUniformInt3)
-                CASE(Int4, glm::ivec4, setUniformInt4)
-                CASE(Float, float, setUniformFloat)
-                CASE(Float2, glm::vec2, setUniformFloat2)
-                CASE(Float3, glm::vec3, setUniformFloat3)
-                CASE(Float4, glm::vec4, setUniformFloat4)
-                default:
-                    continue;
-            }
-        }
-        rendering_.shader->setUniformFloat("iAspectRatio", aspectRatio_);
-        rendering_.shader->setUniformFloat2
-        (
-            "iResolution", 
-            resolution_
-        );
-        */
         return true;
     }
     // Else if shader not valid
@@ -1381,11 +1314,11 @@ void Layer::renderShader
 
 //----------------------------------------------------------------------------//
 
-void Layer::prepareForExport(const std::vector<Layer*>& layers)
+void Layer::prepareForExport(const std::vector<vir::UniquePtr<Layer>>& layers)
 {
     if (Layer::Rendering::TileController::tiledRenderingEnabled)
         Layer::setRenderingTiles(layers, 1);
-    for (auto layer : layers)
+    for (auto& layer : layers)
     {
         layer->exportData_.originalResolution = layer->resolution_;
         layer->setResolution
@@ -1400,9 +1333,9 @@ void Layer::prepareForExport(const std::vector<Layer*>& layers)
 
 //----------------------------------------------------------------------------//
 
-void Layer::resetAfterExport(const std::vector<Layer*>& layers)
+void Layer::resetAfterExport(const std::vector<vir::UniquePtr<Layer>>& layers)
 {
-    for (auto layer : layers)
+    for (auto& layer : layers)
     {
         layer->setResolution
         (
@@ -1427,7 +1360,7 @@ void Layer::addUniform(vir::UniquePtr<Uniform>&& uniform)
     if (uniform == nullptr)
         return;
     auto& u = uniforms_.emplace_back(std::move(uniform));
-    uniformBuffer_->addUniform(vir::castUnique<vir::Shader::Uniform>(u));
+    uniformBuffer_->addUniform(u);
     if (u->isResource())
     {
         auto* resource = u->getValuePtr<Resource>();
@@ -1456,13 +1389,11 @@ vir::UniquePtr<Uniform> Layer::removeUniform(Uniform* uniform)
         return vir::nullUniquePtr<Uniform>();
     auto u = std::move(uniforms_[index]);
     uniforms_.erase(uniforms_.begin()+index);
-    /*uniforms_.erase
-    (
-        std::remove(uniforms_.begin(), uniforms_.end(), uniform), 
-        uniforms_.end()
-    );*/
     if (uniform->isResource())
-        uniform->removeResourceResolutionFromUniformBuffer(uniformBuffer_.get());
+        uniform->removeResourceResolutionFromUniformBuffer
+        (
+            uniformBuffer_.get()
+        );
     cache_.uncompiledUniforms.erase
     (
         std::remove
@@ -1473,7 +1404,7 @@ vir::UniquePtr<Uniform> Layer::removeUniform(Uniform* uniform)
         ), 
         cache_.uncompiledUniforms.end()
     );
-    return std::move(u);
+    return u;
 }
 
 //----------------------------------------------------------------------------//
@@ -1511,7 +1442,7 @@ bool Layer::removeResourceFromUniforms(const Resource* resource)
 
 Layer::Rendering::Result Layer::renderShaders // Static
 (
-    const std::vector<Layer*>& layers,
+    const std::vector<vir::UniquePtr<Layer>>& layers,
     vir::Framebuffer* target, 
     SharedUniforms& sharedUniforms,
     const unsigned int nRenderPasses
@@ -1530,7 +1461,7 @@ Layer::Rendering::Result Layer::renderShaders // Static
     {
         if (target != nullptr && iRenderPass == 0) // I.e., if exporting
         {
-            for (auto layer : layers) // Apply clear policy
+            for (auto& layer : layers) // Apply clear policy
             {
                 switch (layer->exportData_.clearPolicy)
                 {
@@ -1549,7 +1480,7 @@ Layer::Rendering::Result Layer::renderShaders // Static
         }
 
         clearTarget = true;
-        for (auto layer : layers)
+        for (auto& layer : layers)
         {
             layer->renderShader(target, clearTarget, sharedUniforms);
             // At the end of this loop, the status of clearTarget will 
@@ -1845,15 +1776,15 @@ void Layer::renderPropertiesMenuGui(std::vector<Resource*>& resources)
                 {
                     rendering_.target = target;
                     if (rendering_.target == Rendering::Target::Window)
-                        LayerResource::removeFromResources
+                        Resource::removeLayerFromResources
                         (
                             this,
                             resources
                         );
                     else
-                        LayerResource::insertInResources
+                        Resource::insertLayerInResources
                         (
-                            this,
+                            this->weakFromThis(),
                             resources
                         );
                 }
@@ -2076,7 +2007,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
 
 void Layer::renderLayersTabBarGui // Static
 (
-    std::vector<Layer*>& layers,
+    std::vector<vir::UniquePtr<Layer>>& layers,
     SharedUniforms& sharedUnifoms,
     std::vector<Resource*>& resources
 )
@@ -2085,7 +2016,7 @@ void Layer::renderLayersTabBarGui // Static
     static bool anyUncompiledChanges(false);
     if (Flags::requestRecompilation)
     {
-        for (auto layer : layers)
+        for (auto& layer : layers)
         {
             layer->flags_.uncompiledChanges = true;
         }
@@ -2109,7 +2040,7 @@ void Layer::renderLayersTabBarGui // Static
         )
         {
             ImGui::SetTooltip("Compiling project shaders...");
-            for (auto layer : layers)
+            for (auto& layer : layers)
                 layer->compileShader(sharedUnifoms);
         }
         ImGui::PopStyleColor();
@@ -2154,7 +2085,7 @@ void Layer::renderLayersTabBarGui // Static
             ImGui::EndTooltip();
         }
     }
-    for (auto* layer : layers) // Second, render layer-specific errors in either
+    for (auto& layer : layers) // Second, render layer-specific errors in either
                                // source header or editable source -------------
     {
         const auto& sourceErrors(layer->gui_.sourceEditor.getErrorMarkers());
@@ -2210,7 +2141,7 @@ void Layer::renderLayersTabBarGui // Static
         reorderable = true;
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
         {
-            layers.emplace_back(new Layer(layers, sharedUnifoms));
+            layers.emplace_back(vir::makeUnique<Layer>(layers, sharedUnifoms));
             if (Layer::Rendering::TileController::tiledRenderingEnabled)
                 Layer::setRenderingTiles
                 (
@@ -2223,7 +2154,7 @@ void Layer::renderLayersTabBarGui // Static
         for (int i = 0; i < (int)layers.size(); i++)
         {
             bool open = true;
-            auto layer = layers[i];
+            auto& layer = layers[i];
             if
             (
                 ImGui::BeginTabItem
@@ -2263,22 +2194,38 @@ void Layer::renderLayersTabBarGui // Static
                 ImGui::Text("This action cannot be undone!");
                 if (ImGui::Button("Delete"))
                 {
+                    // Check if this layer is used as a resource in any layer
+                    // (including this one), and if so, remove it from said
+                    // layer's uniforms list
+                    for (auto& r : resources)
+                    {
+                        if (r->name() == layer->name())
+                        {
+                            for (auto& l : layers)
+                            {
+                                l->removeResourceFromUniforms(r);
+                            }
+                            break;
+                        }
+                    }
+                    Resource::removeLayerFromResources
+                    (
+                        layer.get(), // TODO update signature
+                        resources
+                    );
                     layers.erase
                     (
                         std::remove_if
                         (
                             layers.begin(), 
                             layers.end(), 
-                            [&layer](const Layer* l) {return l==layer;}
+                            [&layer](const vir::UniquePtr<Layer>& l)
+                            {
+                                return l==layer;
+                            }
                         ), 
                         layers.end()
                     );
-                    LayerResource::removeFromResources
-                    (
-                        layer,
-                        resources
-                    );
-                    delete layer;
                     --i;
                     deleted = true;
                     ImGui::CloseCurrentPopup();
@@ -2318,14 +2265,15 @@ void Layer::renderLayersTabBarGui // Static
         }
         if (swap.first != swap.second)
         {
-            auto l1 = layers[swap.first];
-            auto l2 = layers[swap.second];
-            auto tl = l1;
-            auto td = l1->depth_;
-            layers[swap.first] = l2;
-            layers[swap.second] = tl;
-            l1->setDepth(l2->depth_);
-            l2->setDepth(td);
+            const auto d1 = layers[swap.first]->depth_;
+            const auto d2 = layers[swap.second]->depth_;
+            std::swap
+            (
+                layers[swap.first], 
+                layers[swap.second]
+            );
+            layers[swap.first]->setDepth(d1);
+            layers[swap.second]->setDepth(d2);
             swap = {0, 0};
         }
         ImGui::EndTabBar();
@@ -2337,7 +2285,7 @@ void Layer::renderLayersTabBarGui // Static
     // renderTabBarGui
     if (Layer::Flags::restartRendering)
     {
-        for (auto layer : layers)
+        for (auto& layer : layers)
         {
             layer->rendering_.framebufferA->clearColorBuffer();
             layer->rendering_.framebufferB->clearColorBuffer();
@@ -2350,7 +2298,7 @@ void Layer::renderLayersTabBarGui // Static
 
 void Layer::renderTabBarGui
 (
-    const std::vector<Layer*>& layers,
+    const std::vector<vir::UniquePtr<Layer>>& layers,
     SharedUniforms& sharedUnifoms,
     std::vector<Resource*>& resources
 )
@@ -2462,7 +2410,7 @@ void Layer::resetSharedSourceEditor()
 
 void Layer::renderShaderLanguangeExtensionsMenuGui
 (
-    const std::vector<Layer*>& layers,
+    const std::vector<vir::UniquePtr<Layer>>& layers,
     SharedUniforms& sharedUniforms
 )
 {
@@ -2593,7 +2541,7 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
                 (
                     extension, status
                 );
-                for (auto* layer : layers)
+                for (auto& layer : layers)
                     layer->compileShader(sharedUniforms);
             }
             ImGui::PopID();
@@ -2609,7 +2557,7 @@ void Layer::renderShaderLanguangeExtensionsMenuGui
 
 void Layer::setRenderingTiles
 (
-    const std::vector<Layer*>& layers, 
+    const std::vector<vir::UniquePtr<Layer>>& layers, 
     unsigned int nTiles
 )
 {
@@ -2621,9 +2569,9 @@ void Layer::setRenderingTiles
     Layer::Rendering::TileController::nTiles = nTiles;
     Layer::Rendering::TileController::tileIndex = 0;
     float largestLayerSize = 0.f;
-    for (auto layer : layers)
+    for (auto& layer : layers)
         largestLayerSize = std::max(largestLayerSize, (float)layer->size());
-    for (auto layer : layers)
+    for (auto& layer : layers)
     {
         unsigned int nt = 
             std::max
