@@ -1086,7 +1086,7 @@ DynamicUniformBuffer::~DynamicUniformBuffer()
     uniformWrappers_.resize(0);
 }
 
-uint32_t DynamicUniformBuffer::sizeOf(const Shader::Uniform* uniform) const
+uint32_t DynamicUniformBuffer::sizeOf(const Uniform* uniform) const
 {
     return 
         uniform == nullptr ?
@@ -1096,7 +1096,7 @@ uint32_t DynamicUniformBuffer::sizeOf(const Shader::Uniform* uniform) const
         typeSizeOf(uniform);
 }
 
-bool DynamicUniformBuffer::addUniform(WeakPtr<Shader::Uniform> uniform)
+bool DynamicUniformBuffer::addUniform(WeakPtr<Uniform> uniform)
 {
     auto size = sizeOf(uniform.get());
     if 
@@ -1129,7 +1129,7 @@ bool DynamicUniformBuffer::addUniform(WeakPtr<Shader::Uniform> uniform)
     return true;
 }
 
-bool DynamicUniformBuffer::removeUniform(const Shader::Uniform* uniform)
+bool DynamicUniformBuffer::removeUniform(const Uniform* uniform)
 {
     auto it = std::find_if
     (
@@ -1205,7 +1205,7 @@ void DynamicUniformBuffer::recalculateUniformSizesAndOffsets()
 
 bool DynamicUniformBuffer::markUniformForSubmission
 (
-    const Shader::Uniform* uniform,
+    const Uniform* uniform,
     uint32_t indexStart,
     uint32_t indexEnd
 )
@@ -1230,7 +1230,7 @@ bool DynamicUniformBuffer::markUniformForSubmission
 
 bool DynamicUniformBuffer::markUniformForSubmission
 (
-    const Shader::Uniform* uniform
+    const Uniform* uniform
 )
 {
     return markUniformForSubmission
@@ -1243,7 +1243,7 @@ bool DynamicUniformBuffer::markUniformForSubmission
 
 bool DynamicUniformBuffer::markArrayUniformRangeForSubmission
 (
-    const Shader::Uniform* uniform,
+    const Uniform* uniform,
     uint32_t arrayIndexStart,
     uint32_t arrayIndexEnd
 )
@@ -1258,8 +1258,8 @@ bool DynamicUniformBuffer::markArrayUniformRangeForSubmission
 
 bool DynamicUniformBuffer::markContiguousUniformsForSubmission
 (
-    const Shader::Uniform* uniform0, 
-    const Shader::Uniform* uniform1
+    const Uniform* uniform0, 
+    const Uniform* uniform1
 )
 {
     if (uniformWrappers_.empty())
@@ -1321,7 +1321,7 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
             if (uw->uniform->isValueArray())
             {
                 const unsigned char* src;
-                if (uw->uniform->type() != Shader::Uniform::Type::Bool)
+                if (uw->uniform->type() != Uniform::Type::Bool)
                     src = reinterpret_cast<const unsigned char*>
                     (
                         uw->uniform->getNativeValue()
@@ -1345,13 +1345,13 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
                         uw->typeSize
                     );
                 }
-                if (uw->uniform->type() == Shader::Uniform::Type::Bool)
+                if (uw->uniform->type() == Uniform::Type::Bool)
                     delete[] src;
             }
             else
             {
                 const unsigned char* src = 
-                    uw->uniform->type() != Shader::Uniform::Type::Bool ?
+                    uw->uniform->type() != Uniform::Type::Bool ?
                     reinterpret_cast<const unsigned char*>
                     (
                         uw->uniform->getNativeValue()
@@ -1366,7 +1366,7 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
                     src, 
                     uw->size
                 );
-                if (uw->uniform->type() == Shader::Uniform::Type::Bool)
+                if (uw->uniform->type() == Uniform::Type::Bool)
                     delete src;
             }
             uw->markedForSubmission = false;
@@ -1436,7 +1436,7 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
                     while (true)
                     {
                         const unsigned char* src = 
-                            uw->uniform->type() != Shader::Uniform::Type::Bool ?
+                            uw->uniform->type() != Uniform::Type::Bool ?
                             reinterpret_cast<const unsigned char*>
                             (
                                 uw->uniform->getNativeValue()
@@ -1451,7 +1451,7 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
                             src, 
                             uw->size
                         );
-                        if (uw->uniform->type() == Shader::Uniform::Type::Bool)
+                        if (uw->uniform->type() == Uniform::Type::Bool)
                             delete src;
                         if (uw == uw1)
                             break;
@@ -1498,7 +1498,7 @@ bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
         return false;
     }
     const unsigned char* src;
-    if (uw->uniform->type() != Shader::Uniform::Type::Bool)
+    if (uw->uniform->type() != Uniform::Type::Bool)
         src = reinterpret_cast<const unsigned char*>
         (
             uw->uniform->getNativeValue()
@@ -1528,7 +1528,7 @@ bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
         blockSize, 
         uw->offset + indexStart*uw->arrayElementSize
     );
-    if (uw->uniform->type() == Shader::Uniform::Type::Bool)
+    if (uw->uniform->type() == Uniform::Type::Bool)
         delete[] src;
     uw->arraySubmissionIndexStart = 0u;
     uw->arraySubmissionIndexEnd = uw->uniform->valueArraySize()-1u;
@@ -1537,7 +1537,7 @@ bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
 
 bool DynamicUniformBuffer::submitUniform
 (
-    const Shader::Uniform* uniform,
+    const Uniform* uniform,
     uint32_t indexStart,
     uint32_t indexEnd
 )
@@ -1556,7 +1556,7 @@ bool DynamicUniformBuffer::submitUniform
     else
     {
         const void* src = 
-            uw->uniform->type() != Shader::Uniform::Type::Bool ?
+            uw->uniform->type() != Uniform::Type::Bool ?
             uw->uniform->getNativeValue() :
             static_cast<void*>
             (
@@ -1568,7 +1568,7 @@ bool DynamicUniformBuffer::submitUniform
             uw->size,
             uw->offset
         );
-        if (uw->uniform->type() == Shader::Uniform::Type::Bool)
+        if (uw->uniform->type() == Uniform::Type::Bool)
             delete static_cast<const bool*>(src);
         if (uw->markedForSubmission)
         {
@@ -1581,7 +1581,7 @@ bool DynamicUniformBuffer::submitUniform
 
 bool DynamicUniformBuffer::submitUniform
 (
-    const Shader::Uniform* uniform
+    const Uniform* uniform
 )
 {
     return submitUniform
@@ -1594,7 +1594,7 @@ bool DynamicUniformBuffer::submitUniform
 
 bool DynamicUniformBuffer::submitArrayUniformRange
 (
-    const Shader::Uniform* uniform,
+    const Uniform* uniform,
     uint32_t indexStart,
     uint32_t indexEnd
 )

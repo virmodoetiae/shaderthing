@@ -1374,30 +1374,30 @@ void OpenGLUniformBuffer::setData
 // Dynamic uniform buffer ----------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-uint32_t OpenGLDynamicUniformBuffer::typeSizeOf(const Shader::Uniform* uniform) const
+uint32_t OpenGLDynamicUniformBuffer::typeSizeOf(const Uniform* uniform) const
 {
     // std140 rules
-    static std::unordered_map<Shader::Uniform::Type, uint32_t> 
+    static std::unordered_map<Uniform::Type, uint32_t> 
         uniformTypeToSize =
         {
-            {Shader::Uniform::Type::Bool,        4},
-            {Shader::Uniform::Type::UInt,        4},
-            {Shader::Uniform::Type::Int,         4},
-            {Shader::Uniform::Type::Int2,        8},
-            {Shader::Uniform::Type::Int3,        12},
-            {Shader::Uniform::Type::Int4,        16},
-            {Shader::Uniform::Type::Float,       4},
-            {Shader::Uniform::Type::Float2,      8},
-            {Shader::Uniform::Type::Float3,      12},
-            {Shader::Uniform::Type::Float4,      16},
-            {Shader::Uniform::Type::Mat3,        36},
-            {Shader::Uniform::Type::Mat4,        64},
-            {Shader::Uniform::Type::Sampler2D,   0},
-            {Shader::Uniform::Type::Sampler3D,   0},
-            {Shader::Uniform::Type::SamplerCube, 0},
-            {Shader::Uniform::Type::Image2D,     0},
-            {Shader::Uniform::Type::Image3D,     0},
-            {Shader::Uniform::Type::ImageCube,   0}
+            {Uniform::Type::Bool,        4},
+            {Uniform::Type::UInt,        4},
+            {Uniform::Type::Int,         4},
+            {Uniform::Type::Int2,        8},
+            {Uniform::Type::Int3,        12},
+            {Uniform::Type::Int4,        16},
+            {Uniform::Type::Float,       4},
+            {Uniform::Type::Float2,      8},
+            {Uniform::Type::Float3,      12},
+            {Uniform::Type::Float4,      16},
+            {Uniform::Type::Mat3,        36},
+            {Uniform::Type::Mat4,        64},
+            {Uniform::Type::Sampler2D,   0},
+            {Uniform::Type::Sampler3D,   0},
+            {Uniform::Type::SamplerCube, 0},
+            {Uniform::Type::Image2D,     0},
+            {Uniform::Type::Image3D,     0},
+            {Uniform::Type::ImageCube,   0}
         };
 
     return uniformTypeToSize.at(uniform->type());
@@ -1405,60 +1405,60 @@ uint32_t OpenGLDynamicUniformBuffer::typeSizeOf(const Shader::Uniform* uniform) 
 
 uint32_t OpenGLDynamicUniformBuffer::arrayElementSizeOf
 (
-    const Shader::Uniform* uniform
+    const Uniform* uniform
 ) const
 {
     // std140 rules
-    static std::unordered_map<Shader::Uniform::Type, uint32_t> 
+    static std::unordered_map<Uniform::Type, uint32_t> 
         uniformTypeToArrayElementSize =
         {
-            {Shader::Uniform::Type::Bool,        16},
-            {Shader::Uniform::Type::UInt,        16},
-            {Shader::Uniform::Type::Int,         16},
-            {Shader::Uniform::Type::Int2,        16},
-            {Shader::Uniform::Type::Int3,        16},
-            {Shader::Uniform::Type::Int4,        16},
-            {Shader::Uniform::Type::Float,       16},
-            {Shader::Uniform::Type::Float2,      16},
-            {Shader::Uniform::Type::Float3,      16},
-            {Shader::Uniform::Type::Float4,      16},
-            {Shader::Uniform::Type::Mat3,        16},
-            {Shader::Uniform::Type::Mat4,        16},
-            {Shader::Uniform::Type::Sampler2D,   0},
-            {Shader::Uniform::Type::Sampler3D,   0},
-            {Shader::Uniform::Type::SamplerCube, 0},
-            {Shader::Uniform::Type::Image2D,     0},
-            {Shader::Uniform::Type::Image3D,     0},
-            {Shader::Uniform::Type::ImageCube,   0}
+            {Uniform::Type::Bool,        16},
+            {Uniform::Type::UInt,        16},
+            {Uniform::Type::Int,         16},
+            {Uniform::Type::Int2,        16},
+            {Uniform::Type::Int3,        16},
+            {Uniform::Type::Int4,        16},
+            {Uniform::Type::Float,       16},
+            {Uniform::Type::Float2,      16},
+            {Uniform::Type::Float3,      16},
+            {Uniform::Type::Float4,      16},
+            {Uniform::Type::Mat3,        16},
+            {Uniform::Type::Mat4,        16},
+            {Uniform::Type::Sampler2D,   0},
+            {Uniform::Type::Sampler3D,   0},
+            {Uniform::Type::SamplerCube, 0},
+            {Uniform::Type::Image2D,     0},
+            {Uniform::Type::Image3D,     0},
+            {Uniform::Type::ImageCube,   0}
         };
 
     return uniformTypeToArrayElementSize.at(uniform->type());
 }
 
-uint32_t OpenGLDynamicUniformBuffer::alignmentOf(const Shader::Uniform* uniform) const
+uint32_t OpenGLDynamicUniformBuffer::alignmentOf(const Uniform* uniform) const
 {
     // std140 rules
-    static std::unordered_map<Shader::Uniform::Type, uint32_t> 
+    static std::unordered_map<Uniform::Type, uint32_t> 
         uniformTypeToAlignment =
         {
-            {Shader::Uniform::Type::Bool,        4},
-            {Shader::Uniform::Type::UInt,        4},
-            {Shader::Uniform::Type::Int,         4},
-            {Shader::Uniform::Type::Int2,        8},
-            {Shader::Uniform::Type::Int3,        16},
-            {Shader::Uniform::Type::Int4,        16},
-            {Shader::Uniform::Type::Float,       4},
-            {Shader::Uniform::Type::Float2,      8},
-            {Shader::Uniform::Type::Float3,      16},
-            {Shader::Uniform::Type::Float4,      16},
-            {Shader::Uniform::Type::Mat3,        48},
-            {Shader::Uniform::Type::Mat4,        64},
-            {Shader::Uniform::Type::Sampler2D,   1},
-            {Shader::Uniform::Type::Sampler3D,   1},
-            {Shader::Uniform::Type::SamplerCube, 1},
-            {Shader::Uniform::Type::Image2D,     1},
-            {Shader::Uniform::Type::Image3D,     1},
-            {Shader::Uniform::Type::ImageCube,   1}
+            {Uniform::Type::Bool,        4},
+            {Uniform::Type::UInt,        4},
+            {Uniform::Type::Int,         4},
+            {Uniform::Type::Int2,        8},
+            {Uniform::Type::Int3,        16},
+            {Uniform::Type::Int4,        16},
+            {Uniform::Type::Float,       4},
+            {Uniform::Type::Float2,      8},
+            {Uniform::Type::Float3,      16},
+            {Uniform::Type::Float4,      16},
+            {Uniform::Type::Mat3,        48},
+            {Uniform::Type::Mat4,        64},
+            {Uniform::Type::Sampler2D,   1},
+            {Uniform::Type::Sampler3D,   1},
+            {Uniform::Type::SamplerCube, 1},
+            {Uniform::Type::Image2D,     1},
+            {Uniform::Type::Image3D,     1},
+            {Uniform::Type::ImageCube,   1}
         };
     if (uniform->isValueArray())
         return 16; // Also per std140 rules
@@ -1520,27 +1520,27 @@ std::string OpenGLDynamicUniformBuffer::shaderSource() const
 {
     if (uniformWrappers_.empty() || name_.empty() || bindingPoint_ == -1)
         return "";
-    static std::unordered_map<Shader::Uniform::Type, std::string> 
+    static std::unordered_map<Uniform::Type, std::string> 
         uniformTypeToName =
         {
-            {Shader::Uniform::Type::Bool, "bool"},
-            {Shader::Uniform::Type::UInt, "uint"},
-            {Shader::Uniform::Type::Int, "int"},
-            {Shader::Uniform::Type::Int2, "ivec2"},
-            {Shader::Uniform::Type::Int3, "ivec3"},
-            {Shader::Uniform::Type::Int4, "ivec4"},
-            {Shader::Uniform::Type::Float, "float"},
-            {Shader::Uniform::Type::Float2, "vec2"},
-            {Shader::Uniform::Type::Float3, "vec3"},
-            {Shader::Uniform::Type::Float4, "vec4"},
-            {Shader::Uniform::Type::Mat3, "mat3"},
-            {Shader::Uniform::Type::Mat4, "mat4"},
-            {Shader::Uniform::Type::Sampler2D, "sampler2D"},
-            {Shader::Uniform::Type::Sampler3D, "sampler3D"},
-            {Shader::Uniform::Type::SamplerCube, "samplerCube"},
-            {Shader::Uniform::Type::Image2D, "image2D"},
-            {Shader::Uniform::Type::Image3D, "image3D"},
-            {Shader::Uniform::Type::ImageCube, "imageCube"}
+            {Uniform::Type::Bool, "bool"},
+            {Uniform::Type::UInt, "uint"},
+            {Uniform::Type::Int, "int"},
+            {Uniform::Type::Int2, "ivec2"},
+            {Uniform::Type::Int3, "ivec3"},
+            {Uniform::Type::Int4, "ivec4"},
+            {Uniform::Type::Float, "float"},
+            {Uniform::Type::Float2, "vec2"},
+            {Uniform::Type::Float3, "vec3"},
+            {Uniform::Type::Float4, "vec4"},
+            {Uniform::Type::Mat3, "mat3"},
+            {Uniform::Type::Mat4, "mat4"},
+            {Uniform::Type::Sampler2D, "sampler2D"},
+            {Uniform::Type::Sampler3D, "sampler3D"},
+            {Uniform::Type::SamplerCube, "samplerCube"},
+            {Uniform::Type::Image2D, "image2D"},
+            {Uniform::Type::Image3D, "image3D"},
+            {Uniform::Type::ImageCube, "imageCube"}
         };
     std::string source = 
         "layout(std140, binding="+std::to_string(bindingPoint_)+") uniform " + 

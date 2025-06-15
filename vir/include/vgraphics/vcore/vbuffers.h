@@ -561,7 +561,7 @@ protected :
 
     struct UniformWrapper
     {
-        WeakPtr<Shader::Uniform> uniform;
+        WeakPtr<Uniform> uniform;
         uint32_t size = 0u;
         uint32_t typeSize = 0u;
         uint32_t offset = 0u;
@@ -586,29 +586,29 @@ protected :
     std::string name_;
     uint32_t nUniformsMarkedForSubmission_ = 0u;
     std::vector<UniformWrapper*> uniformWrappers_ = {};
-    std::unordered_map<const Shader::Uniform*, UniformWrapper*> 
+    std::unordered_map<const Uniform*, UniformWrapper*> 
         uniformWrappersMap_ = {};
     unsigned char* rawBuffer_ = nullptr;
     DynamicUniformBuffer(uint32_t maxSize, const std::string& name);
-    virtual uint32_t typeSizeOf(const Shader::Uniform* uniform) const = 0;
-    virtual uint32_t arrayElementSizeOf(const Shader::Uniform* uniform) const = 0;
-    virtual uint32_t alignmentOf(const Shader::Uniform* uniform) const = 0;
+    virtual uint32_t typeSizeOf(const Uniform* uniform) const = 0;
+    virtual uint32_t arrayElementSizeOf(const Uniform* uniform) const = 0;
+    virtual uint32_t alignmentOf(const Uniform* uniform) const = 0;
     virtual void submitData
     (
         const void* data,
         uint32_t size,
         uint32_t offset = 0
     ) = 0;
-    uint32_t sizeOf(const Shader::Uniform* uniform) const;
+    uint32_t sizeOf(const Uniform* uniform) const;
     bool markUniformForSubmission
     (
-        const Shader::Uniform* uniform,
+        const Uniform* uniform,
         uint32_t indexStart,
         uint32_t indexEnd
     );
     bool submitUniform
     (
-        const Shader::Uniform* uniform,
+        const Uniform* uniform,
         uint32_t arrayIndexStart,
         uint32_t arrayIndexEnd
     );
@@ -623,28 +623,28 @@ public :
     static UniquePtr<DynamicUniformBuffer> create(uint32_t size, const std::string& name);
     uint32_t id() const {return id_;}
     const std::string& name() const {return name_;}
-    bool addUniform(WeakPtr<Shader::Uniform> uniform);
-    bool addUniform(const UniquePtr<Shader::Uniform>& uniform) 
+    bool addUniform(WeakPtr<Uniform> uniform);
+    bool addUniform(const UniquePtr<Uniform>& uniform) 
     {
         addUniform(uniform.getWeak());
     };
-    bool addUniform(UniquePtr<Shader::Uniform>&& uniform) 
+    bool addUniform(UniquePtr<Uniform>&& uniform) 
     {
         addUniform(uniform.getWeak());
     };
-    bool removeUniform(const Shader::Uniform* uniform);
+    bool removeUniform(const Uniform* uniform);
     // To be called if the type of a uniform in this wrapper has changed
     void recalculateUniformSizesAndOffsets();
     // Marks a uniform for submission to the GPU on the next invokation of 
     // submitUniforms(false). If the uniform is an array, the entire array range
     // will be marked for submission
-    bool markUniformForSubmission(const Shader::Uniform* uniform);
+    bool markUniformForSubmission(const Uniform* uniform);
     // Marks a given range of an array uniform for submission. If the range end
     // is omitted, a single element of the array uniform will be marked for
     // submission
     bool markArrayUniformRangeForSubmission
     (
-        const Shader::Uniform* uniform,
+        const Uniform* uniform,
         uint32_t arrayIndexStart,
         uint32_t arrayIndexEnd = 0u
     );
@@ -654,21 +654,21 @@ public :
     // submission range will end at the last uniform in the block
     bool markContiguousUniformsForSubmission
     (
-        const Shader::Uniform* uniform0, 
-        const Shader::Uniform* uniform1
+        const Uniform* uniform0, 
+        const Uniform* uniform1
     );
     // Submit the data of a single uniform to the GPU, regardless of whether it
     // has been marked for submission or not. If the uniform is an array, the
     // entire array will be submitted
     bool submitUniform
     (
-        const Shader::Uniform* uniform
+        const Uniform* uniform
     );
     // Submit a given range of an array uniform to the GPU. If the range end
     // is omitted, a single element of the array uniform will be submitted
     bool submitArrayUniformRange
     (
-        const Shader::Uniform* uniform,
+        const Uniform* uniform,
         uint32_t arrayIndexStart,
         uint32_t arrayIndexEnd = 0u
     );
