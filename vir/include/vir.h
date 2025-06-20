@@ -18,6 +18,7 @@
 #include "vgraphics/vcore/vbuffers.h"
 #include "vgraphics/vcore/vgraphicscontext.h"
 #include "vgraphics/vcore/vshader.h"
+#include "vgraphics/vcore/vuniform.h"
 #include "vgraphics/vcore/vprimitives.h"
 #include "vgraphics/vcore/vrenderer.h"
 #include "vgraphics/vpostprocess/vquantizer.h"

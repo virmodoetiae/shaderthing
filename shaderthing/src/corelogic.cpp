@@ -118,6 +118,161 @@ void initialize(AppData& appData)
     setupNewProject(appData);
 };
 
+void initializeSharedUniforms(AppData& appData)
+{
+    SharedUniforms& su = appData.sharedUniforms;
+
+    // Init CPU block data
+    static const auto window = vir::Window::instance();
+    if (!window->iconified())
+       su.iResolution = {window->width(), window->height()};
+    su.iAspectRatio = su.iResolution.x/su.iResolution.y;
+    for (int i=0; i<256; i++)
+        su.iKeyboard[i] = glm::ivec3({0,0,0});
+
+    // Init cameras
+    su.screenCamera = vir::makeUnique<vir::Camera>();
+    su.shaderCamera = vir::makeUnique<vir::InputCamera>();
+    su.screenCamera->setProjectionType
+    (
+        vir::Camera::ProjectionType::Orthographic
+    );
+    su.screenCamera->setViewportHeight
+    (
+        std::min(1.0f, 1.0f/su.iAspectRatio)
+    );
+    su.screenCamera->setPosition({0, 0, 1});
+    su.screenCamera->setPlanes(.01f, 100.f);
+    su.shaderCamera->setZPlusIsLookDirection(true);
+    su.shaderCamera->setDirection(su.iLook);
+    su.shaderCamera->setPosition(su.iWASD);
+    su.screenCamera->update();
+    su.shaderCamera->update();
+    //iMVP_ = screenCamera_->projectionViewMatrix();
+
+    // Init random number generator and set initial random number
+    //if (random_ == nullptr)
+    //    random_ = new Random();
+    //iRandom_ = random_->generateFloat();
+
+    // Init uniform buffers, bind to designated binding points and set
+    // initial data
+    su.vBuffer = 
+            vir::DynamicUniformBuffer::create(64, "vertexSharedUniformBlock");
+    su.vBuffer->bind();
+    su.vBuffer->setBindingPoint(su.vBufferBindingPoint);
+
+    su.iMVPUniform = vir::makeUnique<Uniform>();
+    su.iMVPUniform->name = "iMVP";
+    su.iMVPUniform->setValuePtr
+    (
+        &(su.screenCamera->projectionViewMatrix()), 
+        Uniform::Type::Mat4
+    );
+    su.iMVPUniform->gui.showBounds = false;
+    su.vBuffer->addUniform(su.iMVPUniform);
+
+    su.fBuffer = 
+            vir::DynamicUniformBuffer::create(8196, "sharedUniformBlock");
+    su.fBuffer->bind();
+    su.fBuffer->setBindingPoint(su.fBufferBindingPoint);
+
+    // Init uniform wrappers
+    su.iFrameUniform = vir::makeUnique<Uniform>();
+    su.iFrameUniform->name = "iFrame";
+    su.iFrameUniform->setValuePtr(&appData.renderer.frame, Uniform::Type::Int);
+    su.iFrameUniform->gui.showBounds = false;
+    //su.iFrameUniform->specialType = Uniform::SpecialType::Frame;
+    su.fBuffer->addUniform(su.iFrameUniform);
+
+    su.iRenderPassUniform = vir::makeUnique<Uniform>();
+    su.iRenderPassUniform->name = "iRenderPass";
+    su.iRenderPassUniform->setValuePtr
+    (
+        &appData.renderer.renderPass, 
+        Uniform::Type::Int
+    );
+    su.iRenderPassUniform->gui.showBounds = false;
+    //su.iRenderPassUniform->specialType = Uniform::SpecialType::RenderPass;
+    su.fBuffer->addUniform(su.iRenderPassUniform);
+    
+    su.iTimeUniform = vir::makeUnique<Uniform>();
+    su.iTimeUniform->name = "iTime";
+    su.iTimeUniform->setValuePtr(&su.iTime, Uniform::Type::Float);
+    //su.iTimeUniform->specialType = Uniform::SpecialType::Time;
+    su.fBuffer->addUniform(su.iTimeUniform);
+    
+    su.iTimeDeltaUniform = vir::makeUnique<Uniform>();
+    su.iTimeDeltaUniform->name = "iTimeDelta";
+    su.iTimeDeltaUniform->setValuePtr(&su.iTimeDelta, Uniform::Type::Float);
+    su.iTimeDeltaUniform->gui.showBounds = false;
+    su.fBuffer->addUniform(su.iTimeDeltaUniform);
+
+    su.iRandomUniform = vir::makeUnique<Uniform>();
+    su.iRandomUniform->name = "iRandom";
+    su.iRandomUniform->setValuePtr(&su.iRandom, Uniform::Type::Float);
+    su.iRandomUniform->gui.showBounds = false;
+    su.fBuffer->addUniform(su.iRandomUniform);
+
+    su.iUserActionUniform = vir::makeUnique<Uniform>();
+    su.iUserActionUniform->name = "iUserAction";
+    su.iUserActionUniform->setValuePtr(&su.iUserAction, Uniform::Type::Bool);
+    su.iUserActionUniform->gui.showBounds = false;
+    //su.iUserActionUniform->specialType = Uniform::SpecialType::UserAction;
+    su.fBuffer->addUniform(su.iUserActionUniform);
+
+    su.iExportUniform = vir::makeUnique<Uniform>();
+    su.iExportUniform->name = "iExport";
+    su.iExportUniform->setValuePtr
+    (
+        &appData.exporter.isActive, 
+        Uniform::Type::Bool
+    );
+    su.iExportUniform->gui.showBounds = false;
+    su.fBuffer->addUniform(su.iExportUniform);
+
+    su.iWASDUniform = vir::makeUnique<Uniform>();
+    su.iWASDUniform->name = "iWASD";
+    su.iWASDUniform->setValuePtr(&su.iWASD, Uniform::Type::Float3);
+    //su.iWASDUniform->specialType = Uniform::SpecialType::CameraPosition;
+    su.fBuffer->addUniform(su.iWASDUniform);
+
+    su.iLookUniform = vir::makeUnique<Uniform>();
+    su.iLookUniform->name = "iLook";
+    su.iLookUniform->setValuePtr(&su.iLook, Uniform::Type::Float3);
+    su.iLookUniform->gui.showBounds = false;
+    //su.iLookUniform->specialType = Uniform::SpecialType::CameraDirection;
+    su.fBuffer->addUniform(su.iLookUniform);
+
+    su.iMouseUniform = vir::makeUnique<Uniform>();
+    su.iMouseUniform->name = "iMouse";
+    su.iMouseUniform->setValuePtr(&su.iMouse, Uniform::Type::Float4);
+    su.iMouseUniform->gui.showBounds = false;
+    //su.iMouseUniform->specialType = Uniform::SpecialType::Mouse;
+    su.fBuffer->addUniform(su.iMouseUniform);
+
+    su.iAspectRatioUniform = vir::makeUnique<Uniform>();
+    su.iAspectRatioUniform->name = "iWindowAspectRatio";
+    su.iAspectRatioUniform->setValuePtr(&su.iAspectRatio, Uniform::Type::Float);
+    su.iAspectRatioUniform->gui.showBounds = false;
+    //su.iAspectRatioUniform->specialType = Uniform::SpecialType::WindowAspectRatio;
+    su.fBuffer->addUniform(su.iAspectRatioUniform);
+
+    su.iResolutionUniform = vir::makeUnique<Uniform>();
+    su.iResolutionUniform->name = "iWindowResolution";
+    su.iResolutionUniform->setValuePtr(&su.iResolution, Uniform::Type::Float2);
+    su.iResolutionUniform->gui.showBounds = false;
+    //su.iResolutionUniform->specialType = Uniform::SpecialType::WindowResolution;
+    su.fBuffer->addUniform(su.iResolutionUniform);
+
+    su.iKeyboardUniform = vir::makeUnique<Uniform>();
+    su.iKeyboardUniform->name = "iKeyboard";
+    su.iKeyboardUniform->setValuePtr(&su.iKeyboard, Uniform::Type::Int3, 256);
+    su.iKeyboardUniform->gui.showBounds = false;
+    //su.iKeyboardUniform->specialType = Uniform::SpecialType::Keyboard;
+    su.fBuffer->addUniform(su.iKeyboardUniform);
+}
+
 void renderShaders(AppData& appData)
 {
 
@@ -127,6 +282,7 @@ void setupNewProject(AppData& appData)
 {
     appData.layers.clear();
     createNewLayer(appData);
+    initializeSharedUniforms(appData);
 }
 
 void setLayerDepth(Layer& layer, const float depth)

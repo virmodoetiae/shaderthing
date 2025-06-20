@@ -76,22 +76,6 @@ void renderLayerMenu
         std::sprintf(label.get(), "##layer%dInputText", layer.id);
         ImGui::PushItemWidth(entryWidth);
         ImGui::InputText(label.get(), &layer.name);
-        /*
-        if (ImGui::InputText(label.get(), &layer.cache.name))
-        {
-            if (layer.cache.name != layer.name)
-            {
-                appData.deferredActionBuffer.add
-                (
-                    [&layer, &appData]()
-                    {
-                        layer.name = layer.cache.name;
-                        appData.flags.isLayerTabBarReorderable = false;
-                    },
-                    [](){return !ImGui::GetIO().WantTextInput;}
-                );
-            }
-        }*/
         ImGui::PopItemWidth();
         
         static std::map<Layer::Renderer::Target, const char*> 
@@ -510,7 +494,6 @@ void renderLayersTabBar
         {
             bool open = true;
             auto& layer = layers[i];
-            std::cout << i << " " << layer->name << std::endl;
             std::string tabLabel = layer->name+"###"+layer->imGuiTabId;
             if
             (
