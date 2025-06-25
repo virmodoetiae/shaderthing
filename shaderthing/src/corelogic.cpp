@@ -8,24 +8,289 @@
 namespace ShaderThing
 {
 
-void createNewLayer(AppData& appData)
+std::string assembleFragmentShaderHeader
+(
+    const Layer& layer, 
+    const AppData& appData
+)
+{
+    std::string header =
+        vir::Shader::currentContextShadingLanguageDirectives() +
+        "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n" +
+        appData.sharedStorage.shaderSource() +
+        appData.sharedUniforms.fBuffer->shaderSource() +
+        "\n";
+    /*
+    unsigned int imageBindingPoint = 0;
+    auto writeResourceUniformsToHeader = []
+    (
+        const std::vector<vir::UniquePtr<Uniform>>& uniforms, 
+        std::string& header,
+        unsigned int& nLines,
+        unsigned int& imageBindingPoint
+    )
+    {
+        for (auto& u : uniforms)
+        {
+            // If the uniform has no name, I can't add it to the source
+            if (u->name.size() == 0)
+                continue;
+            std::string uniformTypeName = 
+                vir::Shader::uniformTypeToName[u->type()];
+            switch (u->type())
+            {
+                case vir::Uniform::Type::Image2D :
+                case vir::Uniform::Type::Image3D :
+                case vir::Uniform::Type::ImageCube :
+                {
+                    auto resource = u->getValuePtr<Resource>();
+                    if (resource == nullptr)
+                        break;
+                    header += 
+                        "layout(binding="+std::to_string(imageBindingPoint++)+
+                        ", "+resource->internalFormatName()+") ";
+                    // This logic should be handled different at the vir:: 
+                    // level and exposed via Resource::, not here
+                    if (resource->isInternalFormatUnsigned())
+                        uniformTypeName = "u"+uniformTypeName;
+                    header += "uniform "+uniformTypeName+" "+u->name+";\n";
+                    ++nLines;
+                    // Also update name of linked resolution uniform
+                    u->updateResourceResolutionName();
+                    break;
+                }
+                case vir::Uniform::Type::Sampler2D :
+                case vir::Uniform::Type::Sampler3D :
+                case vir::Uniform::Type::SamplerCube :
+                {
+                    auto resource = u->getValuePtr<Resource>();
+                    if (resource == nullptr)
+                        break;
+                    // This logic should be handled different at the vir:: 
+                    // level and exposed via Resource::, not here
+                    if (resource->isInternalFormatUnsigned())
+                        uniformTypeName = "u"+uniformTypeName;
+                    header += "uniform "+uniformTypeName+" "+u->name+";\n";
+                    ++nLines;
+                    // Also update name of linked resolution uniform
+                    u->updateResourceResolutionName();
+                    break;
+                }
+                default :
+                    break;
+            }
+        }
+    };
+    writeResourceUniformsToHeader
+    (
+        sharedUniforms.userUniforms(),
+        header,
+        nLines,
+        imageBindingPoint
+    );
+    writeResourceUniformsToHeader
+    (
+        uniforms_,
+        header,
+        nLines,
+        imageBindingPoint
+    );
+    */
+    header += layer.renderer.uniformBuffer->shaderSource();
+    return header;
+}
+
+//----------------------------------------------------------------------------//
+
+std::string assembleVertexShaderSource(const AppData& appData)
+{
+    std::string vertexSource
+    (
+        vir::Shader::currentContextShadingLanguageDirectives() +
+R"(layout (location=0) in vec3 iqc;
+layout (location=1) in vec2 itc;
+out vec2 qc;
+out vec2 tc;
+)" + appData.sharedUniforms.vBuffer->shaderSource() +
+R"(
+void main(){
+    gl_Position = iMVP*vec4(iqc, 1.);
+    qc = iqc.xy;
+    tc = itc;})"
+    );
+    return vertexSource;
+}
+
+//----------------------------------------------------------------------------//
+
+bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
+{
+    layer.sourceHeader = assembleFragmentShaderHeader(layer, appData);
+    unsigned int nHeaderLines = Helpers::countNewLines(layer.sourceHeader);
+    unsigned int nSharedLines = appData.sharedSourceEditor.getTotalLines()+1;
+    std::string vertexSource = assembleVertexShaderSource(appData);
+    std::string fragmentSource = 
+        (
+            layer.sourceHeader +
+            appData.sharedSourceEditor.getText()+"\n"+
+            layer.sourceEditor.getText()
+        );
+    auto shader = vir::Shader::create
+    (
+        vertexSource,
+        fragmentSource,
+        vir::Shader::ConstructFrom::SourceCode
+    );
+    if (shader->valid())
+    {
+        //delete rendering_.shader;
+        layer.headerErrors.clear();
+        layer.sourceEditor.setErrorMarkers({});
+        appData.sharedSourceEditor.setErrorMarkers({});
+        layer.cache.uncompiledUniforms.erase
+        (
+            std::remove_if
+            (
+                layer.cache.uncompiledUniforms.begin(),
+                layer.cache.uncompiledUniforms.end(),
+                [](auto& u){return u->name.size()>0;}
+            ),
+            layer.cache.uncompiledUniforms.end()
+        );
+        layer.flags.uncompiledChanges = false;
+        // Re-set uniforms
+        shader->bindUniformBlock
+        (
+            layer.renderer.uniformBuffer->name(), 
+            layer.renderer.uniformBufferBindingPoint
+        );
+        shader->bindUniformBlock
+        (
+            appData.sharedUniforms.fBuffer->name(),
+            appData.sharedUniforms.fBufferBindingPoint
+        );
+        shader->bindUniformBlock
+        (
+            appData.sharedUniforms.vBuffer->name(),
+            appData.sharedUniforms.vBufferBindingPoint
+        );
+        appData.sharedStorage.bindShader(shader.get());
+        shader->bind();
+        layer.renderer.shader = std::move(shader);
+        return true;
+    }
+    // Else if shader not valid
+    std::map<int, std::string> sourceErrors, sharedErrors;
+    for (const auto& error : shader->compilationErrors().fragmentErrors)
+    {
+        int sourceLineNo(error.first - nSharedLines - nHeaderLines + 1);
+        int sharedLineNo(error.first - nHeaderLines);
+        if (sourceLineNo > 0)
+            sourceErrors.insert({sourceLineNo, error.second});
+        else if (sharedLineNo > 0)
+            sharedErrors.insert({sharedLineNo, error.second});
+        else 
+        {
+            if (layer.headerErrors.size() > 0)
+                layer.headerErrors += "\n";
+            layer.headerErrors += "Header: " + error.second;
+        }
+    }
+    auto setEditorErrors = []
+    (
+        TextEditor& editor,
+        const std::map<int, std::string>& errors
+    )
+    {
+        editor.setErrorMarkers(errors);
+        if (errors.size() > 0)
+            editor.setCursorPosition({errors.begin()->first, 0});
+    };
+    setEditorErrors(layer.sourceEditor, sourceErrors);
+    setEditorErrors(appData.sharedSourceEditor, sharedErrors);
+    if (setBlankShaderOnError)
+    {
+        // Initialize the shader with a blank shader source if any compilation
+        // errors are detected (back-end-only, the user will still see the 
+        // source of the failed-compilation shader with the full list of 
+        // compilation errors and markers)
+        std::string vertexSource = assembleVertexShaderSource(appData);
+        std::string fragmentSource = 
+            vir::Shader::currentContextShadingLanguageDirectives() +
+R"(out vec4 fragColor;
+in     vec2 qc;
+in     vec2 tc;
+void main(){fragColor = vec4(0, 0, 0, .5);})";
+        layer.renderer.shader = 
+            vir::Shader::create
+            (
+                vertexSource,
+                fragmentSource,
+                vir::Shader::ConstructFrom::SourceCode
+            );
+    }
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+
+void createNewLayer(AppData& appData, bool compileShader)
 {
     unsigned int id = Helpers::findSmallestFreeLayerId(appData.layers);
     auto& layer = *appData.layers.emplace_back(vir::makeUnique<Layer>(id));
     layer.name = "Layer "+std::to_string(id);
-    layer.sourceEditor = vir::makeUnique<TextEditor>();
+
+    layer.renderer.uniformBuffer = 
+        vir::DynamicUniformBuffer::create(1024, "privateUniformBlock");
+    // First two points taken by shared vertex shader uniform block and shared
+    // fragment uniform block
+    unsigned int bindingPoint = 2+id;
+    layer.renderer.uniformBufferBindingPoint = bindingPoint;
+    layer.renderer.uniformBuffer->setBindingPoint(bindingPoint);
+
+    // Set default fragment source in editor
+    layer.sourceEditor.setText
+    (
+R"(void main()
+{
+/*  Quick description of some important shader inputs and uniforms:
+
+    >>  qc (quad coordinates) represents the coordinates of the current pixel
+        (i.e., fragment) in a Euclidian reference frame with the origin at the 
+        window center. The magnitude of qc varies from -0.5 to 0.5 along the 
+        longest side of the window
+    
+    >>  tc (texture coordinates) represents the coordinates of the current pixel
+        (i.e., fragment) in an affine reference frame with the origin at the
+        window bottom-left corner, and where (1, 1) is always at the window top-
+        right corner, regardless of the current window size or aspect ratio
+
+    >>  iTime is the elapsed wall time. It can be modified in the 'Uniforms' tab
+    
+    >>  for a full list of all available uniforms, expand the shader 'Header'
+        at the top of the source code. This is inclusive of user-created 
+        uniforms in the 'Uniforms' tab*/
+
+    // Output pixel color (all components are in the [0, 1] range)
+    fragColor = vec4
+    ( 
+        .4+.250*sin(2.*(qc.x+iTime)), // Red
+        .5+.125*cos(3.*(tc.y+iTime)), // Green
+        .75,                          // Blue
+        1.                            // Alpha (transparency)
+    );
+})"
+    );
+    layer.sourceEditor.resetTextChanged();
+
+    if (compileShader)
+        ShaderThing::compileShader(layer, appData);
 }
 
 //----------------------------------------------------------------------------//
 
 void initialize(AppData& appData)
 {
-    // Initialize vir lib
-    vir::Settings settings = {};
-    settings.windowName = "ShaderThing";// - "+project_.filename;
-    settings.enableFaceCulling = false;
-    vir::initialize(settings);
-    
     // ImGui setup
     ImGuiIO& io = ImGui::GetIO();
     // Do not save config to .ini file
@@ -110,9 +375,6 @@ void initialize(AppData& appData)
         ByteData::Icon::sTIconSize,
         false
     );
-
-    // Initialize shared source editor
-    appData.sharedSourceEditor = vir::makeUnique<TextEditor>();
 
     // Create new project
     setupNewProject(appData);
@@ -281,8 +543,8 @@ void renderShaders(AppData& appData)
 void setupNewProject(AppData& appData)
 {
     appData.layers.clear();
-    createNewLayer(appData);
     initializeSharedUniforms(appData);
+    createNewLayer(appData);
 }
 
 void setLayerDepth(Layer& layer, const float depth)

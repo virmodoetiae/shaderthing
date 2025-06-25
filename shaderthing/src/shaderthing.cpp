@@ -9,9 +9,14 @@ namespace ShaderThing
 
 void run()
 {
+    // Initialize vir lib
+    vir::Settings settings = {};
+    settings.windowName = "ShaderThing";// - "+project_.filename;
+    settings.enableFaceCulling = false;
+    vir::initialize(settings);
+
+    // Initialize application
     AppData appData = {};
-    
-    // Initialize application data
     initialize(appData);
 
     // Main loop

@@ -375,8 +375,11 @@ void renderLayersTabBar
         )
         {
             ImGui::SetTooltip("Compiling project shaders...");
-            //for (auto& layer : layers)
-            //    layer->compileShader(sharedUnifoms);
+            for (auto& layer : layers)
+            {
+                auto& l = *layer;
+                compileShader(l, appData);
+            }
         }
         ImGui::PopStyleColor();
         ImGui::SameLine();
@@ -402,7 +405,7 @@ void renderLayersTabBar
     anyUncompiledChanges = false;
     const auto& sharedErrors // First render errors in shared source -----------
     (
-        appData.sharedSourceEditor->getErrorMarkers()
+        appData.sharedSourceEditor.getErrorMarkers()
     );
     if (sharedErrors.size() > 0)
     {
@@ -423,7 +426,7 @@ void renderLayersTabBar
     for (auto& layer : layers) // Second, render layer-specific errors in either
                                // source header or editable source -------------
     {
-        const auto& sourceErrors(layer->sourceEditor->getErrorMarkers());
+        const auto& sourceErrors(layer->sourceEditor.getErrorMarkers());
         if (sourceErrors.size() > 0 || layer->headerErrors.size() > 0)
         {
             compilationErrors = true;
@@ -444,13 +447,13 @@ void renderLayersTabBar
         }
         if
         (
-            layer->sourceEditor->isTextChanged() || 
-            appData.sharedSourceEditor->isTextChanged()
+            layer->sourceEditor.isTextChanged() || 
+            appData.sharedSourceEditor.isTextChanged()
         )
             layer->flags.uncompiledChanges = true;
         if 
         (
-            appData.sharedSourceEditor->isTextChanged() ||
+            appData.sharedSourceEditor.isTextChanged() ||
             layer->flags.uncompiledChanges
         )
             anyUncompiledChanges = true;
@@ -648,7 +651,7 @@ void renderLayerTabBar
                 layer.flags.uncompiledChanges || madeReplacements;
             if (ImGui::TreeNode("Header"))
             {
-                float indent(layer.sourceEditor->getLineIndexColumnWidth());
+                float indent(layer.sourceEditor.getLineIndexColumnWidth());
                 ImGui::Unindent(); // Remove indent from Header TreeNode
                 ImGui::Indent(indent);
                 ImGui::PushStyleColor
@@ -678,17 +681,17 @@ void renderLayerTabBar
                 ImGui::Unindent(indent);
                 ImGui::Indent(); // Re-add indent from Header TreeNode
             }
-            layer.sourceEditor->renderGui("##sourceEditor");
+            layer.sourceEditor.renderGui("##sourceEditor");
             gActiveTabId = 0;
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Shared source"))
         {
             bool madeReplacements = 
-                appData.sharedSourceEditor->renderFindReplaceToolGui();
+                appData.sharedSourceEditor.renderFindReplaceToolGui();
             layer.flags.uncompiledChanges = 
                 layer.flags.uncompiledChanges || madeReplacements;
-            appData.sharedSourceEditor->renderGui("##sharedSourceEditor");
+            appData.sharedSourceEditor.renderGui("##sharedSourceEditor");
             gActiveTabId = 1;
             ImGui::EndTabItem();
         }

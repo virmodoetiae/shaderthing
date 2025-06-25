@@ -4,6 +4,8 @@
 #include <vector>
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/oo/deferredactionbuffer.h"
+#include "shaderthing/include/oo/sharedstorage.h"
+#include "shaderthing/include/oo/texteditor.h"
 #include "shaderthing/include/typedefs.h"
 #include "vir/include/vgraphics/vcore/vuniform.h"
 #include "thirdparty/imgui/imgui.h"
@@ -22,9 +24,6 @@ class Camera;
 namespace ShaderThing
 {
 
-// Forwards
-class TextEditor;
-
 //----------------------------------------------------------------------------//
 
 struct Exporter
@@ -41,109 +40,6 @@ struct Font
     ImFontConfig imFontConfig              = {}; 
     bool         isJapaneseLoaded          = false;
     bool         isSimplifiedChineseLoaded = false;
-};
-
-//----------------------------------------------------------------------------//
-
-struct Layer
-{
-    struct Renderer
-    {
-        enum class Target
-        {
-            Window,
-            InternalFramebuffer,
-            InternalFramebufferAndWindow
-        };
-        Target                 target              = Target::Window;
-        UPtr<vir::TiledQuad>   quad;
-        UPtr<vir::Framebuffer> framebufferA;
-        UPtr<vir::Framebuffer> framebufferB;
-        vir::Framebuffer*      frontFramebuffer    = nullptr;
-        vir::Framebuffer*      backFramebuffer     = nullptr;
-        vir::Framebuffer*      resourceFramebuffer = nullptr;
-        UPtr<vir::Shader>      shader;
-
-        struct Tiles
-        {
-            enum class Direction
-            {
-                Horizontal,
-                Vertical
-            };
-            Direction    direction = Direction::Horizontal;
-            unsigned int size      = 1;
-        };
-        Tiles tiles;
-    };
-    struct Flags
-    {
-               bool rename                        = false;
-               bool isDeletionConfirmationPending = false;
-               bool uncompiledChanges             = false;
-               bool isAspectRatioBoundToWindow    = true;
-               bool rescaleWithWindow             = true;
-        static bool requestRecompilation;
-        static bool restartRendering;
-    };
-
-    const unsigned int     id;
-    const std::string      imGuiMenuId;
-    const std::string      imGuiTabId;
-          std::string      name;
-          
-          glm::vec2        resolution;
-          glm::vec2        resolutionRatio = {1.f, 1.f};
-          float            aspectRatio;
-          float            depth;
-          Renderer         renderer;
-          UPtr<TextEditor> sourceEditor;
-          std::string      sourceHeader;
-          std::string      headerErrors;
-          unsigned int     activeGuiTabId = 0;
-          Flags            flags;
-    
-    Layer(unsigned int aId) : 
-        id(aId), 
-        imGuiMenuId("menuLayer"+std::to_string(id)), 
-        imGuiTabId("tabLayer"+std::to_string(id)) {}
-    NO_COPY(Layer)
-};
-
-//----------------------------------------------------------------------------//
-
-struct Project
-{
-    std::string        filepath          = "";
-    std::string        filename          = "untitled.stf";
-    const std::string* exampleToBeLoaded = nullptr;
-    bool               forceSaveAs       = true;
-    bool               isAutoSaveEnabled = true;
-    float              timeSinceLastSave = 0.f;
-    float              autoSaveInterval  = 60.f;
-};
-
-//----------------------------------------------------------------------------//
-
-struct Renderer
-{
-    float        lowerFpsLimit           = 5.0;
-    bool         isPaused                = false;
-    bool         isTiledRenderingEnabled = false;
-    bool         isVSyncEnabled          = true;
-    unsigned int frame                   = 0;
-    unsigned int renderPass              = 0;
-    unsigned int tileIndex               = 0;
-    unsigned int nTiles                  = 1;
-    unsigned int nTilesCache;
-};
-
-//----------------------------------------------------------------------------//
-
-struct RenderResult
-{
-    bool renderPassesComplete;
-    bool flipWindowBuffer;
 };
 
 //----------------------------------------------------------------------------//
@@ -234,6 +130,116 @@ struct SharedUniforms
 
 //----------------------------------------------------------------------------//
 
+struct Layer
+{
+    struct Renderer
+    {
+        enum class Target
+        {
+            Window,
+            InternalFramebuffer,
+            InternalFramebufferAndWindow
+        };
+        Target                          target              = Target::Window;
+        UPtr<vir::TiledQuad>            quad;
+        UPtr<vir::Framebuffer>          framebufferA;
+        UPtr<vir::Framebuffer>          framebufferB;
+        vir::Framebuffer*               frontFramebuffer    = nullptr;
+        vir::Framebuffer*               backFramebuffer     = nullptr;
+        vir::Framebuffer*               resourceFramebuffer = nullptr;
+        UPtr<vir::Shader>               shader;
+        UPtr<vir::DynamicUniformBuffer> uniformBuffer;
+        unsigned int                    uniformBufferBindingPoint;
+
+        struct Tiles
+        {
+            enum class Direction
+            {
+                Horizontal,
+                Vertical
+            };
+            Direction    direction = Direction::Horizontal;
+            unsigned int size      = 1;
+        };
+        Tiles tiles;
+    };
+    struct Flags
+    {
+               bool isDeletionConfirmationPending = false;
+               bool uncompiledChanges             = false;
+               bool isAspectRatioBoundToWindow    = true;
+               bool rescaleWithWindow             = true;
+        static bool requestRecompilation;
+        static bool restartRendering;
+    };
+    struct Cache
+    {
+        UPtrVector<Uniform> uncompiledUniforms;
+    };
+
+    const unsigned int        id;
+    const std::string         imGuiMenuId;
+    const std::string         imGuiTabId;
+          std::string         name;
+          
+          glm::vec2           resolution;
+          glm::vec2           resolutionRatio = {1.f, 1.f};
+          float               aspectRatio;
+          float               depth;
+          Renderer            renderer;
+          UPtrVector<Uniform> uniforms;
+          TextEditor          sourceEditor;
+          std::string         sourceHeader;
+          std::string         headerErrors;
+          unsigned int        activeGuiTabId = 0;
+          Flags               flags;
+          Cache               cache;
+    
+    Layer(unsigned int aId) : 
+        id(aId), 
+        imGuiMenuId("menuLayer"+std::to_string(id)), 
+        imGuiTabId("tabLayer"+std::to_string(id)) {}
+    NO_COPY(Layer)
+};
+
+//----------------------------------------------------------------------------//
+
+struct Project
+{
+    std::string        filepath          = "";
+    std::string        filename          = "untitled.stf";
+    const std::string* exampleToBeLoaded = nullptr;
+    bool               forceSaveAs       = true;
+    bool               isAutoSaveEnabled = true;
+    float              timeSinceLastSave = 0.f;
+    float              autoSaveInterval  = 60.f;
+};
+
+//----------------------------------------------------------------------------//
+
+struct Renderer
+{
+    float        lowerFpsLimit           = 5.0;
+    bool         isPaused                = false;
+    bool         isTiledRenderingEnabled = false;
+    bool         isVSyncEnabled          = true;
+    unsigned int frame                   = 0;
+    unsigned int renderPass              = 0;
+    unsigned int tileIndex               = 0;
+    unsigned int nTiles                  = 1;
+    unsigned int nTilesCache;
+};
+
+//----------------------------------------------------------------------------//
+
+struct RenderResult
+{
+    bool renderPassesComplete;
+    bool flipWindowBuffer;
+};
+
+//----------------------------------------------------------------------------//
+
 struct AppData
 {
     std::string          controlPanelTitle = "Control panel###CP";
@@ -242,8 +248,9 @@ struct AppData
     Font                 font;
     Project              project;
     Renderer             renderer;
+    SharedStorage        sharedStorage;
     SharedUniforms       sharedUniforms;
-    UPtr<TextEditor>     sharedSourceEditor;
+    TextEditor           sharedSourceEditor;
     UPtrVector<Layer>    layers;
 };
 
