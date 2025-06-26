@@ -158,7 +158,6 @@ bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
             layer.cache.uncompiledUniforms.end()
         );
         layer.flags.uncompiledChanges = false;
-        // Re-set uniforms
         shader->bindUniformBlock
         (
             layer.renderer.uniformBuffer->name(), 
@@ -236,10 +235,15 @@ void main(){fragColor = vec4(0, 0, 0, .5);})";
 
 void createNewLayer(AppData& appData, bool compileShader)
 {
+    // Create and new layer to layers
     unsigned int id = Helpers::findSmallestFreeLayerId(appData.layers);
     auto& layer = *appData.layers.emplace_back(vir::makeUnique<Layer>(id));
     layer.name = "Layer "+std::to_string(id);
 
+    // Init quad for rendering
+    setLayerDepth(layer, (float)appData.layers.size()/Layer::nMaxLayers);
+
+    // Initi unfiorm buffer storage
     layer.renderer.uniformBuffer = 
         vir::DynamicUniformBuffer::create(1024, "privateUniformBlock");
     // First two points taken by shared vertex shader uniform block and shared
@@ -376,9 +380,43 @@ void initialize(AppData& appData)
         false
     );
 
-    // Create new project
-    setupNewProject(appData);
+    initializeSharedUniforms(appData);
+
+    // Initialize shared texture mapper shader
+    std::string vertexSource = assembleVertexShaderSource(appData);
+    std::string fragmentSource =
+        vir::Shader::currentContextShadingLanguageDirectives()+
+R"(out  vec4      fragColor;
+in      vec2      qc;
+in      vec2      tc;
+uniform sampler2D tx;
+void main(){fragColor = texture(tx, tc);})";
+    appData.renderer.textureMapperShader =
+        vir::Shader::create
+        (
+            vertexSource,
+            fragmentSource,
+            vir::Shader::ConstructFrom::SourceCode
+        );
+    // These might not even be needed...
+    /*
+    appData.renderer.textureMapperShader->bindUniformBlock
+    (
+        appData.sharedUniforms.fBuffer->name(),
+        appData.sharedUniforms.fBufferBindingPoint
+    );
+    appData.renderer.textureMapperShader->bindUniformBlock
+    (
+        appData.sharedUniforms.vBuffer->name(),
+        appData.sharedUniforms.vBufferBindingPoint
+    );
+    */
+
+    // Create default layer
+    createNewLayer(appData);
 };
+
+//----------------------------------------------------------------------------//
 
 void initializeSharedUniforms(AppData& appData)
 {
@@ -535,10 +573,28 @@ void initializeSharedUniforms(AppData& appData)
     su.fBuffer->addUniform(su.iKeyboardUniform);
 }
 
-void renderShaders(AppData& appData)
-{
+//----------------------------------------------------------------------------//
 
+void preRenderUpdate(AppData& appData)
+{
+    appData.deferredActionBuffer.process();
 }
+
+//----------------------------------------------------------------------------//
+
+void postRenderUpdate(AppData& appData)
+{
+    
+}
+
+//----------------------------------------------------------------------------//
+
+RenderResult renderShaders(AppData& appData)
+{
+    return {true, true};
+}
+
+//----------------------------------------------------------------------------//
 
 void setupNewProject(AppData& appData)
 {
@@ -547,10 +603,146 @@ void setupNewProject(AppData& appData)
     createNewLayer(appData);
 }
 
+//----------------------------------------------------------------------------//
+
 void setLayerDepth(Layer& layer, const float depth)
 {
     layer.depth = depth;
-    // And more!
+    if (layer.renderer.quad.valid())
+        layer.renderer.quad->update
+        (
+            layer.renderer.quad->width(),
+            layer.renderer.quad->height(),
+            depth
+        );
+    else
+    {
+        auto viewport = Helpers::normalizedWindowResolution();
+        layer.renderer.quad = 
+            vir::makeUnique<vir::TiledQuad>(viewport.x, viewport.y, depth);
+    }
 }
+
+//----------------------------------------------------------------------------//
+
+void setLayerFramebufferWrapMode(Layer& layer, int i, WrapMode mode)
+{
+    layer.renderer.framebufferA->setColorBufferWrapMode(i, mode);
+    layer.renderer.framebufferB->setColorBufferWrapMode(i, mode);
+}
+
+//----------------------------------------------------------------------------//
+
+void setLayerFramebufferMagFilterMode(Layer& layer, FilterMode mode)
+{
+    layer.renderer.framebufferA->setColorBufferMagFilterMode(mode);
+    layer.renderer.framebufferB->setColorBufferMagFilterMode(mode);
+}
+
+//----------------------------------------------------------------------------//
+
+void setLayerFramebufferMinFilterMode(Layer& layer, FilterMode mode)
+{
+    layer.renderer.framebufferA->setColorBufferMinFilterMode(mode);
+    layer.renderer.framebufferB->setColorBufferMinFilterMode(mode);
+}
+
+//----------------------------------------------------------------------------//
+
+void rebuildLayerFramebuffers
+(
+    Layer& layer,
+    const vir::TextureBuffer::InternalFormat& internalFormat, 
+    const glm::ivec2& resolution,
+    const AppData& appData
+)
+{
+    auto& renderer = layer.renderer;
+    auto rebuildFramebuffer = []
+    (
+        UPtr<vir::Framebuffer>& framebuffer, 
+        UPtr<vir::TiledQuad>& quad,
+        const vir::TextureBuffer::InternalFormat& internalFormat, 
+        const glm::ivec2& resolution,
+        const UPtr<vir::Shader>& textureMapper
+    )
+    {
+        if (framebuffer != nullptr)
+        {
+            auto wrapModeX = framebuffer->colorBufferWrapMode(0);
+            auto wrapModeY = framebuffer->colorBufferWrapMode(1);
+            auto minFilterMode = framebuffer->colorBufferMinFilterMode();
+            auto magFilterMode = framebuffer->colorBufferMagFilterMode();
+            
+            // Preserve original framebuffer contents after resizing
+            auto newFramebuffer = vir::Framebuffer::create
+            (
+                resolution.x,
+                resolution.y,
+                internalFormat
+            );
+            textureMapper->bind();
+            textureMapper->setUniformInt("tx", 0);
+            framebuffer->bindColorBuffer(0);
+            
+            // This rendering step is to copy the original framebuffer contents
+            // to the new framebuffer according to the original framebuffer
+            // filtering options
+            if (quad != nullptr)
+                vir::Renderer::instance()->submit
+                (
+                    *quad, 
+                    textureMapper.get(),
+                    newFramebuffer.get()
+                );
+            framebuffer->unbind();
+            framebuffer = std::move(newFramebuffer);
+
+            framebuffer->setColorBufferWrapMode(0, wrapModeX);
+            framebuffer->setColorBufferWrapMode(1, wrapModeY);
+            framebuffer->setColorBufferMinFilterMode(minFilterMode);
+            framebuffer->setColorBufferMagFilterMode(magFilterMode);
+        }
+        else
+            framebuffer = vir::Framebuffer::create
+            (
+                resolution.x, 
+                resolution.y, 
+                internalFormat
+            );
+    };
+    rebuildFramebuffer
+    (
+        renderer.framebufferA, 
+        renderer.quad, 
+        internalFormat, 
+        glm::max(resolution, {1,1}),
+        appData.renderer.textureMapperShader
+    );
+    rebuildFramebuffer
+    (
+        renderer.framebufferB, 
+        renderer.quad, 
+        internalFormat, 
+        glm::max(resolution, {1,1}),
+        appData.renderer.textureMapperShader
+    );
+    renderer.backFramebuffer = renderer.framebufferA.get();
+    renderer.frontFramebuffer = renderer.framebufferB.get();
+    renderer.resourceFramebuffer = 
+        appData.renderer.isTiledRenderingEnabled ?
+            renderer.frontFramebuffer :
+            renderer.backFramebuffer;
+}
+
+//----------------------------------------------------------------------------//
+
+void clearLayerFramebuffers(Layer& layer)
+{
+    layer.renderer.framebufferA->clearColorBuffer();
+    layer.renderer.framebufferB->clearColorBuffer();
+}
+
+//----------------------------------------------------------------------------//
 
 }

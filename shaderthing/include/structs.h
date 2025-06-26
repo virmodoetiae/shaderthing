@@ -15,8 +15,6 @@
 namespace vir
 {
 class TiledQuad;
-class FrameBuffer;
-class DynamicUniformBuffer;
 class Shader;
 class Camera;
 }
@@ -177,6 +175,7 @@ struct Layer
         UPtrVector<Uniform> uncompiledUniforms;
     };
 
+    static const unsigned int nMaxLayers = 32;
     const unsigned int        id;
     const std::string         imGuiMenuId;
     const std::string         imGuiTabId;
@@ -219,15 +218,16 @@ struct Project
 
 struct Renderer
 {
-    float        lowerFpsLimit           = 5.0;
-    bool         isPaused                = false;
-    bool         isTiledRenderingEnabled = false;
-    bool         isVSyncEnabled          = true;
-    unsigned int frame                   = 0;
-    unsigned int renderPass              = 0;
-    unsigned int tileIndex               = 0;
-    unsigned int nTiles                  = 1;
-    unsigned int nTilesCache;
+    float             lowerFpsLimit           = 5.0;
+    bool              isPaused                = false;
+    bool              isTiledRenderingEnabled = false;
+    bool              isVSyncEnabled          = true;
+    unsigned int      frame                   = 0;
+    unsigned int      renderPass              = 0;
+    unsigned int      tileIndex               = 0;
+    unsigned int      nTiles                  = 1;
+    unsigned int      nTilesCache;
+    UPtr<vir::Shader> textureMapperShader;
 };
 
 //----------------------------------------------------------------------------//

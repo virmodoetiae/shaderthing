@@ -8,8 +8,31 @@ namespace ShaderThing
 
 struct AppData;
 struct Layer;
+struct RenderResult;
 struct SharedUniforms;
 
+void initialize(AppData& appData);
+void initializeSharedUniforms(AppData& appData);
+
+void setupNewProject(AppData& appData);
+
+void preRenderUpdate(AppData& appData);
+RenderResult renderShaders(AppData& appData);
+void postRenderUpdate(AppData& appData);
+
+void createNewLayer(AppData& appData, bool compileShader = true);
+void setLayerDepth(Layer& layer, const float depth);
+void setLayerFramebufferWrapMode(Layer& layer, int i, WrapMode mode);
+void setLayerFramebufferMagFilterMode(Layer& layer, FilterMode mode);
+void setLayerFramebufferMinFilterMode(Layer& layer, FilterMode mode);
+void rebuildLayerFramebuffers
+(
+    Layer& layer,
+    const vir::TextureBuffer::InternalFormat& internalFormat, 
+    const glm::ivec2& resolution,
+    const AppData& appData
+);
+void clearLayerFramebuffers(Layer& layer);
 std::string assembleFragmentShaderHeader
 (
     const Layer& layer, 
@@ -22,11 +45,5 @@ bool compileShader
     AppData& appData, 
     bool setBlankShaderOnError = false
 );
-void createNewLayer(AppData& appData, bool compileShader = true);
-void initialize(AppData& appData);
-void initializeSharedUniforms(AppData& appData);
-void renderShaders(AppData& appData);
-void setupNewProject(AppData& appData);
-void setLayerDepth(Layer& layer, const float depth);
 
 }

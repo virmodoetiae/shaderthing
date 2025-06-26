@@ -1,5 +1,6 @@
 #include "shaderthing/include/corelogic.h"
 #include "shaderthing/include/gui.h"
+#include "shaderthing/include/oo/eventmanager.h"
 #include "shaderthing/include/shaderthing.h"
 #include "shaderthing/include/structs.h"
 #include "vir/include/vir.h"
@@ -18,6 +19,9 @@ void run()
     // Initialize application
     AppData appData = {};
     initialize(appData);
+    
+    // Initialize event manager
+    EventManager eventManager(appData);
 
     // Main loop
     auto window = vir::Window::instance();
@@ -27,12 +31,10 @@ void run()
         // GUI rendering (deferred actions, e.g., deleting layers, uniforms, 
         // etc.)
         GUI::renderControlPanel(appData);
+        preRenderUpdate(appData);
+        auto renderResult = renderShaders(appData);
+        postRenderUpdate(appData);
 
-        // Exectue deferred actions
-        appData.deferredActionBuffer.process();
-
-        renderShaders(appData);
-        
         /*
         processProjectActions();
         renderGui();
@@ -48,7 +50,8 @@ void run()
         if (exporter_->isRunning() && result.renderPassesComplete)
             exporter_->writeOutput();
         */
-        window->update(true);
+
+        window->update(renderResult.flipWindowBuffer);
     }
 
 }
