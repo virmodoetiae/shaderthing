@@ -148,6 +148,7 @@ struct Layer
         UPtr<vir::Shader>               shader;
         UPtr<vir::DynamicUniformBuffer> uniformBuffer;
         unsigned int                    uniformBufferBindingPoint;
+        static UPtr<vir::Shader>        textureMapperShader;
 
         struct Tiles
         {
@@ -169,6 +170,27 @@ struct Layer
                bool rescaleWithWindow             = true;
         static bool requestRecompilation;
         static bool restartRendering;
+    };
+    struct ExportData
+    {
+        enum class FramebufferClearPolicy
+        {
+            // The framebuffers are never cleared
+            None, 
+            // The framebuffers are cleared only once, when the export starts
+            ClearOnFirstFrameExport,
+            // The framebuffers are cleared at the beginning of every frame, but
+            // not on sub-frame render passes (i.e., the framebuffers are 
+            // cleared at the beginning of the first sub-frame render pass of
+            // each frame)
+            ClearOnEveryFrameExport
+        };
+        FramebufferClearPolicy clearPolicy = FramebufferClearPolicy::None;
+        glm::ivec2             originalResolution;
+        glm::ivec2             resolution;
+        float                  resolutionScale       = 1.f;
+        float                  windowResolutionScale = 1.f;
+        bool                   rescaleWithOutput     = true;
     };
     struct Cache
     {
@@ -192,6 +214,7 @@ struct Layer
           std::string         headerErrors;
           unsigned int        activeGuiTabId = 0;
           Flags               flags;
+          ExportData          exportData;
           Cache               cache;
     
     Layer(unsigned int aId) : 
@@ -227,7 +250,6 @@ struct Renderer
     unsigned int      tileIndex               = 0;
     unsigned int      nTiles                  = 1;
     unsigned int      nTilesCache;
-    UPtr<vir::Shader> textureMapperShader;
 };
 
 //----------------------------------------------------------------------------//

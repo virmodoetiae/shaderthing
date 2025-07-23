@@ -25,6 +25,15 @@ void setLayerDepth(Layer& layer, const float depth);
 void setLayerFramebufferWrapMode(Layer& layer, int i, WrapMode mode);
 void setLayerFramebufferMagFilterMode(Layer& layer, FilterMode mode);
 void setLayerFramebufferMinFilterMode(Layer& layer, FilterMode mode);
+void setLayerResolution
+(
+    Layer& layer,
+    glm::ivec2 resolution,
+    const bool isTiledRenderingEnabled,
+    const bool windowFrameManuallyDragged,
+    const bool tryEnfoceWindowAspectRatio = false,
+    const bool setExportResolution = true
+);
 void rebuildLayerFramebuffers
 (
     Layer& layer,
