@@ -304,6 +304,65 @@ void preRenderUpdate(AppData& appData)
 
 //----------------------------------------------------------------------------//
 
+void setWindowResolution
+(
+    AppData& appData, 
+    glm::ivec2 resolution, 
+    const bool windowFrameManuallyDragged,
+    const bool prepareForExport
+)
+{
+    // Limit resolution if not about to export
+    static const auto window = vir::Window::instance();
+    if (!prepareForExport)
+    {
+        auto monitorScale = window->contentScale();
+        glm::ivec2 minResolution = {120*monitorScale.x, 1};
+        glm::ivec2 maxResolution = window->primaryMonitorResolution();
+        resolution.x = 
+            std::max(std::min(resolution.x, maxResolution.x), minResolution.x);
+        resolution.y = 
+            std::max(std::min(resolution.y, maxResolution.y), minResolution.y);
+    }
+
+    auto& su = appData.sharedUniforms;
+
+    // Store in iResolution & update aspectRatio
+    su.iResolution = resolution;
+    su.iAspectRatio = ((float)resolution.x)/resolution.y;
+
+    // If not preparing for export, reset export resolution and its scale if
+    // the window is resized in any way (either manullay or via the GUI). Not
+    // necessary but I like this behavior better
+    if (!prepareForExport)
+    {
+        appData.exporter.settings.outputResolution = resolution;
+        appData.exporter.settings.outputResolutionScale = 1.f;
+    }
+
+    // Update screen camera
+    su.screenCamera->setViewportHeight
+    (
+        std::min(1.0f, 1.0f/su.iAspectRatio)
+    );
+    su.screenCamera->update();
+    //iMVP_ = screenCamera_->projectionViewMatrix();
+    su.vBuffer->markUniformForSubmission(su.iMVPUniform.get());
+    su.fBuffer->markUniformForSubmission(su.iAspectRatioUniform.get());
+    su.fBuffer->markUniformForSubmission(su.iResolutionUniform.get());
+    
+    // Set the actual window resolution and propagate event if not preparing
+    // for export
+    if (!prepareForExport && !windowFrameManuallyDragged)
+        window->setSize
+        (
+            resolution.x,
+            resolution.y
+        );
+}
+
+//----------------------------------------------------------------------------//
+
 RenderResult renderShaders(AppData& appData)
 {
     return {true, true};
@@ -324,6 +383,15 @@ void createNewLayer(AppData& appData, bool compileShader)
     unsigned int id = Helpers::findSmallestFreeLayerId(appData.layers);
     auto& layer = *appData.layers.emplace_back(vir::makeUnique<Layer>(id));
     layer.name = "Layer "+std::to_string(id);
+
+    auto window = vir::Window::instance();
+    setLayerResolution
+    (
+        layer, 
+        {window->width(), window->height()}, 
+        appData.renderer.isTiledRenderingEnabled,
+        false
+    );
 
     // Init quad for rendering
     setLayerDepth(layer, (float)appData.layers.size()/Layer::nMaxLayers);

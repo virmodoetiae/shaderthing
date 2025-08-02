@@ -1,5 +1,6 @@
 #include "shaderthing/include/oo/eventmanager.h"
 #include "shaderthing/include/structs.h"
+#include "shaderthing/include/corelogic.h"
 
 namespace ShaderThing
 {
@@ -39,9 +40,28 @@ EventManager::EventManager(AppData& appData) : appData_(appData)
     );
 }
 
-void EventManager::onReceive(vir::Event::WindowResizeEvent& e)
+void EventManager::onReceive(vir::Event::WindowResizeEvent& event)
 {
-    (void)e;
+    if (event.width == 0 || event.height == 0)
+    {
+        event.handled = true;
+        return;
+    }
+    glm::ivec2 resolution{event.width, event.height};
+    setWindowResolution(appData_, resolution, true);
+    event.width = resolution.x;
+    event.height = resolution.y;
+
+    for (auto& layer : appData_.layers)
+    {
+        setLayerResolution
+        (
+            *layer, 
+            resolution, 
+            appData_.renderer.isTiledRenderingEnabled, 
+            true
+        );
+    }
 }
 
 void EventManager::onReceive(vir::Event::MouseButtonPressEvent& e)

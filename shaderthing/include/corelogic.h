@@ -20,6 +20,14 @@ void preRenderUpdate(AppData& appData);
 RenderResult renderShaders(AppData& appData);
 void postRenderUpdate(AppData& appData);
 
+void setWindowResolution
+(
+    AppData& appData, 
+    glm::ivec2 resolution, 
+    const bool windowFrameManuallyDragged,
+    const bool prepareForExport = false
+);
+
 void createNewLayer(AppData& appData, bool compileShader = true);
 void setLayerDepth(Layer& layer, const float depth);
 void setLayerFramebufferWrapMode(Layer& layer, int i, WrapMode mode);

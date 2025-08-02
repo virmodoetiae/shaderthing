@@ -4,6 +4,7 @@
 #include <vector>
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/oo/deferredactionbuffer.h"
+#include "shaderthing/include/oo/filedialog.h"
 #include "shaderthing/include/oo/sharedstorage.h"
 #include "shaderthing/include/oo/texteditor.h"
 #include "shaderthing/include/typedefs.h"
@@ -26,7 +27,49 @@ namespace ShaderThing
 
 struct Exporter
 {
-    bool isActive = false;
+    struct Settings
+    {
+        std::string  outputFilepath;
+        glm::vec2    outputResolution                = {0, 0};
+        float        outputResolutionScale           = 1.0;
+        bool         outputResolutionChanged         = false;
+        unsigned int nRenderPasses                   = 1;
+        bool         areRenderPassesOnFirstFrameOnly = false;
+        bool         resetFrameCounterAfterExport    = true;
+        float        startTime                       = 0.f;
+        float        endTime                         = 1.f;
+        float        fps                             = 60.f;
+        PaletteMode  gifPaletteMode                  = PaletteMode::Dynamic;
+        unsigned int gifPaletteBitDepth              = 8;
+        unsigned int gifAlphaCutoff                  = 0;
+        DitherMode   gifDitherMode                   = DitherMode::None;
+    };
+    Settings settings = {};
+
+    struct Cache
+    {
+        std::string outputFilepathExtended;
+    };
+    Cache cache = {};
+
+    enum class ExportType
+    {
+        Image,
+        GIF,
+        VideoFrames
+    };
+    ExportType             exportType      = ExportType::Image;
+    
+    UPtr<vir::Framebuffer> framebuffer;
+    unsigned char*         framebufferData = nullptr;
+    vir::GifEncoder*       gifEncoder      = nullptr;
+    FileDialog             fileDialog;
+
+    bool         isActive               = false;
+    bool         isAveragedPaletteReady = false;
+    unsigned int frame                  = 0;
+    unsigned int nFrames                = 0;
+    double       timeStep               = 0.f;
 };
 
 //----------------------------------------------------------------------------//

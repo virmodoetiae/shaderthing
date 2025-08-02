@@ -151,7 +151,13 @@ void renderLayerMenu
             {
                 auto window = vir::Window::instance();
                 glm::ivec2 resolution = {window->width(), window->height()};
-                //setResolution(resolution, false);
+                setLayerResolution
+                (
+                    layer, 
+                    resolution, 
+                    appData.renderer.isTiledRenderingEnabled, 
+                    false
+                );
             }
         }
         if 
@@ -175,7 +181,14 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         glm::ivec2 resolution = layer.resolution;
         std::sprintf(label.get(), "##layer%dResolution", layer.id);
         if (ImGui::InputInt2(label.get(), glm::value_ptr(resolution)))
-            {}//setResolution(resolution, false, true);
+            setLayerResolution
+            (
+                layer, 
+                resolution, 
+                appData.renderer.isTiledRenderingEnabled, 
+                false,
+                true
+            );
         ImGui::PopItemWidth();
         ImGui::Text("Auto-resize mode     ");
         ImGui::SameLine();
@@ -749,11 +762,11 @@ void renderMenuBar
         {
             if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
             {
-                /*
+                auto& su = appData.sharedUniforms;
                 ImGui::Text("Resolution         ");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
-                glm::ivec2 resolution(sharedUniforms_->iResolution());
+                glm::ivec2 resolution(su.iResolution);
                 if 
                 (
                     ImGui::InputInt2
@@ -762,9 +775,14 @@ void renderMenuBar
                         glm::value_ptr(resolution)
                     )
                 )
-                    sharedUniforms_->setResolution(resolution, false);
+                    setWindowResolution
+                    (
+                        appData,
+                        resolution,
+                        false
+                    );
                 ImGui::PopItemWidth();
-
+                /*
                 auto window = vir::Window::instance();
                 ImGui::Text("VSync              ");
                 ImGui::SameLine();
