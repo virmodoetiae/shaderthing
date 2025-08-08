@@ -126,6 +126,30 @@ struct Uniform : vir::Uniform
 
 struct SharedUniforms
 {
+    struct Flags
+    {
+        bool updateDataRangeII                  = false;
+        bool stepToNextFrame                    = false;
+        bool stepToNextTimeStep                 = false;
+        bool resetFrameCounter                  = true;
+        bool resetFrameCounterPreOrPostExport   = true;
+        bool isTimePaused                       = false;
+        bool isTimePausedBecauseRenderingPaused = false;
+        bool isTimeLooped                       = false;
+        bool isTimeResetOnFrameCounterReset     = true;
+        bool isTimeDeltaSmooth                  = false;
+        bool isRandomNumberGeneratorPaused      = false;
+        bool isKeyboardInputEnabled             = true; // iKeyboard
+        bool isMouseInputEnabled                = true; // iMouse
+        bool isMouseInputClampedToWindow        = false;
+        bool mouseInputRequiresLMBHold          = true;
+        bool isCameraKeyboardInputEnabled       = true; // iWASD
+        bool isCameraMouseInputEnabled          = true; // iLook
+        bool cameraMouseInputRequiresLMBHold    = true;
+        bool tiledRenderingPauseRequested       = false;
+    };
+    Flags flags;
+
     // Fixed camera used to retrieve the value of the projection view 
     // matrix iMVP
     UPtr<vir::Camera>        screenCamera;

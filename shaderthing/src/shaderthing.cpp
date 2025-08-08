@@ -32,7 +32,7 @@ void run()
         // etc.)
         GUI::renderControlPanel(appData);
         preRenderUpdate(appData);
-        auto renderResult = renderShaders(appData);
+        auto renderResult = renderShaders(appData, nullptr, 1u);
         postRenderUpdate(appData);
 
         /*

@@ -299,7 +299,56 @@ void setupNewProject(AppData& appData)
 
 void preRenderUpdate(AppData& appData)
 {
+    /*
     appData.deferredActionBuffer.process();
+
+    // exporter_->update(*sharedUniforms_, layers_, resources_);
+
+    bool advanceFrame;
+    float timeStep;
+    if (appData.exporter.isActive)
+    {
+        if 
+        (
+            appData.renderer.renderPass == 
+            appData.exporter.settings.nRenderPasses-1
+        )
+        {
+            advanceFrame = true;
+            timeStep = appData.exporter.timeStep;
+        }
+        else
+        {
+            advanceFrame = false;
+            timeStep = 0;
+        }
+    }
+    else
+    {
+        timeStep = (sharedUniforms_->isTimeDeltaSmooth() ?
+            vir::Window::instance()->time()->smoothOuterTimestep() : 
+            vir::Window::instance()->time()->outerTimestep());
+        if (Layer::Rendering::TileController::tiledRenderingEnabled)
+        {
+            static float cumulatedTimeStep = 0;
+            if (!sharedUniforms_->isRenderingPaused())
+                cumulatedTimeStep += timeStep;
+            if (Layer::Rendering::TileController::tileIndex == 0)
+            {
+                timeStep = cumulatedTimeStep;
+                cumulatedTimeStep = 0;
+                advanceFrame = true;
+            }
+            else
+            {
+                timeStep = 0;
+                advanceFrame = false;
+            }
+        }
+        else
+            advanceFrame = true;
+    }
+    */
 }
 
 //----------------------------------------------------------------------------//
@@ -345,7 +394,9 @@ void setWindowResolution
     (
         std::min(1.0f, 1.0f/su.iAspectRatio)
     );
+    auto iMVP = su.screenCamera->projectionViewMatrix();
     su.screenCamera->update();
+
     //iMVP_ = screenCamera_->projectionViewMatrix();
     su.vBuffer->markUniformForSubmission(su.iMVPUniform.get());
     su.fBuffer->markUniformForSubmission(su.iAspectRatioUniform.get());
@@ -882,6 +933,426 @@ void setLayerResolution
     layer.renderer.shader->bind();
     //uniformBuffer_->markUniformForSubmission(uniforms_[0].get()); // iAspectRatio
     //uniformBuffer_->markUniformForSubmission(uniforms_[1].get()); // iResolution
+}
+
+void renderLayerShader
+(
+    Layer& layer,
+    vir::Framebuffer* target,
+    const bool clearTarget,
+    AppData& appData
+)
+{
+    auto& renderer = layer.renderer;
+    auto isTiledRenderingEnabled = appData.renderer.isTiledRenderingEnabled;
+    auto tileIndex = appData.renderer.tileIndex;
+    auto flipBuffers = [&renderer, isTiledRenderingEnabled]()
+    {
+        renderer.backFramebuffer = 
+            renderer.backFramebuffer == renderer.framebufferB.get() ? 
+            renderer.framebufferA.get() :
+            renderer.framebufferB.get();
+
+        renderer.frontFramebuffer = 
+            renderer.backFramebuffer == renderer.framebufferB.get() ? 
+            renderer.framebufferA.get() :
+            renderer.framebufferB.get();
+
+        renderer.resourceFramebuffer = 
+            isTiledRenderingEnabled ?
+            renderer.frontFramebuffer :
+            renderer.backFramebuffer;
+    };
+
+    bool allowClearTargetAndPostProcess = true;
+
+    if (isTiledRenderingEnabled)
+    {
+        if (tileIndex == 0)
+            flipBuffers();
+        else if 
+        (
+            tileIndex > renderer.tiles.size-1
+        )
+            return; // Don't render anything
+        else
+            allowClearTargetAndPostProcess = false;
+        if 
+        (
+            renderer.tiles.direction == 
+            Layer::Renderer::Tiles::Direction::Horizontal
+        )
+            renderer.quad->selectVisibleTile
+            (
+                tileIndex, 
+                0
+            );
+        else 
+            renderer.quad->selectVisibleTile
+            (
+                0, 
+                tileIndex
+            );
+    }
+    else
+        flipBuffers();
+    
+    // Set sampler-type uniforms found in both this layer's uniforms as well
+    // as the shared user-added uniforms
+    renderer.shader->bind();
+    unsigned int textureUnit = 0; 
+    unsigned int imageUnit = 0; 
+
+    // TODO set sampler uniforms
+    /*
+    auto setSamplerUniforms = []
+    (
+        const std::vector<vir::UniquePtr<Uniform>>& uniforms,
+        Layer* layer, 
+        SharedUniforms& sharedUniforms,
+        unsigned int& textureUnit,
+        unsigned int& imageUnit
+    )
+    {
+        const auto& shader = layer->renderer.shader;
+        for (auto& u : uniforms)
+        {
+            bool isSampler
+            (
+                u->type() == vir::Uniform::Type::Sampler2D ||
+                u->type() == vir::Uniform::Type::Sampler3D ||
+                u->type() == vir::Uniform::Type::SamplerCube
+            );
+            bool isImage
+            (
+                u->type() == vir::Uniform::Type::Image2D ||
+                u->type() == vir::Uniform::Type::Image3D ||
+                u->type() == vir::Uniform::Type::ImageCube
+            );
+            if 
+            (
+                u->specialType != Uniform::SpecialType::None ||
+                u->name.size() == 0 || !(isSampler || isImage)
+            )
+                continue;
+            
+            // Sampler or image case
+            auto resource = u->getValuePtr<Resource>();
+            if (resource == nullptr)
+                continue;
+            auto ubo = u->isSharedByUser ? 
+                sharedUniforms.uniformBuffer().get() : layer->uniformBuffer_.get();
+            u->updateResourceResolution(ubo);
+            // When reading from your own framebuffer, you should always read
+            // from the buffer to which you are NOT writing to (the back buffer
+            // is the one that is always being written, so read from the front
+            // one)
+            if (resource->name() == layer->gui_.name)
+            {
+                vir::Framebuffer* sourceFramebuffer = 
+                    layer->rendering_.frontFramebuffer;
+                for (auto& postProcess : layer->rendering_.postProcesses)
+                {
+                    if 
+                    (
+                        postProcess->isActive() && 
+                        postProcess->outputFramebuffer() != nullptr
+                    )
+                        sourceFramebuffer = postProcess->outputFramebuffer();
+                }
+                if (isSampler)
+                {
+                    sourceFramebuffer->bindColorBuffer(textureUnit);
+                    shader->setUniformInt(u->name, textureUnit++);
+                }
+                else if (isImage)
+                {
+                    sourceFramebuffer->bindColorBufferToImage
+                    (
+                        imageUnit, 
+                        0, 
+                        vir::TextureBuffer::ImageBindMode::ReadWrite
+                    );
+                    shader->setUniformInt(u->name, imageUnit++);
+                }
+            }
+            else
+            {
+                if (isSampler)
+                {
+                    resource->bind(textureUnit);
+                    shader->setUniformInt(u->name, textureUnit++);
+                }
+                else if (isImage)
+                {
+                    resource->bindImage
+                    (
+                        imageUnit, 
+                        0, 
+                        vir::TextureBuffer::ImageBindMode::ReadWrite
+                    );
+                    shader->setUniformInt(u->name, imageUnit++);
+                }
+            }
+            // Set the (automatically managed) sampler2D/image2D resolution
+            // uniform value. Should find a better way rather than setting this 
+            // every render call
+            if 
+            (
+                u->type() == vir::Uniform::Type::Sampler2D ||
+                u->type() == vir::Uniform::Type::Image2D
+            )
+            {
+                shader->setUniformFloat
+                (
+                    u->name+"AspectRatio", 
+                    float(resource->width())/resource->height()
+                );
+                shader->setUniformFloat2
+                (
+                    u->name+"Resolution", 
+                    {resource->width(), resource->height()}
+                );
+            }
+            else if 
+            (
+                u->type() == vir::Uniform::Type::Sampler3D ||
+                u->type() == vir::Uniform::Type::Image3D
+            )
+            {
+                shader->setUniformFloat3
+                (
+                    u->name+"Resolution", 
+                    {resource->width(), resource->height(), resource->depth()}
+                );
+            }
+        }
+    };
+    setSamplerUniforms
+    (
+        sharedUniforms.userUniforms(), 
+        this, 
+        sharedUniforms, 
+        textureUnit, 
+        imageUnit
+    );
+    setSamplerUniforms
+    (
+        uniforms_, 
+        this, 
+        sharedUniforms, 
+        textureUnit, 
+        imageUnit
+    );
+    */
+    renderer.uniformBuffer->submitUniforms();
+    
+    // Re-direct rendering & disable blending if not rendering to the window
+    static auto globalRenderer = vir::Renderer::instance();
+    bool blendingEnabled = true;
+    vir::Framebuffer* target0(target);
+    if (renderer.target != Layer::Renderer::Target::Window)
+    {
+        target = renderer.backFramebuffer;
+        globalRenderer->setBlending(false);
+        blendingEnabled = false;
+    }
+
+    // Actual render call
+    globalRenderer->submit
+    (
+        *renderer.quad,
+        renderer.shader.get(), // TODO
+        target,
+        allowClearTargetAndPostProcess && 
+        (
+            clearTarget || // Or force clear if not rendering to window
+            renderer.target != Layer::Renderer::Target::Window
+        )
+    );
+    appData.sharedStorage.gpuMemoryBarrier();
+
+    // Re-enable blending before either leaving or redirecting the rendered 
+    // texture to the main window
+    if (!blendingEnabled)
+        globalRenderer->setBlending(true);
+
+    /* // TODO Post-processing
+    // Apply post-processing effects, if any
+    if (allowClearTargetAndPostProcess)
+    {
+        for (auto& postProcess : renderer.postProcesses)
+            postProcess->run();
+    }*/
+
+    if 
+    (
+        renderer.target != 
+        Layer::Renderer::Target::InternalFramebufferAndWindow
+    )
+        return;
+
+    Layer::Renderer::textureMapperShader->bind();
+    renderer.resourceFramebuffer->bindColorBuffer(0);
+    Layer::Renderer::textureMapperShader->setUniformInt("tx", 0);
+    globalRenderer->submit
+    (
+        *renderer.quad, 
+        Layer::Renderer::textureMapperShader.get(), // TODO, do not pass raw ptrs
+        target0,
+        allowClearTargetAndPostProcess && clearTarget
+    );
+}
+
+RenderResult renderShaders
+(
+    AppData& appData,
+    vir::Framebuffer* target, 
+    const unsigned int nRenderPasses
+)
+{
+    auto& sharedUniforms = appData.sharedUniforms;
+    static bool clearTarget = true;
+    // TODO Fix behavior of stepping to next frame when tiled rendering is
+    // enabled
+    bool renderFrame = 
+        !appData.renderer.isPaused || 
+        sharedUniforms.flags.stepToNextFrame;
+    bool frameRendered = true;
+    unsigned int iRenderPass = appData.renderer.renderPass;
+
+    if (renderFrame)
+    {
+        if (target != nullptr && iRenderPass == 0) // I.e., if exporting
+        {
+            for (auto& layer : appData.layers) // Apply clear policy
+            {
+                switch (layer->exportData.clearPolicy)
+                {
+                case Layer::ExportData::FramebufferClearPolicy::None :
+                    continue;
+                case Layer::ExportData::FramebufferClearPolicy::ClearOnFirstFrameExport:
+                    if (appData.renderer.frame == 0)
+                    {
+                        layer->renderer.framebufferA->clearColorBuffer();
+                        layer->renderer.framebufferB->clearColorBuffer();
+                    }
+                    break;
+                case Layer::ExportData::FramebufferClearPolicy::ClearOnEveryFrameExport:
+                    if (iRenderPass == 0)
+                    {
+                        layer->renderer.framebufferA->clearColorBuffer();
+                        layer->renderer.framebufferB->clearColorBuffer();
+                    }
+                    break;
+                }
+            }
+        }
+
+        clearTarget = true;
+        for (auto& layer : appData.layers)
+        {
+            renderLayerShader(*layer, target, clearTarget, appData);
+            //layer->renderShader(target, clearTarget, sharedUniforms);
+            // At the end of this loop, the status of clearTarget will 
+            // represent whether the main window has been cleared of its 
+            // contents at least once (true if not cleared at least once)
+            if 
+            (
+                clearTarget &&
+                layer->renderer.target != 
+                    Layer::Renderer::Target::InternalFramebuffer
+            )
+                clearTarget = false;
+        }
+
+        bool nextRenderPass = false;
+        // If tiled rendering is enabled, it means that the previous render loop
+        // has rendered only the i-th tile of each layer (in pratice, this is 
+        // achieved by rendering over a quad that covers only a portion of the
+        // rendering target). Here, the index of the tile to be rendered is
+        // advanced. The frame is considered fully rendered only if all tiles
+        // have been rendered. During exports, tiled rendering is automatically
+        // disabled in the exporter setup phase
+        if (appData.renderer.isTiledRenderingEnabled)
+        {
+            if 
+            (
+                ++appData.renderer.tileIndex == 
+                appData.renderer.nTiles
+            )
+            {
+                appData.renderer.tileIndex = 0;
+                nextRenderPass = true;
+            }
+            else
+                frameRendered = false;
+        }
+        else
+            nextRenderPass = true;
+        
+        if (nextRenderPass)
+        {
+            if (appData.renderer.renderPass < nRenderPasses-1)
+                ++appData.renderer.renderPass;
+            else
+                appData.renderer.renderPass = 0;
+            sharedUniforms.fBuffer->markUniformForSubmission(sharedUniforms.iRenderPassUniform.get());
+        }
+    }
+    else
+        frameRendered = false;
+
+    // If the window has not been cleared at least once, or if I am not
+    // rendering to the window at all (i.e., if renderTarget != nullptr, which 
+    // is only true during exports), then render a dummy/void/blank window, 
+    // simply to avoid visual artifacts when nothing is rendering to the main
+    // window. As for the internalFramebufferShader in Layer::renderShader, the 
+    // lifetimeof the shader (and quad) is managed statically within here simply
+    // for convenience
+    if (frameRendered && (clearTarget || target != nullptr))
+    {
+        static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
+        auto viewport = Helpers::normalizedWindowResolution();
+        blankQuad->update(viewport.x, viewport.y, 0);
+        auto constructBlankShader = [&appData]()
+        {
+            auto shader = 
+                vir::Shader::create
+                (
+                    assembleVertexShaderSource(appData),
+                    vir::Shader::currentContextShadingLanguageDirectives() +
+R"(out vec4 fragColor;
+in     vec2 qc;
+in     vec2 tc;
+void main(){fragColor = vec4(0, 0, 0, .5);})",
+                    vir::Shader::ConstructFrom::SourceCode
+                );
+            shader->bindUniformBlock
+            (
+                appData.sharedUniforms.fBuffer->name(),
+                appData.sharedUniforms.fBufferBindingPoint
+            );
+            shader->bindUniformBlock
+            (
+                appData.sharedUniforms.vBuffer->name(),
+                appData.sharedUniforms.vBufferBindingPoint
+            );
+            return shader;
+        };
+        static auto blankShader = constructBlankShader();
+        vir::Renderer::instance()->submit
+        (
+            *blankQuad.get(), 
+            blankShader.get()
+        );
+    }
+
+    return 
+    {
+        iRenderPass == nRenderPasses-1, 
+        frameRendered
+    };
 }
 
 }

@@ -17,7 +17,12 @@ void initializeSharedUniforms(AppData& appData);
 void setupNewProject(AppData& appData);
 
 void preRenderUpdate(AppData& appData);
-RenderResult renderShaders(AppData& appData);
+RenderResult renderShaders
+(
+    AppData& appData, 
+    vir::Framebuffer* target, 
+    const unsigned int nRenderPasses
+);
 void postRenderUpdate(AppData& appData);
 
 void setWindowResolution
@@ -61,6 +66,14 @@ bool compileShader
     Layer& layer, 
     AppData& appData, 
     bool setBlankShaderOnError = false
+);
+
+void renderLayerShader
+(
+    Layer& layer,
+    vir::Framebuffer* target,
+    const bool clearTarget,
+    AppData& appData
 );
 
 }
