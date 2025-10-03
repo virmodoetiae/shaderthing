@@ -67,7 +67,6 @@ bool compileShader
     AppData& appData, 
     bool setBlankShaderOnError = false
 );
-
 void renderLayerShader
 (
     Layer& layer,
@@ -75,5 +74,7 @@ void renderLayerShader
     const bool clearTarget,
     AppData& appData
 );
+
+void toggleRenderingPaused(AppData& appData, bool dueToFlowFps);
 
 }

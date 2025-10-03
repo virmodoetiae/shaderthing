@@ -17,7 +17,6 @@ EventManager::EventManager(AppData& appData) : appData_(appData)
         vir::Event::Type::MouseMotion, 
         VIR_CAMERA_PRIORITY-1
     );
-
     setEventReceiverPriority
     (
         vir::Event::Type::MouseButtonPress, 

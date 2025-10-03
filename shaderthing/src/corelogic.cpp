@@ -3,6 +3,7 @@
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/structs.h"
 #include "shaderthing/include/oo/texteditor.h"
+#include "shaderthing/include/oo/statusbar.h"
 #include "vir/include/vir.h"
 
 namespace ShaderThing
@@ -423,7 +424,266 @@ RenderResult renderShaders(AppData& appData)
 
 void postRenderUpdate(AppData& appData)
 {
+    auto& su = appData.sharedUniforms;
     
+    // TODO
+    //exporter_->update(*sharedUniforms_, layers_, resources_);
+
+    bool advanceFrame;
+    float timeStep;
+    if (false)//(exporter_->isRunning())
+    {
+        if 
+        (
+            appData.renderer.renderPass == 
+            appData.exporter.settings.nRenderPasses-1
+        )
+        {
+            advanceFrame = true;
+            timeStep = appData.exporter.timeStep;
+        }
+        else
+        {
+            advanceFrame = false;
+            timeStep = 0;
+        }
+    }
+    else
+    {
+        timeStep = (su.flags.isTimeDeltaSmooth ?
+            vir::Window::instance()->time()->smoothOuterTimestep() : 
+            vir::Window::instance()->time()->outerTimestep());
+        if (appData.renderer.isTiledRenderingEnabled)
+        {
+            static float cumulatedTimeStep = 0;
+            if (!appData.renderer.isPaused)
+                cumulatedTimeStep += timeStep;
+            if (appData.renderer.tileIndex == 0)
+            {
+                timeStep = cumulatedTimeStep;
+                cumulatedTimeStep = 0;
+                advanceFrame = true;
+            }
+            else
+            {
+                timeStep = 0;
+                advanceFrame = false;
+            }
+        }
+        else
+            advanceFrame = true;
+    }
+
+    if (!su.flags.isTimePaused)
+    {
+        su.iTime += timeStep;
+        if (advanceFrame)
+            su.iTimeDelta = timeStep;
+    }
+    else if 
+    (
+        advanceFrame && 
+        (su.flags.stepToNextFrame || su.flags.stepToNextTimeStep)
+    )
+        su.iTime += su.iTimeDelta;
+
+    const glm::vec2& timeLoopBounds(su.iTimeUniform->gui.bounds);
+    if (su.flags.isTimeLooped && su.iTime >= timeLoopBounds.y)
+    {
+        auto duration = timeLoopBounds.y-timeLoopBounds.x;
+        auto fraction = 
+            (su.iTime-timeLoopBounds.y)/std::max(duration, 1e-6f);
+        fraction -= (int)fraction;
+        su.iTime = timeLoopBounds.x + duration*fraction;
+    }
+    
+    if 
+    (
+        advanceFrame && 
+        !(appData.renderer.isPaused && !su.flags.stepToNextFrame)
+    )
+        ++appData.renderer.frame;
+
+    if (su.flags.resetFrameCounterPreOrPostExport)
+    {
+        appData.renderer.frame = 0;
+        su.flags.resetFrameCounterPreOrPostExport = false;
+    }
+    if (su.flags.resetFrameCounter)
+    {
+        appData.renderer.frame = 0;
+        if (su.flags.isTimeResetOnFrameCounterReset)
+            su.iTime = 0;
+        su.flags.resetFrameCounter = false;
+    }
+
+    // The shaderCamera has its own event listeners, but all of its updates are
+    // deferred (just like here nothing is processed/sent to the GPU in the
+    // event callback), so we update it here and check whether the GPU data
+    // should be updated as well
+    su.shaderCamera->update();
+
+    // Re-gen random number
+    if (!su.flags.isRandomNumberGeneratorPaused)
+        su.iRandom = 0.5; // TODO random_->generateFloat();
+
+    if 
+    (
+        su.iWASD != su.shaderCamera->position() ||
+        su.iLook != su.shaderCamera->z()
+    )
+    {
+        su.iWASD = su.shaderCamera->position();
+        su.iLook = su.shaderCamera->z();
+        su.iUserAction = true;
+        su.flags.updateDataRangeII = true;
+    }
+    
+    // Data range I is always updated, data range III is updated on the spot
+    // in setResolution, the keyboard data range is updated on the spot in
+    // onReceive(KeyPressEvent/KeyReleaseEvent)
+    su.fBuffer->markContiguousUniformsForSubmission
+    (
+        su.iFrameUniform.get(), 
+        su.iRandomUniform.get()
+    );
+    /*
+    if (!flags_.updateDataRangeII)
+        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
+    else
+    {
+        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIISize(), 0);
+        flags_.updateDataRangeII = false;
+    }*/
+    if (su.flags.updateDataRangeII)
+    {
+        su.fBuffer->markContiguousUniformsForSubmission
+        (
+            su.iUserActionUniform.get(), 
+            su.iMouseUniform.get()
+        );
+        su.flags.updateDataRangeII = false;
+    }
+
+    su.vBuffer->submitUniforms();
+    su.fBuffer->submitUniforms();
+
+    if (su.iUserAction) // Always reset
+    {
+        su.flags.updateDataRangeII = true;
+        su.iUserAction = false;
+    }
+
+    // TODO
+    //Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
+    
+    // Auto-save if applicable 
+    /* TODO
+    if 
+    (
+        project_.isAutoSaveEnabled && 
+        project_.filepath.size() > 0 && 
+        !exporter_->isRunning()
+    )
+    {
+        if (project_.timeSinceLastSave > project_.autoSaveInterval)
+            saveProject(project_.filepath+".bak", true);
+        else
+            project_.timeSinceLastSave += 
+                vir::Window::instance()->time()->outerTimestep();
+    }
+    */
+
+    // Compute fps and set in window title, also, check if rendering should stop
+    // if fps too low for too long
+    static int elapsedFrames(0);
+    static float elapsedTime(0);
+    static int fpsUpdateCounter(0);
+    static bool shouldStopRendering(true);
+    float fpsUpdatePeriod = 0.5f;
+    float maxLowFpsPeriod = 2.0f;
+
+    elapsedFrames++;
+    elapsedTime += vir::Window::instance()->time()->outerTimestep();
+    
+    if (elapsedTime >= fpsUpdatePeriod)
+    {
+        double fps = elapsedFrames/elapsedTime;
+        if (appData.renderer.isTiledRenderingEnabled)
+        {
+            double wFps = fps/appData.renderer.nTiles;
+            appData.controlPanelTitle = 
+                "Control panel - "+appData.project.filename+" (window: "+
+                Helpers::format(wFps,1)+" fps | GUI: "+
+                Helpers::format(fps,1)+" fps)"+"###CP";
+        }
+        else
+            appData.controlPanelTitle = 
+                "Control panel - "+appData.project.filename+" ("+
+                Helpers::format(fps,1)+" fps)"+"###CP";
+        elapsedFrames = 0;
+        elapsedTime = 0;
+        if (!appData.exporter.isActive)
+        {
+            fpsUpdateCounter++;
+            shouldStopRendering = 
+                shouldStopRendering && fps < appData.renderer.lowerFpsLimit;
+            if (fpsUpdateCounter >= int(maxLowFpsPeriod/fpsUpdatePeriod))
+            {
+                if (shouldStopRendering && !appData.renderer.isPaused)
+                    toggleRenderingPaused(appData, true); 
+                fpsUpdateCounter = 0;
+                shouldStopRendering = true;
+            }
+        }
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void toggleRenderingPaused(AppData& appData, bool dueToLowFps)
+{
+    appData.renderer.isPaused = 
+        !appData.renderer.isPaused;
+    
+    if (appData.renderer.isPaused)
+    {
+        appData.sharedUniforms.flags.isTimePausedBecauseRenderingPaused = 
+            !appData.sharedUniforms.flags.isTimePaused;
+        appData.sharedUniforms.flags.isTimePaused = true;
+    }
+    else if (appData.sharedUniforms.flags.isTimePausedBecauseRenderingPaused)
+        appData.sharedUniforms.flags.isTimePaused = false;
+
+    // It would be better to update the StatusBar messages elsewhere, but
+    // whatever
+    if (appData.renderer.isPaused)
+    {
+        StatusBar::removeMessageFromQueue("Rendering resumed");
+        StatusBar::queueMessage
+        (
+            dueToLowFps ? 
+"Rendering paused because of low FPS. Resume in Properties->Window" :
+"Rendering paused"
+        );
+    }
+    else
+    {
+        StatusBar::removeMessageFromQueue
+        (
+"Rendering paused because of low FPS. Resume in Properties->Window"
+        );
+        StatusBar::removeMessageFromQueue
+        (
+"Rendering paused"
+        );
+        StatusBar::queueTemporaryMessage
+        (
+            "Rendering resumed", 
+            StatusBar::defaultMessageDuration,
+            0xff25ff50
+        );
+    }
 }
 
 //----------------------------------------------------------------------------//
