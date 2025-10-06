@@ -57,7 +57,7 @@ void EventManager::onReceive(vir::Event::WindowResizeEvent& event)
         (
             *layer, 
             resolution, 
-            appData_.renderer.isTiledRenderingEnabled, 
+            appData_.rendering.isTiledRenderingEnabled, 
             true
         );
     }

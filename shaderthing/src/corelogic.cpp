@@ -9,7 +9,7 @@
 namespace ShaderThing
 {
 
-UPtr<vir::Shader> Layer::Renderer::textureMapperShader;
+UPtr<vir::Shader> Layer::Rendering::textureMapperShader;
 
 //----------------------------------------------------------------------------//
 
@@ -111,20 +111,20 @@ in      vec2      qc;
 in      vec2      tc;
 uniform sampler2D tx;
 void main(){fragColor = texture(tx, tc);})";
-    Layer::Renderer::textureMapperShader =
+    Layer::Rendering::textureMapperShader =
         vir::Shader::create
         (
             vertexSource,
             fragmentSource,
             vir::Shader::ConstructFrom::SourceCode
         );
-    Layer::Renderer::textureMapperShader->bind();
-    Layer::Renderer::textureMapperShader->bindUniformBlock
+    Layer::Rendering::textureMapperShader->bind();
+    Layer::Rendering::textureMapperShader->bindUniformBlock
     (
         appData.sharedUniforms.vBuffer->name(),
         appData.sharedUniforms.vBufferBindingPoint
     );
-    Layer::Renderer::textureMapperShader->setUniformInt("tx", 0);
+    Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
 
     // Create default layer
     createNewLayer(appData);
@@ -194,7 +194,11 @@ void initializeSharedUniforms(AppData& appData)
     // Init uniform wrappers
     su.iFrameUniform = vir::makeUnique<Uniform>();
     su.iFrameUniform->name = "iFrame";
-    su.iFrameUniform->setValuePtr(&appData.renderer.frame, Uniform::Type::Int);
+    su.iFrameUniform->setValuePtr
+    (
+        &appData.rendering.frameIndex, 
+        Uniform::Type::Int
+    );
     su.iFrameUniform->gui.showBounds = false;
     //su.iFrameUniform->specialType = Uniform::SpecialType::Frame;
     su.fBuffer->addUniform(su.iFrameUniform);
@@ -203,7 +207,7 @@ void initializeSharedUniforms(AppData& appData)
     su.iRenderPassUniform->name = "iRenderPass";
     su.iRenderPassUniform->setValuePtr
     (
-        &appData.renderer.renderPass, 
+        &appData.rendering.passIndex, 
         Uniform::Type::Int
     );
     su.iRenderPassUniform->gui.showBounds = false;
@@ -311,7 +315,7 @@ void preRenderUpdate(AppData& appData)
     {
         if 
         (
-            appData.renderer.renderPass == 
+            appData.rendering.renderPass == 
             appData.exporter.settings.nRenderPasses-1
         )
         {
@@ -386,8 +390,8 @@ void setWindowResolution
     // necessary but I like this behavior better
     if (!prepareForExport)
     {
-        appData.exporter.settings.outputResolution = resolution;
-        appData.exporter.settings.outputResolutionScale = 1.f;
+        appData.exporter.outputResolution = resolution;
+        appData.exporter.outputResolutionScale = 1.f;
     }
 
     // Update screen camera
@@ -435,8 +439,8 @@ void postRenderUpdate(AppData& appData)
     {
         if 
         (
-            appData.renderer.renderPass == 
-            appData.exporter.settings.nRenderPasses-1
+            appData.rendering.passIndex == 
+            appData.exporter.nRenderPasses-1
         )
         {
             advanceFrame = true;
@@ -450,15 +454,15 @@ void postRenderUpdate(AppData& appData)
     }
     else
     {
-        timeStep = (su.flags.isTimeDeltaSmooth ?
+        timeStep = (su.isTimeDeltaSmooth ?
             vir::Window::instance()->time()->smoothOuterTimestep() : 
             vir::Window::instance()->time()->outerTimestep());
-        if (appData.renderer.isTiledRenderingEnabled)
+        if (appData.rendering.isTiledRenderingEnabled)
         {
             static float cumulatedTimeStep = 0;
-            if (!appData.renderer.isPaused)
+            if (!appData.rendering.isPaused)
                 cumulatedTimeStep += timeStep;
-            if (appData.renderer.tileIndex == 0)
+            if (appData.rendering.tileIndex == 0)
             {
                 timeStep = cumulatedTimeStep;
                 cumulatedTimeStep = 0;
@@ -474,7 +478,7 @@ void postRenderUpdate(AppData& appData)
             advanceFrame = true;
     }
 
-    if (!su.flags.isTimePaused)
+    if (!su.isTimePaused)
     {
         su.iTime += timeStep;
         if (advanceFrame)
@@ -483,12 +487,15 @@ void postRenderUpdate(AppData& appData)
     else if 
     (
         advanceFrame && 
-        (su.flags.stepToNextFrame || su.flags.stepToNextTimeStep)
+        (
+            appData.rendering.toggles.stepToNextFrame || 
+            su.toggles.stepToNextTimeStep
+        )
     )
         su.iTime += su.iTimeDelta;
 
     const glm::vec2& timeLoopBounds(su.iTimeUniform->gui.bounds);
-    if (su.flags.isTimeLooped && su.iTime >= timeLoopBounds.y)
+    if (su.isTimeLooped && su.iTime >= timeLoopBounds.y)
     {
         auto duration = timeLoopBounds.y-timeLoopBounds.x;
         auto fraction = 
@@ -500,21 +507,24 @@ void postRenderUpdate(AppData& appData)
     if 
     (
         advanceFrame && 
-        !(appData.renderer.isPaused && !su.flags.stepToNextFrame)
+        !(
+            appData.rendering.isPaused && 
+            !appData.rendering.toggles.stepToNextFrame
+        )
     )
-        ++appData.renderer.frame;
+        ++appData.rendering.frameIndex;
 
-    if (su.flags.resetFrameCounterPreOrPostExport)
+    if (appData.rendering.toggles.resetFrameCounterPreOrPostExport)
     {
-        appData.renderer.frame = 0;
-        su.flags.resetFrameCounterPreOrPostExport = false;
+        appData.rendering.frameIndex = 0;
+        appData.rendering.toggles.resetFrameCounterPreOrPostExport = false;
     }
-    if (su.flags.resetFrameCounter)
+    if (appData.rendering.toggles.resetFrameCounter)
     {
-        appData.renderer.frame = 0;
-        if (su.flags.isTimeResetOnFrameCounterReset)
+        appData.rendering.frameIndex = 0;
+        if (su.isTimeResetOnFrameCounterReset)
             su.iTime = 0;
-        su.flags.resetFrameCounter = false;
+        appData.rendering.toggles.resetFrameCounter = false;
     }
 
     // The shaderCamera has its own event listeners, but all of its updates are
@@ -524,7 +534,7 @@ void postRenderUpdate(AppData& appData)
     su.shaderCamera->update();
 
     // Re-gen random number
-    if (!su.flags.isRandomNumberGeneratorPaused)
+    if (!su.isRandomNumberGeneratorPaused)
         su.iRandom = 0.5; // TODO random_->generateFloat();
 
     if 
@@ -536,7 +546,7 @@ void postRenderUpdate(AppData& appData)
         su.iWASD = su.shaderCamera->position();
         su.iLook = su.shaderCamera->z();
         su.iUserAction = true;
-        su.flags.updateDataRangeII = true;
+        su.toggles.updateDataRangeII = true;
     }
     
     // Data range I is always updated, data range III is updated on the spot
@@ -555,14 +565,14 @@ void postRenderUpdate(AppData& appData)
         fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIISize(), 0);
         flags_.updateDataRangeII = false;
     }*/
-    if (su.flags.updateDataRangeII)
+    if (su.toggles.updateDataRangeII)
     {
         su.fBuffer->markContiguousUniformsForSubmission
         (
             su.iUserActionUniform.get(), 
             su.iMouseUniform.get()
         );
-        su.flags.updateDataRangeII = false;
+        su.toggles.updateDataRangeII = false;
     }
 
     su.vBuffer->submitUniforms();
@@ -570,7 +580,7 @@ void postRenderUpdate(AppData& appData)
 
     if (su.iUserAction) // Always reset
     {
-        su.flags.updateDataRangeII = true;
+        su.toggles.updateDataRangeII = true;
         su.iUserAction = false;
     }
 
@@ -609,9 +619,9 @@ void postRenderUpdate(AppData& appData)
     if (elapsedTime >= fpsUpdatePeriod)
     {
         double fps = elapsedFrames/elapsedTime;
-        if (appData.renderer.isTiledRenderingEnabled)
+        if (appData.rendering.isTiledRenderingEnabled)
         {
-            double wFps = fps/appData.renderer.nTiles;
+            double wFps = fps/appData.rendering.nTiles;
             appData.controlPanelTitle = 
                 "Control panel - "+appData.project.filename+" (window: "+
                 Helpers::format(wFps,1)+" fps | GUI: "+
@@ -627,10 +637,10 @@ void postRenderUpdate(AppData& appData)
         {
             fpsUpdateCounter++;
             shouldStopRendering = 
-                shouldStopRendering && fps < appData.renderer.lowerFpsLimit;
+                shouldStopRendering && fps < appData.rendering.lowerFpsLimit;
             if (fpsUpdateCounter >= int(maxLowFpsPeriod/fpsUpdatePeriod))
             {
-                if (shouldStopRendering && !appData.renderer.isPaused)
+                if (shouldStopRendering && !appData.rendering.isPaused)
                     toggleRenderingPaused(appData, true); 
                 fpsUpdateCounter = 0;
                 shouldStopRendering = true;
@@ -643,21 +653,24 @@ void postRenderUpdate(AppData& appData)
 
 void toggleRenderingPaused(AppData& appData, bool dueToLowFps)
 {
-    appData.renderer.isPaused = 
-        !appData.renderer.isPaused;
+    appData.rendering.isPaused = 
+        !appData.rendering.isPaused;
     
-    if (appData.renderer.isPaused)
+    if (appData.rendering.isPaused)
     {
-        appData.sharedUniforms.flags.isTimePausedBecauseRenderingPaused = 
-            !appData.sharedUniforms.flags.isTimePaused;
-        appData.sharedUniforms.flags.isTimePaused = true;
+        appData.sharedUniforms.isTimePausedBecauseRenderingPaused = 
+            !appData.sharedUniforms.isTimePaused;
+        appData.sharedUniforms.isTimePaused = true;
     }
-    else if (appData.sharedUniforms.flags.isTimePausedBecauseRenderingPaused)
-        appData.sharedUniforms.flags.isTimePaused = false;
+    else if 
+    (
+        appData.sharedUniforms.isTimePausedBecauseRenderingPaused
+    )
+        appData.sharedUniforms.isTimePaused = false;
 
     // It would be better to update the StatusBar messages elsewhere, but
     // whatever
-    if (appData.renderer.isPaused)
+    if (appData.rendering.isPaused)
     {
         StatusBar::removeMessageFromQueue("Rendering resumed");
         StatusBar::queueMessage
@@ -700,7 +713,7 @@ void createNewLayer(AppData& appData, bool compileShader)
     (
         layer, 
         {window->width(), window->height()}, 
-        appData.renderer.isTiledRenderingEnabled,
+        appData.rendering.isTiledRenderingEnabled,
         false
     );
 
@@ -708,13 +721,13 @@ void createNewLayer(AppData& appData, bool compileShader)
     setLayerDepth(layer, (float)appData.layers.size()/Layer::nMaxLayers);
 
     // Initi unfiorm buffer storage
-    layer.renderer.uniformBuffer = 
+    layer.rendering.uniformBuffer = 
         vir::DynamicUniformBuffer::create(1024, "privateUniformBlock");
     // First two points taken by shared vertex shader uniform block and shared
     // fragment uniform block
     unsigned int bindingPoint = 2+id;
-    layer.renderer.uniformBufferBindingPoint = bindingPoint;
-    layer.renderer.uniformBuffer->setBindingPoint(bindingPoint);
+    layer.rendering.uniformBufferBindingPoint = bindingPoint;
+    layer.rendering.uniformBuffer->setBindingPoint(bindingPoint);
 
     // Set default fragment source in editor
     layer.sourceEditor.setText
@@ -760,17 +773,17 @@ R"(void main()
 void setLayerDepth(Layer& layer, const float depth)
 {
     layer.depth = depth;
-    if (layer.renderer.quad.valid())
-        layer.renderer.quad->update
+    if (layer.rendering.quad.valid())
+        layer.rendering.quad->update
         (
-            layer.renderer.quad->width(),
-            layer.renderer.quad->height(),
+            layer.rendering.quad->width(),
+            layer.rendering.quad->height(),
             depth
         );
     else
     {
         auto viewport = Helpers::normalizedWindowResolution();
-        layer.renderer.quad = 
+        layer.rendering.quad = 
             vir::makeUnique<vir::TiledQuad>(viewport.x, viewport.y, depth);
     }
 }
@@ -779,24 +792,24 @@ void setLayerDepth(Layer& layer, const float depth)
 
 void setLayerFramebufferWrapMode(Layer& layer, int i, WrapMode mode)
 {
-    layer.renderer.framebufferA->setColorBufferWrapMode(i, mode);
-    layer.renderer.framebufferB->setColorBufferWrapMode(i, mode);
+    layer.rendering.framebufferA->setColorBufferWrapMode(i, mode);
+    layer.rendering.framebufferB->setColorBufferWrapMode(i, mode);
 }
 
 //----------------------------------------------------------------------------//
 
 void setLayerFramebufferMagFilterMode(Layer& layer, FilterMode mode)
 {
-    layer.renderer.framebufferA->setColorBufferMagFilterMode(mode);
-    layer.renderer.framebufferB->setColorBufferMagFilterMode(mode);
+    layer.rendering.framebufferA->setColorBufferMagFilterMode(mode);
+    layer.rendering.framebufferB->setColorBufferMagFilterMode(mode);
 }
 
 //----------------------------------------------------------------------------//
 
 void setLayerFramebufferMinFilterMode(Layer& layer, FilterMode mode)
 {
-    layer.renderer.framebufferA->setColorBufferMinFilterMode(mode);
-    layer.renderer.framebufferB->setColorBufferMinFilterMode(mode);
+    layer.rendering.framebufferA->setColorBufferMinFilterMode(mode);
+    layer.rendering.framebufferB->setColorBufferMinFilterMode(mode);
 }
 
 //----------------------------------------------------------------------------//
@@ -809,7 +822,7 @@ void rebuildLayerFramebuffers
     const bool isTiledRenderingEnabled
 )
 {
-    auto& renderer = layer.renderer;
+    auto& rendering = layer.rendering;
     auto rebuildFramebuffer = []
     (
         UPtr<vir::Framebuffer>& framebuffer, 
@@ -832,8 +845,8 @@ void rebuildLayerFramebuffers
                 resolution.y,
                 internalFormat
             );
-            Layer::Renderer::textureMapperShader->bind();
-            Layer::Renderer::textureMapperShader->setUniformInt("tx", 0);
+            Layer::Rendering::textureMapperShader->bind();
+            Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
             framebuffer->bindColorBuffer(0);
             
             // This rendering step is to copy the original framebuffer contents
@@ -843,7 +856,7 @@ void rebuildLayerFramebuffers
                 vir::Renderer::instance()->submit
                 (
                     *quad, 
-                    Layer::Renderer::textureMapperShader.get(),
+                    Layer::Rendering::textureMapperShader.get(),
                     newFramebuffer.get()
                 );
             framebuffer->unbind();
@@ -864,32 +877,32 @@ void rebuildLayerFramebuffers
     };
     rebuildFramebuffer
     (
-        renderer.framebufferA, 
-        renderer.quad, 
+        rendering.framebufferA, 
+        rendering.quad, 
         internalFormat, 
         glm::max(resolution, {1,1})
     );
     rebuildFramebuffer
     (
-        renderer.framebufferB, 
-        renderer.quad, 
+        rendering.framebufferB, 
+        rendering.quad, 
         internalFormat, 
         glm::max(resolution, {1,1})
     );
-    renderer.backFramebuffer = renderer.framebufferA.get();
-    renderer.frontFramebuffer = renderer.framebufferB.get();
-    renderer.resourceFramebuffer = 
+    rendering.backFramebuffer = rendering.framebufferA.get();
+    rendering.frontFramebuffer = rendering.framebufferB.get();
+    rendering.resourceFramebuffer = 
         isTiledRenderingEnabled ?
-            renderer.frontFramebuffer :
-            renderer.backFramebuffer;
+            rendering.frontFramebuffer :
+            rendering.backFramebuffer;
 }
 
 //----------------------------------------------------------------------------//
 
 void clearLayerFramebuffers(Layer& layer)
 {
-    layer.renderer.framebufferA->clearColorBuffer();
-    layer.renderer.framebufferB->clearColorBuffer();
+    layer.rendering.framebufferA->clearColorBuffer();
+    layer.rendering.framebufferB->clearColorBuffer();
 }
 
 //----------------------------------------------------------------------------//
@@ -982,7 +995,7 @@ std::string assembleFragmentShaderHeader
         imageBindingPoint
     );
     */
-    header += layer.renderer.uniformBuffer->shaderSource();
+    header += layer.rendering.uniformBuffer->shaderSource();
     return header;
 }
 
@@ -1043,11 +1056,11 @@ bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
             ),
             layer.cache.uncompiledUniforms.end()
         );
-        layer.flags.uncompiledChanges = false;
+        layer.hasUncompiledEdits = false;
         shader->bindUniformBlock
         (
-            layer.renderer.uniformBuffer->name(), 
-            layer.renderer.uniformBufferBindingPoint
+            layer.rendering.uniformBuffer->name(), 
+            layer.rendering.uniformBufferBindingPoint
         );
         shader->bindUniformBlock
         (
@@ -1061,7 +1074,7 @@ bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
         );
         appData.sharedStorage.bindShader(shader.get());
         shader->bind();
-        layer.renderer.shader = std::move(shader);
+        layer.rendering.shader = std::move(shader);
         return true;
     }
     // Else if shader not valid
@@ -1106,7 +1119,7 @@ R"(out vec4 fragColor;
 in     vec2 qc;
 in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})";
-        layer.renderer.shader = 
+        layer.rendering.shader = 
             vir::Shader::create
             (
                 vertexSource,
@@ -1139,8 +1152,8 @@ void setLayerResolution
         resolution = 
             glm::max(lResolutionRatio*(glm::vec2)resolution+.5f, {1,1});
         auto viewport = Helpers::normalizedWindowResolution();
-        layer.renderer.quad->update(viewport.x, viewport.y, layer.depth);
-        if (!layer.flags.rescaleWithWindow)
+        layer.rendering.quad->update(viewport.x, viewport.y, layer.depth);
+        if (!layer.rescaleWithWindow)
             return;
     }
     else if (!window->iconified())
@@ -1152,7 +1165,7 @@ void setLayerResolution
     if 
     (
         tryEnfoceWindowAspectRatio &&
-        layer.flags.isAspectRatioBoundToWindow &&
+        layer.isAspectRatioBoundToWindow &&
         !window->iconified()
     )
     {
@@ -1182,15 +1195,15 @@ void setLayerResolution
     rebuildLayerFramebuffers
     (
         layer,
-        layer.renderer.backFramebuffer == nullptr ?
+        layer.rendering.backFramebuffer == nullptr ?
         vir::TextureBuffer::InternalFormat::RGBA_SF_32 :
-        layer.renderer.backFramebuffer->colorBufferInternalFormat(),
+        layer.rendering.backFramebuffer->colorBufferInternalFormat(),
         lResolution,
         isTiledRenderingEnabled
     );
-    if (!layer.renderer.shader.valid())
+    if (!layer.rendering.shader.valid())
         return;
-    layer.renderer.shader->bind();
+    layer.rendering.shader->bind();
     //uniformBuffer_->markUniformForSubmission(uniforms_[0].get()); // iAspectRatio
     //uniformBuffer_->markUniformForSubmission(uniforms_[1].get()); // iResolution
 }
@@ -1203,25 +1216,25 @@ void renderLayerShader
     AppData& appData
 )
 {
-    auto& renderer = layer.renderer;
-    auto isTiledRenderingEnabled = appData.renderer.isTiledRenderingEnabled;
-    auto tileIndex = appData.renderer.tileIndex;
-    auto flipBuffers = [&renderer, isTiledRenderingEnabled]()
+    auto& rendering = layer.rendering;
+    auto isTiledRenderingEnabled = appData.rendering.isTiledRenderingEnabled;
+    auto tileIndex = appData.rendering.tileIndex;
+    auto flipBuffers = [&rendering, isTiledRenderingEnabled]()
     {
-        renderer.backFramebuffer = 
-            renderer.backFramebuffer == renderer.framebufferB.get() ? 
-            renderer.framebufferA.get() :
-            renderer.framebufferB.get();
+        rendering.backFramebuffer = 
+            rendering.backFramebuffer == rendering.framebufferB.get() ? 
+            rendering.framebufferA.get() :
+            rendering.framebufferB.get();
 
-        renderer.frontFramebuffer = 
-            renderer.backFramebuffer == renderer.framebufferB.get() ? 
-            renderer.framebufferA.get() :
-            renderer.framebufferB.get();
+        rendering.frontFramebuffer = 
+            rendering.backFramebuffer == rendering.framebufferB.get() ? 
+            rendering.framebufferA.get() :
+            rendering.framebufferB.get();
 
-        renderer.resourceFramebuffer = 
+        rendering.resourceFramebuffer = 
             isTiledRenderingEnabled ?
-            renderer.frontFramebuffer :
-            renderer.backFramebuffer;
+            rendering.frontFramebuffer :
+            rendering.backFramebuffer;
     };
 
     bool allowClearTargetAndPostProcess = true;
@@ -1232,23 +1245,23 @@ void renderLayerShader
             flipBuffers();
         else if 
         (
-            tileIndex > renderer.tiles.size-1
+            tileIndex > rendering.tiles.size-1
         )
             return; // Don't render anything
         else
             allowClearTargetAndPostProcess = false;
         if 
         (
-            renderer.tiles.direction == 
-            Layer::Renderer::Tiles::Direction::Horizontal
+            rendering.tiles.direction == 
+            Layer::Rendering::Tiles::Direction::Horizontal
         )
-            renderer.quad->selectVisibleTile
+            rendering.quad->selectVisibleTile
             (
                 tileIndex, 
                 0
             );
         else 
-            renderer.quad->selectVisibleTile
+            rendering.quad->selectVisibleTile
             (
                 0, 
                 tileIndex
@@ -1259,7 +1272,7 @@ void renderLayerShader
     
     // Set sampler-type uniforms found in both this layer's uniforms as well
     // as the shared user-added uniforms
-    renderer.shader->bind();
+    rendering.shader->bind();
     unsigned int textureUnit = 0; 
     unsigned int imageUnit = 0; 
 
@@ -1274,7 +1287,7 @@ void renderLayerShader
         unsigned int& imageUnit
     )
     {
-        const auto& shader = layer->renderer.shader;
+        const auto& shader = layer->rendering.shader;
         for (auto& u : uniforms)
         {
             bool isSampler
@@ -1405,29 +1418,29 @@ void renderLayerShader
         imageUnit
     );
     */
-    renderer.uniformBuffer->submitUniforms();
+    rendering.uniformBuffer->submitUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
-    static auto globalRenderer = vir::Renderer::instance();
+    static auto globalRendering = vir::Renderer::instance();
     bool blendingEnabled = true;
     vir::Framebuffer* target0(target);
-    if (renderer.target != Layer::Renderer::Target::Window)
+    if (rendering.target != Layer::Rendering::Target::Window)
     {
-        target = renderer.backFramebuffer;
-        globalRenderer->setBlending(false);
+        target = rendering.backFramebuffer;
+        globalRendering->setBlending(false);
         blendingEnabled = false;
     }
 
     // Actual render call
-    globalRenderer->submit
+    globalRendering->submit
     (
-        *renderer.quad,
-        renderer.shader.get(), // TODO
+        *rendering.quad,
+        rendering.shader.get(), // TODO
         target,
         allowClearTargetAndPostProcess && 
         (
             clearTarget || // Or force clear if not rendering to window
-            renderer.target != Layer::Renderer::Target::Window
+            rendering.target != Layer::Rendering::Target::Window
         )
     );
     appData.sharedStorage.gpuMemoryBarrier();
@@ -1435,30 +1448,30 @@ void renderLayerShader
     // Re-enable blending before either leaving or redirecting the rendered 
     // texture to the main window
     if (!blendingEnabled)
-        globalRenderer->setBlending(true);
+        globalRendering->setBlending(true);
 
     /* // TODO Post-processing
     // Apply post-processing effects, if any
     if (allowClearTargetAndPostProcess)
     {
-        for (auto& postProcess : renderer.postProcesses)
+        for (auto& postProcess : rendering.postProcesses)
             postProcess->run();
     }*/
 
     if 
     (
-        renderer.target != 
-        Layer::Renderer::Target::InternalFramebufferAndWindow
+        rendering.target != 
+        Layer::Rendering::Target::InternalFramebufferAndWindow
     )
         return;
 
-    Layer::Renderer::textureMapperShader->bind();
-    renderer.resourceFramebuffer->bindColorBuffer(0);
-    Layer::Renderer::textureMapperShader->setUniformInt("tx", 0);
-    globalRenderer->submit
+    Layer::Rendering::textureMapperShader->bind();
+    rendering.resourceFramebuffer->bindColorBuffer(0);
+    Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
+    globalRendering->submit
     (
-        *renderer.quad, 
-        Layer::Renderer::textureMapperShader.get(), // TODO, do not pass raw ptrs
+        *rendering.quad, 
+        Layer::Rendering::textureMapperShader.get(),
         target0,
         allowClearTargetAndPostProcess && clearTarget
     );
@@ -1476,10 +1489,10 @@ RenderResult renderShaders
     // TODO Fix behavior of stepping to next frame when tiled rendering is
     // enabled
     bool renderFrame = 
-        !appData.renderer.isPaused || 
-        sharedUniforms.flags.stepToNextFrame;
+        !appData.rendering.isPaused || 
+        appData.rendering.toggles.stepToNextFrame;
     bool frameRendered = true;
-    unsigned int iRenderPass = appData.renderer.renderPass;
+    unsigned int iRenderPass = appData.rendering.passIndex;
 
     if (renderFrame)
     {
@@ -1489,20 +1502,23 @@ RenderResult renderShaders
             {
                 switch (layer->exportData.clearPolicy)
                 {
-                case Layer::ExportData::FramebufferClearPolicy::None :
+                case Layer::ExportData::FramebufferClearPolicy::
+                    None :
                     continue;
-                case Layer::ExportData::FramebufferClearPolicy::ClearOnFirstFrameExport:
-                    if (appData.renderer.frame == 0)
+                case Layer::ExportData::FramebufferClearPolicy::
+                    ClearOnFirstFrameExport:
+                    if (appData.rendering.passIndex == 0)
                     {
-                        layer->renderer.framebufferA->clearColorBuffer();
-                        layer->renderer.framebufferB->clearColorBuffer();
+                        layer->rendering.framebufferA->clearColorBuffer();
+                        layer->rendering.framebufferB->clearColorBuffer();
                     }
                     break;
-                case Layer::ExportData::FramebufferClearPolicy::ClearOnEveryFrameExport:
+                case Layer::ExportData::FramebufferClearPolicy::
+                    ClearOnEveryFrameExport:
                     if (iRenderPass == 0)
                     {
-                        layer->renderer.framebufferA->clearColorBuffer();
-                        layer->renderer.framebufferB->clearColorBuffer();
+                        layer->rendering.framebufferA->clearColorBuffer();
+                        layer->rendering.framebufferB->clearColorBuffer();
                     }
                     break;
                 }
@@ -1520,8 +1536,8 @@ RenderResult renderShaders
             if 
             (
                 clearTarget &&
-                layer->renderer.target != 
-                    Layer::Renderer::Target::InternalFramebuffer
+                layer->rendering.target != 
+                    Layer::Rendering::Target::InternalFramebuffer
             )
                 clearTarget = false;
         }
@@ -1534,15 +1550,15 @@ RenderResult renderShaders
         // advanced. The frame is considered fully rendered only if all tiles
         // have been rendered. During exports, tiled rendering is automatically
         // disabled in the exporter setup phase
-        if (appData.renderer.isTiledRenderingEnabled)
+        if (appData.rendering.isTiledRenderingEnabled)
         {
             if 
             (
-                ++appData.renderer.tileIndex == 
-                appData.renderer.nTiles
+                ++appData.rendering.tileIndex == 
+                appData.rendering.nTiles
             )
             {
-                appData.renderer.tileIndex = 0;
+                appData.rendering.tileIndex = 0;
                 nextRenderPass = true;
             }
             else
@@ -1553,11 +1569,14 @@ RenderResult renderShaders
         
         if (nextRenderPass)
         {
-            if (appData.renderer.renderPass < nRenderPasses-1)
-                ++appData.renderer.renderPass;
+            if (appData.rendering.passIndex < nRenderPasses-1)
+                ++appData.rendering.passIndex;
             else
-                appData.renderer.renderPass = 0;
-            sharedUniforms.fBuffer->markUniformForSubmission(sharedUniforms.iRenderPassUniform.get());
+                appData.rendering.passIndex = 0;
+            sharedUniforms.fBuffer->markUniformForSubmission
+            (
+                sharedUniforms.iRenderPassUniform.get()
+            );
         }
     }
     else

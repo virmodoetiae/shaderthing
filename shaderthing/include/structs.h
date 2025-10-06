@@ -27,31 +27,6 @@ namespace ShaderThing
 
 struct Exporter
 {
-    struct Settings
-    {
-        std::string  outputFilepath;
-        glm::vec2    outputResolution                = {0, 0};
-        float        outputResolutionScale           = 1.0;
-        bool         outputResolutionChanged         = false;
-        unsigned int nRenderPasses                   = 1;
-        bool         areRenderPassesOnFirstFrameOnly = false;
-        bool         resetFrameCounterAfterExport    = true;
-        float        startTime                       = 0.f;
-        float        endTime                         = 1.f;
-        float        fps                             = 60.f;
-        PaletteMode  gifPaletteMode                  = PaletteMode::Dynamic;
-        unsigned int gifPaletteBitDepth              = 8;
-        unsigned int gifAlphaCutoff                  = 0;
-        DitherMode   gifDitherMode                   = DitherMode::None;
-    };
-    Settings settings = {};
-
-    struct Cache
-    {
-        std::string outputFilepathExtended;
-    };
-    Cache cache = {};
-
     enum class ExportType
     {
         Image,
@@ -65,11 +40,35 @@ struct Exporter
     vir::GifEncoder*       gifEncoder      = nullptr;
     FileDialog             fileDialog;
 
-    bool         isActive               = false;
-    bool         isAveragedPaletteReady = false;
-    unsigned int frame                  = 0;
-    unsigned int nFrames                = 0;
-    double       timeStep               = 0.f;
+    bool         isActive                        = false;
+    bool         isAveragedPaletteReady          = false;
+    bool         areRenderPassesOnFirstFrameOnly = false;
+    bool         resetFrameCounterAfterExport    = true;
+    unsigned int frameIndex                      = 0;
+    unsigned int nFrames                         = 0;
+    unsigned int nRenderPasses                   = 1;
+    float        startTime                       = 0.f;
+    float        endTime                         = 1.f;
+    float        timeStep                        = 0.f;
+    float        fps                             = 60.f;
+    float        outputResolutionScale           = 1.0;
+    std::string  outputFilepath;
+    glm::vec2    outputResolution                = {0, 0};
+    PaletteMode  gifPaletteMode                  = PaletteMode::Dynamic;
+    unsigned int gifPaletteBitDepth              = 8;
+    unsigned int gifAlphaCutoff                  = 0;
+    DitherMode   gifDitherMode                   = DitherMode::None;
+    
+    struct Cache
+    {
+        std::string outputFilepathExtended;
+    };
+    struct Toggles
+    {
+        bool         outputResolutionChanged         = false;
+    };
+    Cache        cache                           = {};
+    Toggles      toggles                         = {};
 };
 
 //----------------------------------------------------------------------------//
@@ -126,30 +125,6 @@ struct Uniform : vir::Uniform
 
 struct SharedUniforms
 {
-    struct Flags
-    {
-        bool updateDataRangeII                  = false;
-        bool stepToNextFrame                    = false;
-        bool stepToNextTimeStep                 = false;
-        bool resetFrameCounter                  = true;
-        bool resetFrameCounterPreOrPostExport   = true;
-        bool isTimePaused                       = false;
-        bool isTimePausedBecauseRenderingPaused = false;
-        bool isTimeLooped                       = false;
-        bool isTimeResetOnFrameCounterReset     = true;
-        bool isTimeDeltaSmooth                  = false;
-        bool isRandomNumberGeneratorPaused      = false;
-        bool isKeyboardInputEnabled             = true; // iKeyboard
-        bool isMouseInputEnabled                = true; // iMouse
-        bool isMouseInputClampedToWindow        = false;
-        bool mouseInputRequiresLMBHold          = true;
-        bool isCameraKeyboardInputEnabled       = true; // iWASD
-        bool isCameraMouseInputEnabled          = true; // iLook
-        bool cameraMouseInputRequiresLMBHold    = true;
-        bool tiledRenderingPauseRequested       = false;
-    };
-    Flags flags;
-
     // Fixed camera used to retrieve the value of the projection view 
     // matrix iMVP
     UPtr<vir::Camera>        screenCamera;
@@ -191,13 +166,34 @@ struct SharedUniforms
     // Vertex shader shared uniform buffer
     UPtr<vir::DynamicUniformBuffer> vBuffer;
     static const unsigned int       vBufferBindingPoint = 1;
+
+    bool isTimePaused                       = false;
+    bool isTimePausedBecauseRenderingPaused = false;
+    bool isTimeLooped                       = false;
+    bool isTimeResetOnFrameCounterReset     = true;
+    bool isTimeDeltaSmooth                  = false;
+    bool isRandomNumberGeneratorPaused      = false;
+    bool isKeyboardInputEnabled             = true; // iKeyboard
+    bool isMouseInputEnabled                = true; // iMouse
+    bool isMouseInputClampedToWindow        = false;
+    bool mouseInputRequiresLMBHold          = true;
+    bool isCameraKeyboardInputEnabled       = true; // iWASD
+    bool isCameraMouseInputEnabled          = true; // iLook
+    bool cameraMouseInputRequiresLMBHold    = true;
+
+    struct Toggles
+    {
+        bool updateDataRangeII                  = false;
+        bool stepToNextTimeStep                 = false;
+    };
+    Toggles toggles = {};
 };
 
 //----------------------------------------------------------------------------//
 
 struct Layer
 {
-    struct Renderer
+    struct Rendering
     {
         enum class Target
         {
@@ -229,15 +225,6 @@ struct Layer
         };
         Tiles tiles;
     };
-    struct Flags
-    {
-               bool isDeletionConfirmationPending = false;
-               bool uncompiledChanges             = false;
-               bool isAspectRatioBoundToWindow    = true;
-               bool rescaleWithWindow             = true;
-        static bool requestRecompilation;
-        static bool restartRendering;
-    };
     struct ExportData
     {
         enum class FramebufferClearPolicy
@@ -259,6 +246,11 @@ struct Layer
         float                  windowResolutionScale = 1.f;
         bool                   rescaleWithOutput     = true;
     };
+    struct Toggles
+    {
+        static bool requestRecompilation;
+        static bool restartRendering;
+    };
     struct Cache
     {
         UPtrVector<Uniform> uncompiledUniforms;
@@ -269,19 +261,22 @@ struct Layer
     const std::string         imGuiMenuId;
     const std::string         imGuiTabId;
           std::string         name;
-          
+          bool                isAspectRatioBoundToWindow    = true;
+          bool                isDeletionConfirmationPending = false;
+          bool                rescaleWithWindow             = true;
+          bool                hasUncompiledEdits             = false;
           glm::vec2           resolution;
           glm::vec2           resolutionRatio = {1.f, 1.f};
           float               aspectRatio;
           float               depth;
-          Renderer            renderer;
+          Rendering           rendering;
           UPtrVector<Uniform> uniforms;
           TextEditor          sourceEditor;
           std::string         sourceHeader;
           std::string         headerErrors;
           unsigned int        activeGuiTabId = 0;
-          Flags               flags;
           ExportData          exportData;
+          Toggles             toggles;
           Cache               cache;
     
     Layer(unsigned int aId) : 
@@ -306,17 +301,25 @@ struct Project
 
 //----------------------------------------------------------------------------//
 
-struct Renderer
+struct Rendering
 {
-    float             lowerFpsLimit           = 5.0;
     bool              isPaused                = false;
     bool              isTiledRenderingEnabled = false;
     bool              isVSyncEnabled          = true;
-    unsigned int      frame                   = 0;
-    unsigned int      renderPass              = 0;
+    unsigned int      frameIndex              = 0;
+    unsigned int      passIndex               = 0;
     unsigned int      tileIndex               = 0;
     unsigned int      nTiles                  = 1;
     unsigned int      nTilesCache;
+    float             lowerFpsLimit           = 5.0;
+    struct Toggles
+    {
+        bool stepToNextFrame                  = false;
+        bool resetFrameCounter                = true;
+        bool resetFrameCounterPreOrPostExport = true;
+        bool tiledRenderingPauseRequested     = false;
+    };
+    Toggles           toggles                 = {};
 };
 
 //----------------------------------------------------------------------------//
@@ -336,7 +339,7 @@ struct AppData
     Exporter             exporter;
     Font                 font;
     Project              project;
-    Renderer             renderer;
+    Rendering            rendering;
     SharedStorage        sharedStorage;
     SharedUniforms       sharedUniforms;
     TextEditor           sharedSourceEditor;

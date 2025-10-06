@@ -66,8 +66,7 @@ void renderLayerMenu
 {
     if (ImGui::BeginMenu(("Layer ["+layer.name+"]###"+layer.imGuiMenuId).c_str()))
     {
-        auto& renderer = layer.renderer;
-        auto& flags = layer.flags;
+        auto& rendering = layer.rendering;
         const float fontSize(ImGui::GetFontSize());
         const float entryWidth(14*fontSize);
         ImGui::Text("Name                 ");
@@ -78,15 +77,15 @@ void renderLayerMenu
         ImGui::InputText(label.get(), &layer.name);
         ImGui::PopItemWidth();
         
-        static std::map<Layer::Renderer::Target, const char*> 
+        static std::map<Layer::Rendering::Target, const char*> 
         renderTargetToName
         {
             {
-                Layer::Renderer::Target::InternalFramebufferAndWindow, 
+                Layer::Rendering::Target::InternalFramebufferAndWindow, 
                 "Framebuffer & window"
             },
-            {Layer::Renderer::Target::InternalFramebuffer, "Framebuffer"},
-            {Layer::Renderer::Target::Window, "Window"}
+            {Layer::Rendering::Target::InternalFramebuffer, "Framebuffer"},
+            {Layer::Rendering::Target::Window, "Window"}
         };
         ImGui::Text("Render target        ");
         ImGui::SameLine();
@@ -95,8 +94,8 @@ void renderLayerMenu
         (
             ImGui::BeginCombo
             (
-                "##rendererTarget", 
-                renderTargetToName.at(renderer.target)
+                "##renderingTarget", 
+                renderTargetToName.at(rendering.target)
             )
         )
         {
@@ -105,10 +104,10 @@ void renderLayerMenu
                 if (!ImGui::Selectable(entry.second))
                     continue;
                 auto target = entry.first;
-                if (target != renderer.target)
+                if (target != rendering.target)
                 {
-                    renderer.target = target;
-                    /*if (renderer.target == Layer::Renderer::Target::Window)
+                    rendering.target = target;
+                    /*if (rendering.target == Layer::Rendering::Target::Window)
                         LayerResource::removeFromResources
                         (
                             this,
@@ -128,7 +127,7 @@ void renderLayerMenu
 
         if 
         (
-            renderer.target == Layer::Renderer::Target::Window || 
+            rendering.target == Layer::Rendering::Target::Window || 
             vir::Window::instance()->iconified()
         )
             ImGui::BeginDisabled();
@@ -139,15 +138,15 @@ void renderLayerMenu
         (
             ImGui::Button
             (
-                flags.isAspectRatioBoundToWindow ? 
+                layer.isAspectRatioBoundToWindow ? 
                 " " ICON_FA_LOCK " " : 
                 " " ICON_FA_LOCK_OPEN " "
             )
         )
         {
-            flags.isAspectRatioBoundToWindow = 
-                !flags.isAspectRatioBoundToWindow;
-            if (flags.isAspectRatioBoundToWindow)
+            layer.isAspectRatioBoundToWindow = 
+                !layer.isAspectRatioBoundToWindow;
+            if (layer.isAspectRatioBoundToWindow)
             {
                 auto window = vir::Window::instance();
                 glm::ivec2 resolution = {window->width(), window->height()};
@@ -155,7 +154,7 @@ void renderLayerMenu
                 (
                     layer, 
                     resolution, 
-                    appData.renderer.isTiledRenderingEnabled, 
+                    appData.rendering.isTiledRenderingEnabled, 
                     false
                 );
             }
@@ -167,7 +166,7 @@ void renderLayerMenu
         )
         {
             ImGui::Text(
-                flags.isAspectRatioBoundToWindow ?
+                layer.isAspectRatioBoundToWindow ?
 ICON_FA_LOCK " - The aspect ratio is locked\n"
 "to that of the main window" :
 ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
@@ -185,7 +184,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
             (
                 layer, 
                 resolution, 
-                appData.renderer.isTiledRenderingEnabled, 
+                appData.rendering.isTiledRenderingEnabled, 
                 false,
                 true
             );
@@ -196,21 +195,21 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         (
             ImGui::Button
             (
-                flags.rescaleWithWindow ?
+                layer.rescaleWithWindow ?
                 "Rescale on window resize" :
                 "Do not auto-resize",
                 {-1, 0}
             )
         )
-            flags.rescaleWithWindow = !flags.rescaleWithWindow;
+            layer.rescaleWithWindow = !layer.rescaleWithWindow;
         if 
         (
-            renderer.target == Layer::Renderer::Target::Window || 
+            rendering.target == Layer::Rendering::Target::Window || 
             vir::Window::instance()->iconified()
         )
             ImGui::EndDisabled();
     
-        if (renderer.target != Layer::Renderer::Target::Window)
+        if (rendering.target != Layer::Rendering::Target::Window)
         {
             ImGui::SeparatorText("Framebuffer settings");
             //renderFramebufferPropertiesGui();
@@ -220,10 +219,10 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
             int iDelete = -1;
             int iSrc = -1; 
             int iTrg = -1;
-            int nPostProcesses = renderer.postProcesses.size();
+            int nPostProcesses = rendering.postProcesses.size();
             for (int i = 0; i < nPostProcesses; i++)
             {
-                auto& postProcess = renderer.postProcesses[i];
+                auto& postProcess = rendering.postProcesses[i];
                 ImGui::PushID(i);
                 if (ImGui::SmallButton(ICON_FA_TRASH))
                     iDelete = i;
@@ -273,15 +272,15 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                 ImGui::PopID();
             }
             if (iDelete != -1)
-                renderer.postProcesses.erase
+                rendering.postProcesses.erase
                 (
-                    renderer.postProcesses.begin() + iDelete
+                    rendering.postProcesses.begin() + iDelete
                 );
             else if (iSrc != iTrg)
                 std::swap
                 (
-                    renderer.postProcesses[iSrc], 
-                    renderer.postProcesses[iTrg]
+                    rendering.postProcesses[iSrc], 
+                    rendering.postProcesses[iTrg]
                 );
             
             // Selector for adding a new post-processing effect with the 
@@ -312,7 +311,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                 }
                 std::vector<vir::PostProcess::Type> 
                     availableTypes(allAvailableTypes);
-                for (auto& postProcess : renderer.postProcesses)
+                for (auto& postProcess : rendering.postProcesses)
                 {
                     auto it = std::find
                     (
@@ -336,7 +335,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
                         auto postProcess = 
                             PostProcess::create(this, type);
                         if (postProcess != nullptr)
-                            renderer.postProcesses.emplace_back
+                            rendering.postProcesses.emplace_back
                             (
                                 std::move(postProcess)
                             );
@@ -361,16 +360,16 @@ void renderLayersTabBar
 {
     auto& layers = appData.layers;
     static bool compilationErrors(false);
-    static bool anyUncompiledChanges(false);
+    static bool anyUncompiledEdits(false);
     /*if (Flags::requestRecompilation)
     {
         for (auto layer : layers)
         {
-            layer->flags.uncompiledChanges = true;
+            layer->flags.hasUncompiledEdits = true;
         }
         Flags::requestRecompilation = false;
     }*/
-    if (anyUncompiledChanges || compilationErrors) // Render compilation button 
+    if (anyUncompiledEdits || compilationErrors) // Render compilation button 
     {
         float time = vir::Window::instance()->time()->outerTime();
         ImVec4 compileButtonColor = 
@@ -415,7 +414,7 @@ void renderLayersTabBar
         ImGui::Text("Compilation errors in:");
     }
     compilationErrors = false;
-    anyUncompiledChanges = false;
+    anyUncompiledEdits = false;
     const auto& sharedErrors // First render errors in shared source -----------
     (
         appData.sharedSourceEditor.getErrorMarkers()
@@ -463,13 +462,13 @@ void renderLayersTabBar
             layer->sourceEditor.isTextChanged() || 
             appData.sharedSourceEditor.isTextChanged()
         )
-            layer->flags.uncompiledChanges = true;
+            layer->hasUncompiledEdits = true;
         if 
         (
             appData.sharedSourceEditor.isTextChanged() ||
-            layer->flags.uncompiledChanges
+            layer->hasUncompiledEdits
         )
-            anyUncompiledChanges = true;
+            anyUncompiledEdits = true;
     }
     if (compilationErrors)
         ImGui::Separator();
@@ -493,7 +492,7 @@ void renderLayersTabBar
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
         {
             createNewLayer(appData);
-            if (appData.renderer.isTiledRenderingEnabled)
+            if (appData.rendering.isTiledRenderingEnabled)
             {    
                 /*
                 Layer::setRenderingTiles
@@ -527,14 +526,14 @@ void renderLayersTabBar
             if (!open) // I.e., if 'x' is pressed to delete the tab
             {
                 ImGui::OpenPopup("Layer deletion confirmation");
-                layer->flags.isDeletionConfirmationPending = true;
+                layer->isDeletionConfirmationPending = true;
                 // For some reason, when the 'x' is pressed, the tab in question
                 // is moved 
                 reorderable = false;
             }
             if 
             (
-                layer->flags.isDeletionConfirmationPending && 
+                layer->isDeletionConfirmationPending && 
                 ImGui::BeginPopupModal
                 (
                     "Layer deletion confirmation",
@@ -572,7 +571,7 @@ void renderLayersTabBar
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel"))
                 {
-                    layer->flags.isDeletionConfirmationPending = false;
+                    layer->isDeletionConfirmationPending = false;
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
@@ -611,14 +610,14 @@ void renderLayersTabBar
     // a rendering restart. This flag is set in the lambda
     // Uniform::renderUniformsGui::renderSharedUniformsGui eventually called by
     // renderTabBarGui
-    /*if (Layer::Flags::restartLayer::Renderer)
+    /*if (Layer::Flags::restartLayer::Rendering)
     {
         for (auto& layer : layers)
         {
-            layer->renderer.framebufferA->clearColorBuffer();
-            layer->renderer.framebufferB->clearColorBuffer();
+            layer->rendering.framebufferA->clearColorBuffer();
+            layer->rendering.framebufferB->clearColorBuffer();
         }
-        Layer::Flags::restartLayer::Renderer = false;
+        Layer::Flags::restartLayer::Rendering = false;
     }*/
 }
 
@@ -660,8 +659,8 @@ void renderLayerTabBar
             bool headerErrors(layer.headerErrors.size() > 0);
             bool madeReplacements = false;
                 //layer.sourceEditor.renderFindReplaceToolGui();
-            layer.flags.uncompiledChanges = 
-                layer.flags.uncompiledChanges || madeReplacements;
+            layer.hasUncompiledEdits = 
+                layer.hasUncompiledEdits || madeReplacements;
             if (ImGui::TreeNode("Header"))
             {
                 float indent(layer.sourceEditor.getLineIndexColumnWidth());
@@ -702,8 +701,8 @@ void renderLayerTabBar
         {
             bool madeReplacements = 
                 appData.sharedSourceEditor.renderFindReplaceToolGui();
-            layer.flags.uncompiledChanges = 
-                layer.flags.uncompiledChanges || madeReplacements;
+            layer.hasUncompiledEdits = 
+                layer.hasUncompiledEdits || madeReplacements;
             appData.sharedSourceEditor.renderGui("##sharedSourceEditor");
             gActiveTabId = 1;
             ImGui::EndTabItem();
@@ -803,15 +802,15 @@ further reduction of the shader rendering frame rate)");
                 }
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.f*ImGui::GetFontSize());
-                int nLayer::RendererTiles = Layer::Layer::Renderer::TileController::nTiles;
-                if (sharedUniforms_->isLayer::RendererPaused())
+                int nLayer::RenderingTiles = Layer::Layer::Rendering::TileController::nTiles;
+                if (sharedUniforms_->isLayer::RenderingPaused())
                     ImGui::BeginDisabled();
-                if (ImGui::InputInt("##nLayer::RendererTiles", &nLayer::RendererTiles))
+                if (ImGui::InputInt("##nLayer::RenderingTiles", &nLayer::RenderingTiles))
                 {
-                    nLayer::RendererTiles = std::max(nLayer::RendererTiles, 1);
-                    Layer::setLayer::RendererTiles(layers_, nLayer::RendererTiles);
+                    nLayer::RenderingTiles = std::max(nLayer::RenderingTiles, 1);
+                    Layer::setLayer::RenderingTiles(layers_, nLayer::RenderingTiles);
                 }
-                if (sharedUniforms_->isLayer::RendererPaused())
+                if (sharedUniforms_->isLayer::RenderingPaused())
                     ImGui::EndDisabled();
                 
                 ImGui::Text("Pause render below ");
@@ -847,12 +846,12 @@ project exports)");
                 (
                     ImGui::Button
                     (
-                        !sharedUniforms_->isLayer::RendererPaused() ? 
+                        !sharedUniforms_->isLayer::RenderingPaused() ? 
                         "Pause rendering" : "Resume rendering", 
                         ImVec2(-1, 0)
                     )
                 )
-                    sharedUniforms_->toggleLayer::RendererPaused();
+                    sharedUniforms_->toggleLayer::RenderingPaused();
 
                 if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
                     sharedUniforms_->setMouseCaptured(true);
@@ -877,7 +876,7 @@ project exports)");
             /*
             Resource::renderResourcesMenuItemGui(resources_, layers_);
             shadersRequireRecompilation = 
-                Layer::Layer::Renderer::sharedStorage->renderMenuItemGui();
+                Layer::Layer::Rendering::sharedStorage->renderMenuItemGui();
             */
             ImGui::EndMenu();
         }
@@ -915,7 +914,7 @@ project exports)");
                 ImGui::Text
                 (
                     "%s", 
-                    vir::Layer::Renderer::instance()->
+                    vir::Layer::Rendering::instance()->
                     deviceName().c_str()
                 );
                 ImGui::Text("%s", "Graphics context:    ");
@@ -936,9 +935,9 @@ project exports)");
     /*
     if (Resource::isGuiDetachedFromMenu)
         Resource::renderResourcesGui(resources_, layers_);
-    if (Layer::Layer::Renderer::sharedStorage->isGuiDetachedFromMenu())
+    if (Layer::Layer::Rendering::sharedStorage->isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
-            Layer::Layer::Renderer::sharedStorage->renderGui();
+            Layer::Layer::Rendering::sharedStorage->renderGui();
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
     
