@@ -21,5 +21,7 @@ typedef vir::TextureBuffer::FilterMode       FilterMode;
 typedef vir::TextureBuffer::InternalFormat   InternalFormat;
 typedef vir::Quantizer::Settings::DitherMode DitherMode;
 typedef vir::GifEncoder::PaletteMode         PaletteMode;
+typedef vir::TextureBuffer::ImageBindMode    ImageBindMode;
+typedef vir::TextureBuffer::DataType         DataType;
 
 }
