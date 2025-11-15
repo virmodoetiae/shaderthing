@@ -399,7 +399,6 @@ void setWindowResolution
     (
         std::min(1.0f, 1.0f/su.iAspectRatio)
     );
-    auto iMVP = su.screenCamera->projectionViewMatrix();
     su.screenCamera->update();
 
     //iMVP_ = screenCamera_->projectionViewMatrix();
@@ -1273,11 +1272,11 @@ void renderLayerShader
     // Set sampler-type uniforms found in both this layer's uniforms as well
     // as the shared user-added uniforms
     rendering.shader->bind();
-    unsigned int textureUnit = 0; 
-    unsigned int imageUnit = 0; 
 
     // TODO set sampler uniforms
     /*
+    unsigned int textureUnit = 0; 
+    unsigned int imageUnit = 0; 
     auto setSamplerUniforms = []
     (
         const std::vector<vir::UniquePtr<Uniform>>& uniforms,

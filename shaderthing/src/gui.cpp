@@ -736,7 +736,7 @@ void renderMenuBar
 {
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
-    bool shadersRequireRecompilation = false;
+    // bool shadersRequireRecompilation = false;
     if (ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("Project"))

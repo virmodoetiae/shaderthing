@@ -114,13 +114,6 @@ UPtr<Texture2DResource> Texture2DResource::create
 
 Texture2DResource::~Texture2DResource()
 {
-    if (native_ != nullptr)
-    {
-        if (textureUnit_ != -1)
-            this->unbind();
-        if (imageUnit_ != -1)
-            this->unbindImage();
-    }
     if (rawData_ != nullptr) 
         delete[] rawData_;
 }
@@ -257,6 +250,232 @@ void Texture2DResource::readData(float*& data, bool allocate) const
 {
     if (native_.valid())
         native_->readData(data, allocate);
+}
+
+//----------------------------------------------------------------------------//
+
+UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
+(
+    const std::string& filepath
+)
+{
+    auto resource = UPtr<AnimatedTexture2DResource>
+    (
+        new AnimatedTexture2DResource()
+    );
+    if (resource->set(filepath))
+        return resource;
+    return vir::nullUniquePtr<AnimatedTexture2DResource>();
+}
+
+UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
+(
+    const unsigned char* rawData, 
+    unsigned int size
+)
+{
+    auto resource = UPtr<AnimatedTexture2DResource>
+    (
+        new AnimatedTexture2DResource()
+    );
+    if (resource->set(rawData, size))
+        return resource;
+    return vir::nullUniquePtr<AnimatedTexture2DResource>();
+}
+
+UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
+(
+    const std::vector<WPtr<Texture2DResource>>& frames
+)
+{
+    auto resource = UPtr<AnimatedTexture2DResource>
+    (
+        new AnimatedTexture2DResource()
+    );
+    if (resource->set(frames))
+        return resource;
+    return vir::nullUniquePtr<AnimatedTexture2DResource>();
+}
+
+AnimatedTexture2DResource::~AnimatedTexture2DResource()
+{
+    if (rawData_ != nullptr)
+        delete[] rawData_;
+}
+
+bool AnimatedTexture2DResource::set(const std::string& filepath)
+{
+    originalFileExtension_ = Helpers::fileExtension(filepath);
+    if (originalFileExtension_ != ".gif")
+        return false;
+    auto native = vir::AnimatedTextureBuffer2D::create
+    (
+        filepath, 
+        vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+    );
+    if (native == nullptr)
+        return false;
+    unsigned int size;
+    unsigned char* rawData = Helpers::readFileContents(filepath, size);
+    native_ = std::move(native);
+    if (rawData_ != nullptr) 
+        delete[] rawData_;
+    rawData_ = rawData;
+    rawDataSize_ = size;
+    return true;
+}
+
+bool AnimatedTexture2DResource::set
+(
+    const unsigned char* rawData, 
+    unsigned int size
+)
+{
+    auto native = vir::AnimatedTextureBuffer2D::create
+    (
+        rawData,
+        size,
+        vir::TextureBuffer::defaultInternalFormat(4)
+    );
+    if (native == nullptr)
+        return false;
+    native_ = std::move(native);
+    if (rawData_ != nullptr) 
+        delete[] rawData_;
+    rawData_ = rawData;
+    rawDataSize_ = size;
+    return true;
+}
+
+bool AnimatedTexture2DResource::set
+(
+    const std::vector<WPtr<Texture2DResource>>& frames
+)
+{
+    std::vector<vir::TextureBuffer2D*> nativeFrames;
+    for(int i=0; i<(int)frames.size(); i++)
+    {
+        auto frame = frames[i].get();
+        if (!frame)
+            continue;
+        nativeFrames.emplace_back
+        (
+            // Forgive me father, for I have sinned
+            const_cast<vir::TextureBuffer2D*>(frame->native())
+        );
+    }
+    auto native = vir::AnimatedTextureBuffer2D::create
+    (
+        nativeFrames,
+        false
+    );
+    if (native == nullptr)
+        return false;
+    unmanagedFrames_.clear();
+    unmanagedFrames_.resize(frames.size());
+    for(int i=0; i<(int)frames.size(); i++)
+        unmanagedFrames_[i] = frames[i];
+    native_ = std::move(native);
+    rawDataSize_ = 0;
+    return true;
+}
+
+void AnimatedTexture2DResource::save(ObjectIO& io)
+{
+    io.writeObjectStart(namePtr_->c_str());
+    io.write("type", Resource::typeToName.at(type_));
+    io.write("magFilterMode", (int)magFilterMode());
+    io.write("minFilterMode", (int)minFilterMode());
+    io.write("wrapModes", glm::ivec2((int)wrapMode(0), (int)wrapMode(1)));
+    io.write("autoUpdateMipmap", autoUpdateMipmap);
+    io.write("animationFps", native_->fps());
+    io.write("animationFrameIndex", native_->frameIndex());
+    io.write("animationPaused", isAnimationPaused);
+    io.write("animationBoundToGlobalTime", isAnimationBoundToGlobalTime);
+    if // it is a .gif
+    (
+        originalFileExtension_.size() > 0 && 
+        rawData_ != nullptr &&
+        rawDataSize_ > 0
+    )
+    {
+        io.write("originalFileExtension", originalFileExtension_.c_str());
+        io.write("data", (const char*)rawData_, rawDataSize_, true);
+    }
+    else // if it is an animation constructed from other resources
+    {
+        std::vector<std::string> frameNames(unmanagedFrames_.size());
+        for (int i=0; i<(int)frameNames.size(); i++)
+            frameNames[i] = unmanagedFrames_[i]->name();
+        io.write("frames", frameNames);
+    }
+    io.writeObjectEnd();
+}
+
+UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::load
+(
+    const ObjectIO& io,
+    const std::vector<UPtr<Resource>>& resources
+)
+{
+    auto resource = UPtr<AnimatedTexture2DResource>
+    (
+        new AnimatedTexture2DResource()
+    );
+    if (io.hasMember("data"))
+    {
+        unsigned int rawDataSize;
+        const char* rawData = io.read("data", true, &rawDataSize);
+        resource->set((unsigned char*)rawData, rawDataSize);
+        resource->originalFileExtension_ = 
+            io.read("originalFileExtension", false);
+    }
+    else
+    {
+        auto frameNames = io.read<std::vector<std::string>>("frames");
+        std::vector<WPtr<Texture2DResource>> referencedResources(frameNames.size());
+        int i = 0;
+        for (auto& frameName : frameNames)
+        {
+            for (auto& r : resources)
+            {
+                if 
+                (
+                    r->name() == frameName && 
+                    r->type() == Resource::Type::Texture2D
+                )
+                    referencedResources[i] = r.getWeakAs<Texture2DResource>();
+            }
+            ++i;
+        }
+        resource->set(referencedResources);
+    }
+    resource->autoUpdateMipmap = 
+        io.readOrDefault<bool>("autoUpdateMipmap", false);
+    
+    resource->native_->setFps(io.read<float>("animationFps"));
+    resource->native_->setFrameIndex(io.read<int>("animationFrameIndex"));
+    resource->isAnimationPaused = io.read<bool>("animationPaused");
+    resource->isAnimationBoundToGlobalTime = 
+        io.read<bool>("animationBoundToGlobalTime");
+
+    resource->setName(io.name());
+    resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
+    resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
+    auto wrapModes = io.read<glm::ivec2>("wrapModes");
+    resource->setWrapMode(0, (WrapMode)wrapModes[0]);
+    resource->setWrapMode(1, (WrapMode)wrapModes[1]);
+    return resource;
+}
+
+void AnimatedTexture2DResource::update(const UpdateArgs& args)
+{
+    if (isAnimationBoundToGlobalTime)
+        native_->setTime(args.time);
+    else if (!isAnimationPaused)
+        native_->advanceTime(args.timeStep);
+    if (autoUpdateMipmap)
+        native_->updateMipmap(true);
 }
 
 //----------------------------------------------------------------------------//

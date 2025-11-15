@@ -14,6 +14,9 @@ template<typename T>
 using UPtr = vir::UniquePtr<T>;
 
 template<typename T>
+using WPtr = vir::WeakPtr<T>;
+
+template<typename T>
 using UPtrVector = std::vector<vir::UniquePtr<T>>;
 
 typedef vir::TextureBuffer::WrapMode         WrapMode;

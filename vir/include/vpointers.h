@@ -68,6 +68,7 @@ private:
 
 public:
 
+    WeakPtr() : ptr_(nullptr), valid_() {} // Default ctor -> invalid WeakPtr
     WeakPtr(T* p, std::shared_ptr<bool> valid) : ptr_(p), valid_(valid) {}
     WeakPtr(const WeakPtr& other) : ptr_(other.ptr_), valid_(other.valid_) {}
     WeakPtr& operator=(const WeakPtr& other)
@@ -96,6 +97,16 @@ public:
     // Return a weak-like ptr to safely access and check for the existence 
     // of the internally managed object
     WeakPtr<T> getWeak() const override {return *this;}
+
+    // Return a weak-like ptr to safely access and check for the existence 
+    // of the internally managed object
+    template<typename D, typename = std::enable_if_t<
+        std::is_base_of_v<T, D> || 
+        std::is_base_of_v<D, T>>>
+    WeakPtr<D> getWeakAs() const 
+    {
+        return WeakPtr<D>(static_cast<D*>(ptr_), valid_);
+    }
 };
 
 //----------------------------------------------------------------------------//
@@ -311,6 +322,16 @@ public:
     // Return a weak-like ptr to safely access and check for the existence 
     // of the internally managed object
     WeakPtr<T> getWeak() const override {return WeakPtr<T>(ptr_, valid_);}
+
+    // Return a weak-like ptr to safely access and check for the existence 
+    // of the internally managed object
+    template<typename D, typename = std::enable_if_t<
+        std::is_base_of_v<T, D> || 
+        std::is_base_of_v<D, T>>>
+    WeakPtr<D> getWeakAs() const 
+    {
+        return WeakPtr<D>(static_cast<D*>(ptr_), valid_);
+    }
 };
 
 // Factory method to create a new T wrapped by a UniquePtr

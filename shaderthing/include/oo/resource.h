@@ -144,6 +144,8 @@ public:
 
     virtual ~CRTPResource();
 
+    const NativeType* native() const {return native_.get();}
+
     void bind(unsigned int unit) override 
     {
         native_->bind(unit); 
@@ -247,6 +249,7 @@ class Texture2DResource : public CRTPResource<vir::TextureBuffer2D>
     NO_COPY(Texture2DResource)
 
 public:
+
     bool autoUpdateMipmap = false;
     
     static UPtr<Texture2DResource> create(const std::string& filepath);
@@ -286,6 +289,57 @@ public:
 
 //----------------------------------------------------------------------------//
 
+class AnimatedTexture2DResource : 
+    public CRTPResource<vir::AnimatedTextureBuffer2D>
+{
+    const unsigned char*                 rawData_                     = nullptr;
+    unsigned int                         rawDataSize_                 = 0;
+    std::string                          originalFileExtension_       = ".gif";
+    std::vector<WPtr<Texture2DResource>> unmanagedFrames_;
+    
+    float                                cachedTime_ = 0.f;
+    
+    AnimatedTexture2DResource() : CRTPResource(Type::AnimatedTexture2D) {}
+    NO_COPY(AnimatedTexture2DResource)
 
+public:
+
+    bool autoUpdateMipmap             = false;
+    bool isAnimationPaused            = false;
+    bool isAnimationBoundToGlobalTime = false;
+
+    static UPtr<AnimatedTexture2DResource> create(const std::string& filepath);
+    static UPtr<AnimatedTexture2DResource> create
+    (
+        const unsigned char* rawData, 
+        unsigned int size
+    );
+    static UPtr<AnimatedTexture2DResource> create
+    (
+        const std::vector<WPtr<Texture2DResource>>& frames
+    );
+
+    ~AnimatedTexture2DResource();
+
+    virtual void save(ObjectIO& io) override;
+    static UPtr<AnimatedTexture2DResource> load
+    (
+        const ObjectIO& io,
+        const std::vector<UPtr<Resource>>& resources
+    );
+
+    bool set(const std::string& filepath);
+    bool set(const unsigned char* rawData, unsigned int size);
+    bool set(const std::vector<WPtr<Texture2DResource>>& animationFrames);
+    void update(const UpdateArgs& args) override;
+    unsigned int frameId() const 
+    {
+        return native_->frameId();
+    }
+    uint64_t maxMemoryFootprint() const override 
+    {
+        return native_->maxMemoryFootprint();
+    }
+};
 
 }
