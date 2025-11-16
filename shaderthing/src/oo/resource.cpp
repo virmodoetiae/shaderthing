@@ -1,6 +1,7 @@
 #include "vir/include/vpch.h"
 #include "shaderthing/include/oo/resource.h"
 #include "shaderthing/include/oo/objectio.h"
+#include "shaderthing/include/structs.h"
 #include "shaderthing/include/helpers.h"
 
 namespace ShaderThing
@@ -9,11 +10,15 @@ namespace ShaderThing
 const std::map<Resource::Type, const char*> Resource::typeToName =
 {
     {Resource::Type::Texture2D,         "Texture-2D"},
-    {Resource::Type::Texture3D,         "Texture-3D"},
     {Resource::Type::AnimatedTexture2D, "Animation-2D"},
     {Resource::Type::Cubemap,           "Cubemap"},
+    {Resource::Type::Texture3D,         "Texture-3D"},
     {Resource::Type::Framebuffer,       "Layer"}
 };
+
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
 
 Resource::~Resource()
 {
@@ -65,8 +70,10 @@ bool Resource::isUsedByUniform(const Uniform* u) const
 
 //----------------------------------------------------------------------------//
 
+//----------------------------------------------------------------------------//
+
 template <typename NativeType>
-CRTPResource<NativeType>::~CRTPResource()
+ManagedResource<NativeType>::~ManagedResource()
 {
     if (native_ != nullptr)
     {
@@ -76,6 +83,8 @@ CRTPResource<NativeType>::~CRTPResource()
             this->unbindImage();
     }
 }
+
+//----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
 
@@ -251,6 +260,8 @@ void Texture2DResource::readData(float*& data, bool allocate) const
     if (native_.valid())
         native_->readData(data, allocate);
 }
+
+//----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
 
@@ -480,6 +491,8 @@ void AnimatedTexture2DResource::update(const UpdateArgs& args)
 
 //----------------------------------------------------------------------------//
 
+//----------------------------------------------------------------------------//
+
 UPtr<CubemapResource> CubemapResource::create
 (
     const std::array<WPtr<Texture2DResource>, 6>& faces
@@ -582,5 +595,181 @@ UPtr<CubemapResource> CubemapResource::load
 }
 
 //----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+
+UPtr<Texture3DResource> Texture3DResource::create
+(
+    unsigned int width, 
+    unsigned int height, 
+    unsigned int depth,
+    InternalFormat internalFormat
+)
+{
+    auto resource = UPtr<Texture3DResource>(new Texture3DResource());
+    if (resource->set(width, height, depth, internalFormat))
+        return resource;
+    return vir::nullUniquePtr<Texture3DResource>();
+}
+
+bool Texture3DResource::set
+(
+    unsigned int width, 
+    unsigned int height, 
+    unsigned int depth, 
+    InternalFormat internalFormat
+)
+{
+    auto native = vir::TextureBuffer3D::create
+    (
+        nullptr, 
+        width, 
+        height, 
+        depth, 
+        internalFormat
+    );
+    if (native == nullptr)
+        return false;
+    native_ = std::move(native);
+    return true;
+}
+
+void Texture3DResource::save(ObjectIO& io)
+{
+    io.writeObjectStart(namePtr_->c_str());
+    io.write("type", Resource::typeToName.at(type_));
+    io.write("magFilterMode", (int)magFilterMode());
+    io.write("minFilterMode", (int)minFilterMode());
+    io.write("wrapModes", glm::ivec3((int)wrapMode(0), (int)wrapMode(1), (int)wrapMode(2)));
+    io.write("autoUpdateMipmap", autoUpdateMipmap);
+    io.write("width", native_->width());
+    io.write("height", native_->height());
+    io.write("depth", native_->depth());
+    io.write("internalFormat", (int)native_->internalFormat());
+    io.writeObjectEnd();
+}
+
+UPtr<Texture3DResource> Texture3DResource::load(const ObjectIO& io)
+{
+    auto resource = UPtr<Texture3DResource>(new Texture3DResource());
+    
+    unsigned int width, height, depth;
+    width = io.read<unsigned int>("width");
+    height = io.read<unsigned int>("height");
+    depth = io.read<unsigned int>("depth");
+    InternalFormat internalFormat = 
+        (InternalFormat)io.read<unsigned int>("internalFormat");
+    resource->set(width, height, depth, internalFormat);
+
+    resource->setName(io.name());
+    resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
+    resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
+    auto wrapModes = io.read<glm::ivec3>("wrapModes");
+    resource->setWrapMode(0, (WrapMode)wrapModes[0]);
+    resource->setWrapMode(1, (WrapMode)wrapModes[1]);
+    resource->setWrapMode(2, (WrapMode)wrapModes[2]);
+    resource->autoUpdateMipmap = 
+        io.readOrDefault<bool>("autoUpdateMipmap", false);
+    return resource;
+}
+
+void Texture3DResource::update(const UpdateArgs& args)
+{
+    if (autoUpdateMipmap)
+        native_->updateMipmap(true);
+}
+
+void Texture3DResource::readData(unsigned char*& data, bool allocate) const
+{
+    native_->readData(data, allocate);
+}
+
+void Texture3DResource::readData(unsigned int*& data, bool allocate) const
+{
+    native_->readData(data, allocate);
+}
+
+void Texture3DResource::readData(float*& data, bool allocate) const 
+{
+    native_->readData(data, allocate);
+}
+
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+
+UPtr<LayerResource> LayerResource::create
+(
+    Layer* layer
+)
+{
+    auto resource = UPtr<LayerResource>(new LayerResource());
+    if (resource->set(layer))
+        return resource;
+    return vir::nullUniquePtr<LayerResource>();
+}
+
+LayerResource::~LayerResource()
+{
+    if (native_ != nullptr)
+    {
+        if (textureUnit_ != -1)
+            unbind();
+        if (imageUnit_ != -1)
+            unbindImage();
+    }
+}
+
+bool LayerResource::set(Layer* layer)
+{
+    if (layer == nullptr || layer->rendering.resourceFramebuffer == nullptr)
+        return false;
+    layer_ = layer;
+    native_ = &layer->rendering.resourceFramebuffer;
+    return true;
+}
+
+bool LayerResource::insertInResources
+(
+    Layer* layer,
+    std::vector<UPtr<Resource>>& resources
+)
+{
+    for (int i=0; i<(int)resources.size(); i++)
+    {
+        auto& resource = resources[i];
+        if (!resource.valid())
+            continue;
+        if (resource->type() != Type::Framebuffer)
+            continue;
+        if (resource->name() == layer->name)
+            return false;
+    }
+    auto& resource = resources.emplace_back(LayerResource::create(layer));
+    resource->setName(&(layer->name));
+    return true;
+}
+
+bool LayerResource::removeFromResources
+(
+    const Layer& layer,
+    std::vector<UPtr<Resource>>& resources
+)
+{
+    for (int i=0; i<(int)resources.size(); i++)
+    {
+        auto& resource = resources[i];
+        if (!resource.valid())
+            continue;
+        if (resource->type() != Type::Framebuffer)
+            continue;
+        if (resource->name() == layer.name)
+        {
+            resources.erase(resources.begin()+i);
+            return true;
+        }
+    }
+    return false;
+}
 
 }

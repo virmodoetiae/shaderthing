@@ -97,7 +97,7 @@ public:
     bool                   isUsedByUniform(const Uniform *u) const;
 
     virtual void           save(ObjectIO& io) = 0;
-    virtual void           update(const UpdateArgs& args) = 0;
+    virtual void           update(const UpdateArgs& args) {};
     
     virtual void           bind(unsigned int unit) = 0;
     virtual void           bindImage
@@ -131,19 +131,21 @@ public:
 
 //----------------------------------------------------------------------------//
 
+// Base class for all resource classes wrapping a vir::NativeType type that 
+// manage/own the native type directly
 template <typename NativeType>
-class CRTPResource : public Resource
+class ManagedResource : public Resource
 {
 protected:
 
     UPtr<NativeType> native_;
 
-    CRTPResource(Type type) : Resource(type) {}
-    NO_COPY(CRTPResource)
+    ManagedResource(Type type) : Resource(type) {}
+    NO_COPY(ManagedResource)
 
 public:
 
-    virtual ~CRTPResource();
+    virtual ~ManagedResource();
 
     const NativeType* native() const {return native_.get();}
 
@@ -220,6 +222,10 @@ public:
     {
         return native_->isInternalFormatUnsigned();
     }
+    uint64_t maxMemoryFootprint() const override 
+    {
+        return native_->maxMemoryFootprint();
+    }
     void setWrapMode(int index, WrapMode mode) override 
     {
         native_->setWrapMode(index, mode);
@@ -240,13 +246,13 @@ public:
 
 //----------------------------------------------------------------------------//
 
-class Texture2DResource : public CRTPResource<vir::TextureBuffer2D>
+class Texture2DResource : public ManagedResource<vir::TextureBuffer2D>
 {
     const unsigned char*  rawData_     = nullptr;
     unsigned int          rawDataSize_ = 0;
     std::string           originalFileExtension_;
     
-    Texture2DResource() : CRTPResource<vir::TextureBuffer2D>(Type::Texture2D) {}
+    Texture2DResource() : ManagedResource(Type::Texture2D) {}
     NO_COPY(Texture2DResource)
 
 public:
@@ -271,38 +277,31 @@ public:
     virtual void save(ObjectIO& io) override;
     static UPtr<Texture2DResource> load(const ObjectIO& io);
     
-    const unsigned char* rawData() const {return rawData_;}
-    unsigned int rawDataSize() const {return rawDataSize_;}
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
     bool set(unsigned int width, unsigned int height, InternalFormat format);
     void update(const UpdateArgs& args) override;
+    
     void readData(unsigned char*& data, bool allocate=false) const;
     void readData(unsigned int*& data, bool allocate=false) const;
     void readData(float*& data, bool allocate=false) const;
-    bool hasRawData() const 
-    {
-        return rawData_ != nullptr;
-    }
-    uint64_t maxMemoryFootprint() const override 
-    {
-        return native_->maxMemoryFootprint();
-    }
+    const unsigned char* rawData() const {return rawData_;}
+    unsigned int rawDataSize() const {return rawDataSize_;}
+    bool hasRawData() const {return rawData_ != nullptr;}
 };
 
 //----------------------------------------------------------------------------//
 
 class AnimatedTexture2DResource : 
-    public CRTPResource<vir::AnimatedTextureBuffer2D>
+    public ManagedResource<vir::AnimatedTextureBuffer2D>
 {
-    const unsigned char*                 rawData_                     = nullptr;
-    unsigned int                         rawDataSize_                 = 0;
-    std::string                          originalFileExtension_       = ".gif";
+    const unsigned char*                 rawData_               = nullptr;
+    unsigned int                         rawDataSize_           = 0;
+    std::string                          originalFileExtension_ = ".gif";
     std::vector<WPtr<Texture2DResource>> unmanagedFrames_;
-    
     float                                cachedTime_ = 0.f;
     
-    AnimatedTexture2DResource() : CRTPResource(Type::AnimatedTexture2D) {}
+    AnimatedTexture2DResource() : ManagedResource(Type::AnimatedTexture2D) {}
     NO_COPY(AnimatedTexture2DResource)
 
 public:
@@ -335,23 +334,20 @@ public:
     bool set(const unsigned char* rawData, unsigned int size);
     bool set(const std::vector<WPtr<Texture2DResource>>& animationFrames);
     void update(const UpdateArgs& args) override;
+    
     unsigned int frameId() const 
     {
         return native_->frameId();
-    }
-    uint64_t maxMemoryFootprint() const override 
-    {
-        return native_->maxMemoryFootprint();
     }
 };
 
 //----------------------------------------------------------------------------//
 
-class CubemapResource : public CRTPResource<vir::CubeMapBuffer>
+class CubemapResource : public ManagedResource<vir::CubeMapBuffer>
 {
     std::array<WPtr<Texture2DResource>, 6> unmanagedFaces_;
     
-    CubemapResource() : CRTPResource(Type::Cubemap) {}
+    CubemapResource() : ManagedResource(Type::Cubemap) {}
     NO_COPY(CubemapResource)
     
 public:
@@ -371,11 +367,174 @@ public:
     );
     
     bool set(const std::array<WPtr<Texture2DResource>, 6>& faces);
-    void update(const UpdateArgs& args) override {}
+};
+
+//----------------------------------------------------------------------------//
+
+class Texture3DResource : public ManagedResource<vir::TextureBuffer3D>
+{
+    Texture3DResource() : ManagedResource(Type::Texture3D) {}
+    NO_COPY(Texture3DResource)
+
+public:
+
+    bool autoUpdateMipmap = false;
+
+    static UPtr<Texture3DResource> create
+    (
+        unsigned int width, 
+        unsigned int height, 
+        unsigned int depth,
+        InternalFormat internalFormat
+    );
+
+    ~Texture3DResource() {}
+
+    virtual void save(ObjectIO& io) override;
+    static UPtr<Texture3DResource> load(const ObjectIO& io);
+
+    bool set
+    (
+        unsigned int width, 
+        unsigned int height, 
+        unsigned int depth, 
+        InternalFormat internalFormat
+    );
+    void update(const UpdateArgs& args);
     
+    void readData(unsigned char*& data, bool allocate=false) const;
+    void readData(unsigned int*& data, bool allocate=false) const;
+    void readData(float*& data, bool allocate=false) const;
+    unsigned int depth() const override {return native_->depth();}
+};
+
+//----------------------------------------------------------------------------//
+
+class Layer;
+
+// A Layer resource is never managed/owned by a resource object
+// TODO leverage WPtr/UPtr for cleaner and safer implementation
+class LayerResource : public Resource
+{
+    Layer*             layer_  = nullptr;
+    vir::Framebuffer** native_ = nullptr;
+    LayerResource() : Resource(Type::Framebuffer) {isNameManaged_=false;}
+
+public:
+
+    static UPtr<LayerResource> create
+    (
+        Layer* layer
+    );
+
+    ~LayerResource();
+
+    static bool insertInResources
+    (
+        Layer* layer,
+        std::vector<UPtr<Resource>>& resources
+    );
+    static bool removeFromResources
+    (
+        const Layer& layer,
+        std::vector<UPtr<Resource>>& resources
+    );
+
+    virtual void save(ObjectIO& io) override {(void)io;}
+    
+    bool set(Layer* layer);
+    
+    void bind(unsigned int unit) override 
+    {
+        (*native_)->bindColorBuffer(unit); 
+        textureUnit_=unit;
+    }
+    void unbind() override 
+    {
+        (*native_)->unbindColorBuffer(); 
+        textureUnit_=-1;
+    };
+    void bindImage
+    (
+        unsigned int unit, 
+        unsigned int level, 
+        ImageBindMode mode
+    ) override 
+    {
+        (*native_)->bindColorBufferToImage(unit, level, mode); 
+        imageUnit_=unit;
+    }
+    void unbindImage() override 
+    {
+        (*native_)->unbindColorBufferFromImage(); 
+        imageUnit_=-1;
+    };
+    unsigned int id() const override 
+    {
+        return (*native_)->colorBufferId();
+    }
+    unsigned int width() const override 
+    {
+        return (*native_)->width();
+    }
+    unsigned int height() const override 
+    {
+        return (*native_)->height();
+    }
+    unsigned int nChannels() const override 
+    {
+        return (*native_)->colorBufferNChannels();
+    }
+    WrapMode wrapMode(int index) const override 
+    {
+        return (*native_)->colorBufferWrapMode(index);
+    }
+    FilterMode magFilterMode() const override 
+    {
+        return (*native_)->colorBufferMagFilterMode();
+    }
+    FilterMode   minFilterMode() const override 
+    {
+        return (*native_)->colorBufferMinFilterMode();
+    }
+    InternalFormat internalFormat() const override 
+    {
+        return (*native_)->colorBufferInternalFormat();
+    }
+    DataType     dataType() const override 
+    {
+        return (*native_)->colorBufferDataType();
+    }
+    std::string  internalFormatName() const override 
+    {
+        return vir::TextureBuffer::internalFormatToShortName.at
+        (
+            (*native_)->colorBufferInternalFormat()
+        );
+    }
     uint64_t maxMemoryFootprint() const override 
     {
-        return native_->maxMemoryFootprint();
+        return 0;
+    }
+    bool isInternalFormatUnsigned() const override 
+    {
+        return false;
+    }
+    void setWrapMode(int index, WrapMode mode) override 
+    {
+        (*native_)->setColorBufferWrapMode(index, mode);
+    }
+    void setMagFilterMode(FilterMode mode) override 
+    {
+        (*native_)->setColorBufferMagFilterMode(mode);
+    }
+    void setMinFilterMode(FilterMode mode) override 
+    {
+        (*native_)->setColorBufferMinFilterMode(mode);
+    }
+    void updateMipmap() override 
+    {
+        (*native_)->updateColorBufferMipmap(true);
     }
 };
 
