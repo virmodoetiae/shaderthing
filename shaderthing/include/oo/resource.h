@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <array>
 #include "vir/include/vir.h"
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/typedefs.h"
@@ -270,6 +271,8 @@ public:
     virtual void save(ObjectIO& io) override;
     static UPtr<Texture2DResource> load(const ObjectIO& io);
     
+    const unsigned char* rawData() const {return rawData_;}
+    unsigned int rawDataSize() const {return rawDataSize_;}
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
     bool set(unsigned int width, unsigned int height, InternalFormat format);
@@ -336,6 +339,40 @@ public:
     {
         return native_->frameId();
     }
+    uint64_t maxMemoryFootprint() const override 
+    {
+        return native_->maxMemoryFootprint();
+    }
+};
+
+//----------------------------------------------------------------------------//
+
+class CubemapResource : public CRTPResource<vir::CubeMapBuffer>
+{
+    std::array<WPtr<Texture2DResource>, 6> unmanagedFaces_;
+    
+    CubemapResource() : CRTPResource(Type::Cubemap) {}
+    NO_COPY(CubemapResource)
+    
+public:
+
+    ~CubemapResource() {}
+
+    static UPtr<CubemapResource> create
+    (
+        const std::array<WPtr<Texture2DResource>, 6>& faces
+    );
+
+    virtual void save(ObjectIO& io) override;
+    static UPtr<CubemapResource> load
+    (
+        const ObjectIO& io,
+        const std::vector<UPtr<Resource>>& resources
+    );
+    
+    bool set(const std::array<WPtr<Texture2DResource>, 6>& faces);
+    void update(const UpdateArgs& args) override {}
+    
     uint64_t maxMemoryFootprint() const override 
     {
         return native_->maxMemoryFootprint();

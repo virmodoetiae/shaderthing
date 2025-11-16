@@ -480,4 +480,107 @@ void AnimatedTexture2DResource::update(const UpdateArgs& args)
 
 //----------------------------------------------------------------------------//
 
+UPtr<CubemapResource> CubemapResource::create
+(
+    const std::array<WPtr<Texture2DResource>, 6>& faces
+)
+{
+    auto resource = UPtr<CubemapResource>(new CubemapResource());
+    if (resource->set(faces))
+        return resource;
+    return vir::nullUniquePtr<CubemapResource>();
+}
+
+bool CubemapResource::set
+(
+    const std::array<WPtr<Texture2DResource>, 6>& faces
+)
+{
+    const vir::TextureBuffer2D* nativeFaces[6];
+    for (int i=0; i<6; i++)
+    {
+        auto& face = faces[i];
+        if (!face.valid()) // At least one Texture2DResouce is invalidated, quit
+            return false; 
+        nativeFaces[i] = face->native();
+    }
+    if (!vir::CubeMapBuffer::validFaces(nativeFaces))
+        return false;
+    const unsigned char* nativeFaceData[6];
+    unsigned int size = faces[0]->rawDataSize();
+    for (int i=0; i<6; i++)
+    {
+        auto& face = faces[i];
+        nativeFaceData[i] = face->rawData();
+        if (face->rawDataSize() != size) // All faces must have the same size
+            return false;
+    }
+    
+    auto native = vir::CubeMapBuffer::create
+    (
+        nativeFaceData, 
+        size, 
+        vir::TextureBuffer::InternalFormat::RGBA_UNI_8
+    );
+    if (native == nullptr)
+        return false;
+    native_ = std::move(native);
+    for (int i=0; i<6; i++)
+        unmanagedFaces_[i] = faces[i];
+    return true;
+}
+
+void CubemapResource::save(ObjectIO& io)
+{
+    for (int i=0; i<6; i++)
+    {
+        if (!unmanagedFaces_[i].valid())
+            return;
+    }
+    io.writeObjectStart(namePtr_->c_str());
+    io.write("type", Resource::typeToName.at(type_));
+    io.write("magFilterMode", (int)magFilterMode());
+    io.write("minFilterMode", (int)minFilterMode());
+    std::vector<std::string> faceNames(6);
+    for (int i=0; i<6; i++)
+        faceNames[i] = unmanagedFaces_[i]->name();
+    io.write("faces", faceNames);
+    io.writeObjectEnd();
+}
+
+UPtr<CubemapResource> CubemapResource::load
+(
+    const ObjectIO& io,
+    const std::vector<UPtr<Resource>>& resources
+)
+{
+    auto resource = UPtr<CubemapResource>(new CubemapResource());
+    auto faceNames = io.read<std::vector<std::string>>("faces");
+    std::array<WPtr<Texture2DResource>, 6> referencedResources;
+    int i = 0;
+    for (auto& faceName : faceNames)
+    {
+        for (auto& r : resources)
+        {
+            if (!r.valid())
+                continue;
+            if 
+            (
+                r->name() == faceName && 
+                r->type() == Resource::Type::Texture2D
+            )
+                referencedResources[i] = r.getWeakAs<Texture2DResource>();
+        }
+        ++i;
+    }
+    resource->set(referencedResources);
+
+    resource->setName(io.name());
+    resource->setMagFilterMode((FilterMode)io.read<int>("magFilterMode"));
+    resource->setMinFilterMode((FilterMode)io.read<int>("minFilterMode"));
+    return resource;
+}
+
+//----------------------------------------------------------------------------//
+
 }
