@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "shaderthing-old/include/objectio.h"
+#include "shaderthing/include/oo/objectio.h"
 
 #include "thirdparty/rapidjson/include/rapidjson/document.h"
 #include "thirdparty/rapidjson/include/rapidjson/reader.h"

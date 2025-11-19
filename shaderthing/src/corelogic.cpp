@@ -918,11 +918,11 @@ std::string assembleFragmentShaderHeader
         appData.sharedStorage.shaderSource() +
         appData.sharedUniforms.fBuffer->shaderSource() +
         "\n";
-    /*
+    unsigned int nLines = 0;
     unsigned int imageBindingPoint = 0;
     auto writeResourceUniformsToHeader = []
     (
-        const std::vector<vir::UniquePtr<Uniform>>& uniforms, 
+        const UPtrVector<Uniform>& uniforms, 
         std::string& header,
         unsigned int& nLines,
         unsigned int& imageBindingPoint
@@ -954,7 +954,9 @@ std::string assembleFragmentShaderHeader
                     header += "uniform "+uniformTypeName+" "+u->name+";\n";
                     ++nLines;
                     // Also update name of linked resolution uniform
-                    u->updateResourceResolutionName();
+                    if (u->resourceResolutionUniform.valid())
+                        u->resourceResolutionUniform->name = u->name +
+                            "Resolution";
                     break;
                 }
                 case vir::Uniform::Type::Sampler2D :
@@ -971,7 +973,9 @@ std::string assembleFragmentShaderHeader
                     header += "uniform "+uniformTypeName+" "+u->name+";\n";
                     ++nLines;
                     // Also update name of linked resolution uniform
-                    u->updateResourceResolutionName();
+                    if (u->resourceResolutionUniform.valid())
+                        u->resourceResolutionUniform->name = u->name +
+                            "Resolution";
                     break;
                 }
                 default :
@@ -981,19 +985,18 @@ std::string assembleFragmentShaderHeader
     };
     writeResourceUniformsToHeader
     (
-        sharedUniforms.userUniforms(),
+        appData.sharedUniforms.userUniforms,
         header,
         nLines,
         imageBindingPoint
     );
     writeResourceUniformsToHeader
     (
-        uniforms_,
+        layer.uniforms,
         header,
         nLines,
         imageBindingPoint
     );
-    */
     header += layer.rendering.uniformBuffer->shaderSource();
     return header;
 }
@@ -1273,20 +1276,18 @@ void renderLayerShader
     // as the shared user-added uniforms
     rendering.shader->bind();
 
-    // TODO set sampler uniforms
-    /*
-    unsigned int textureUnit = 0; 
-    unsigned int imageUnit = 0; 
+    unsigned int textureUnit = 0;
+    unsigned int imageUnit = 0;
     auto setSamplerUniforms = []
     (
-        const std::vector<vir::UniquePtr<Uniform>>& uniforms,
-        Layer* layer, 
+        const UPtrVector<Uniform>& uniforms,
+        Layer& layer, 
         SharedUniforms& sharedUniforms,
         unsigned int& textureUnit,
         unsigned int& imageUnit
     )
     {
-        const auto& shader = layer->rendering.shader;
+        const auto& shader = layer.rendering.shader;
         for (auto& u : uniforms)
         {
             bool isSampler
@@ -1303,7 +1304,8 @@ void renderLayerShader
             );
             if 
             (
-                u->specialType != Uniform::SpecialType::None ||
+                // TODO Check what this first condition was for
+                // u->specialType != Uniform::SpecialType::None || 
                 u->name.size() == 0 || !(isSampler || isImage)
             )
                 continue;
@@ -1312,18 +1314,55 @@ void renderLayerShader
             auto resource = u->getValuePtr<Resource>();
             if (resource == nullptr)
                 continue;
+            
+            // Update resource resolution
             auto ubo = u->isSharedByUser ? 
-                sharedUniforms.uniformBuffer().get() : layer->uniformBuffer_.get();
-            u->updateResourceResolution(ubo);
+                sharedUniforms.fBuffer.get() : 
+                layer.rendering.uniformBuffer.get();
+            UPtr<Uniform>& rru =  u->resourceResolutionUniform;
+            if (!rru.valid())
+                continue; // TODO log or handle
+            if (rru->type() == Uniform::Type::Float2)
+            {
+                auto* value = rru->getValuePtr<glm::vec2>();
+                if 
+                (
+                    value->x != resource->width() || 
+                    value->y != resource->height()
+                )
+                {
+                    value->x = resource->width();
+                    value->y = resource->height();
+                    ubo->markUniformForSubmission(rru.get());
+                }
+            }
+            else if (rru->type() == Uniform::Type::Float3)
+            {
+                auto* value = rru->getValuePtr<glm::vec3>();
+                if 
+                (
+                    value->x != resource->width() || 
+                    value->y != resource->height() ||
+                    value->z != resource->depth()
+                )
+                {
+                    value->x = resource->width();
+                    value->y = resource->height();
+                    value->z = resource->depth();
+                    ubo->markUniformForSubmission(rru.get());
+                }
+            }
+            
             // When reading from your own framebuffer, you should always read
             // from the buffer to which you are NOT writing to (the back buffer
             // is the one that is always being written, so read from the front
             // one)
-            if (resource->name() == layer->gui_.name)
+            if (resource->name() == layer.name)
             {
                 vir::Framebuffer* sourceFramebuffer = 
-                    layer->rendering_.frontFramebuffer;
-                for (auto& postProcess : layer->rendering_.postProcesses)
+                    layer.rendering.frontFramebuffer;
+                // TODO Add back when postProcessing implemented
+                /* for (auto& postProcess : layer->rendering.postProcesses)
                 {
                     if 
                     (
@@ -1331,7 +1370,7 @@ void renderLayerShader
                         postProcess->outputFramebuffer() != nullptr
                     )
                         sourceFramebuffer = postProcess->outputFramebuffer();
-                }
+                }*/
                 if (isSampler)
                 {
                     sourceFramebuffer->bindColorBuffer(textureUnit);
@@ -1402,21 +1441,20 @@ void renderLayerShader
     };
     setSamplerUniforms
     (
-        sharedUniforms.userUniforms(), 
-        this, 
-        sharedUniforms, 
+        appData.sharedUniforms.userUniforms, 
+        layer, 
+        appData.sharedUniforms, 
         textureUnit, 
         imageUnit
     );
     setSamplerUniforms
     (
-        uniforms_, 
-        this, 
-        sharedUniforms, 
+        layer.uniforms, 
+        layer, 
+        appData.sharedUniforms, 
         textureUnit, 
         imageUnit
     );
-    */
     rendering.uniformBuffer->submitUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window

@@ -2,9 +2,11 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include "shaderthing/include/macros.h"
 #include "shaderthing/include/oo/deferredactionbuffer.h"
 #include "shaderthing/include/oo/filedialog.h"
+#include "shaderthing/include/oo/resource.h"
 #include "shaderthing/include/oo/sharedstorage.h"
 #include "shaderthing/include/oo/texteditor.h"
 #include "shaderthing/include/typedefs.h"
@@ -88,9 +90,22 @@ struct Uniform : vir::Uniform
 {
     typedef vir::Uniform::Type Type;
 
-    bool        isSharedByUser         = false;
-    bool        hasSharedByUserChanged = false;
-    bool        isLogarithmic          = false; // For floats only
+    bool          isSharedByUser         = false;
+    bool          hasSharedByUserChanged = false;
+    bool          isLogarithmic          = false; // For floats only
+
+    // If a uniform wraps a resource (which can consists of some form of
+    // texture 2D/3D texture buffer), it is very convenient to automatically
+    // add an additional automatically managed uniform that contains the value
+    // of the resolution (W x H or W x H x D) of the wrapped resource. This is
+    // what resourceResolutionUniform is for
+    UPtr<Uniform> resourceResolutionUniform;
+    
+    void deleteValue(bool deleteCache) override
+    {
+        vir::Uniform::deleteValue(deleteCache);
+        resourceResolutionUniform.reset();
+    }
 
     struct GUI
     {
@@ -158,7 +173,7 @@ struct SharedUniforms
     UPtr<Uniform> iKeyboardUniform;
     UPtr<Uniform> iMVPUniform;
     
-    UPtrVector<Uniform> userUniforms_;
+    UPtrVector<Uniform> userUniforms;
 
     // Fragment shader shared uniform buffer
     UPtr<vir::DynamicUniformBuffer> fBuffer;
@@ -344,6 +359,7 @@ struct AppData
     SharedUniforms       sharedUniforms;
     TextEditor           sharedSourceEditor;
     UPtrVector<Layer>    layers;
+    UPtrVector<Resource> resources;
 };
 
 //----------------------------------------------------------------------------//
