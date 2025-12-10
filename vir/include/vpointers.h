@@ -111,17 +111,21 @@ public:
 
 //----------------------------------------------------------------------------//
 
+class _EnableWeakFromThisBase 
+{
+template<typename T>
+friend class UniquePtr;
+protected:
+    std::weak_ptr<bool> valid_;
+    void setValid(const std::shared_ptr<bool>& valid) { valid_ = valid; }
+};
+
 // Base class to grant any UniquePtr-owned derived class the ability to obtain
 // a WeakPtr to the UniquePtr owner from within the derived class. Follows the
 // spirit of std::enable_shared_from_this. Currently not thread-safe
 template<typename T>
-class EnableWeakFromThis 
+class EnableWeakFromThis : public _EnableWeakFromThisBase 
 {
-friend class UniquePtr<T>; 
-private:
-    std::weak_ptr<bool> valid_;
-protected:
-    void setValid(const std::shared_ptr<bool>& valid) {valid_ = valid;}
 public:
     WeakPtr<T> weakFromThis() 
     {
@@ -132,6 +136,7 @@ public:
         return WeakPtr<T>(static_cast<T*>(this), valid_.lock());
     }
 };
+
 
 //----------------------------------------------------------------------------//
 
@@ -148,7 +153,7 @@ private:
     T* ptr_;
     std::shared_ptr<bool> valid_;
     static constexpr bool weakFromThisEnabled_ = 
-        std::is_base_of_v<EnableWeakFromThis<T>, T>;
+        std::is_base_of_v<_EnableWeakFromThisBase, T>;
 
 public:
 
