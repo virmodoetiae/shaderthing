@@ -84,6 +84,8 @@ public:
         bool doNotReinitializeIfImageOrSampler = false 
     );
 
+    void removeFromAllDynamicUniformBuffers();
+
     // Returns a naked pointer to the native uniform value
     const void* getNativeValue() const {return value_;}
 

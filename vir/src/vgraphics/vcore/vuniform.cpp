@@ -149,4 +149,14 @@ void Uniform::setType
     setType(type, doNotReinitializeIfImageOrSampler, valueArraySize_);
 }
 
+void Uniform::removeFromAllDynamicUniformBuffers()
+{
+    for (auto& dub : clientBuffers_)
+    {
+        if (!dub.valid())
+            continue;
+        dub->removeUniform(weakFromThis());
+    }
+}
+
 }
