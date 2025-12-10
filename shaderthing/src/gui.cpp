@@ -736,7 +736,7 @@ void renderMenuBar
 {
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
-    // bool shadersRequireRecompilation = false;
+    bool shadersRequireRecompilation = false;
     if (ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("Project"))
@@ -861,7 +861,7 @@ project exports)");
 
             for (auto& layer : appData.layers)
                 renderLayerMenu(*layer, appData);
-            /*
+            /* TODO
             ImGui::Separator();
             Layer::renderShaderLanguangeExtensionsMenuGui
             (
@@ -873,11 +873,10 @@ project exports)");
         }
         if (ImGui::BeginMenu("Resources"))
         {
-            /*
-            Resource::renderResourcesMenuItemGui(resources_, layers_);
-            shadersRequireRecompilation = 
-                Layer::Layer::Rendering::sharedStorage->renderMenuItemGui();
-            */
+            // TODO
+            // Resource::renderResourcesMenuItemGui(resources_, layers_);
+           shadersRequireRecompilation = 
+                appData.sharedStorage.renderMenuItemGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
@@ -887,7 +886,7 @@ project exports)");
         }
         if (ImGui::BeginMenu("Preferences"))
         {
-            /*
+            /* TODO
             font_.renderMenuItemGui();
             project_.renderAutoSaveMenuItemGui();
             */
@@ -895,7 +894,7 @@ project exports)");
         }
         if (ImGui::BeginMenu("Help"))
         {
-            /*
+            /* TODO
             CodeRepository::renderMenuItemGui();
             if (ImGui::BeginMenu("Examples"))
             {
@@ -932,12 +931,14 @@ project exports)");
         }
         ImGui::EndMenuBar();
     }
-    /*
-    if (Resource::isGuiDetachedFromMenu)
-        Resource::renderResourcesGui(resources_, layers_);
-    if (Layer::Layer::Rendering::sharedStorage->isGuiDetachedFromMenu())
+
+    // TODO
+    // if (Resource::isGuiDetachedFromMenu)
+    //    Resource::renderResourcesGui(resources_, layers_);
+    if (appData.sharedStorage.isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
-            Layer::Layer::Rendering::sharedStorage->renderGui();
+            appData.sharedStorage.renderGui();
+    /*
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
     
@@ -955,15 +956,15 @@ project exports)");
         else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
             setProjectAction(Project::Action::Save, project_, fileDialog_);
     }
+    */
 
     if (shadersRequireRecompilation)
     {
-        for (auto layer : layers_)
+        for (auto& layer : appData.layers)
         {
-            layer->compileShader(*sharedUniforms_);
+            compileShader(*layer, appData);
         }
     }
-    */
 
     if (newProjectConfirmation)
         ImGui::OpenPopup("New project confirmation");
