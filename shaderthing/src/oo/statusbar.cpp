@@ -59,9 +59,9 @@ void StatusBar::renderGui(bool withSeparator)
     if (withSeparator)
         ImGui::Separator();
     // TODO
-    // That '72' should actually be actually be adjusted based on the actual
-    // horziontal available space (measured in numbers of characters), 
-    // which can be somehow obtained via ImGui
+    // That '72' should actually be adjusted based on the actual horizontal
+    // available space (measured in numbers of characters), which can be 
+    // somehow obtained via ImGui
     snprintf(lBuffer, 72, message.text.c_str());
     auto imGuiCursor = ImGui::GetCursorScreenPos();
     ImGui::GetWindowDrawList()->AddText

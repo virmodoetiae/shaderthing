@@ -555,7 +555,7 @@ public :
 
 //----------------------------------------------------------------------------//
 
-class DynamicUniformBuffer
+class DynamicUniformBuffer : public EnableWeakFromThis<DynamicUniformBuffer>
 {
 protected :
 
@@ -589,7 +589,11 @@ protected :
     std::unordered_map<const Uniform*, UniformWrapper*> 
         uniformWrappersMap_ = {};
     unsigned char* rawBuffer_ = nullptr;
+
     DynamicUniformBuffer(uint32_t maxSize, const std::string& name);
+
+    uint32_t sizeOf(const Uniform* uniform) const;
+
     virtual uint32_t typeSizeOf(const Uniform* uniform) const = 0;
     virtual uint32_t arrayElementSizeOf(const Uniform* uniform) const = 0;
     virtual uint32_t alignmentOf(const Uniform* uniform) const = 0;
@@ -599,7 +603,7 @@ protected :
         uint32_t size,
         uint32_t offset = 0
     ) = 0;
-    uint32_t sizeOf(const Uniform* uniform) const;
+    
     bool markUniformForSubmission
     (
         const Uniform* uniform,
@@ -618,21 +622,35 @@ protected :
         uint32_t arrayIndexStart,
         uint32_t arrayIndexEnd
     );
+
 public :
+
     virtual ~DynamicUniformBuffer();
-    static UniquePtr<DynamicUniformBuffer> create(uint32_t size, const std::string& name);
+
+    static UniquePtr<DynamicUniformBuffer> create
+    (
+        uint32_t size, 
+        const std::string& name
+    );
+    
     uint32_t id() const {return id_;}
     const std::string& name() const {return name_;}
+    
     bool addUniform(WeakPtr<Uniform> uniform);
     bool addUniform(const UniquePtr<Uniform>& uniform) 
     {
-        addUniform(uniform.getWeak());
+        return addUniform(uniform.getWeak());
     };
     bool addUniform(UniquePtr<Uniform>&& uniform) 
     {
-        addUniform(uniform.getWeak());
+        return addUniform(uniform.getWeak());
     };
-    bool removeUniform(const Uniform* uniform);
+    bool removeUniform(WeakPtr<Uniform> uniform);
+    bool removeUniform(const UniquePtr<Uniform>& uniform)
+    {
+        return removeUniform(uniform.getWeak());
+    }
+    
     // To be called if the type of a uniform in this wrapper has changed
     void recalculateUniformSizesAndOffsets();
     // Marks a uniform for submission to the GPU on the next invokation of 
@@ -677,6 +695,7 @@ public :
     // block will be submitted regardless of whether they have been marked for
     // submission or not
     void submitUniforms(bool forceSubmitAllUniforms=false);
+    
     virtual void bind() = 0;
     virtual void unbind() = 0;
     virtual void setBindingPoint(uint32_t) = 0;

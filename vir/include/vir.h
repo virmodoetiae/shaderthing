@@ -35,5 +35,6 @@
 #include "vhelpers.h"
 #include "vinitialization.h"
 #include "vimgui/vimguirenderer.h"
+#include "vmacros.h"
 
 #endif

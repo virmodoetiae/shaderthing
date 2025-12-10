@@ -17,7 +17,6 @@
 
 #include <array>
 #include "vir/include/vir.h"
-#include "shaderthing/include/macros.h"
 #include "shaderthing/include/typedefs.h"
 
 namespace ShaderThing
@@ -70,7 +69,7 @@ protected:
     std::vector<Uniform*> clientUniforms_ = {};
     
     Resource(Type type) : type_(type) {};
-    NO_COPY(Resource)
+    DELETE_COPY(Resource)
 
 public:
     
@@ -141,7 +140,7 @@ protected:
     UPtr<NativeType> native_;
 
     ManagedResource(Type type) : Resource(type) {}
-    NO_COPY(ManagedResource)
+    DELETE_COPY(ManagedResource)
 
 public:
 
@@ -253,7 +252,7 @@ class Texture2DResource : public ManagedResource<vir::TextureBuffer2D>
     std::string           originalFileExtension_;
     
     Texture2DResource() : ManagedResource(Type::Texture2D) {}
-    NO_COPY(Texture2DResource)
+    DELETE_COPY(Texture2DResource)
 
 public:
 
@@ -302,7 +301,7 @@ class AnimatedTexture2DResource :
     float                                cachedTime_ = 0.f;
     
     AnimatedTexture2DResource() : ManagedResource(Type::AnimatedTexture2D) {}
-    NO_COPY(AnimatedTexture2DResource)
+    DELETE_COPY(AnimatedTexture2DResource)
 
 public:
 
@@ -348,7 +347,7 @@ class CubemapResource : public ManagedResource<vir::CubeMapBuffer>
     std::array<WPtr<Texture2DResource>, 6> unmanagedFaces_;
     
     CubemapResource() : ManagedResource(Type::Cubemap) {}
-    NO_COPY(CubemapResource)
+    DELETE_COPY(CubemapResource)
     
 public:
 
@@ -374,7 +373,7 @@ public:
 class Texture3DResource : public ManagedResource<vir::TextureBuffer3D>
 {
     Texture3DResource() : ManagedResource(Type::Texture3D) {}
-    NO_COPY(Texture3DResource)
+    DELETE_COPY(Texture3DResource)
 
 public:
 

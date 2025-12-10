@@ -1079,8 +1079,23 @@ DynamicUniformBuffer::~DynamicUniformBuffer()
 {
     if (rawBuffer_ != nullptr)
         delete[] rawBuffer_;
+    // Also remove this dynamic uniform buffers from the clientBuffers_
+    // array of all uniforms registered with this buffer
+    auto weakThis = weakFromThis();
     for (unsigned int i=0; i<uniformWrappers_.size(); i++)
     {
+        auto u = uniformWrappers_[i]->uniform;
+        if (u.valid())
+        {
+            auto it = std::find_if
+            (
+                u->clientBuffers_.begin(),
+                u->clientBuffers_.end(),
+                [&weakThis](auto& dub){return dub == weakThis;}
+            );
+            if (it != u->clientBuffers_.end())
+                u->clientBuffers_.erase(it);
+        }
         delete uniformWrappers_[i];
     }
     uniformWrappers_.resize(0);
@@ -1126,18 +1141,26 @@ bool DynamicUniformBuffer::addUniform(WeakPtr<Uniform> uniform)
     uniformWrappers_.emplace_back(uw);
     uniformWrappersMap_.insert({uniform.get(), uw});
     recalculateUniformSizesAndOffsets();
+    // Add this dynamic buffer to uniform's clientBuffers_. No need to check
+    // for its existence in uw->uniform->clientBuffers_ beforehand because
+    // a uniform cannot be added to the same buffer twice as it is prevented by
+    // the first check over uniformWrappersMap_
+    uw->uniform->clientBuffers_.emplace_back(weakFromThis());
     return true;
 }
 
-bool DynamicUniformBuffer::removeUniform(const Uniform* uniform)
+bool DynamicUniformBuffer::removeUniform(WeakPtr<Uniform> uniform)
 {
     auto it = std::find_if
     (
         uniformWrappers_.begin(),
         uniformWrappers_.end(),
-        [&uniform](const auto& uw){return uw->uniform==uniform;}
+        [&uniform](const DynamicUniformBuffer::UniformWrapper* uw)
+        {
+            return uw->uniform==uniform;
+        }
     );
-    if (it == uniformWrappers_.end())
+    if (it == uniformWrappers_.end()) // Not found
         return false;
     auto uw = *it;
     if (uw->markedForSubmission)
@@ -1148,8 +1171,22 @@ bool DynamicUniformBuffer::removeUniform(const Uniform* uniform)
         uw->previous->next = uw->next;
     delete uw;
     uniformWrappers_.erase(it);
-    uniformWrappersMap_.erase(uniform);
+    uniformWrappersMap_.erase(uniform.get());
     recalculateUniformSizesAndOffsets();
+    if (!uniform.valid())
+        return true;
+    auto thisWeakPtr = weakFromThis();
+    auto itb = std::find_if
+    (
+        uniform->clientBuffers_.begin(), 
+        uniform->clientBuffers_.end(), 
+        [&thisWeakPtr](const WeakPtr<DynamicUniformBuffer>& dub)
+        {
+            return thisWeakPtr == dub;
+        }
+    );
+    if (itb != uniform->clientBuffers_.end()) // Found
+        uniform->clientBuffers_.erase(itb);
     return true;
 }
 
@@ -1473,7 +1510,7 @@ void DynamicUniformBuffer::submitUniforms(bool forceSubmitAllUniforms)
             auto* uw = uniformWrappers_[i];
             if (uw->markedForDeletion)
             {
-                removeUniform(uw->uniform.get());
+                removeUniform(uw->uniform);
                 i--;
             }
         }
@@ -1494,7 +1531,7 @@ bool DynamicUniformBuffer::submitArrayUniformRangeNoCheck
         return false;
     if (!uw->uniform.valid())
     {
-        removeUniform(uw->uniform.get());
+        removeUniform(uw->uniform);
         return false;
     }
     const unsigned char* src;
@@ -1548,7 +1585,7 @@ bool DynamicUniformBuffer::submitUniform
     auto* uw = it->second;
     if (!uw->uniform.valid())
     {
-        removeUniform(uw->uniform.get());
+        removeUniform(uw->uniform);
         return false;
     }
     if (uw->uniform->isValueArray())

@@ -17,8 +17,8 @@
 
 #include <string>
 #include <type_traits>
-#include "shaderthing/include/macros.h"
 #include "shaderthing/include/typedefs.h"
+#include "vir/include/vmacros.h"
 #include "thirdparty/glm/glm.hpp"
 
 namespace vir
@@ -290,6 +290,7 @@ class SharedStorage
 public:
     
     SharedStorage();
+    DELETE_COPY_MOVE(SharedStorage);
     ~SharedStorage();
     
     void resetBlockAndSSBO

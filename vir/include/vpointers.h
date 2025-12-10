@@ -123,6 +123,10 @@ private:
 protected:
     void setValid(const std::shared_ptr<bool>& valid) {valid_ = valid;}
 public:
+    WeakPtr<T> weakFromThis() 
+    {
+        return WeakPtr<T>(static_cast<T*>(this), valid_.lock());
+    }
     WeakPtr<T> weakFromThis() const
     {
         return WeakPtr<T>(static_cast<T*>(this), valid_.lock());

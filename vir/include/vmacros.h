@@ -1,6 +1,10 @@
 #ifndef V_MACROS_H
 #define V_MACROS_H
 
+#define DELETE_COPY(class)                                                  \
+    class(const class&)=delete;                                             \
+    class& operator=(const class&)=delete;
+
 #define DELETE_COPY_MOVE(class)                                             \
     class(const class&)=delete;                                             \
     class& operator=(const class&)=delete;                                  \
