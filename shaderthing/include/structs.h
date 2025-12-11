@@ -8,6 +8,7 @@
 #include "shaderthing/include/oo/resource.h"
 #include "shaderthing/include/oo/sharedstorage.h"
 #include "shaderthing/include/oo/texteditor.h"
+#include "shaderthing/include/oo/uniform.h"
 #include "shaderthing/include/typedefs.h"
 #include "vir/include/vmacros.h"
 #include "vir/include/vgraphics/vcore/vuniform.h"
