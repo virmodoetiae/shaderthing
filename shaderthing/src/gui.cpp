@@ -3,6 +3,7 @@
 #include "shaderthing/include/gui.h"
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/oo/texteditor.h"
+#include "shaderthing/include/oo/uniform.h"
 #include "shaderthing/include/structs.h"
 #include "vir/include/vir.h"
 #include "thirdparty/imgui/imgui.h"
@@ -12,6 +13,8 @@
 
 namespace ShaderThing
 {
+
+typedef Uniform::Type Type;
 
 namespace GUI
 {
@@ -54,6 +57,271 @@ void renderControlPanel
     ImGui::End();
     
     vir::ImGuiRenderer::render();
+}
+
+//----------------------------------------------------------------------------//
+
+void renderMenuBar
+(
+    AppData& appData
+)
+{
+    bool windowIconified = vir::Window::instance()->iconified();
+    bool newProjectConfirmation = false;
+    bool shadersRequireRecompilation = false;
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Project"))
+        {
+            if (ImGui::MenuItem("New", "Ctrl+N", nullptr, !windowIconified))
+                newProjectConfirmation = true;
+            if (ImGui::MenuItem("Load", "Ctrl+O", nullptr, !windowIconified))
+                {}//setProjectAction(Project::Action::Load, project_, fileDialog_);
+            if (ImGui::MenuItem("Save", "Ctrl+S"))
+                {}//setProjectAction(Project::Action::Save, project_, fileDialog_);
+            if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
+                {}//setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
+            ImGui::Separator();
+            if (ImGui::BeginMenu("Export"))
+            {
+                //exporter_->renderGui(*sharedUniforms_, layers_);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Properties"))
+        {
+            if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
+            {
+                auto& su = appData.sharedUniforms;
+                ImGui::Text("Resolution         ");
+                ImGui::SameLine();
+                ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
+                glm::ivec2 resolution(su.iResolution);
+                if 
+                (
+                    ImGui::InputInt2
+                    (
+                        "##windowResolution", 
+                        glm::value_ptr(resolution)
+                    )
+                )
+                    setWindowResolution
+                    (
+                        appData,
+                        resolution,
+                        false
+                    );
+                ImGui::PopItemWidth();
+                /*
+                auto window = vir::Window::instance();
+                ImGui::Text("VSync              ");
+                ImGui::SameLine();
+                if (ImGui::Checkbox("##windowVSync", &windowSettings_.isVSyncEnabled))
+                    window->setVSync(windowSettings_.isVSyncEnabled);
+
+                ImGui::Text("GUI fps multiplier ");
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text(
+R"(Frame rate multiplier of the graphical user interface (GUI). By default, the 
+GUI frame rate is tied to the shader rendering frame rate in the main window. 
+When rendering computationally intensive shaders, the GUI frame rate is affected
+as well, resulting in a worsened user experience. Set this multiplier to values
+larger than one to recover the GUI frame rate, at the expense, however, of a
+further reduction of the shader rendering frame rate)");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGui::PushItemWidth(8.f*ImGui::GetFontSize());
+                int nLayer::RenderingTiles = Layer::Layer::Rendering::TileController::nTiles;
+                if (sharedUniforms_->isLayer::RenderingPaused())
+                    ImGui::BeginDisabled();
+                if (ImGui::InputInt("##nLayer::RenderingTiles", &nLayer::RenderingTiles))
+                {
+                    nLayer::RenderingTiles = std::max(nLayer::RenderingTiles, 1);
+                    Layer::setLayer::RenderingTiles(layers_, nLayer::RenderingTiles);
+                }
+                if (sharedUniforms_->isLayer::RenderingPaused())
+                    ImGui::EndDisabled();
+                
+                ImGui::Text("Pause render below ");
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text(
+R"(Frame rate of the graphical user interface (GUI) below which shader rendering
+is paused, to prevent e.g., making the app unresponsive should the shader(s) be 
+accidentally made too computationally intensive. This feature is disabled during 
+project exports)");
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGui::PushItemWidth(5.0*ImGui::GetFontSize());
+                if 
+                (
+                    ImGui::InputFloat
+                    (
+                        "##maxLowFps", 
+                        &windowSettings_.lowerFpsLimit, 
+                        0.f, 
+                        0.f, 
+                        "%.1f"
+                    )
+                )
+                    windowSettings_.lowerFpsLimit = 
+                        std::max(windowSettings_.lowerFpsLimit, 0.f);
+                ImGui::SameLine();
+                ImGui::PopItemWidth();
+                ImGui::Text("fps");
+
+                if 
+                (
+                    ImGui::Button
+                    (
+                        !sharedUniforms_->isLayer::RenderingPaused() ? 
+                        "Pause rendering" : "Resume rendering", 
+                        ImVec2(-1, 0)
+                    )
+                )
+                    sharedUniforms_->toggleLayer::RenderingPaused();
+
+                if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
+                    sharedUniforms_->setMouseCaptured(true);
+                */
+                ImGui::EndMenu();
+            }
+
+            for (auto& layer : appData.layers)
+                renderLayerMenu(*layer, appData);
+            /* TODO
+            ImGui::Separator();
+            Layer::renderShaderLanguangeExtensionsMenuGui
+            (
+                layers_, 
+                *sharedUniforms_
+            );
+            */
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Resources"))
+        {
+            // TODO
+            // Resource::renderResourcesMenuItemGui(resources_, layers_);
+           shadersRequireRecompilation = 
+                appData.sharedStorage.renderMenuItemGui();
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Find"))
+        {
+            TextEditor::renderFindReplaceToolMenuGui();
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Preferences"))
+        {
+            /* TODO
+            font_.renderMenuItemGui();
+            project_.renderAutoSaveMenuItemGui();
+            */
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Help"))
+        {
+            /* TODO
+            CodeRepository::renderMenuItemGui();
+            if (ImGui::BeginMenu("Examples"))
+            {
+                Examples::renderGui(project_.exampleToBeLoaded);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("About ShaderThing"))
+            {
+                About::renderGui();
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("System info"))
+            {
+                ImGui::Text("%s", "Graphics card in use:");
+                ImGui::SameLine();
+                ImGui::Text
+                (
+                    "%s", 
+                    vir::Layer::Rendering::instance()->
+                    deviceName().c_str()
+                );
+                ImGui::Text("%s", "Graphics context:    ");
+                ImGui::SameLine();
+                ImGui::Text
+                (
+                    "%s", 
+                    vir::Window::instance()->
+                    context()->name().c_str()
+                );
+                ImGui::EndMenu();
+            }
+            */
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    // TODO
+    // if (Resource::isGuiDetachedFromMenu)
+    //    Resource::renderResourcesGui(resources_, layers_);
+    if (appData.sharedStorage.isGuiDetachedFromMenu())
+        shadersRequireRecompilation = 
+            appData.sharedStorage.renderGui();
+    /*
+    if (CodeRepository::isDetachedFromMenu)
+        CodeRepository::renderGui();
+    
+    if (project_.exampleToBeLoaded != nullptr)
+        project_.action = Project::Action::LoadExample;
+
+    if (project_.action == Project::Action::None)
+    {
+        if (Helpers::isCtrlKeyPressed(ImGuiKey_N) && !windowIconified)
+            newProjectConfirmation = true;
+        else if (Helpers::isCtrlKeyPressed(ImGuiKey_O) && !windowIconified)
+            setProjectAction(Project::Action::Load, project_, fileDialog_);
+        else if (Helpers::isCtrlShiftKeyPressed(ImGuiKey_S))
+            setProjectAction(Project::Action::SaveAs, project_, fileDialog_);
+        else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
+            setProjectAction(Project::Action::Save, project_, fileDialog_);
+    }
+    */
+
+    if (shadersRequireRecompilation)
+    {
+        for (auto& layer : appData.layers)
+        {
+            compileShader(*layer, appData);
+        }
+    }
+
+    if (newProjectConfirmation)
+        ImGui::OpenPopup("New project confirmation");
+    if 
+    (
+        ImGui::BeginPopupModal
+        (
+            "New project confirmation", 
+            nullptr, 
+            ImGuiWindowFlags_NoResize
+        )
+    )
+    {
+        ImGui::Text("Are you sure you want to start a new project?");
+        ImGui::Text("Any unsaved edits to the current project will be lost!");
+        if (ImGui::Button("Confirm"))
+        {
+            //setProjectAction(Project::Action::New, project_, fileDialog_);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -520,7 +788,7 @@ void renderLayersTabBar
                 )
             )
             {
-                renderLayerTabBar(*layer, appData);
+                renderLayerTab(*layer, appData);
                 ImGui::EndTabItem();
             }
             if (!open) // I.e., if 'x' is pressed to delete the tab
@@ -623,7 +891,7 @@ void renderLayersTabBar
 
 //----------------------------------------------------------------------------//
 
-void renderLayerTabBar
+void renderLayerTab
 (
     Layer& layer,
     AppData& appData
@@ -710,6 +978,11 @@ void renderLayerTabBar
         if (ImGui::BeginTabItem("Uniforms"))
         {
             ImGui::Text("Uniforms!");
+            /*renderUniformsTab
+            (
+                layer,
+                appData
+            );*/
             /*
             Uniform::renderUniformsGui
             (
@@ -727,271 +1000,8 @@ void renderLayerTabBar
     }
 }
 
-//----------------------------------------------------------------------------//
 
-void renderMenuBar
-(
-    AppData& appData
-)
-{
-    bool windowIconified = vir::Window::instance()->iconified();
-    bool newProjectConfirmation = false;
-    bool shadersRequireRecompilation = false;
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGui::BeginMenu("Project"))
-        {
-            if (ImGui::MenuItem("New", "Ctrl+N", nullptr, !windowIconified))
-                newProjectConfirmation = true;
-            if (ImGui::MenuItem("Load", "Ctrl+O", nullptr, !windowIconified))
-                {}//setProjectAction(Project::Action::Load, project_, fileDialog_);
-            if (ImGui::MenuItem("Save", "Ctrl+S"))
-                {}//setProjectAction(Project::Action::Save, project_, fileDialog_);
-            if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
-                {}//setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
-            ImGui::Separator();
-            if (ImGui::BeginMenu("Export"))
-            {
-                //exporter_->renderGui(*sharedUniforms_, layers_);
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Properties"))
-        {
-            if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
-            {
-                auto& su = appData.sharedUniforms;
-                ImGui::Text("Resolution         ");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
-                glm::ivec2 resolution(su.iResolution);
-                if 
-                (
-                    ImGui::InputInt2
-                    (
-                        "##windowResolution", 
-                        glm::value_ptr(resolution)
-                    )
-                )
-                    setWindowResolution
-                    (
-                        appData,
-                        resolution,
-                        false
-                    );
-                ImGui::PopItemWidth();
-                /*
-                auto window = vir::Window::instance();
-                ImGui::Text("VSync              ");
-                ImGui::SameLine();
-                if (ImGui::Checkbox("##windowVSync", &windowSettings_.isVSyncEnabled))
-                    window->setVSync(windowSettings_.isVSyncEnabled);
 
-                ImGui::Text("GUI fps multiplier ");
-                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-                {
-                    ImGui::Text(
-R"(Frame rate multiplier of the graphical user interface (GUI). By default, the 
-GUI frame rate is tied to the shader rendering frame rate in the main window. 
-When rendering computationally intensive shaders, the GUI frame rate is affected
-as well, resulting in a worsened user experience. Set this multiplier to values
-larger than one to recover the GUI frame rate, at the expense, however, of a
-further reduction of the shader rendering frame rate)");
-                    ImGui::EndTooltip();
-                }
-                ImGui::SameLine();
-                ImGui::PushItemWidth(8.f*ImGui::GetFontSize());
-                int nLayer::RenderingTiles = Layer::Layer::Rendering::TileController::nTiles;
-                if (sharedUniforms_->isLayer::RenderingPaused())
-                    ImGui::BeginDisabled();
-                if (ImGui::InputInt("##nLayer::RenderingTiles", &nLayer::RenderingTiles))
-                {
-                    nLayer::RenderingTiles = std::max(nLayer::RenderingTiles, 1);
-                    Layer::setLayer::RenderingTiles(layers_, nLayer::RenderingTiles);
-                }
-                if (sharedUniforms_->isLayer::RenderingPaused())
-                    ImGui::EndDisabled();
-                
-                ImGui::Text("Pause render below ");
-                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-                {
-                    ImGui::Text(
-R"(Frame rate of the graphical user interface (GUI) below which shader rendering
-is paused, to prevent e.g., making the app unresponsive should the shader(s) be 
-accidentally made too computationally intensive. This feature is disabled during 
-project exports)");
-                    ImGui::EndTooltip();
-                }
-                ImGui::SameLine();
-                ImGui::PushItemWidth(5.0*ImGui::GetFontSize());
-                if 
-                (
-                    ImGui::InputFloat
-                    (
-                        "##maxLowFps", 
-                        &windowSettings_.lowerFpsLimit, 
-                        0.f, 
-                        0.f, 
-                        "%.1f"
-                    )
-                )
-                    windowSettings_.lowerFpsLimit = 
-                        std::max(windowSettings_.lowerFpsLimit, 0.f);
-                ImGui::SameLine();
-                ImGui::PopItemWidth();
-                ImGui::Text("fps");
+} // End of GUI namespace
 
-                if 
-                (
-                    ImGui::Button
-                    (
-                        !sharedUniforms_->isLayer::RenderingPaused() ? 
-                        "Pause rendering" : "Resume rendering", 
-                        ImVec2(-1, 0)
-                    )
-                )
-                    sharedUniforms_->toggleLayer::RenderingPaused();
-
-                if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
-                    sharedUniforms_->setMouseCaptured(true);
-                */
-                ImGui::EndMenu();
-            }
-
-            for (auto& layer : appData.layers)
-                renderLayerMenu(*layer, appData);
-            /* TODO
-            ImGui::Separator();
-            Layer::renderShaderLanguangeExtensionsMenuGui
-            (
-                layers_, 
-                *sharedUniforms_
-            );
-            */
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Resources"))
-        {
-            // TODO
-            // Resource::renderResourcesMenuItemGui(resources_, layers_);
-           shadersRequireRecompilation = 
-                appData.sharedStorage.renderMenuItemGui();
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Find"))
-        {
-            TextEditor::renderFindReplaceToolMenuGui();
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Preferences"))
-        {
-            /* TODO
-            font_.renderMenuItemGui();
-            project_.renderAutoSaveMenuItemGui();
-            */
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Help"))
-        {
-            /* TODO
-            CodeRepository::renderMenuItemGui();
-            if (ImGui::BeginMenu("Examples"))
-            {
-                Examples::renderGui(project_.exampleToBeLoaded);
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("About ShaderThing"))
-            {
-                About::renderGui();
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("System info"))
-            {
-                ImGui::Text("%s", "Graphics card in use:");
-                ImGui::SameLine();
-                ImGui::Text
-                (
-                    "%s", 
-                    vir::Layer::Rendering::instance()->
-                    deviceName().c_str()
-                );
-                ImGui::Text("%s", "Graphics context:    ");
-                ImGui::SameLine();
-                ImGui::Text
-                (
-                    "%s", 
-                    vir::Window::instance()->
-                    context()->name().c_str()
-                );
-                ImGui::EndMenu();
-            }
-            */
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-
-    // TODO
-    // if (Resource::isGuiDetachedFromMenu)
-    //    Resource::renderResourcesGui(resources_, layers_);
-    if (appData.sharedStorage.isGuiDetachedFromMenu())
-        shadersRequireRecompilation = 
-            appData.sharedStorage.renderGui();
-    /*
-    if (CodeRepository::isDetachedFromMenu)
-        CodeRepository::renderGui();
-    
-    if (project_.exampleToBeLoaded != nullptr)
-        project_.action = Project::Action::LoadExample;
-
-    if (project_.action == Project::Action::None)
-    {
-        if (Helpers::isCtrlKeyPressed(ImGuiKey_N) && !windowIconified)
-            newProjectConfirmation = true;
-        else if (Helpers::isCtrlKeyPressed(ImGuiKey_O) && !windowIconified)
-            setProjectAction(Project::Action::Load, project_, fileDialog_);
-        else if (Helpers::isCtrlShiftKeyPressed(ImGuiKey_S))
-            setProjectAction(Project::Action::SaveAs, project_, fileDialog_);
-        else if (Helpers::isCtrlKeyPressed(ImGuiKey_S))
-            setProjectAction(Project::Action::Save, project_, fileDialog_);
-    }
-    */
-
-    if (shadersRequireRecompilation)
-    {
-        for (auto& layer : appData.layers)
-        {
-            compileShader(*layer, appData);
-        }
-    }
-
-    if (newProjectConfirmation)
-        ImGui::OpenPopup("New project confirmation");
-    if 
-    (
-        ImGui::BeginPopupModal
-        (
-            "New project confirmation", 
-            nullptr, 
-            ImGuiWindowFlags_NoResize
-        )
-    )
-    {
-        ImGui::Text("Are you sure you want to start a new project?");
-        ImGui::Text("Any unsaved edits to the current project will be lost!");
-        if (ImGui::Button("Confirm"))
-        {
-            //setProjectAction(Project::Action::New, project_, fileDialog_);
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel"))
-            ImGui::CloseCurrentPopup();
-        ImGui::EndPopup();
-    }
-}
-
-}
-
-}
+} // End of ShaderThing namespace
