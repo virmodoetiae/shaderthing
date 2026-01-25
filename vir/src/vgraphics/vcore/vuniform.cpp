@@ -10,6 +10,11 @@ UniquePtr<Uniform> Uniform::create()
     return UniquePtr<Uniform>(new Uniform());
 }
 
+Uniform::Uniform()
+{
+    setType(type_);
+}
+
 Uniform::~Uniform()
 {
     deleteValue();
@@ -149,12 +154,32 @@ void Uniform::setType
     setType(type, doNotReinitializeIfImageOrSampler, valueArraySize_);
 }
 
-void Uniform::removeFromAllDynamicUniformBuffers()
+void Uniform::submitToAllClientBuffers()
 {
     for (auto& dub : clientBuffers_)
     {
         if (!dub.valid())
-            continue;
+            continue; // TODO: handle in a more meaningful way
+        dub->submitUniform(weakFromThis().get());
+    }
+}
+
+void Uniform::markForSubmissionToAllClientBuffers()
+{
+    for (auto& dub : clientBuffers_)
+    {
+        if (!dub.valid())
+            continue; // TODO: handle in a more meaningful way
+        dub->markUniformForSubmission(weakFromThis().get());
+    }
+}
+
+void Uniform::removeFromAllClientBuffers()
+{
+    for (auto& dub : clientBuffers_)
+    {
+        if (!dub.valid())
+            continue; // TODO: handle in a more meaningful way
         dub->removeUniform(weakFromThis());
     }
 }

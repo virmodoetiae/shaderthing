@@ -56,9 +56,9 @@ private:
 
 protected:
     
-    // Default protected ctor: objects are meant to be initialized via 
-    // the ::create() method
-    Uniform() = default;
+    // Protected ctor: objects are meant to be initialized via the ::create()
+    // method
+    Uniform();
     virtual void deleteValue(bool deleteCache=true);
 
 public:
@@ -84,7 +84,19 @@ public:
         bool doNotReinitializeIfImageOrSampler = false 
     );
 
-    void removeFromAllDynamicUniformBuffers();
+    // Submits this uniform to all dynamic uniform buffers with which
+    // it was registered
+    void submitToAllClientBuffers();
+
+    // Marks this uniform for submission to all dynamic uniform buffers
+    // witch which it was registered. This does not actually submit the
+    // uniform, which will have to be done on a per-buffer-basis via
+    // DynamicUniformBuffer::submitUniforms()
+    void markForSubmissionToAllClientBuffers();
+
+    // Unregisters this uniform from all dynamic uniform buffers with
+    // which it was registered
+    void removeFromAllClientBuffers();
 
     // Returns a naked pointer to the native uniform value
     const void* getNativeValue() const {return value_;}

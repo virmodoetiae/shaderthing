@@ -23,7 +23,7 @@ void renderMenuBar
 
 void renderLayerMenu
 (
-    Layer& layer, 
+    UPtr<Layer>& layer, 
     AppData& appData
 );
 
@@ -34,35 +34,42 @@ void renderLayersTabBar
 
 void renderLayerTab
 (
-    Layer& layer, 
+    UPtr<Layer>& layer, 
     AppData& appData
 );
 
-/*
 void renderUniformsTab
 (
-    Layer& layer, 
+    UPtr<Layer>& layer, 
     AppData& appData
-);
-*/
-
-/*
-// Render the button for editing uniform bounds, returns a flag indicating 
-// whether the bounds have been changed during this frame
-bool renderEditUniformBoundsButton
-(
-    Uniform& uniform,
-    bool renderDragStepSlider = false,
-    bool renderLogarithmicZeroSlider = false
 );
 
 // Render the default/built-in shared uniforms only as a table and return the
 // row count
-int renderBuiltInSharedUniformsGui
+int renderBuiltInSharedUniforms
 (
-    appData& appData
+    AppData& appData
 );
-*/
+
+
+// Render the button for editing uniform bounds, returns a flag indicating 
+// whether the bounds have been changed during this frame
+bool renderEditUniformBoundsButton
+(
+    UPtr<Uniform>& uniform,
+    bool renderDragStepSlider = false
+);
+
+//
+bool renderUniformGui
+(
+    UPtr<Uniform>& uniform,
+    UPtr<Layer>& layer,
+    AppData& appData,
+    int& row,
+    const bool showSeparator = false,
+    const bool showSharedAndDefaultUniforms = true
+);
 
 }
 

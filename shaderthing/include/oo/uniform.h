@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "vir/include/vmacros.h"
 #include "vir/include/vgraphics/vcore/vuniform.h"
+#include "shaderthing/include/oo/resource.h"
 #include "shaderthing/include/typedefs.h"
 
 namespace ShaderThing
@@ -12,13 +13,14 @@ namespace ShaderThing
 
 class Uniform : public vir::Uniform
 {
-
 protected :
 
     Uniform() = default;
     DELETE_COPY(Uniform);
 
 public:
+
+    static std::string supportedTypeNames[15];
 
     static UPtr<Uniform> create()
     {
@@ -27,6 +29,17 @@ public:
 
     typedef vir::Uniform::Type Type;
 
+    enum class ManagedType
+    {
+        None,
+        LayerAspectRatio,
+        LayerResolution,
+    };
+
+    // Further uniform qualifier for automatically-managed uniforms (i.e., 
+    // auto-generated uniforms when adding a unfirom wrapping a layer as a
+    // resource)
+    ManagedType   managedType            = ManagedType::None;
     bool          isSharedByUser         = false;
     bool          hasSharedByUserChanged = false;
     bool          isLogarithmic          = false; // For floats only
@@ -43,6 +56,20 @@ public:
         vir::Uniform::deleteValue(deleteCache);
         resourceResolutionUniform.reset();
     }
+
+    void setResourcePtr
+    (
+        Resource* value, 
+        UPtr<vir::DynamicUniformBuffer>& uniformBuffer
+    );
+
+    void setResourcePtr
+    (
+        UPtr<Resource>& value, 
+        UPtr<vir::DynamicUniformBuffer>& uniformBuffer
+    )   {setResourcePtr(value.get(), uniformBuffer);}
+
+    bool isResource() const;
 
     struct GUI
     {

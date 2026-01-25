@@ -3,6 +3,7 @@
 #include "shaderthing/include/oo/eventmanager.h"
 #include "shaderthing/include/shaderthing.h"
 #include "shaderthing/include/structs.h"
+#include "shaderthing/include/typedefs.h"
 #include "vir/include/vir.h"
 
 namespace ShaderThing
@@ -21,7 +22,7 @@ void run()
     initialize(appData);
     
     // Initialize event manager
-    EventManager eventManager(appData);
+    auto eventManager = GPtr<EventManager>(new EventManager(appData));
 
     // Main loop
     auto window = vir::Window::instance();

@@ -210,14 +210,9 @@ struct Layer
         float                  windowResolutionScale = 1.f;
         bool                   rescaleWithOutput     = true;
     };
-    struct Toggles
-    {
-        static bool requestRecompilation;
-        static bool restartRendering;
-    };
     struct Cache
     {
-        UPtrVector<Uniform> uncompiledUniforms;
+        WPtrVector<Uniform> uncompiledUniforms;
     };
 
     static const unsigned int nMaxLayers = 32;
@@ -228,7 +223,7 @@ struct Layer
           bool                isAspectRatioBoundToWindow    = true;
           bool                isDeletionConfirmationPending = false;
           bool                rescaleWithWindow             = true;
-          bool                hasUncompiledEdits             = false;
+          bool                hasUncompiledEdits            = false;
           glm::vec2           resolution;
           glm::vec2           resolutionRatio = {1.f, 1.f};
           float               aspectRatio;
@@ -240,7 +235,6 @@ struct Layer
           std::string         headerErrors;
           unsigned int        activeGuiTabId = 0;
           ExportData          exportData;
-          Toggles             toggles;
           Cache               cache;
     
     Layer(unsigned int aId) : 
@@ -281,6 +275,8 @@ struct Rendering
         bool stepToNextFrame                  = false;
         bool resetFrameCounter                = true;
         bool resetFrameCounterPreOrPostExport = true;
+        bool restartRendering                 = false;
+        bool requestFullRecompilation         = false;
         bool tiledRenderingPauseRequested     = false;
     };
     Toggles           toggles                 = {};

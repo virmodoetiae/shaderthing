@@ -2,6 +2,7 @@
 
 #include <string>
 #include "shaderthing/include/typedefs.h"
+#include "shaderthing/include/oo/uniform.h"
 
 namespace ShaderThing
 {
@@ -75,6 +76,32 @@ void renderLayerShader
     AppData& appData
 );
 
+void addUniformToLayer(UPtr<Uniform>&& uniform, UPtr<Layer>& layer);
+
+UPtr<Uniform> removeUniformFromLayer
+(
+    UPtr<Uniform>& uniform, 
+    UPtr<Layer>& layer
+);
+
+void addUniformToSharedUniforms(UPtr<Uniform>&& uniform, AppData& appData);
+
+UPtr<Uniform> removeUniformFromSharedUniforms
+(
+    UPtr<Uniform>& uniform, 
+    AppData& appData
+);
+
 void toggleRenderingPaused(AppData& appData, bool dueToFlowFps);
+
+void toggleKeyboardInputs(AppData& appData);
+
+void toggleMouseInputs(AppData& appData);
+
+void toggleCameraMouseInputs(AppData& appData);
+
+void toggleCameraKeyboardInputs(AppData& appData);
+
+void setMouseInputsClamped(AppData& appData, bool flag);
 
 }

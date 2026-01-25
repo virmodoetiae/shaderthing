@@ -2,11 +2,13 @@
 #include "shaderthing/include/corelogic.h"
 #include "shaderthing/include/gui.h"
 #include "shaderthing/include/helpers.h"
+#include "shaderthing/include/oo/statusbar.h"
 #include "shaderthing/include/oo/texteditor.h"
 #include "shaderthing/include/oo/uniform.h"
 #include "shaderthing/include/structs.h"
 #include "vir/include/vir.h"
 #include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/imgui_extensions.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 #include "thirdparty/imgui/imgui_internal.h"
 #include "thirdparty/icons/IconsFontAwesome5.h"
@@ -15,6 +17,7 @@ namespace ShaderThing
 {
 
 typedef Uniform::Type Type;
+typedef Uniform::ManagedType ManagedType;
 
 namespace GUI
 {
@@ -192,7 +195,7 @@ project exports)");
             }
 
             for (auto& layer : appData.layers)
-                renderLayerMenu(*layer, appData);
+                renderLayerMenu(layer, appData);
             /* TODO
             ImGui::Separator();
             Layer::renderShaderLanguangeExtensionsMenuGui
@@ -328,21 +331,27 @@ project exports)");
 
 void renderLayerMenu
 (
-    Layer& layer, 
+    UPtr<Layer>& layer, 
     AppData& appData
 )
 {
-    if (ImGui::BeginMenu(("Layer ["+layer.name+"]###"+layer.imGuiMenuId).c_str()))
+    if
+    (
+        ImGui::BeginMenu
+        (
+            ("Layer ["+layer->name+"]###"+layer->imGuiMenuId).c_str()
+        )
+    )
     {
-        auto& rendering = layer.rendering;
+        auto& rendering = layer->rendering;
         const float fontSize(ImGui::GetFontSize());
         const float entryWidth(14*fontSize);
         ImGui::Text("Name                 ");
         ImGui::SameLine();
         static std::unique_ptr<char[]> label(new char[24]);
-        std::sprintf(label.get(), "##layer%dInputText", layer.id);
+        std::sprintf(label.get(), "##layer%dInputText", layer->id);
         ImGui::PushItemWidth(entryWidth);
-        ImGui::InputText(label.get(), &layer.name);
+        ImGui::InputText(label.get(), &layer->name);
         ImGui::PopItemWidth();
         
         static std::map<Layer::Rendering::Target, const char*> 
@@ -406,21 +415,21 @@ void renderLayerMenu
         (
             ImGui::Button
             (
-                layer.isAspectRatioBoundToWindow ? 
+                layer->isAspectRatioBoundToWindow ? 
                 " " ICON_FA_LOCK " " : 
                 " " ICON_FA_LOCK_OPEN " "
             )
         )
         {
-            layer.isAspectRatioBoundToWindow = 
-                !layer.isAspectRatioBoundToWindow;
-            if (layer.isAspectRatioBoundToWindow)
+            layer->isAspectRatioBoundToWindow = 
+                !layer->isAspectRatioBoundToWindow;
+            if (layer->isAspectRatioBoundToWindow)
             {
                 auto window = vir::Window::instance();
                 glm::ivec2 resolution = {window->width(), window->height()};
                 setLayerResolution
                 (
-                    layer, 
+                    *layer, 
                     resolution, 
                     appData.rendering.isTiledRenderingEnabled, 
                     false
@@ -434,7 +443,7 @@ void renderLayerMenu
         )
         {
             ImGui::Text(
-                layer.isAspectRatioBoundToWindow ?
+                layer->isAspectRatioBoundToWindow ?
 ICON_FA_LOCK " - The aspect ratio is locked\n"
 "to that of the main window" :
 ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
@@ -445,12 +454,12 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         ImGui::SameLine();
         auto aspectRatioLockSize = ImGui::GetCursorPos().x-x0;
         ImGui::PushItemWidth(entryWidth-aspectRatioLockSize);
-        glm::ivec2 resolution = layer.resolution;
-        std::sprintf(label.get(), "##layer%dResolution", layer.id);
+        glm::ivec2 resolution = layer->resolution;
+        std::sprintf(label.get(), "##layer%dResolution", layer->id);
         if (ImGui::InputInt2(label.get(), glm::value_ptr(resolution)))
             setLayerResolution
             (
-                layer, 
+                *layer, 
                 resolution, 
                 appData.rendering.isTiledRenderingEnabled, 
                 false,
@@ -463,13 +472,13 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         (
             ImGui::Button
             (
-                layer.rescaleWithWindow ?
+                layer->rescaleWithWindow ?
                 "Rescale on window resize" :
                 "Do not auto-resize",
                 {-1, 0}
             )
         )
-            layer.rescaleWithWindow = !layer.rescaleWithWindow;
+            layer->rescaleWithWindow = !layer->rescaleWithWindow;
         if 
         (
             rendering.target == Layer::Rendering::Target::Window || 
@@ -629,14 +638,14 @@ void renderLayersTabBar
     auto& layers = appData.layers;
     static bool compilationErrors(false);
     static bool anyUncompiledEdits(false);
-    /*if (Flags::requestRecompilation)
+    if (appData.rendering.toggles.requestFullRecompilation)
     {
-        for (auto layer : layers)
+        for (auto& layer : layers)
         {
-            layer->flags.hasUncompiledEdits = true;
+            layer->hasUncompiledEdits = true;
         }
-        Flags::requestRecompilation = false;
-    }*/
+        appData.rendering.toggles.requestFullRecompilation = false;
+    }
     if (anyUncompiledEdits || compilationErrors) // Render compilation button 
     {
         float time = vir::Window::instance()->time()->outerTime();
@@ -788,7 +797,7 @@ void renderLayersTabBar
                 )
             )
             {
-                renderLayerTab(*layer, appData);
+                renderLayerTab(layer, appData);
                 ImGui::EndTabItem();
             }
             if (!open) // I.e., if 'x' is pressed to delete the tab
@@ -878,33 +887,33 @@ void renderLayersTabBar
     // a rendering restart. This flag is set in the lambda
     // Uniform::renderUniformsGui::renderSharedUniformsGui eventually called by
     // renderTabBarGui
-    /*if (Layer::Flags::restartLayer::Rendering)
+    if (appData.rendering.toggles.restartRendering)
     {
         for (auto& layer : layers)
         {
             layer->rendering.framebufferA->clearColorBuffer();
             layer->rendering.framebufferB->clearColorBuffer();
         }
-        Layer::Flags::restartLayer::Rendering = false;
-    }*/
+        appData.rendering.toggles.restartRendering = false;
+    }
 }
 
 //----------------------------------------------------------------------------//
 
 void renderLayerTab
 (
-    Layer& layer,
+    UPtr<Layer>& layer,
     AppData& appData
 )
 {
     static unsigned int gActiveTabId = 0;
     static unsigned int gActiveLayerId = 0;
-    bool layerChanged = (gActiveLayerId != layer.id);
+    bool layerChanged = (gActiveLayerId != layer->id);
     if (layerChanged)
-        gActiveLayerId = layer.id;
+        gActiveLayerId = layer->id;
     if (ImGui::BeginTabBar("##layerTabBar"))
     {
-        if (layerChanged && layer.activeGuiTabId != gActiveTabId)
+        if (layerChanged && layer->activeGuiTabId != gActiveTabId)
         {
             switch (gActiveTabId)
             {
@@ -924,14 +933,14 @@ void renderLayerTab
         }
         if (ImGui::BeginTabItem("Fragment source"))
         {
-            bool headerErrors(layer.headerErrors.size() > 0);
+            bool headerErrors(layer->headerErrors.size() > 0);
             bool madeReplacements = false;
                 //layer.sourceEditor.renderFindReplaceToolGui();
-            layer.hasUncompiledEdits = 
-                layer.hasUncompiledEdits || madeReplacements;
+            layer->hasUncompiledEdits = 
+                layer->hasUncompiledEdits || madeReplacements;
             if (ImGui::TreeNode("Header"))
             {
-                float indent(layer.sourceEditor.getLineIndexColumnWidth());
+                float indent(layer->sourceEditor.getLineIndexColumnWidth());
                 ImGui::Unindent(); // Remove indent from Header TreeNode
                 ImGui::Indent(indent);
                 ImGui::PushStyleColor
@@ -939,7 +948,7 @@ void renderLayerTab
                     ImGuiCol_Text, 
                     ImGui::GetStyle().Colors[ImGuiCol_TextDisabled] // Gray
                 );
-                ImGui::Text(layer.sourceHeader.c_str());
+                ImGui::Text(layer->sourceHeader.c_str());
                 ImGui::PopStyleColor(); 
                 if 
                 (
@@ -950,7 +959,7 @@ void renderLayerTab
                 {
                     ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
                     ImGui::PushStyleColor(ImGuiCol_Text, {1,0,0,1}); // Red
-                    ImGui::Text(layer.headerErrors.c_str());
+                    ImGui::Text(layer->headerErrors.c_str());
                     ImGui::PopStyleColor();
                     ImGui::PopTextWrapPos();
                     ImGui::EndTooltip();
@@ -961,7 +970,7 @@ void renderLayerTab
                 ImGui::Unindent(indent);
                 ImGui::Indent(); // Re-add indent from Header TreeNode
             }
-            layer.sourceEditor.renderGui("##sourceEditor");
+            layer->sourceEditor.renderGui("##sourceEditor");
             gActiveTabId = 0;
             ImGui::EndTabItem();
         }
@@ -969,8 +978,8 @@ void renderLayerTab
         {
             bool madeReplacements = 
                 appData.sharedSourceEditor.renderFindReplaceToolGui();
-            layer.hasUncompiledEdits = 
-                layer.hasUncompiledEdits || madeReplacements;
+            layer->hasUncompiledEdits = 
+                layer->hasUncompiledEdits || madeReplacements;
             appData.sharedSourceEditor.renderGui("##sharedSourceEditor");
             gActiveTabId = 1;
             ImGui::EndTabItem();
@@ -978,11 +987,11 @@ void renderLayerTab
         if (ImGui::BeginTabItem("Uniforms"))
         {
             ImGui::Text("Uniforms!");
-            /*renderUniformsTab
+            renderUniformsTab
             (
                 layer,
                 appData
-            );*/
+            );
             /*
             Uniform::renderUniformsGui
             (
@@ -995,12 +1004,2096 @@ void renderLayerTab
             gActiveTabId = 2;
             ImGui::EndTabItem();
         }
-        layer.activeGuiTabId = gActiveTabId;
+        layer->activeGuiTabId = gActiveTabId;
         ImGui::EndTabBar();
     }
 }
 
+#define START_ROW(row, column)                                          \
+    ImGui::PushID(row);                                                 \
+    ImGui::TableNextRow(0, 1.6*ImGui::GetFontSize());                   \
+    column = 0;
+#define END_ROW(row)                                                    \
+    ImGui::PopID();                                                     \
+    ++row;
+#define START_COLUMN(column)                                            \
+    ImGui::TableSetColumnIndex(column);                                 \
+    ImGui::PushItemWidth(-1);
+#define END_COLUMN(column)                                              \
+    ++column;                                                           \
+    ImGui::PopItemWidth();
+#define NEXT_COLUMN(column)                                             \
+    ImGui::TableSetColumnIndex(column++);
 
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+
+void renderUniformsTab
+(
+    UPtr<Layer>& layer, 
+    AppData& appData
+)
+{
+    //--------------------------------------------------------------------------
+    auto& sharedUniforms = appData.sharedUniforms;
+    float fontSize = ImGui::GetFontSize();
+    bool atLeastOneUniformMarkedForDeletion = false;
+    bool atLeastOneUniformTypeChanged = false;
+    bool atLeastOneSharedUniformStateChanged = false;
+    static bool showSharedAndDefaultUniforms = true;
+    if 
+    (
+        ImGui::Button
+        (
+            showSharedAndDefaultUniforms ? 
+            "Hide shared and default uniforms" : 
+            "Show shared and uniforms",
+            {-1,0}
+        )
+    )
+        showSharedAndDefaultUniforms = !showSharedAndDefaultUniforms;
+
+    std::string uniformFrameName = "##uniformsFrame"+std::to_string(layer->id);
+    ImGui::BeginChild(uniformFrameName.c_str(), ImVec2(-1, -1), false);
+
+    int nColumns = 5;
+    if 
+    (
+        ImGui::BeginTable
+        (
+            "##uniformTable", 
+            nColumns, 
+            ImGuiTableFlags_BordersV | 
+            ImGuiTableFlags_BordersOuterH |
+            ImGuiTableFlags_SizingFixedFit
+        )
+    )
+    {
+        ImGui::TableSetupColumn("##actions", 0, 4*fontSize);
+        ImGui::TableSetupColumn("Name", 0, 10*fontSize);
+        ImGui::TableSetupColumn("Type", 0, 7*fontSize);
+        ImGui::TableSetupColumn("Bounds", 0, 3.5*fontSize);
+        ImGui::TableSetupColumn
+        (
+            "Value", 
+            0, 
+            ImGui::GetContentRegionAvail().x
+        );
+        ImGui::TableHeadersRow();
+        
+        int row = 0;
+        int column = 0;
+        if (showSharedAndDefaultUniforms)
+            row = renderBuiltInSharedUniforms(appData);
+
+        for (auto& uniform : sharedUniforms.userUniforms)
+        {
+            atLeastOneSharedUniformStateChanged = 
+                atLeastOneSharedUniformStateChanged ||
+                renderUniformGui
+                (
+                    uniform,
+                    layer,
+                    appData,
+                    row,
+                    uniform == sharedUniforms.userUniforms.back()
+                );
+            if (uniform->gui.markedForDeletion)
+                atLeastOneUniformMarkedForDeletion = true;
+            if (uniform->hasSharedByUserChanged)
+                atLeastOneSharedUniformStateChanged = true;
+        }
+
+        for(auto& uniform : layer->uniforms)
+        {
+            atLeastOneUniformTypeChanged = 
+                atLeastOneUniformTypeChanged ||
+                renderUniformGui
+                (
+                    uniform,
+                    layer,
+                    appData,
+                    row,
+                    false,
+                    showSharedAndDefaultUniforms
+                );
+            if (uniform->gui.markedForDeletion)
+                atLeastOneUniformMarkedForDeletion = true;
+            if (uniform->hasSharedByUserChanged)
+                atLeastOneSharedUniformStateChanged = true;
+        }
+        /*
+        renderAddUniformButton
+        (
+            layer, 
+            row
+        );*/
+
+        // Render the "Create new uniform" button
+        START_ROW(row, column)
+        START_COLUMN(column)
+        if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
+            addUniformToLayer(Uniform::create(), layer);
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            ImGui::Text("Add new uniform");
+            ImGui::EndTooltip();
+        }
+        END_COLUMN(column)
+        END_ROW(row)
+
+        ImGui::EndTable();
+    }
+
+    ImGui::EndChild();
+
+    ImGui::SetCursorPosY
+    (
+        ImGui::GetCursorPosY()+
+        ImGui::GetContentRegionAvail().y-
+        ImGui::GetTextLineHeightWithSpacing()
+    );
+    StatusBar::renderGui();
+
+    // Remove uniforms marked for deletion
+    if (atLeastOneUniformMarkedForDeletion)
+    {
+        for (unsigned int i=0; i<layer->uniforms.size(); i++)
+        {
+            UPtr<Uniform>& u = layer->uniforms[i];
+            if (!u->gui.markedForDeletion)
+                continue;
+            if (u->isResource())
+            {
+                auto resource = u->getValuePtr<Resource>();
+                if (resource->isUsedByUniform(u.get()))
+                    resource->removeClientUniform(u.get());
+                resource->unbind();
+            }
+            removeUniformFromLayer(u, layer);
+            i--;
+        }
+        for (unsigned int i=0; i<sharedUniforms.userUniforms.size(); i++)
+        {
+            UPtr<Uniform>& u = sharedUniforms.userUniforms[i];
+            if (!u->gui.markedForDeletion)
+                continue;
+            if (u->isResource())
+            {
+                auto resource = u->getValuePtr<Resource>();
+                if (resource->isUsedByUniform(u.get()))
+                    resource->removeClientUniform(u.get());
+                resource->unbind();
+            }
+            removeUniformFromSharedUniforms(u, appData);
+            i--;
+            atLeastOneSharedUniformStateChanged = true;
+        }
+    }
+
+    // Alternative strategy to cope with uniform block alignment changes after
+    // uniform type changes or deletions (both of which can alter block layout:
+    // compile right away automatically without asking the user
+    if 
+    (
+        atLeastOneUniformTypeChanged ||
+        atLeastOneUniformMarkedForDeletion
+    )
+        compileShader(*layer, appData);
+
+    if (!atLeastOneSharedUniformStateChanged)
+        return;
+
+    // Check if the uniform state was changed from non-shared to shared
+    for (unsigned int i=0; i<layer->uniforms.size(); i++)
+    {
+        UPtr<Uniform>& uniform = layer->uniforms[i];
+        if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
+            continue;
+        uniform->hasSharedByUserChanged = false;
+        addUniformToSharedUniforms
+        (
+            removeUniformFromLayer(uniform, layer), 
+            appData
+        );
+        //sharedUniforms.addUserUniform(layer->removeUniform(uniform.get()));
+        i--;
+    }
+
+    // Check if the uniform state was changed from shared to non-shared
+    for (unsigned int i=0; i<sharedUniforms.userUniforms.size(); i++)
+    {
+        auto& uniform = sharedUniforms.userUniforms[i];
+        if (!(uniform->hasSharedByUserChanged && !uniform->isSharedByUser))
+            continue;
+        uniform->hasSharedByUserChanged = false;
+        addUniformToLayer
+        (
+            removeUniformFromSharedUniforms(uniform, appData),
+            layer
+        );
+        //layer->addUniform(sharedUniforms.removeUserUniform(uniform.get()));
+        i--;
+    }
+
+    // Alternative strategy to cope with uniform block alignment changes after
+    // uniform type changes or deletions (both of which can alter block layout:
+    // compile right away automatically without asking the user
+    for (auto& l : appData.layers)
+    {
+        compileShader(*l, appData);
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+
+
+//----------------------------------------------------------------------------//
+
+// Render the default/built-in shared uniforms as a table and return the row
+// count
+int renderBuiltInSharedUniforms(AppData& appData)
+{
+    auto& sharedUniforms = appData.sharedUniforms;
+    int row = 0;
+    int column;
+    float fontSize = ImGui::GetFontSize();
+    float halfButtonSize(1.7*fontSize);
+
+    // iFrame --------------------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if (ImGui::Button(ICON_FA_UNDO, ImVec2(halfButtonSize, 0)))
+    {
+        appData.rendering.toggles.resetFrameCounter = true;
+        appData.rendering.toggles.restartRendering = true;
+    }
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
+        ImGui::BeginTooltip()
+    )
+    {
+        static ImVec4 ctrlRColor = 
+            ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
+        ImGui::Text("Restart rendering");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, ctrlRColor);
+        ImGui::Text("Ctrl+R");
+        ImGui::PopStyleColor();
+        ImGui::EndTooltip();
+    }
+    ImGui::SameLine();
+    // Pause/resume rendering, which also affects iTime (but the
+    // opposite is not true)
+    if 
+    (
+        ImGui::Button
+        (
+            appData.rendering.isPaused ? 
+            ICON_FA_PLAY : 
+            ICON_FA_PAUSE, 
+            ImVec2(-1, 0)
+        )
+    )
+    {
+        toggleRenderingPaused(appData, false);
+        // When stopping rendering while tile rendering is enabled,
+        // make sure to render all the tiles to reach the end of the
+        // shader frame
+        if
+        (
+            appData.rendering.isPaused && 
+            appData.rendering.isTiledRenderingEnabled
+        )
+            appData.rendering.toggles.stepToNextFrame = true;
+    }
+    if (appData.rendering.isPaused)
+    {
+        if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
+            appData.rendering.toggles.stepToNextFrame = true;
+        else
+        {
+            // If tiled rendering is enabled, stepping by one shader frame
+            // means stepping by nTiles app frames (since each app frame 
+            // only renders a single shader tile), so the frame step is over
+            // only once all tiles have been rendered (i.e., when tileIndex
+            // is reset to 0)
+            if (appData.rendering.isTiledRenderingEnabled)
+            {
+                if (appData.rendering.tileIndex == 0)
+                    appData.rendering.toggles.stepToNextFrame = false;
+            }
+            else
+                appData.rendering.toggles.stepToNextFrame = false;
+        }
+    }
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        ImGui::Text("Render next frame and increment\niTime by iTimeDelta");
+        ImGui::EndTooltip();
+    }
+    NEXT_COLUMN(column)
+    ImGui::Text("iFrame");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::UInt].c_str());
+    NEXT_COLUMN(column)
+    // No bounds
+    NEXT_COLUMN(column)
+    ImGui::Text("%d", appData.rendering.frameIndex);
+    END_ROW(row)
+
+    // iTime --------------------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if 
+    (
+        ImGui::Button
+        (
+            sharedUniforms.isTimeLooped ?
+            ICON_FA_INFINITY : 
+            ICON_FA_CIRCLE_NOTCH,
+            ImVec2(halfButtonSize, 0)
+        )
+    )
+        sharedUniforms.isTimeLooped = 
+            !sharedUniforms.isTimeLooped;
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        ImGui::Text
+        (
+            sharedUniforms.isTimeLooped ? 
+            "Disable loop" : 
+            "Enable loop"
+        );
+        ImGui::EndTooltip();
+    }
+    ImGui::SameLine();
+    if 
+    (
+        ImGui::Button
+        (
+            sharedUniforms.isTimePaused ? 
+            ICON_FA_PLAY : 
+            ICON_FA_PAUSE, 
+            ImVec2(-1, 0)
+        ) && !appData.rendering.isPaused
+    )
+        sharedUniforms.isTimePaused = 
+            !sharedUniforms.isTimePaused;
+    if (sharedUniforms.isTimePaused)
+    {
+        if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
+            appData.rendering.toggles.stepToNextFrame = true;
+        else 
+            appData.rendering.toggles.stepToNextFrame = false;
+    }
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        ImGui::Text("Increment iTime by iTimeDelta");
+        ImGui::EndTooltip();
+    }
+    NEXT_COLUMN(column)
+    ImGui::Text("iTime");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+    NEXT_COLUMN(column)
+    glm::vec2* bounds = &sharedUniforms.iTimeUniform->gui.bounds;
+    bool boundsChanged = renderEditUniformBoundsButton
+    (
+        sharedUniforms.iTimeUniform
+    );
+    NEXT_COLUMN(column)
+    auto iTimePtr = &sharedUniforms.iTime;
+    if (!boundsChanged)
+    {
+        bounds->x = std::min(*iTimePtr, bounds->x);
+        bounds->y = std::max(*iTimePtr, bounds->y);
+    }
+    ImGui::PushItemWidth(-1);
+    if 
+    (
+        ImGui::SliderFloat
+        (
+            "##iTimeSlider", 
+            iTimePtr, 
+            bounds->x,
+            bounds->y,
+            "%.3f"
+        ) || boundsChanged
+    )
+    {
+        if (boundsChanged)
+        {
+            *iTimePtr = std::max(*iTimePtr, bounds->x);
+            *iTimePtr = std::min(*iTimePtr, bounds->y);
+        }
+        sharedUniforms.iUserAction = true;
+        sharedUniforms.toggles.updateDataRangeII = true;
+    }
+    ImGui::PopItemWidth();
+    END_ROW(row)
+
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if 
+    (
+        ImGui::Button
+        (
+            sharedUniforms.isTimeResetOnFrameCounterReset ? 
+            ICON_FA_BAN " " ICON_FA_UNDO: 
+            ICON_FA_CHECK " " ICON_FA_UNDO, 
+            ImVec2(-1, 0)
+        )
+    )
+        sharedUniforms.isTimeResetOnFrameCounterReset =
+            !sharedUniforms.isTimeResetOnFrameCounterReset;
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        if (sharedUniforms.isTimeResetOnFrameCounterReset)
+            ImGui::Text("Disable time reset on rendering restart");
+        else
+            ImGui::Text("Enable time reset on rendering restart");
+        ImGui::EndTooltip();
+    }
+    END_ROW(row)
+
+    // iTimeDelta --------------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if 
+    (
+        ImGui::Button
+        (
+            sharedUniforms.isTimeDeltaSmooth ?
+            ICON_FA_WAVE_SQUARE : 
+            ICON_FA_SIGNATURE, 
+            ImVec2(-1, 0)
+        )
+    )
+        sharedUniforms.isTimeDeltaSmooth =
+            !sharedUniforms.isTimeDeltaSmooth;
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        if (sharedUniforms.isTimeDeltaSmooth)
+            ImGui::Text("Disable time step smoothing");
+        else
+            ImGui::Text("Enable time step smoothing");
+        ImGui::EndTooltip();
+    }
+    // No actions
+    NEXT_COLUMN(column)
+    ImGui::Text("iTimeDelta");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+    NEXT_COLUMN(column)
+    // No bounds
+    NEXT_COLUMN(column)
+    if 
+    (
+        appData.rendering.isPaused || 
+        sharedUniforms.isTimePaused
+    )
+    {
+        ImGui::InputFloat
+        (
+            "##iTimeDeltaSliderFloat", 
+            &sharedUniforms.iTimeDelta,
+            0,
+            0,
+            "%.6f"
+        );
+        sharedUniforms.iTimeDelta = 
+            std::max(sharedUniforms.iTimeDelta, 0.f);
+        ImGui::SameLine();
+        ImGui::Text("s");
+    }
+    else
+        ImGui::Text("%.6f s", sharedUniforms.iTimeDelta);
+    END_ROW(row)
+    ImGui::Dummy({0, 0.1f*fontSize});
+
+    // iRandom -------------------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if 
+    (
+        ImGui::Button
+        (
+            sharedUniforms.isRandomNumberGeneratorPaused ? 
+            ICON_FA_PLAY : 
+            ICON_FA_PAUSE, 
+            ImVec2(-1, 0)
+        )
+    )
+        sharedUniforms.isRandomNumberGeneratorPaused = 
+            !sharedUniforms.isRandomNumberGeneratorPaused;
+    NEXT_COLUMN(column)
+    ImGui::Text("iRandom");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+    NEXT_COLUMN(column)
+    // No bounds
+    NEXT_COLUMN(column)
+    ImGui::Text("%.6f", sharedUniforms.iRandom);
+    END_ROW(row)
+
+    // iWindowAspectRatio --------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    // No actions
+    NEXT_COLUMN(column)
+    ImGui::Text("iWindowAspectRatio");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
+    NEXT_COLUMN(column)
+    // No bounds
+    NEXT_COLUMN(column)
+    ImGui::Text
+    (
+        "%.3f", sharedUniforms.iAspectRatio
+    );
+    END_ROW(row)
+    ImGui::Dummy({0, 0.1f*fontSize});
+
+    // iWindowResolution ---------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    // No actions
+    NEXT_COLUMN(column)
+    ImGui::Text("iWindowResolution");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Int2].c_str());
+    NEXT_COLUMN(column)
+    // No bounds
+    NEXT_COLUMN(column)
+    ImGui::Text
+    (
+        "%d x %d", 
+        (int)sharedUniforms.iResolution.x, 
+        (int)sharedUniforms.iResolution.y
+    );
+    END_ROW(row)
+    
+    // iKeyboard -----------------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if 
+    (
+        ImGui::Button
+        (
+            sharedUniforms.isKeyboardInputEnabled ? 
+            ICON_FA_PAUSE : 
+            ICON_FA_PLAY, 
+            ImVec2(-1, 0)
+        )
+    )
+        toggleKeyboardInputs(appData);
+    NEXT_COLUMN(column)
+    ImGui::Text("iKeyboard");
+    NEXT_COLUMN(column)
+    ImGui::Text("vec3[]");
+    NEXT_COLUMN(column)
+    // No bounds
+    NEXT_COLUMN(column)
+    std::string pressed = "Pressed:";
+    std::string held    = "Held:   ";
+    std::string toggled = "Toggled:";
+    for (int key=0; key<255; key++)
+    {
+        auto& keyData(sharedUniforms.iKeyboard[key]);
+        if (keyData.x > 0)
+            pressed += " "+vir::keyCodeToName[key];
+        else if (keyData.y > 0)
+            held += " "+vir::keyCodeToName[key];
+        if (keyData.z > 0)
+            toggled += " "+vir::keyCodeToName[key];
+    }
+    ImGui::Text(pressed.c_str());
+    ImGui::Dummy({0, 0.1f*fontSize});
+    ImGui::Text(held.c_str());
+    ImGui::Dummy({0, 0.1f*fontSize});
+    ImGui::Text(toggled.c_str());
+    ImGui::Dummy({0, 0.1f*fontSize});
+    END_ROW(row)
+    
+    
+    // iMouse --------------------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    /*
+    if 
+    (
+        ImGui::Button
+        (
+            sharedUniforms.flags_.isMouseInputEnabled ? 
+            ICON_FA_PAUSE : 
+            ICON_FA_PLAY, 
+            ImVec2(-1, 0)
+        )
+    )
+        sharedUniforms.toggleMouseInputs();
+    */
+    if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+        ImGui::OpenPopup("##iMouseSettings");
+    if (ImGui::BeginPopup("##iMouseSettings"))
+    {
+        bool enabled = sharedUniforms.isMouseInputEnabled;
+        std::string text = enabled ? "Disable inputs" : "Enable inputs";
+        if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+            toggleMouseInputs(appData);
+        ImGui::Text("Clamp value to window resolution ");
+        ImGui::SameLine();
+        bool status = sharedUniforms.isMouseInputClampedToWindow;
+        ImGui::Checkbox("##iMouseSettings_ClampValue", &status);
+        if (status != sharedUniforms.isMouseInputClampedToWindow)
+            setMouseInputsClamped(appData, status);
+        ImGui::Text("Input requires holding LMB       ");
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            ImGui::Text(
+R"(If true, the iMouse uniform value will change on mouse 
+motion only if the left mouse button (LMB) is held)");
+            ImGui::EndTooltip();
+        }
+        ImGui::SameLine();
+        ImGui::Checkbox
+        (
+            "##iMouseSettings_LMBHold", 
+            &(sharedUniforms.mouseInputRequiresLMBHold)
+        );
+        ImGui::EndPopup();
+    }
+    NEXT_COLUMN(column)
+    ImGui::Text("iMouse");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Float4].c_str());
+    NEXT_COLUMN(column)
+    // No bounds
+    NEXT_COLUMN(column)
+    ImGui::Text
+    (
+        "%d, %d, %d, %d", 
+        (int)sharedUniforms.iMouse.x, 
+        (int)sharedUniforms.iMouse.y, 
+        (int)sharedUniforms.iMouse.z, 
+        (int)sharedUniforms.iMouse.w
+    );
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        ImGui::Text(
+R"(The first two components (x, y) are the current x, y coordinates (with respect
+to the lower-left corner of the ShaderThingOld window) of the mouse cursor if the
+left mouse button is currently being held down. The last two components (z, w)
+represent the x, y coordinates of the last left mouse button click, with their 
+sign reversed. If the sign of the z component is positive, then the left mouse
+is currently being held down)");
+        ImGui::EndTooltip();
+    }
+    END_ROW(row)
+
+    // iLook ---------------------------------------------------------------
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+        ImGui::OpenPopup("##iLookSettings");
+    if (ImGui::BeginPopup("##iLookSettings"))
+    {
+        bool enabled = sharedUniforms.isCameraMouseInputEnabled;
+        std::string text = enabled ? "Disable inputs" : "Enable inputs";
+        if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+            toggleCameraMouseInputs(appData);
+        ImGui::Text("Input requires holding LMB       ");
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            ImGui::Text(
+R"(If true, the iLook uniform value will change on mouse 
+motion only if the left mouse button (LMB) is held)");
+            ImGui::EndTooltip();
+        }
+        ImGui::SameLine();
+        ImGui::Checkbox
+        (
+            "##iLookSettings_LMBHold", 
+            &(sharedUniforms.cameraMouseInputRequiresLMBHold)
+        );
+        ImGui::Text("Mouse sensitivity ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        ImGui::SliderFloat
+        (
+            "##iLookSensitivity", 
+            &sharedUniforms.shaderCamera->mouseSensitivityRef(),
+            1e-3,
+            1
+        );
+        ImGui::PopItemWidth();
+        ImGui::EndPopup();
+    }
+    NEXT_COLUMN(column)
+    ImGui::Text("iLook");
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
+    NEXT_COLUMN(column)
+    // All cmpts always bounds in [-1, 1]
+    NEXT_COLUMN(column)
+    {
+        glm::vec3 value = sharedUniforms.iLook;
+        std::string format = Helpers::getFormat(value);
+        ImGui::PushItemWidth(-1);
+        if 
+        (
+            ImGui::SliderFloat3
+            (
+                "##iLookSlider", 
+                glm::value_ptr(value), 
+                -1,
+                1,
+                format.c_str()
+            )
+        )
+        {
+            value = glm::normalize(value);
+            sharedUniforms.iLook = value;
+            sharedUniforms.shaderCamera->setDirection(value);
+            sharedUniforms.iUserAction = true;
+            sharedUniforms.toggles.updateDataRangeII = true;
+        }
+        ImGui::PopItemWidth();
+    }
+    END_ROW(row)
+
+    // iWASD ---------------------------------------------------------------
+    float posY = 0;
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
+        ImGui::OpenPopup("##iWASDSettings");
+    if (ImGui::BeginPopup("##iWASDSettings"))
+    {
+        bool enabled = sharedUniforms.isCameraKeyboardInputEnabled;
+        std::string text = enabled ? "Disable inputs" : "Enable inputs";
+        if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
+            toggleCameraKeyboardInputs(appData);
+        ImGui::Text("Keyboard sensitivity ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        ImGui::SliderFloat
+        (
+            "##iWASDSensitivity", 
+            &sharedUniforms.shaderCamera->keySensitivityRef(),
+            1e-1,
+            50
+        );
+        ImGui::PopItemWidth();
+        ImGui::EndPopup();
+    }
+
+    bool showSeparator(sharedUniforms.userUniforms.size() == 0);
+    if (showSeparator)
+    {
+        posY = ImGui::GetCursorPosY();
+        ImGui::Separator();
+    }
+    NEXT_COLUMN(column)
+    ImGui::Text("iWASD");
+    if (showSeparator)
+    {
+        ImGui::SetCursorPosY(posY);
+        ImGui::Separator();
+    }
+    NEXT_COLUMN(column)
+    ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
+    if (showSeparator)
+    {
+        ImGui::SetCursorPosY(posY);
+        ImGui::Separator();
+    }
+    NEXT_COLUMN(column)
+    bounds = &sharedUniforms.iWASDUniform->gui.bounds;
+    boundsChanged = renderEditUniformBoundsButton
+    (
+        sharedUniforms.iWASDUniform
+    );
+    if (showSeparator)
+        ImGui::Separator();
+    NEXT_COLUMN(column)
+    {
+        glm::vec3 value = sharedUniforms.iWASD;
+        std::string format = Helpers::getFormat(value);
+        if (!boundsChanged)
+        {
+            bounds->x = std::min(value.x, bounds->x);
+            bounds->x = std::min(value.y, bounds->x);
+            bounds->x = std::min(value.z, bounds->x);
+            bounds->y = std::max(value.x, bounds->y);
+            bounds->y = std::max(value.y, bounds->y);
+            bounds->y = std::max(value.z, bounds->y);
+        }
+        ImGui::PushItemWidth(-1);
+        if 
+        (
+            ImGui::SliderFloat3
+            (
+                "##iWASDSlider", 
+                glm::value_ptr(value), 
+                bounds->x,
+                bounds->y,
+                format.c_str()
+            ) || boundsChanged
+        )
+        {
+            if (boundsChanged)
+            {
+                value.x = std::max(value.x, bounds->x);
+                value.x = std::min(value.x, bounds->y);
+                value.y = std::max(value.y, bounds->x);
+                value.y = std::min(value.y, bounds->y);
+                value.z = std::max(value.z, bounds->x);
+                value.z = std::min(value.z, bounds->y);
+            }
+            sharedUniforms.iWASD = value;
+            sharedUniforms.shaderCamera->setPosition(value);
+            sharedUniforms.iUserAction = true;
+            sharedUniforms.toggles.updateDataRangeII = true;
+        }
+        ImGui::PopItemWidth();
+    }
+    if (showSeparator)
+        ImGui::Separator();
+    END_ROW(row)
+    return row;
+}
+
+//----------------------------------------------------------------------------//
+
+bool renderEditUniformBoundsButton
+(
+    UPtr<Uniform>& uniform,
+    bool renderDragStepSlider
+)
+{
+    glm::vec2& bounds = uniform->gui.bounds;
+    float* dragStep = &uniform->gui.dragStep;
+    float* logarithmicZero = &uniform->gui.logarithmicZero;
+    auto type = uniform->type();
+    if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
+        ImGui::OpenPopup("##uniformBounds");
+    if (ImGui::BeginPopup("##uniformBounds"))
+    {
+        
+        glm::vec2 bounds0(bounds);
+        if (type == vir::Uniform::Type::UInt)
+            bounds.x = std::max(bounds.x, 0.0f);
+        ImGui::Text("Minimum value    ");
+        ImGui::SameLine();
+        float inputWidth = 6*ImGui::GetFontSize();
+        auto minf = Helpers::getFormat(bounds0.x);
+        auto maxf = Helpers::getFormat(bounds0.y);
+        ImGui::PushItemWidth(inputWidth);
+        ImGui::InputFloat
+        (
+            "##minValueInput", 
+            &(bounds.x), 0.f, 0.f,
+            minf.c_str()
+        );
+        ImGui::PopItemWidth();
+        ImGui::Text("Maximum value    ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(inputWidth);
+        ImGui::InputFloat
+        (
+            "##maxValueInput", 
+            &(bounds.y), 0.f, 0.f,
+            maxf.c_str()
+        );
+        ImGui::PopItemWidth();
+        if 
+        (
+            (type == Type::Int2 || type == Type::Float2) && 
+            renderDragStepSlider
+        )
+        {
+            auto format = Helpers::getFormat(*dragStep);
+            ImGui::Text("Mouse drag step  ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(inputWidth);
+            if (type == Type::Int2)
+            {
+                int iDragStep = (int)(*dragStep);
+                ImGui::InputInt
+                (
+                    "##dragStepSize", 
+                    &iDragStep, 0.f, 0.f
+                );
+                *dragStep = (float)iDragStep;
+            }
+            else
+                ImGui::InputFloat
+                (
+                    "##dragStepSize", 
+                    dragStep, 0.f, 0.f,
+                    format.c_str()
+                );
+            ImGui::PopItemWidth();
+        }
+        else if 
+        (
+            uniform->isLogarithmic &&
+            bounds.x * bounds.y <= 0
+        )
+        {
+            auto format = Helpers::getFormat(*logarithmicZero);
+            ImGui::Text("Logarithmic zero ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text(
+R"(When a log-scale slider is used and the uniform bounds contain or cross 0, 
+this value determines the closest value to 0 (that differs from 0) that can be
+set by adjusting the slider)");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            ImGui::PushItemWidth(inputWidth);
+            float logarithmicZero0(*logarithmicZero);
+            if 
+            (
+                ImGui::InputFloat
+                (
+                    "##logarithmicZero", 
+                    logarithmicZero, 0.f, 0.f,
+                    format.c_str()
+                )
+            )
+            {
+                if (*logarithmicZero <= 0)
+                    *logarithmicZero = logarithmicZero0;
+            }
+            ImGui::PopItemWidth();
+        }
+        ImGui::EndPopup();
+        return (bounds != bounds0); 
+    }
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+bool renderUniformGui
+(
+    UPtr<Uniform>& uniform,
+    UPtr<Layer>& layer,
+    AppData& appData,
+    int& row,
+    const bool showSeparator,
+    const bool showSharedAndDefaultUniforms
+)
+{
+    float fontSize = ImGui::GetFontSize();
+    int column;
+    bool managed
+    (
+        uniform->managedType != ManagedType::None
+    );
+    if (managed && !showSharedAndDefaultUniforms)
+        return false;
+    bool isSharedByUser0 = uniform->isSharedByUser;
+    bool nameChanged = false;
+    bool typeChanged = false;
+    auto& sharedUniforms = appData.sharedUniforms;
+    auto& resources = appData.resources;
+    
+    START_ROW(row, column)
+
+    START_COLUMN(column) // Action column --------------------------------------
+    float y0 = 0;
+    if (!managed)
+    {
+        float halfButtonSize(1.7*fontSize);
+        if (ImGui::Button(ICON_FA_TRASH, ImVec2(halfButtonSize, 0)))
+        {
+            uniform->gui.markedForDeletion = true;
+            // layer->uniformBuffer_->removeUniform(uniform.get()); // TODO - CHECK
+            // The uniform is gonna get deleted, so the layer(s) using it
+            // will have to be recompiled
+            if (uniform->isSharedByUser)
+            {
+                for (auto& l : appData.layers)
+                    l->hasUncompiledEdits = true;
+            }
+            else
+                layer->hasUncompiledEdits = true;
+        }
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            ImGui::Text("Delete this uniform");
+            ImGui::EndTooltip();
+        }
+        ImGui::SameLine();
+        if 
+        (
+            ImGui::Button
+            (
+                !uniform->isSharedByUser ?
+                ICON_FA_ARROW_UP :
+                ICON_FA_ARROW_DOWN,
+                {-1, 0}
+            )
+        )
+        {
+            uniform->hasSharedByUserChanged = true;
+            uniform->isSharedByUser = 
+                !uniform->isSharedByUser;
+        }
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            if (!uniform->isSharedByUser)
+                ImGui::Text("Share this uniform across all layers");
+            else
+                ImGui::Text(
+"Remove this uniform from shared\nuniforms across all layers"\
+                );
+            ImGui::EndTooltip();
+        }
+        y0 = ImGui::GetCursorPosY();
+    }
+    if (showSeparator)
+        ImGui::Separator();
+    END_COLUMN(column)
+    
+    START_COLUMN(column) // Name column ----------------------------------------
+    if (managed)
+        ImGui::Text(uniform->name.c_str());
+    else
+    {
+        if (ImGui::InputText("##uniformName", &uniform->name))
+        {
+            uniform->markForSubmissionToAllClientBuffers();
+            /*
+            if (!uniform->isSharedByUser)
+                layer->uniformBuffer_->markUniformForSubmission(uniform.get());
+            else
+                sharedUniforms.fBuffer_->markUniformForSubmission(uniform.get());
+            */
+            nameChanged = true;
+        }
+    }
+    bool named(uniform->name.size() > 0);
+    if (showSeparator)
+        ImGui::Separator();
+    END_COLUMN(column)
+
+    START_COLUMN(column) // Type column ----------------------------------------
+    if (managed)
+        ImGui::Text(vir::Shader::uniformTypeToName[uniform->type()].c_str());
+    else if 
+    (
+        ImGui::BeginCombo
+        (
+            "##uniformTypeSelector", 
+            vir::Shader::uniformTypeToName[uniform->type()].c_str()
+        )
+    )
+    {
+        for(auto uniformTypeName : Uniform::supportedTypeNames)
+        {
+            if (!ImGui::Selectable(uniformTypeName.c_str()))
+                continue;
+            auto selectedType = 
+                vir::Shader::uniformNameToType[uniformTypeName];
+            if (selectedType == uniform->type())
+                continue;
+            typeChanged = true;
+            bool typeIsSamplerOrImage2D = 
+            (
+                uniform->type() == 
+                vir::Uniform::Type::Sampler2D ||
+                uniform->type() == 
+                vir::Uniform::Type::Image2D
+            );
+            bool selectedTypeIsSamplerOrImage2D = 
+            (
+                selectedType == 
+                vir::Uniform::Type::Sampler2D ||
+                selectedType == 
+                vir::Uniform::Type::Image2D
+            );
+            bool typeIsSamplerOrImage3D = 
+            (
+                uniform->type() == 
+                vir::Uniform::Type::Sampler3D ||
+                uniform->type() == 
+                vir::Uniform::Type::Image3D
+            );
+            bool selectedTypeIsSamplerOrImage3D = 
+            (
+                selectedType == 
+                vir::Uniform::Type::Sampler3D ||
+                selectedType == 
+                vir::Uniform::Type::Image3D
+            );
+            bool typeIsSamplerOrImageCube = 
+            (
+                uniform->type() == 
+                vir::Uniform::Type::SamplerCube ||
+                uniform->type() == 
+                vir::Uniform::Type::ImageCube
+            );
+            bool selectedTypeIsSamplerOrImageCube = 
+            (
+                selectedType == 
+                vir::Uniform::Type::SamplerCube ||
+                selectedType == 
+                vir::Uniform::Type::ImageCube
+            );
+            bool typeChangedFromResourceToNonResourceType =
+                (
+                    typeIsSamplerOrImage2D ||
+                    typeIsSamplerOrImage3D ||
+                    typeIsSamplerOrImageCube
+                ) &&
+                !(
+                    selectedTypeIsSamplerOrImage2D ||
+                    selectedTypeIsSamplerOrImage3D ||
+                    selectedTypeIsSamplerOrImageCube
+                );
+            bool typeChangedFromNonResourceToResource =
+                !(
+                    typeIsSamplerOrImage2D ||
+                    typeIsSamplerOrImage3D ||
+                    typeIsSamplerOrImageCube
+                ) &&
+                (
+                    selectedTypeIsSamplerOrImage2D ||
+                    selectedTypeIsSamplerOrImage3D ||
+                    selectedTypeIsSamplerOrImageCube
+                );
+            bool typeChangedFromResourceToIncompatibleResource = 
+                (
+                    typeIsSamplerOrImage2D && 
+                    (
+                        selectedTypeIsSamplerOrImage3D || 
+                        selectedTypeIsSamplerOrImageCube
+                    )
+                ) ||
+                (
+                    typeIsSamplerOrImage3D && 
+                    (
+                        selectedTypeIsSamplerOrImage2D || 
+                        selectedTypeIsSamplerOrImageCube
+                    )
+                ) ||
+                (
+                    typeIsSamplerOrImageCube && 
+                    (
+                        selectedTypeIsSamplerOrImage2D || 
+                        selectedTypeIsSamplerOrImage3D
+                    )
+                );
+            
+            // This is only for setting the inUseByLayers_ member of
+            // the resource, which in turn is only used to determine
+            // whether a full shader recompilation is required
+            // after changing the internal format of any resource
+            // that is actively used by a layer. This is necessary
+            // because, as the choice of using e.g., a 'usampler' or
+            // a 'sampler' qualifier for the uniform is automatic,
+            // changing the internal uniform type might require
+            // changing the qualifier, and this can only be changed
+            // in the shader source code with a recompilation
+            if (typeChangedFromResourceToNonResourceType)
+            {
+                auto resource = uniform->getValuePtr<Resource>();
+                if (resource != nullptr)
+                    resource->removeClientUniform(uniform.get());
+            }
+            else if (typeChangedFromNonResourceToResource)
+                //layer->uniformBuffer_->removeUniform(uniform.get());
+                uniform->removeFromAllClientBuffers();
+
+            if 
+            (
+                typeChangedFromResourceToNonResourceType ||
+                typeChangedFromResourceToIncompatibleResource
+            )
+                /*
+                // TODO: Check if madking an ad-hoc function for this in 
+                // ShaderThing::Uniform is cleaner
+                layer->rendering.uniformBuffer->removeUniform
+                (
+                    uniform->resourceResolutionUniform
+                );
+                */
+                uniform->resourceResolutionUniform->
+                    removeFromAllClientBuffers();
+            
+            uniform->setType(selectedType, true);
+            uniform->gui.showBounds = 
+            (
+                selectedType != vir::Uniform::Type::Bool &&
+                selectedType != vir::Uniform::Type::Sampler2D &&
+                selectedType != vir::Uniform::Type::Sampler3D &&
+                selectedType != vir::Uniform::Type::SamplerCube &&
+                selectedType != vir::Uniform::Type::Image2D &&
+                selectedType != vir::Uniform::Type::Image3D &&
+                selectedType != vir::Uniform::Type::ImageCube
+            );
+
+            // Add uniform to the buffer if it is a non-resource type now
+            // that the type has been set (cannot do it before, as I need
+            // to have the new uniform type already set before adding the
+            // uniform the buffer)
+            if (typeChangedFromResourceToNonResourceType)
+                layer->rendering.uniformBuffer->addUniform(uniform);
+
+            if 
+            (
+                    selectedTypeIsSamplerOrImage2D ||
+                    selectedTypeIsSamplerOrImage3D ||
+                    selectedTypeIsSamplerOrImageCube
+            )
+                continue;
+            
+            // TODO: Check if not needed (already managed when adding/removing
+            // uniforms in the buffer itself, right?)
+            layer->rendering.uniformBuffer->
+                recalculateUniformSizesAndOffsets();
+            /*
+            layer->rendering.uniformBuffer->
+                markUniformForSubmission(uniform.get());
+            */
+           uniform->markForSubmissionToAllClientBuffers();
+        }
+        ImGui::EndCombo();
+    }
+    if (showSeparator)
+        ImGui::Separator();
+    END_COLUMN(column)
+
+    START_COLUMN(column) // Bounds column ------------------------------------------
+    bool boundsChanged(false);
+    glm::vec2& bounds = uniform->gui.bounds;
+    if (uniform->gui.showBounds)
+        boundsChanged = renderEditUniformBoundsButton(uniform, true);
+    if (showSeparator)
+    {
+        if (y0 > 0)
+            ImGui::SetCursorPosY(y0);
+        ImGui::Separator();
+    }
+    END_COLUMN(column)
+
+    #define SET_UNIFORM_VALUE(Type)                                         \
+    if (!isSharedByUser0)                                                   \
+    {                                                                       \
+        layer->uniformBuffer_->markUniformForSubmission(uniform.get());     \
+    }                                                                       \
+    else                                                                    \
+    {                                                                       \
+        sharedUniforms.fBuffer_->markUniformForSubmission(uniform.get());   \
+    }
+
+    START_COLUMN(column) // Value column ---------------------------------------
+    switch(uniform->type())
+    {
+        case vir::Uniform::Type::Bool :
+        {
+            auto value = uniform->getValue<bool>();
+            if (ImGui::Checkbox((value) ? "true" : "false", &value))
+            {
+                uniform->setValue(value, Type::Bool);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Bool)
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::UInt : //-------------------------
+        {
+            auto value = uniform->getValue<uint32_t>();
+            value = std::max(value, (uint32_t)0);
+            if (!boundsChanged)
+            {
+                bounds.x = std::min((float)value, bounds.x);
+                bounds.y = std::max((float)value, bounds.y);
+            }
+            bool input = ImGui::SliderInt
+            (
+                "##uniformSliderInt", 
+                (int*)&value, 
+                (int)(bounds.x),
+                (int)(bounds.y)
+            );
+            if (input || boundsChanged)
+            {
+                value = std::max(value, (uint32_t)0);
+                if (boundsChanged)
+                {
+                    value = std::max((float)value, bounds.x);
+                    value = std::min((float)value, bounds.y);
+                }
+                uniform->setValue(value, Type::UInt);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Int)
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Int : //--------------------------
+        {
+            auto value = uniform->getValue<int>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min((float)value, bounds.x);
+                bounds.y = std::max((float)value, bounds.y);
+            }
+            if 
+            (
+                ImGui::SliderInt
+                (
+                    "##iSlider", 
+                    &value, 
+                    (int)(bounds.x),
+                    (int)(bounds.y)
+                ) || boundsChanged
+            )
+            {
+                if (boundsChanged)
+                {
+                    value = std::max((float)value, bounds.x);
+                    value = std::min((float)value, bounds.y);
+                }
+                uniform->setValue(value, Type::Int);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Int)
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Int2 : //-------------------------
+        {
+            auto value = uniform->getValue<glm::ivec2>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min(value.x, (int)bounds.x);
+                bounds.x = std::min(value.y, (int)bounds.x);
+                bounds.y = std::max(value.x, (int)bounds.y);
+                bounds.y = std::max(value.y, (int)bounds.y);
+            }
+            bool input(false);
+            {
+                ImGui::SmallButton(ICON_FA_MOUSE_POINTER); 
+                ImGui::SameLine();
+                if (ImGui::IsItemActive())
+                {
+                    ImGui::GetForegroundDrawList()->AddLine
+                    (
+                        ImGui::GetIO().MouseClickedPos[0], 
+                        ImGui::GetIO().MousePos, 
+                        ImGui::GetColorU32(ImGuiCol_Button), 
+                        4.0f
+                    );
+                    ImVec2 delta = ImGui::GetMouseDragDelta(0, 0.0f);
+                    delta.y = -delta.y;
+                    auto monitor = 
+                        vir::Window::instance()->
+                        primaryMonitorResolution();
+                    int maxRes = std::max(monitor.x, monitor.y);
+                    bounds.x = std::min(bounds.x, -bounds.y);
+                    bounds.y = std::max(-bounds.x, bounds.y);
+                    auto valuei0 = uniform->getCache<glm::ivec2>();
+                    value.x = valuei0.x + 
+                        (float)(10.f*delta.x*uniform->gui.dragStep)/maxRes;
+                    value.y = valuei0.y + 
+                        (float)(10.f*delta.y*uniform->gui.dragStep)/maxRes;
+                    input = true;
+                }
+                else
+                    uniform->setCache<glm::ivec2>(value);
+                bool input2 = ImGui::SliderInt2
+                (
+                    "##i2Slider", 
+                    glm::value_ptr(value), 
+                    bounds.x,
+                    bounds.y
+                );
+                input = input || input2;
+            }
+            if (input || boundsChanged)
+            {
+                if (boundsChanged)
+                {
+                    value.x = std::max(value.x, (int)bounds.x);
+                    value.x = std::min(value.x, (int)bounds.y);
+                    value.y = std::max(value.y, (int)bounds.x);
+                    value.y = std::min(value.y, (int)bounds.y);
+                }
+                uniform->setValue(value, Type::Int2);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Int2)
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Int3 : //-------------------------
+        {
+            auto value = uniform->getValue<glm::ivec3>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min(value.x, (int)bounds.x);
+                bounds.x = std::min(value.y, (int)bounds.x);
+                bounds.x = std::min(value.z, (int)bounds.x);
+                bounds.y = std::max(value.x, (int)bounds.y);
+                bounds.y = std::max(value.y, (int)bounds.y);
+                bounds.y = std::max(value.z, (int)bounds.y);
+            }
+            if 
+            (
+                ImGui::SliderInt3
+                (
+                    "##i3Slider", 
+                    glm::value_ptr(value), 
+                    bounds.x,
+                    bounds.y
+                )
+            )
+            {
+                if (boundsChanged)
+                {
+                    value.x = std::max(value.x, (int)bounds.x);
+                    value.x = std::min(value.x, (int)bounds.y);
+                    value.y = std::max(value.y, (int)bounds.x);
+                    value.y = std::min(value.y, (int)bounds.y);
+                    value.z = std::max(value.z, (int)bounds.x);
+                    value.z = std::min(value.z, (int)bounds.y);
+                }
+                uniform->setValue(value, Type::Int3);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Int3)
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Int4 : //-------------------------
+        {
+            auto value = uniform->getValue<glm::ivec4>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min(value.x, (int)bounds.x);
+                bounds.x = std::min(value.y, (int)bounds.x);
+                bounds.x = std::min(value.z, (int)bounds.x);
+                bounds.x = std::min(value.w, (int)bounds.x);
+                bounds.y = std::max(value.x, (int)bounds.y);
+                bounds.y = std::max(value.y, (int)bounds.y);
+                bounds.y = std::max(value.z, (int)bounds.y);
+                bounds.y = std::max(value.w, (int)bounds.y);
+            }
+            if 
+            (
+                ImGui::SliderInt4
+                (
+                    "##i4Slider", 
+                    glm::value_ptr(value), 
+                    bounds.x,
+                    bounds.y
+                )
+            )
+            {
+                if (boundsChanged)
+                {
+                    value.x = std::max(value.x, (int)bounds.x);
+                    value.x = std::min(value.x, (int)bounds.y);
+                    value.y = std::max(value.y, (int)bounds.x);
+                    value.y = std::min(value.y, (int)bounds.y);
+                    value.z = std::max(value.z, (int)bounds.x);
+                    value.z = std::min(value.z, (int)bounds.y);
+                    value.w = std::max(value.z, (int)bounds.x);
+                    value.w = std::min(value.z, (int)bounds.y);
+                }
+                uniform->setValue(value, Type::Int4);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Int4)
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Float : //------------------------
+        {
+            auto value = uniform->getValue<float>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min(value, bounds.x);
+                bounds.y = std::max(value, bounds.y);
+            }
+            bool input(false);
+            if 
+            (
+                //uniform->managedType == 
+                //    Uniform::ManagedType::WindowAspectRatio ||
+                uniform->managedType == 
+                    Uniform::ManagedType::LayerAspectRatio
+            )
+                ImGui::Text("%.3f", value);
+            else
+            {
+                if (ImGui::SmallButton(uniform->isLogarithmic?"log":"lin"))
+                    uniform->isLogarithmic = !uniform->isLogarithmic;
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+                {
+                    ImGui::Text
+                    ( 
+                        uniform->isLogarithmic ?
+                        "Switch slider to linear scale" : 
+                        "Switch slider to logarithmic scale"
+                    );
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGuiSliderFlags flags = 0;
+                std::string format;
+                if (uniform->isLogarithmic)
+                {
+                    ImGui::PushDragSliderLogZeroForScientificNotation
+                    (
+                        uniform->gui.logarithmicZero
+                    );
+                    format = "%.3e";
+                    flags = ImGuiSliderFlags_Logarithmic;
+                } 
+                else
+                    format = Helpers::getFormat(value);
+                input = ImGui::SliderFloat
+                (
+                    "##fSlider", 
+                    &value, 
+                    bounds.x,
+                    bounds.y,
+                    format.c_str(),
+                    flags
+                );
+                if (uniform->isLogarithmic)
+                    ImGui::PopDragSliderLogZeroForScientificNotation();
+            }
+            if (input || boundsChanged)
+            {
+                if (boundsChanged)
+                {
+                    value = std::max(value, bounds.x);
+                    value = std::min(value, bounds.y);
+                }
+                uniform->setValue(value, Type::Float);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Float)                                                                
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Float2 : //-----------------------
+        {
+            auto value = uniform->getValue<glm::vec2>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min(value.x, bounds.x);
+                bounds.x = std::min(value.y, bounds.x);
+                bounds.y = std::max(value.x, bounds.y);
+                bounds.y = std::max(value.y, bounds.y);
+            }
+            bool input(false);
+            if 
+            (
+                //uniform->specialType == 
+                //    Uniform::SpecialType::WindowResolution || 
+                uniform->managedType == 
+                    Uniform::ManagedType::LayerResolution
+            )
+            {
+                auto value = uniform->getValue<glm::vec2>();
+                ImGui::Text
+                (
+                    "%d x %d",
+                    (int)value.x, (int)value.y
+                );
+            }
+            else 
+            {
+                ImGui::SmallButton(ICON_FA_MOUSE_POINTER); 
+                ImGui::SameLine();
+                if (ImGui::IsItemActive())
+                {
+                    ImGui::GetForegroundDrawList()->AddLine
+                    (
+                        ImGui::GetIO().MouseClickedPos[0], 
+                        ImGui::GetIO().MousePos, 
+                        ImGui::GetColorU32(ImGuiCol_Button), 
+                        4.0f
+                    );
+                    ImVec2 delta = ImGui::GetMouseDragDelta(0, 0.0f);
+                    delta.y = -delta.y;
+                    auto monitor = 
+                        vir::Window::instance()->
+                        primaryMonitorResolution();
+                    int maxRes = std::max(monitor.x, monitor.y);
+                    bounds.x = std::min(bounds.x, -bounds.y);
+                    bounds.y = std::max(-bounds.x, bounds.y);
+                    auto valuef0 = uniform->getCache<glm::vec2>();
+                    value.x = valuef0.x + 
+                        (float)(10.f*delta.x*uniform->gui.dragStep)/maxRes;
+                    value.y = valuef0.y + 
+                        (float)(10.f*delta.y*uniform->gui.dragStep)/maxRes;
+                    input = true;
+                }
+                else
+                    uniform->setCache<glm::vec2>(value);
+                std::string format = Helpers::getFormat(value);
+                bool input2 = ImGui::SliderFloat2
+                (
+                    "##f2Slider", 
+                    glm::value_ptr(value), 
+                    bounds.x,
+                    bounds.y,
+                    format.c_str()
+                );
+                input = input || input2;
+            }
+            if (input || boundsChanged)
+            {
+                if (boundsChanged)
+                {
+                    value.x = std::max(value.x, bounds.x);
+                    value.x = std::min(value.x, bounds.y);
+                    value.y = std::max(value.y, bounds.x);
+                    value.y = std::min(value.y, bounds.y);
+                }
+                uniform->setValue(value, Type::Float2);
+                if (named)
+                {
+                    //SET_UNIFORM_VALUE(Float2)
+                    uniform->markForSubmissionToAllClientBuffers();
+                    sharedUniforms.iUserAction = true;
+                    sharedUniforms.toggles.updateDataRangeII = true;
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Float3 : //-----------------------
+        {
+            auto value = uniform->getValue<glm::vec3>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min(value.x, bounds.x);
+                bounds.x = std::min(value.y, bounds.x);
+                bounds.x = std::min(value.z, bounds.x);
+                bounds.y = std::max(value.x, bounds.y);
+                bounds.y = std::max(value.y, bounds.y);
+                bounds.y = std::max(value.z, bounds.y);
+            }
+            bool colorPicker(false);
+            if 
+            (
+                ImGui::SmallButton
+                (
+                    uniform->gui.usesColorPicker ? 
+                    ICON_FA_SLIDERS_H : 
+                    ICON_FA_PAINT_BRUSH
+                )
+            )
+                uniform->gui.usesColorPicker = 
+                    !uniform->gui.usesColorPicker;
+            ImGui::SameLine();
+            colorPicker = uniform->gui.usesColorPicker;
+            if (!colorPicker)
+            {
+                uniform->gui.showBounds = true;
+                std::string format = Helpers::getFormat(value);
+                if 
+                (
+                    ImGui::SliderFloat3
+                    (
+                        "##f3Slider", 
+                        glm::value_ptr(value), 
+                        bounds.x,
+                        bounds.y,
+                        format.c_str()
+                    ) || boundsChanged
+                )
+                {
+                    if (boundsChanged)
+                    {
+                        value.x = std::max(value.x, bounds.x);
+                        value.x = std::min(value.x, bounds.y);
+                        value.y = std::max(value.y, bounds.x);
+                        value.y = std::min(value.y, bounds.y);
+                        value.z = std::max(value.z, bounds.x);
+                        value.z = std::min(value.z, bounds.y);
+                    }
+                    /*
+                    bool isCameraDirection
+                    (
+                        uniform->specialType == 
+                            Uniform::SpecialType::CameraDirection
+                    );
+                    if (isCameraDirection)
+                        value = glm::normalize(value);
+                    */
+                    uniform->setValue(value, Type::Float3);
+                    if (named)
+                    {
+                        //SET_UNIFORM_VALUE(Float3)
+                        uniform->markForSubmissionToAllClientBuffers();
+                        sharedUniforms.iUserAction = true;
+                        sharedUniforms.toggles.updateDataRangeII = true;
+                    }
+                }
+            }
+            else
+            {
+                uniform->gui.showBounds = false;
+                if 
+                (
+                    ImGui::ColorEdit3
+                    (
+                        "##uniformColorEdit3", 
+                        glm::value_ptr(value)
+                    )
+                )
+                {
+                    bounds.x = 0.0;
+                    bounds.y = 1.0;
+                    uniform->setValue(value, Type::Float3);
+                    if (named)
+                    {
+                        //SET_UNIFORM_VALUE(Float3);
+                        uniform->markForSubmissionToAllClientBuffers();
+                        sharedUniforms.iUserAction = true;
+                        sharedUniforms.toggles.updateDataRangeII = true;
+                    }
+                }
+            }
+            break;
+        }
+        case vir::Uniform::Type::Float4 : //-----------------------
+        {
+            auto value = uniform->getValue<glm::vec4>();
+            if (!boundsChanged)
+            {
+                bounds.x = std::min(value.x, bounds.x);
+                bounds.x = std::min(value.y, bounds.x);
+                bounds.x = std::min(value.z, bounds.x);
+                bounds.x = std::min(value.w, bounds.x);
+                bounds.y = std::max(value.x, bounds.y);
+                bounds.y = std::max(value.y, bounds.y);
+                bounds.y = std::max(value.z, bounds.y);
+                bounds.y = std::max(value.w, bounds.y);
+            }
+            bool colorPicker(false);
+            if 
+            (
+                ImGui::SmallButton
+                (
+                    uniform->gui.usesColorPicker ? 
+                    ICON_FA_SLIDERS_H : 
+                    ICON_FA_PAINT_BRUSH
+                )
+            )
+                uniform->gui.usesColorPicker = 
+                    !uniform->gui.usesColorPicker;
+            ImGui::SameLine();
+            colorPicker = uniform->gui.usesColorPicker;
+            if (!colorPicker)
+            {
+                uniform->gui.showBounds = true;
+                std::string format = Helpers::getFormat(value);
+                if 
+                (
+                    ImGui::SliderFloat4
+                    (
+                        "##f4Slider", 
+                        glm::value_ptr(value), 
+                        bounds.x,
+                        bounds.y,
+                        format.c_str()
+                    ) || boundsChanged
+                )
+                {
+                    if (boundsChanged)
+                    {
+                        value.x = std::max(value.x, bounds.x);
+                        value.x = std::min(value.x, bounds.y);
+                        value.y = std::max(value.y, bounds.x);
+                        value.y = std::min(value.y, bounds.y);
+                        value.z = std::max(value.z, bounds.x);
+                        value.z = std::min(value.z, bounds.y);
+                        value.w = std::max(value.w, bounds.x);
+                        value.w = std::min(value.w, bounds.y);
+                    }
+                    uniform->setValue(value, Type::Float4);
+                    if (named)
+                    {
+                        //SET_UNIFORM_VALUE(Float4)
+                        uniform->markForSubmissionToAllClientBuffers();
+                        sharedUniforms.iUserAction = true;
+                        sharedUniforms.toggles.updateDataRangeII = true;
+                    }
+                }
+            }
+            else
+            {
+                if (uniform->gui.showBounds)
+                    uniform->gui.showBounds = false;
+                if 
+                (
+                    ImGui::ColorEdit4
+                    (
+                        "##uniformColorEdit4", 
+                        glm::value_ptr(value)
+                    )
+                )
+                {
+                    bounds.x = 0.0;
+                    bounds.y = 1.0;
+                    uniform->setValue(value, Type::Float4);
+                    if (named)
+                    {
+                        //SET_UNIFORM_VALUE(Float4)
+                        uniform->markForSubmissionToAllClientBuffers();
+                        sharedUniforms.iUserAction = true;
+                        sharedUniforms.toggles.updateDataRangeII = true;
+                    }
+                }
+            }
+            break;
+        }
+
+        #define CHECK_RESOURCE_SELECTED                                        \
+        if (ImGui::Selectable(r->name().c_str()))                              \
+        {                                                                      \
+            if (resource != nullptr)                                           \
+            {                                                                  \
+                appData.rendering.toggles.requestFullRecompilation =           \
+                    appData.rendering.toggles.requestFullRecompilation ||      \
+                    resource->isInternalFormatUnsigned() !=                    \
+                    r->isInternalFormatUnsigned();                             \
+                if (resource->isUsedByUniform(uniform.get()))                  \
+                    resource->removeClientUniform(uniform.get());              \
+            }                                                                  \
+            else                                                               \
+                appData.rendering.toggles.requestFullRecompilation = true;     \
+            if (!r->isUsedByUniform(uniform.get()))                            \
+                r->addClientUniform(uniform.get());                            \
+            auto& ubo = uniform->isSharedByUser ?                              \
+                sharedUniforms.fBuffer : layer->rendering.uniformBuffer;       \
+            uniform->setResourcePtr(r, ubo);                                   \
+            sharedUniforms.iUserAction = true;                                 \
+            sharedUniforms.toggles.updateDataRangeII = true;                   \
+        }
+
+        case vir::Uniform::Type::Sampler2D :
+        case vir::Uniform::Type::Image2D :
+        {
+            auto resource = 
+                uniform->getValuePtr<Resource>();
+            std::string name
+            (
+                (resource != nullptr) ? resource->name() : ""
+            );
+            if (ImGui::BeginCombo("##tx2DSelector", name.c_str()))
+            {
+                for (UPtr<Resource>& r : resources)
+                {
+                    if 
+                    (
+                        r->type() != Resource::Type::Texture2D &&
+                        r->type() != Resource::Type::AnimatedTexture2D &&
+                        r->type() != Resource::Type::Framebuffer
+                    )
+                        continue;
+                    CHECK_RESOURCE_SELECTED
+                }
+                ImGui::EndCombo();
+            }
+            break;
+        }
+        case vir::Uniform::Type::Sampler3D :
+        case vir::Uniform::Type::Image3D :
+        {
+            auto resource = 
+                uniform->getValuePtr<Resource>();
+            std::string name
+            (
+                (resource != nullptr) ? resource->name() : ""
+            );
+            if (ImGui::BeginCombo("##tx3DSelector", name.c_str()))
+            {
+                for (auto& r : resources)
+                {
+                    if (r->type() != Resource::Type::Texture3D)
+                        continue;
+                    CHECK_RESOURCE_SELECTED
+                }
+                ImGui::EndCombo();
+            }
+            break;
+        }
+        case vir::Uniform::Type::SamplerCube :
+        case vir::Uniform::Type::ImageCube :
+        {
+            auto resource = 
+                uniform->getValuePtr<Resource>();
+            std::string name
+            (
+                (resource != nullptr) ? resource->name() : ""
+            );
+            if (ImGui::BeginCombo("##cmSelector", name.c_str()))
+            {
+                for (auto& r : resources)
+                {
+                    if (r->type() != Resource::Type::Cubemap)
+                        continue;
+                    CHECK_RESOURCE_SELECTED
+                }
+                ImGui::EndCombo();
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    if (showSeparator)
+        ImGui::Separator();
+    END_COLUMN(column)
+    
+    END_ROW(row)
+
+    if (!nameChanged && !typeChanged)
+        return false;
+
+    // If the uniform name or type have changed, it should be added to the
+    // list of uncompiled uniforms of the layer using this uniform (if this
+    // uniform is not SharedByUser) or of all the layers (if this uniform
+    // is SharedByUser). Also, if at least one uniform has been named,
+    // said layer should be recompiled (all other layer uniforms which are
+    // still unnamed are simply ignored)
+    if (isSharedByUser0)
+    {
+        for (auto& l : appData.layers)
+        {
+            if 
+            (
+                std::find // I.e., if not already in uncompiledUniforms
+                (
+                    l->cache.uncompiledUniforms.begin(), 
+                    l->cache.uncompiledUniforms.end(), 
+                    uniform.get()
+                ) == l->cache.uncompiledUniforms.end()
+            )
+                l->cache.uncompiledUniforms.emplace_back(uniform.getWeak());
+            bool atLeastOneUniformNamed = false;
+            for (auto& u : l->cache.uncompiledUniforms)
+            {
+                if (u->name.size() == 0)
+                    continue;
+                atLeastOneUniformNamed = true;
+                break;
+            }
+            if (atLeastOneUniformNamed)
+                l->hasUncompiledEdits = true;
+        }
+    }
+    else
+    {
+        if 
+        (
+            std::find
+            (
+                layer->cache.uncompiledUniforms.begin(), 
+                layer->cache.uncompiledUniforms.end(), 
+                uniform.get()
+            ) == layer->cache.uncompiledUniforms.end()
+        )
+            layer->cache.uncompiledUniforms.emplace_back(uniform.getWeak());
+        bool atLeastOneUniformNamed = false;
+        for (auto& u : layer->cache.uncompiledUniforms)
+        {
+            if (u->name.size() == 0)
+                continue;
+            atLeastOneUniformNamed = true;
+            break;
+        }
+        if (atLeastOneUniformNamed)
+            layer->hasUncompiledEdits = true;
+    }
+
+    return typeChanged;
+    
+}; // End of renderUniform lambda
 
 } // End of GUI namespace
 

@@ -2,6 +2,7 @@
 #include "shaderthing/include/corelogic.h"
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/structs.h"
+#include "shaderthing/include/oo/eventmanager.h"
 #include "shaderthing/include/oo/texteditor.h"
 #include "shaderthing/include/oo/statusbar.h"
 #include "shaderthing/include/oo/uniform.h"
@@ -415,13 +416,6 @@ void setWindowResolution
             resolution.x,
             resolution.y
         );
-}
-
-//----------------------------------------------------------------------------//
-
-RenderResult renderShaders(AppData& appData)
-{
-    return {true, true};
 }
 
 //----------------------------------------------------------------------------//
@@ -1670,6 +1664,192 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
         iRenderPass == nRenderPasses-1, 
         frameRendered
     };
+}
+
+//----------------------------------------------------------------------------//
+
+void addUniformToLayer(UPtr<Uniform>&& uniform, UPtr<Layer>& layer)
+{
+    if (uniform == nullptr)
+        return;
+    auto& u = layer->uniforms.emplace_back(std::move(uniform));
+    layer->rendering.uniformBuffer->addUniform
+    (
+        vir::castUnique<vir::Uniform>(u)
+    );
+    if (u->isResource())
+    {
+        auto* resource = u->getValuePtr<Resource>();
+        u->setResourcePtr(resource, layer->rendering.uniformBuffer);
+    }
+    layer->cache.uncompiledUniforms.emplace_back(u.getWeak());
+}
+
+//----------------------------------------------------------------------------//
+
+UPtr<Uniform> removeUniformFromLayer(UPtr<Uniform>& uniform, UPtr<Layer>& layer)
+{
+    if (uniform == nullptr)
+        return vir::nullUniquePtr<Uniform>();
+    layer->rendering.uniformBuffer->removeUniform(uniform);
+    int index = -1;
+    for (unsigned int i = 0; i<layer->uniforms.size(); i++)
+    {
+        if (layer->uniforms[i] == uniform)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1)
+        return vir::nullUniquePtr<Uniform>();
+    auto u = std::move(layer->uniforms[index]);
+    layer->uniforms.erase(layer->uniforms.begin()+index);
+    if (uniform->isResource())
+        layer->rendering.uniformBuffer->removeUniform
+        (
+            uniform->resourceResolutionUniform
+        );
+    layer->cache.uncompiledUniforms.erase
+    (
+        std::remove
+        (
+            layer->cache.uncompiledUniforms.begin(), 
+            layer->cache.uncompiledUniforms.end(), 
+            uniform
+        ), 
+        layer->cache.uncompiledUniforms.end()
+    );
+    return std::move(u);
+}
+
+//----------------------------------------------------------------------------//
+
+void addUniformToSharedUniforms(UPtr<Uniform>&& uniform, AppData& appData)
+{
+    auto& sharedUniforms = appData.sharedUniforms;
+    sharedUniforms.fBuffer->addUniform(vir::castUnique<vir::Uniform>(uniform));
+    auto it = std::find
+    (
+        sharedUniforms.userUniforms.begin(), 
+        sharedUniforms.userUniforms.end(), 
+        uniform
+    );
+    if (it == sharedUniforms.userUniforms.end())
+    {
+        auto& u = sharedUniforms.userUniforms.emplace_back(std::move(uniform));
+        if (u->isResource())
+        {
+            auto* resource = u->getValuePtr<Resource>();
+            u->setResourcePtr(resource, sharedUniforms.fBuffer);
+        }
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+UPtr<Uniform> removeUniformFromSharedUniforms
+(
+    UPtr<Uniform>& uniform, 
+    AppData& appData
+)
+{
+    auto& sharedUniforms = appData.sharedUniforms;
+    sharedUniforms.fBuffer->removeUniform(uniform);
+    int index = -1;
+    for (unsigned int i = 0; i<sharedUniforms.userUniforms.size(); i++)
+    {
+        if (sharedUniforms.userUniforms[i] == uniform)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1)
+        return vir::nullUniquePtr<Uniform>();
+    auto u = std::move(sharedUniforms.userUniforms[index]);
+    sharedUniforms.userUniforms.erase
+    (
+        sharedUniforms.userUniforms.begin()+index
+    );
+    if (uniform->isResource())
+        sharedUniforms.fBuffer->removeUniform
+        (
+            uniform->resourceResolutionUniform
+        );
+    return std::move(u);
+}
+
+//----------------------------------------------------------------------------//
+
+void toggleKeyboardInputs(AppData& appData)
+{
+    appData.sharedUniforms.isKeyboardInputEnabled = 
+        !appData.sharedUniforms.isKeyboardInputEnabled;
+    auto eventManager = GPtr<EventManager>::get();
+    if (appData.sharedUniforms.isKeyboardInputEnabled)
+    {
+        eventManager->resumeEventReception(vir::Event::Type::KeyPress);
+        eventManager->resumeEventReception(vir::Event::Type::KeyRelease);
+    }
+    else
+    {
+        eventManager->pauseEventReception(vir::Event::Type::KeyPress);
+        eventManager->pauseEventReception(vir::Event::Type::KeyRelease);
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void toggleMouseInputs(AppData& appData)
+{
+    // Mouse-related event-reception not 'really' paused as it does some 
+    // important pre-processing required to possibly block input propagation 
+    // to the input camera
+    appData.sharedUniforms.isMouseInputEnabled = 
+        !appData.sharedUniforms.isMouseInputEnabled;
+}
+
+//----------------------------------------------------------------------------//
+
+void toggleCameraMouseInputs(AppData& appData)
+{
+    auto& su = appData.sharedUniforms;
+    auto& camera = su.shaderCamera.dynamicUpcastTo<vir::InputCamera>();
+    su.isCameraMouseInputEnabled = !su.isCameraMouseInputEnabled;
+    if (su.isCameraMouseInputEnabled)
+        camera->resumeEventReception(vir::Event::Type::MouseMotion);
+    else
+        camera->pauseEventReception(vir::Event::Type::MouseMotion);
+}
+
+//----------------------------------------------------------------------------//
+
+void toggleCameraKeyboardInputs(AppData& appData)
+{
+    auto& su = appData.sharedUniforms;
+    auto& camera = su.shaderCamera.dynamicUpcastTo<vir::InputCamera>();
+    su.isCameraKeyboardInputEnabled = !su.isCameraKeyboardInputEnabled;
+    if (su.isCameraKeyboardInputEnabled)
+        camera->resumeEventReception(vir::Event::Type::KeyPress);
+    else
+        camera->pauseEventReception(vir::Event::Type::KeyPress);
+}
+
+//----------------------------------------------------------------------------//
+
+void setMouseInputsClamped(AppData& appData, bool flag)
+{
+    auto& su = appData.sharedUniforms;
+    su.isMouseInputClampedToWindow = flag;
+    if (flag)
+    {
+        su.iMouse.x = 
+            std::max(std::min(su.iMouse.x, su.iResolution.x), 0.f);
+        su.iMouse.y = 
+            std::max(std::min(su.iMouse.y, su.iResolution.y), 0.f);
+    }
+    su.toggles.updateDataRangeII = true;
 }
 
 }
