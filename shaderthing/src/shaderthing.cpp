@@ -22,7 +22,7 @@ void run()
     initialize(appData);
     
     // Initialize event manager
-    auto eventManager = GPtr<EventManager>(new EventManager(appData));
+    GPtr<EventManager>(new EventManager(appData));
 
     // Main loop
     auto window = vir::Window::instance();

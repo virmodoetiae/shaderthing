@@ -175,6 +175,8 @@ struct Layer
         UPtr<vir::Shader>               shader;
         UPtr<vir::DynamicUniformBuffer> uniformBuffer;
         unsigned int                    uniformBufferBindingPoint;
+        WPtr<Uniform>                   iAspectRatioUniform;
+        WPtr<Uniform>                   iResolutionUniform;
         static UPtr<vir::Shader>        textureMapperShader;
 
         struct Tiles

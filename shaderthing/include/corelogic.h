@@ -35,13 +35,13 @@ void setWindowResolution
 );
 
 void createNewLayer(AppData& appData, bool compileShader = true);
-void setLayerDepth(Layer& layer, const float depth);
-void setLayerFramebufferWrapMode(Layer& layer, int i, WrapMode mode);
-void setLayerFramebufferMagFilterMode(Layer& layer, FilterMode mode);
-void setLayerFramebufferMinFilterMode(Layer& layer, FilterMode mode);
+void setLayerDepth(UPtr<Layer>& layer, const float depth);
+void setLayerFramebufferWrapMode(UPtr<Layer>& layer, int i, WrapMode mode);
+void setLayerFramebufferMagFilterMode(UPtr<Layer>& layer, FilterMode mode);
+void setLayerFramebufferMinFilterMode(UPtr<Layer>& layer, FilterMode mode);
 void setLayerResolution
 (
-    Layer& layer,
+    UPtr<Layer>& layer,
     glm::ivec2 resolution,
     const bool isTiledRenderingEnabled,
     const bool windowFrameManuallyDragged,
@@ -50,7 +50,7 @@ void setLayerResolution
 );
 void rebuildLayerFramebuffers
 (
-    Layer& layer,
+    UPtr<Layer>& layer,
     const vir::TextureBuffer::InternalFormat& internalFormat, 
     const glm::ivec2& resolution,
     const AppData& appData
@@ -58,19 +58,19 @@ void rebuildLayerFramebuffers
 void clearLayerFramebuffers(Layer& layer);
 std::string assembleFragmentShaderHeader
 (
-    const Layer& layer, 
+    const UPtr<Layer>& layer, 
     const AppData& appData
 );
 std::string assembleVertexShaderSource(const AppData& appData);
 bool compileShader
 (
-    Layer& layer, 
+    UPtr<Layer>& layer, 
     AppData& appData, 
     bool setBlankShaderOnError = false
 );
 void renderLayerShader
 (
-    Layer& layer,
+    UPtr<Layer>& layer,
     vir::Framebuffer* target,
     const bool clearTarget,
     AppData& appData

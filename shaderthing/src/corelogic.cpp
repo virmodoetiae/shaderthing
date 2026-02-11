@@ -306,56 +306,7 @@ void setupNewProject(AppData& appData)
 
 void preRenderUpdate(AppData& appData)
 {
-    /*
     appData.deferredActionBuffer.process();
-
-    // exporter_->update(*sharedUniforms_, layers_, resources_);
-
-    bool advanceFrame;
-    float timeStep;
-    if (appData.exporter.isActive)
-    {
-        if 
-        (
-            appData.rendering.renderPass == 
-            appData.exporter.settings.nRenderPasses-1
-        )
-        {
-            advanceFrame = true;
-            timeStep = appData.exporter.timeStep;
-        }
-        else
-        {
-            advanceFrame = false;
-            timeStep = 0;
-        }
-    }
-    else
-    {
-        timeStep = (sharedUniforms_->isTimeDeltaSmooth() ?
-            vir::Window::instance()->time()->smoothOuterTimestep() : 
-            vir::Window::instance()->time()->outerTimestep());
-        if (Layer::Rendering::TileController::tiledRenderingEnabled)
-        {
-            static float cumulatedTimeStep = 0;
-            if (!sharedUniforms_->isRenderingPaused())
-                cumulatedTimeStep += timeStep;
-            if (Layer::Rendering::TileController::tileIndex == 0)
-            {
-                timeStep = cumulatedTimeStep;
-                cumulatedTimeStep = 0;
-                advanceFrame = true;
-            }
-            else
-            {
-                timeStep = 0;
-                advanceFrame = false;
-            }
-        }
-        else
-            advanceFrame = true;
-    }
-    */
 }
 
 //----------------------------------------------------------------------------//
@@ -699,8 +650,8 @@ void createNewLayer(AppData& appData, bool compileShader)
 {
     // Create and new layer to layers
     unsigned int id = Helpers::findSmallestFreeLayerId(appData.layers);
-    auto& layer = *appData.layers.emplace_back(vir::makeUnique<Layer>(id));
-    layer.name = "Layer "+std::to_string(id);
+    auto& layer = appData.layers.emplace_back(vir::makeUnique<Layer>(id));
+    layer->name = "Layer "+std::to_string(id);
 
     auto window = vir::Window::instance();
     setLayerResolution
@@ -714,17 +665,34 @@ void createNewLayer(AppData& appData, bool compileShader)
     // Init quad for rendering
     setLayerDepth(layer, (float)appData.layers.size()/Layer::nMaxLayers);
 
-    // Initi unfiorm buffer storage
-    layer.rendering.uniformBuffer = 
+    // Init unfiorm buffer storage
+    layer->rendering.uniformBuffer = 
         vir::DynamicUniformBuffer::create(1024, "privateUniformBlock");
     // First two points taken by shared vertex shader uniform block and shared
     // fragment uniform block
     unsigned int bindingPoint = 2+id;
-    layer.rendering.uniformBufferBindingPoint = bindingPoint;
-    layer.rendering.uniformBuffer->setBindingPoint(bindingPoint);
+    layer->rendering.uniformBufferBindingPoint = bindingPoint;
+    layer->rendering.uniformBuffer->setBindingPoint(bindingPoint);
+
+    // Add default uniforms
+    auto u = Uniform::create();
+    u->managedType = Uniform::ManagedType::LayerAspectRatio;
+    u->name = "iAspectRatio";
+    u->setValuePtr(&layer->aspectRatio, Uniform::Type::Float);
+    u->gui.showBounds = false;
+    layer->rendering.iAspectRatioUniform = u.getWeak();
+    addUniformToLayer(std::move(u), layer);
+    u = Uniform::create();
+    u->managedType = Uniform::ManagedType::LayerResolution;
+    u->name = "iResolution";
+    u->setValuePtr(&layer->resolution, Uniform::Type::Float2);
+    u->gui.bounds = glm::vec2(1.0f, 4096.0f);
+    u->gui.showBounds = false;
+    layer->rendering.iResolutionUniform = u.getWeak();
+    addUniformToLayer(std::move(u), layer);
 
     // Set default fragment source in editor
-    layer.sourceEditor.setText
+    layer->sourceEditor.setText
     (
 R"(void main()
 {
@@ -756,7 +724,7 @@ R"(void main()
     );
 })"
     );
-    layer.sourceEditor.resetTextChanged();
+    layer->sourceEditor.resetTextChanged();
 
     if (compileShader)
         ShaderThing::compileShader(layer, appData);
@@ -764,59 +732,59 @@ R"(void main()
 
 //----------------------------------------------------------------------------//
 
-void setLayerDepth(Layer& layer, const float depth)
+void setLayerDepth(UPtr<Layer>& layer, const float depth)
 {
-    layer.depth = depth;
-    if (layer.rendering.quad.valid())
-        layer.rendering.quad->update
+    layer->depth = depth;
+    if (layer->rendering.quad.valid())
+        layer->rendering.quad->update
         (
-            layer.rendering.quad->width(),
-            layer.rendering.quad->height(),
+            layer->rendering.quad->width(),
+            layer->rendering.quad->height(),
             depth
         );
     else
     {
         auto viewport = Helpers::normalizedWindowResolution();
-        layer.rendering.quad = 
+        layer->rendering.quad = 
             vir::makeUnique<vir::TiledQuad>(viewport.x, viewport.y, depth);
     }
 }
 
 //----------------------------------------------------------------------------//
 
-void setLayerFramebufferWrapMode(Layer& layer, int i, WrapMode mode)
+void setLayerFramebufferWrapMode(UPtr<Layer>& layer, int i, WrapMode mode)
 {
-    layer.rendering.framebufferA->setColorBufferWrapMode(i, mode);
-    layer.rendering.framebufferB->setColorBufferWrapMode(i, mode);
+    layer->rendering.framebufferA->setColorBufferWrapMode(i, mode);
+    layer->rendering.framebufferB->setColorBufferWrapMode(i, mode);
 }
 
 //----------------------------------------------------------------------------//
 
-void setLayerFramebufferMagFilterMode(Layer& layer, FilterMode mode)
+void setLayerFramebufferMagFilterMode(UPtr<Layer>& layer, FilterMode mode)
 {
-    layer.rendering.framebufferA->setColorBufferMagFilterMode(mode);
-    layer.rendering.framebufferB->setColorBufferMagFilterMode(mode);
+    layer->rendering.framebufferA->setColorBufferMagFilterMode(mode);
+    layer->rendering.framebufferB->setColorBufferMagFilterMode(mode);
 }
 
 //----------------------------------------------------------------------------//
 
-void setLayerFramebufferMinFilterMode(Layer& layer, FilterMode mode)
+void setLayerFramebufferMinFilterMode(UPtr<Layer>& layer, FilterMode mode)
 {
-    layer.rendering.framebufferA->setColorBufferMinFilterMode(mode);
-    layer.rendering.framebufferB->setColorBufferMinFilterMode(mode);
+    layer->rendering.framebufferA->setColorBufferMinFilterMode(mode);
+    layer->rendering.framebufferB->setColorBufferMinFilterMode(mode);
 }
 
 //----------------------------------------------------------------------------//
 
 void rebuildLayerFramebuffers
 (
-    Layer& layer,
+    UPtr<Layer>& layer,
     const vir::TextureBuffer::InternalFormat& internalFormat, 
     const glm::ivec2& resolution,
     const bool isTiledRenderingEnabled
 )
 {
-    auto& rendering = layer.rendering;
+    auto& rendering = layer->rendering;
     auto rebuildFramebuffer = []
     (
         UPtr<vir::Framebuffer>& framebuffer, 
@@ -893,17 +861,17 @@ void rebuildLayerFramebuffers
 
 //----------------------------------------------------------------------------//
 
-void clearLayerFramebuffers(Layer& layer)
+void clearLayerFramebuffers(UPtr<Layer>& layer)
 {
-    layer.rendering.framebufferA->clearColorBuffer();
-    layer.rendering.framebufferB->clearColorBuffer();
+    layer->rendering.framebufferA->clearColorBuffer();
+    layer->rendering.framebufferB->clearColorBuffer();
 }
 
 //----------------------------------------------------------------------------//
 
 std::string assembleFragmentShaderHeader
 (
-    const Layer& layer, 
+    const UPtr<Layer>& layer, 
     const AppData& appData
 )
 {
@@ -987,12 +955,12 @@ std::string assembleFragmentShaderHeader
     );
     writeResourceUniformsToHeader
     (
-        layer.uniforms,
+        layer->uniforms,
         header,
         nLines,
         imageBindingPoint
     );
-    header += layer.rendering.uniformBuffer->shaderSource();
+    header += layer->rendering.uniformBuffer->shaderSource();
     return header;
 }
 
@@ -1019,17 +987,17 @@ void main(){
 
 //----------------------------------------------------------------------------//
 
-bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
+bool compileShader(UPtr<Layer>& layer, AppData& appData, bool setBlankShaderOnError)
 {
-    layer.sourceHeader = assembleFragmentShaderHeader(layer, appData);
-    unsigned int nHeaderLines = Helpers::countNewLines(layer.sourceHeader);
+    layer->sourceHeader = assembleFragmentShaderHeader(layer, appData);
+    unsigned int nHeaderLines = Helpers::countNewLines(layer->sourceHeader);
     unsigned int nSharedLines = appData.sharedSourceEditor.getTotalLines()+1;
     std::string vertexSource = assembleVertexShaderSource(appData);
     std::string fragmentSource = 
         (
-            layer.sourceHeader +
+            layer->sourceHeader +
             appData.sharedSourceEditor.getText()+"\n"+
-            layer.sourceEditor.getText()
+            layer->sourceEditor.getText()
         );
     auto shader = vir::Shader::create
     (
@@ -1040,24 +1008,24 @@ bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
     if (shader->valid())
     {
         //delete rendering_.shader;
-        layer.headerErrors.clear();
-        layer.sourceEditor.setErrorMarkers({});
+        layer->headerErrors.clear();
+        layer->sourceEditor.setErrorMarkers({});
         appData.sharedSourceEditor.setErrorMarkers({});
-        layer.cache.uncompiledUniforms.erase
+        layer->cache.uncompiledUniforms.erase
         (
             std::remove_if
             (
-                layer.cache.uncompiledUniforms.begin(),
-                layer.cache.uncompiledUniforms.end(),
+                layer->cache.uncompiledUniforms.begin(),
+                layer->cache.uncompiledUniforms.end(),
                 [](auto& u){return u->name.size()>0;}
             ),
-            layer.cache.uncompiledUniforms.end()
+            layer->cache.uncompiledUniforms.end()
         );
-        layer.hasUncompiledEdits = false;
+        layer->hasUncompiledEdits = false;
         shader->bindUniformBlock
         (
-            layer.rendering.uniformBuffer->name(), 
-            layer.rendering.uniformBufferBindingPoint
+            layer->rendering.uniformBuffer->name(), 
+            layer->rendering.uniformBufferBindingPoint
         );
         shader->bindUniformBlock
         (
@@ -1071,7 +1039,7 @@ bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
         );
         appData.sharedStorage.bindShader(shader.get());
         shader->bind();
-        layer.rendering.shader = std::move(shader);
+        layer->rendering.shader = std::move(shader);
         return true;
     }
     // Else if shader not valid
@@ -1086,9 +1054,9 @@ bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
             sharedErrors.insert({sharedLineNo, error.second});
         else 
         {
-            if (layer.headerErrors.size() > 0)
-                layer.headerErrors += "\n";
-            layer.headerErrors += "Header: " + error.second;
+            if (layer->headerErrors.size() > 0)
+                layer->headerErrors += "\n";
+            layer->headerErrors += "Header: " + error.second;
         }
     }
     auto setEditorErrors = []
@@ -1101,7 +1069,7 @@ bool compileShader(Layer& layer, AppData& appData, bool setBlankShaderOnError)
         if (errors.size() > 0)
             editor.setCursorPosition({errors.begin()->first, 0});
     };
-    setEditorErrors(layer.sourceEditor, sourceErrors);
+    setEditorErrors(layer->sourceEditor, sourceErrors);
     setEditorErrors(appData.sharedSourceEditor, sharedErrors);
     if (setBlankShaderOnError)
     {
@@ -1116,7 +1084,7 @@ R"(out vec4 fragColor;
 in     vec2 qc;
 in     vec2 tc;
 void main(){fragColor = vec4(0, 0, 0, .5);})";
-        layer.rendering.shader = 
+        layer->rendering.shader = 
             vir::Shader::create
             (
                 vertexSource,
@@ -1131,7 +1099,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})";
 
 void setLayerResolution
 (
-    Layer& layer,
+    UPtr<Layer>& layer,
     glm::ivec2 resolution,
     const bool isTiledRenderingEnabled,
     const bool windowFrameManuallyDragged,
@@ -1139,9 +1107,9 @@ void setLayerResolution
     const bool setExportResolution
 )
 {
-    auto& lResolution = layer.resolution;
-    auto& lResolutionRatio = layer.resolutionRatio;
-    auto& lExportData = layer.exportData;
+    auto& lResolution = layer->resolution;
+    auto& lResolutionRatio = layer->resolutionRatio;
+    auto& lExportData = layer->exportData;
     static const auto* window(vir::Window::instance());
     glm::vec2 windowResolution(window->width(), window->height());
     if (windowFrameManuallyDragged)
@@ -1149,8 +1117,8 @@ void setLayerResolution
         resolution = 
             glm::max(lResolutionRatio*(glm::vec2)resolution+.5f, {1,1});
         auto viewport = Helpers::normalizedWindowResolution();
-        layer.rendering.quad->update(viewport.x, viewport.y, layer.depth);
-        if (!layer.rescaleWithWindow)
+        layer->rendering.quad->update(viewport.x, viewport.y, layer->depth);
+        if (!layer->rescaleWithWindow)
             return;
     }
     else if (!window->iconified())
@@ -1162,7 +1130,7 @@ void setLayerResolution
     if 
     (
         tryEnfoceWindowAspectRatio &&
-        layer.isAspectRatioBoundToWindow &&
+        layer->isAspectRatioBoundToWindow &&
         !window->iconified()
     )
     {
@@ -1181,7 +1149,7 @@ void setLayerResolution
     }
     else
         lResolution = resolution;
-    layer.aspectRatio = lResolution.x/lResolution.y;
+    layer->aspectRatio = lResolution.x/lResolution.y;
 
     if (setExportResolution)
         lExportData.resolution =
@@ -1192,28 +1160,32 @@ void setLayerResolution
     rebuildLayerFramebuffers
     (
         layer,
-        layer.rendering.backFramebuffer == nullptr ?
+        layer->rendering.backFramebuffer == nullptr ?
         vir::TextureBuffer::InternalFormat::RGBA_SF_32 :
-        layer.rendering.backFramebuffer->colorBufferInternalFormat(),
+        layer->rendering.backFramebuffer->colorBufferInternalFormat(),
         lResolution,
         isTiledRenderingEnabled
     );
-    if (!layer.rendering.shader.valid())
+    if (!layer->rendering.shader.valid())
         return;
-    layer.rendering.shader->bind();
-    //uniformBuffer_->markUniformForSubmission(uniforms_[0].get()); // iAspectRatio
-    //uniformBuffer_->markUniformForSubmission(uniforms_[1].get()); // iResolution
+    layer->rendering.shader->bind();
+    if (layer->rendering.iAspectRatioUniform.valid())
+        layer->rendering.iAspectRatioUniform->
+            markForSubmissionToAllClientBuffers();
+    if (layer->rendering.iResolutionUniform.valid())
+        layer->rendering.iResolutionUniform->
+            markForSubmissionToAllClientBuffers();
 }
 
 void renderLayerShader
 (
-    Layer& layer,
+    UPtr<Layer>& layer,
     vir::Framebuffer* target,
     const bool clearTarget,
     AppData& appData
 )
 {
-    auto& rendering = layer.rendering;
+    auto& rendering = layer->rendering;
     auto isTiledRenderingEnabled = appData.rendering.isTiledRenderingEnabled;
     auto tileIndex = appData.rendering.tileIndex;
     auto flipBuffers = [&rendering, isTiledRenderingEnabled]()
@@ -1276,13 +1248,13 @@ void renderLayerShader
     auto setSamplerUniforms = []
     (
         const UPtrVector<Uniform>& uniforms,
-        Layer& layer, 
+        UPtr<Layer>& layer, 
         SharedUniforms& sharedUniforms,
         unsigned int& textureUnit,
         unsigned int& imageUnit
     )
     {
-        const auto& shader = layer.rendering.shader;
+        const auto& shader = layer->rendering.shader;
         for (auto& u : uniforms)
         {
             bool isSampler
@@ -1313,7 +1285,7 @@ void renderLayerShader
             // Update resource resolution
             auto ubo = u->isSharedByUser ? 
                 sharedUniforms.fBuffer.get() : 
-                layer.rendering.uniformBuffer.get();
+                layer->rendering.uniformBuffer.get();
             UPtr<Uniform>& rru =  u->resourceResolutionUniform;
             if (!rru.valid())
                 continue; // TODO log or handle
@@ -1352,10 +1324,10 @@ void renderLayerShader
             // from the buffer to which you are NOT writing to (the back buffer
             // is the one that is always being written, so read from the front
             // one)
-            if (resource->name() == layer.name)
+            if (resource->name() == layer->name)
             {
                 vir::Framebuffer* sourceFramebuffer = 
-                    layer.rendering.frontFramebuffer;
+                    layer->rendering.frontFramebuffer;
                 // TODO Add back when postProcessing implemented
                 /* for (auto& postProcess : layer->rendering.postProcesses)
                 {
@@ -1444,7 +1416,7 @@ void renderLayerShader
     );
     setSamplerUniforms
     (
-        layer.uniforms, 
+        layer->uniforms, 
         layer, 
         appData.sharedUniforms, 
         textureUnit, 
@@ -1560,7 +1532,7 @@ RenderResult renderShaders
         clearTarget = true;
         for (auto& layer : appData.layers)
         {
-            renderLayerShader(*layer, target, clearTarget, appData);
+            renderLayerShader(layer, target, clearTarget, appData);
             //layer->renderShader(target, clearTarget, sharedUniforms);
             // At the end of this loop, the status of clearTarget will 
             // represent whether the main window has been cleared of its 
@@ -1703,13 +1675,6 @@ UPtr<Uniform> removeUniformFromLayer(UPtr<Uniform>& uniform, UPtr<Layer>& layer)
     }
     if (index == -1)
         return vir::nullUniquePtr<Uniform>();
-    auto u = std::move(layer->uniforms[index]);
-    layer->uniforms.erase(layer->uniforms.begin()+index);
-    if (uniform->isResource())
-        layer->rendering.uniformBuffer->removeUniform
-        (
-            uniform->resourceResolutionUniform
-        );
     layer->cache.uncompiledUniforms.erase
     (
         std::remove
@@ -1720,7 +1685,14 @@ UPtr<Uniform> removeUniformFromLayer(UPtr<Uniform>& uniform, UPtr<Layer>& layer)
         ), 
         layer->cache.uncompiledUniforms.end()
     );
-    return std::move(u);
+    auto u = std::move(layer->uniforms[index]);
+    layer->uniforms.erase(layer->uniforms.begin()+index);
+    if (u->isResource())
+        layer->rendering.uniformBuffer->removeUniform
+        (
+            u->resourceResolutionUniform
+        );
+    return u;
 }
 
 //----------------------------------------------------------------------------//
@@ -1777,7 +1749,7 @@ UPtr<Uniform> removeUniformFromSharedUniforms
         (
             uniform->resourceResolutionUniform
         );
-    return std::move(u);
+    return u;
 }
 
 //----------------------------------------------------------------------------//

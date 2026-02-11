@@ -297,7 +297,7 @@ project exports)");
     {
         for (auto& layer : appData.layers)
         {
-            compileShader(*layer, appData);
+            compileShader(layer, appData);
         }
     }
 
@@ -429,7 +429,7 @@ void renderLayerMenu
                 glm::ivec2 resolution = {window->width(), window->height()};
                 setLayerResolution
                 (
-                    *layer, 
+                    layer, 
                     resolution, 
                     appData.rendering.isTiledRenderingEnabled, 
                     false
@@ -459,7 +459,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         if (ImGui::InputInt2(label.get(), glm::value_ptr(resolution)))
             setLayerResolution
             (
-                *layer, 
+                layer, 
                 resolution, 
                 appData.rendering.isTiledRenderingEnabled, 
                 false,
@@ -666,8 +666,7 @@ void renderLayersTabBar
             ImGui::SetTooltip("Compiling project shaders...");
             for (auto& layer : layers)
             {
-                auto& l = *layer;
-                compileShader(l, appData);
+                compileShader(layer, appData);
             }
         }
         ImGui::PopStyleColor();
@@ -876,8 +875,8 @@ void renderLayersTabBar
                 layers[swap.first], 
                 layers[swap.second]
             );
-            setLayerDepth(*layers[swap.first], d1);
-            setLayerDepth(*layers[swap.second], d2);
+            setLayerDepth(layers[swap.first], d1);
+            setLayerDepth(layers[swap.second], d2);
             swap = {0, 0};
         }
         ImGui::EndTabBar();
@@ -1198,13 +1197,13 @@ void renderUniformsTab
 
     // Alternative strategy to cope with uniform block alignment changes after
     // uniform type changes or deletions (both of which can alter block layout:
-    // compile right away automatically without asking the user
+    // compile right away automatically without asking the user)
     if 
     (
         atLeastOneUniformTypeChanged ||
         atLeastOneUniformMarkedForDeletion
     )
-        compileShader(*layer, appData);
+        compileShader(layer, appData);
 
     if (!atLeastOneSharedUniformStateChanged)
         return;
@@ -1246,7 +1245,7 @@ void renderUniformsTab
     // compile right away automatically without asking the user
     for (auto& l : appData.layers)
     {
-        compileShader(*l, appData);
+        compileShader(l, appData);
     }
 }
 

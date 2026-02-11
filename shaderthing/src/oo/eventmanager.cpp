@@ -56,7 +56,7 @@ void EventManager::onReceive(vir::Event::WindowResizeEvent& event)
     {
         setLayerResolution
         (
-            *layer, 
+            layer, 
             resolution, 
             appData_.rendering.isTiledRenderingEnabled, 
             true
