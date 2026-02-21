@@ -199,7 +199,6 @@ project exports)");
                 )
                     toggleRenderingPaused(appData, false);
 
-
                 // TODO 
                 /*
                 if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
@@ -224,8 +223,8 @@ project exports)");
         if (ImGui::BeginMenu("Resources"))
         {
             // TODO
-            // Resource::renderResourcesMenuItemGui(resources_, layers_);
-           shadersRequireRecompilation = 
+            renderResourcesMenuItem(appData);
+            shadersRequireRecompilation = 
                 appData.sharedStorage.renderMenuItemGui();
             ImGui::EndMenu();
         }
@@ -900,7 +899,7 @@ void renderLayersTabBar
 
     // Check if layers framebuffers should be cleared as a consequence of
     // a rendering restart. This flag is set in the lambda
-    // Uniform::renderUniformsGui::renderSharedUniformsGui eventually called by
+    // Uniform::renderUniformsTab::renderSharedUniformsGui eventually called by
     // renderTabBarGui
     if (appData.rendering.toggles.restartRendering)
     {
@@ -949,8 +948,8 @@ void renderLayerTab
         if (ImGui::BeginTabItem("Fragment source"))
         {
             bool headerErrors(layer->headerErrors.size() > 0);
-            bool madeReplacements = false;
-                //layer.sourceEditor.renderFindReplaceToolGui();
+            bool madeReplacements = 
+                layer->sourceEditor.renderFindReplaceToolGui();
             layer->hasUncompiledEdits = 
                 layer->hasUncompiledEdits || madeReplacements;
             if (ImGui::TreeNode("Header"))
@@ -1001,21 +1000,11 @@ void renderLayerTab
         }
         if (ImGui::BeginTabItem("Uniforms"))
         {
-            ImGui::Text("Uniforms!");
             renderUniformsTab
             (
                 layer,
                 appData
             );
-            /*
-            Uniform::renderUniformsGui
-            (
-                sharedUnifoms, 
-                this,
-                layers,
-                resources
-            );
-            */
             gActiveTabId = 2;
             ImGui::EndTabItem();
         }
@@ -1099,14 +1088,17 @@ void renderUniformsTab
         
         int row = 0;
         int column = 0;
+
+        // First, render the built-in shared uniforms
         if (showSharedAndDefaultUniforms)
             row = renderBuiltInSharedUniforms(appData);
 
+        // Then, render the user-created shared uniforms
         for (auto& uniform : sharedUniforms.userUniforms)
         {
             atLeastOneSharedUniformStateChanged = 
                 atLeastOneSharedUniformStateChanged ||
-                renderUniformGui
+                renderUniformTableRow
                 (
                     uniform,
                     layer,
@@ -1120,11 +1112,12 @@ void renderUniformsTab
                 atLeastOneSharedUniformStateChanged = true;
         }
 
+        // Finally, render the user-created layer-specific uniforms
         for(auto& uniform : layer->uniforms)
         {
             atLeastOneUniformTypeChanged = 
                 atLeastOneUniformTypeChanged ||
-                renderUniformGui
+                renderUniformTableRow
                 (
                     uniform,
                     layer,
@@ -1138,12 +1131,6 @@ void renderUniformsTab
             if (uniform->hasSharedByUserChanged)
                 atLeastOneSharedUniformStateChanged = true;
         }
-        /*
-        renderAddUniformButton
-        (
-            layer, 
-            row
-        );*/
 
         // Render the "Create new uniform" button
         START_ROW(row, column)
@@ -2020,7 +2007,7 @@ set by adjusting the slider)");
 
 //----------------------------------------------------------------------------//
 
-bool renderUniformGui
+bool renderUniformTableRow
 (
     UPtr<Uniform>& uniform,
     UPtr<Layer>& layer,
@@ -3107,6 +3094,43 @@ bool renderUniformGui
 //----------------------------------------------------------------------------//
 // Resources -----------------------------------------------------------------//
 //----------------------------------------------------------------------------//
+
+void renderResourcesMenuItem(AppData& appData)
+{
+    static bool isGuiDetachedFromMenu(true);
+    static bool isGuiOpen(false);
+    if 
+    (
+        ImGui::SmallButton
+        (
+            isGuiDetachedFromMenu ? 
+            ICON_FA_WINDOW_MAXIMIZE : 
+            ICON_FA_ARROW_RIGHT
+        )
+    )
+        isGuiDetachedFromMenu = !isGuiDetachedFromMenu;
+    ImGui::SameLine();
+    if (!isGuiDetachedFromMenu)
+    {
+        if (ImGui::BeginMenu("Resource manager"))
+        {
+            isGuiOpen = true;
+            renderResources(appData);
+            ImGui::EndMenu();
+        }
+        else
+            isGuiOpen = false;
+        return;
+    }
+    ImGui::MenuItem("Resource manager", NULL, &isGuiOpen);
+}
+
+//----------------------------------------------------------------------------//
+
+void renderResources(AppData& appData)
+{
+
+}
 
 /*
 

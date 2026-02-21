@@ -1294,6 +1294,7 @@ void renderLayerShader
     // as the shared user-added uniforms
     rendering.shader->bind();
 
+    /* TODO, set sampler/image uniforms once Resource-stuff implemented
     unsigned int textureUnit = 0;
     unsigned int imageUnit = 0;
     auto setSamplerUniforms = []
@@ -1380,15 +1381,15 @@ void renderLayerShader
                 vir::Framebuffer* sourceFramebuffer = 
                     layer->rendering.frontFramebuffer;
                 // TODO Add back when postProcessing implemented
-                /* for (auto& postProcess : layer->rendering.postProcesses)
-                {
-                    if 
-                    (
-                        postProcess->isActive() && 
-                        postProcess->outputFramebuffer() != nullptr
-                    )
-                        sourceFramebuffer = postProcess->outputFramebuffer();
-                }*/
+                // for (auto& postProcess : layer->rendering.postProcesses)
+                // {
+                //     if 
+                //     (
+                //         postProcess->isActive() && 
+                //         postProcess->outputFramebuffer() != nullptr
+                //     )
+                //         sourceFramebuffer = postProcess->outputFramebuffer();
+                // }
                 if (isSampler)
                 {
                     sourceFramebuffer->bindColorBuffer(textureUnit);
@@ -1473,6 +1474,7 @@ void renderLayerShader
         textureUnit, 
         imageUnit
     );
+    */
     rendering.uniformBuffer->submitUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
@@ -1795,10 +1797,10 @@ UPtr<Uniform> removeUniformFromSharedUniforms
     (
         sharedUniforms.userUniforms.begin()+index
     );
-    if (uniform->isResource())
+    if (u->isResource())
         sharedUniforms.fBuffer->removeUniform
         (
-            uniform->resourceResolutionUniform
+            u->resourceResolutionUniform
         );
     return u;
 }

@@ -60,8 +60,10 @@ bool renderEditUniformBoundsButton
     bool renderDragStepSlider = false
 );
 
-//
-bool renderUniformGui
+// Render the GUI of the provided uniform at the provided table row and return
+// true if the uniform type is changed by user interation with this GUI, else
+// false
+bool renderUniformTableRow
 (
     UPtr<Uniform>& uniform,
     UPtr<Layer>& layer,
@@ -70,6 +72,12 @@ bool renderUniformGui
     const bool showSeparator = false,
     const bool showSharedAndDefaultUniforms = true
 );
+
+//
+void renderResourcesMenuItem(AppData& appData);
+
+//
+void renderResources(AppData& appData);
 
 }
 
