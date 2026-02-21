@@ -68,6 +68,7 @@ bool compileShader
     AppData& appData, 
     bool setBlankShaderOnError = false
 );
+void setRenderingTiles(AppData& appData, int nTiles);
 void renderLayerShader
 (
     UPtr<Layer>& layer,

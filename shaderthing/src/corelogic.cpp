@@ -1177,6 +1177,57 @@ void setLayerResolution
             markForSubmissionToAllClientBuffers();
 }
 
+void setRenderingTiles
+(
+    AppData& appData, 
+    int nTiles
+)
+{
+    if (appData.layers.size() == 0)
+        return;
+    nTiles = std::max(nTiles, 1);
+    appData.rendering.isTiledRenderingEnabled = nTiles > 1;
+    appData.rendering.nTilesCache = appData.rendering.nTiles;
+    appData.rendering.nTiles = nTiles;
+    appData.rendering.tileIndex = 0;
+    double largestLayerSize = 0.0; // Mpx
+    for (auto& layer : appData.layers)
+    {
+        double layerSize = 
+            ((double)layer->resolution.x/1024.0)*
+            ((double)layer->resolution.y/1024.0);
+        if (layerSize > largestLayerSize)
+            largestLayerSize = layerSize;
+    }
+    for (auto& layer : appData.layers)
+    {
+        double layerSize = 
+            ((double)layer->resolution.x/1024.0)*
+            ((double)layer->resolution.y/1024.0);
+        unsigned int nt = 
+            std::max
+            (
+                (unsigned int)nTiles*
+                (unsigned int)(layerSize/largestLayerSize),
+                1u
+            );
+        auto& tiles = layer->rendering.tiles;
+        if (layer->resolution.x >= layer->resolution.y)
+        {
+            tiles.direction = Layer::Rendering::Tiles::Direction::Horizontal;
+            nt = std::min(nt, (unsigned int)layer->resolution.x);
+            layer->rendering.quad->update(nt, 1);
+        }
+        else
+        {
+            tiles.direction = Layer::Rendering::Tiles::Direction::Vertical;
+            nt = std::min(nt, (unsigned int)layer->resolution.y);
+            layer->rendering.quad->update(1, nt);
+        }
+        tiles.size = nt;
+    }
+}
+
 void renderLayerShader
 (
     UPtr<Layer>& layer,

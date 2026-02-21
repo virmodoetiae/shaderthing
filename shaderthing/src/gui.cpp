@@ -121,12 +121,19 @@ void renderMenuBar
                     );
                 ImGui::PopItemWidth();
                 // TODO
-                /*
+                
                 auto window = vir::Window::instance();
                 ImGui::Text("VSync              ");
                 ImGui::SameLine();
-                if (ImGui::Checkbox("##windowVSync", &windowSettings_.isVSyncEnabled))
-                    window->setVSync(windowSettings_.isVSyncEnabled);
+                if 
+                (
+                    ImGui::Checkbox
+                    (
+                        "##windowVSync", 
+                        &appData.rendering.isVSyncEnabled
+                    )
+                )
+                    window->setVSync(appData.rendering.isVSyncEnabled);
 
                 ImGui::Text("GUI fps multiplier ");
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -142,15 +149,14 @@ further reduction of the shader rendering frame rate)");
                 }
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.f*ImGui::GetFontSize());
-                int nLayer::RenderingTiles = Layer::Layer::Rendering::TileController::nTiles;
-                if (sharedUniforms_->isLayer::RenderingPaused())
+                int nRenderingTiles = appData.rendering.nTiles;
+                if (appData.rendering.isPaused)
                     ImGui::BeginDisabled();
-                if (ImGui::InputInt("##nLayer::RenderingTiles", &nLayer::RenderingTiles))
+                if (ImGui::InputInt("##nRenderingTiles", &nRenderingTiles))
                 {
-                    nLayer::RenderingTiles = std::max(nLayer::RenderingTiles, 1);
-                    Layer::setLayer::RenderingTiles(layers_, nLayer::RenderingTiles);
+                    setRenderingTiles(appData, nRenderingTiles);
                 }
-                if (sharedUniforms_->isLayer::RenderingPaused())
+                if (appData.rendering.isPaused)
                     ImGui::EndDisabled();
                 
                 ImGui::Text("Pause render below ");
@@ -170,14 +176,14 @@ project exports)");
                     ImGui::InputFloat
                     (
                         "##maxLowFps", 
-                        &windowSettings_.lowerFpsLimit, 
+                        &appData.rendering.lowerFpsLimit, 
                         0.f, 
                         0.f, 
                         "%.1f"
                     )
                 )
-                    windowSettings_.lowerFpsLimit = 
-                        std::max(windowSettings_.lowerFpsLimit, 0.f);
+                    appData.rendering.lowerFpsLimit = 
+                        std::max(appData.rendering.lowerFpsLimit, 0.f);
                 ImGui::SameLine();
                 ImGui::PopItemWidth();
                 ImGui::Text("fps");
@@ -186,16 +192,20 @@ project exports)");
                 (
                     ImGui::Button
                     (
-                        !sharedUniforms_->isLayer::RenderingPaused() ? 
+                        !appData.rendering.isPaused ? 
                         "Pause rendering" : "Resume rendering", 
                         ImVec2(-1, 0)
                     )
                 )
-                    sharedUniforms_->toggleLayer::RenderingPaused();
+                    toggleRenderingPaused(appData, false);
 
+
+                // TODO 
+                /*
                 if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
                     sharedUniforms_->setMouseCaptured(true);
                 */
+
                 ImGui::EndMenu();
             }
 
