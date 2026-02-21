@@ -43,6 +43,7 @@ public:
     bool          isSharedByUser         = false;
     bool          hasSharedByUserChanged = false;
     bool          isLogarithmic          = false; // For floats only
+    bool          isMarkedForDeletion    = false;
 
     // If a uniform wraps a resource (which can consists of some form of
     // texture 2D/3D texture buffer), it is very convenient to automatically
@@ -73,8 +74,6 @@ public:
 
     struct GUI
     {
-        bool markedForDeletion = false;
-
         // True if this uniform is of vec3 or vec4 and its value is set via an
         // ImGui color picker tool
         bool usesColorPicker = false;

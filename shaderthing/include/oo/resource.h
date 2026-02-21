@@ -74,16 +74,9 @@ protected:
 public:
     
     virtual ~Resource();
-    /*
-    static Resource*     create(const std::string& filepath);
-    static Resource*     create(const unsigned char* rawData, unsigned int size, bool gif);
-    static Resource*     create(unsigned int width, unsigned int height, InternalFormat internalFormat);
-    static Resource*     create(unsigned int width, unsigned int height, unsigned int depth, InternalFormat internalFormat);
-    static Resource*     create(const std::vector<Texture2DResource*>& frames);
-    static Resource*     create(const Texture2DResource* faces[6]);
-    static Resource*     create(Layer* layer);
-    */
 
+    bool                   isMarkedForDeletion = false;
+    
     Type                   type() const {return type_;}
     unsigned int           textureUnit() const {return textureUnit_;}
     unsigned int           imageUnit() const {return imageUnit_;}

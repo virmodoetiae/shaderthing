@@ -22,6 +22,10 @@ typedef Uniform::ManagedType ManagedType;
 namespace GUI
 {
 
+//----------------------------------------------------------------------------//
+// General -------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
 void renderControlPanel
 (
     AppData& appData
@@ -116,6 +120,7 @@ void renderMenuBar
                         false
                     );
                 ImGui::PopItemWidth();
+                // TODO
                 /*
                 auto window = vir::Window::instance();
                 ImGui::Text("VSync              ");
@@ -273,7 +278,7 @@ project exports)");
     if (appData.sharedStorage.isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
             appData.sharedStorage.renderGui();
-    /*
+    /* TODO
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
     
@@ -491,6 +496,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
             ImGui::SeparatorText("Framebuffer settings");
             //renderFramebufferPropertiesGui();
 
+            // TODO
             /*
             ImGui::SeparatorText("Post-processing effects");
             int iDelete = -1;
@@ -1025,7 +1031,7 @@ void renderLayerTab
     ImGui::TableSetColumnIndex(column++);
 
 //----------------------------------------------------------------------------//
-
+// Uniforms ------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
 void renderUniformsTab
@@ -1098,7 +1104,7 @@ void renderUniformsTab
                     row,
                     uniform == sharedUniforms.userUniforms.back()
                 );
-            if (uniform->gui.markedForDeletion)
+            if (uniform->isMarkedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;
             if (uniform->hasSharedByUserChanged)
                 atLeastOneSharedUniformStateChanged = true;
@@ -1117,7 +1123,7 @@ void renderUniformsTab
                     false,
                     showSharedAndDefaultUniforms
                 );
-            if (uniform->gui.markedForDeletion)
+            if (uniform->isMarkedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;
             if (uniform->hasSharedByUserChanged)
                 atLeastOneSharedUniformStateChanged = true;
@@ -1165,7 +1171,7 @@ void renderUniformsTab
         for (unsigned int i=0; i<layer->uniforms.size(); i++)
         {
             UPtr<Uniform>& u = layer->uniforms[i];
-            if (!u->gui.markedForDeletion)
+            if (!u->isMarkedForDeletion)
                 continue;
             if (u->isResource())
             {
@@ -1180,7 +1186,7 @@ void renderUniformsTab
         for (unsigned int i=0; i<sharedUniforms.userUniforms.size(); i++)
         {
             UPtr<Uniform>& u = sharedUniforms.userUniforms[i];
-            if (!u->gui.markedForDeletion)
+            if (!u->isMarkedForDeletion)
                 continue;
             if (u->isResource())
             {
@@ -1248,10 +1254,6 @@ void renderUniformsTab
         compileShader(l, appData);
     }
 }
-
-//----------------------------------------------------------------------------//
-
-
 
 //----------------------------------------------------------------------------//
 
@@ -1642,10 +1644,10 @@ int renderBuiltInSharedUniforms(AppData& appData)
     ImGui::Dummy({0, 0.1f*fontSize});
     END_ROW(row)
     
-    
     // iMouse --------------------------------------------------------------
     START_ROW(row, column)
     NEXT_COLUMN(column)
+    // TODO
     /*
     if 
     (
@@ -2007,8 +2009,6 @@ set by adjusting the slider)");
 }
 
 //----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//
 
 bool renderUniformGui
 (
@@ -2043,7 +2043,7 @@ bool renderUniformGui
         float halfButtonSize(1.7*fontSize);
         if (ImGui::Button(ICON_FA_TRASH, ImVec2(halfButtonSize, 0)))
         {
-            uniform->gui.markedForDeletion = true;
+            uniform->isMarkedForDeletion = true;
             // layer->uniformBuffer_->removeUniform(uniform.get()); // TODO - CHECK
             // The uniform is gonna get deleted, so the layer(s) using it
             // will have to be recompiled
@@ -3092,7 +3092,262 @@ bool renderUniformGui
 
     return typeChanged;
     
-}; // End of renderUniform lambda
+}; // End of renderUniform
+
+//----------------------------------------------------------------------------//
+// Resources -----------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+/*
+
+void renderResourceMemoryEstimateWarning
+(
+    uint64_t textureSize,
+    InternalFormat internalFormat,
+    bool is2D
+)
+{
+    double requiredMemory = textureSize;
+    double memoryPerPixel = 
+        vir::TextureBuffer::internalFormatToBytes.at(internalFormat);
+    requiredMemory *= memoryPerPixel;
+    // Show a warning for good measure when creating beefier textures,
+    // threshold arbitrarily set at 64 MiB of VRAM
+    if (requiredMemory >= 67108864)
+    {
+        // Mip maps occupy a theoretical maximum of an additional 
+        // 1/8 + 1/64 + 1/512 + 1/4096 + 1/... = 1/7 of the memory
+        // occupied by the base level of a 3D texture, while for
+        // 2D textures this is 1/4 + 1/16 + 1/32 + ... = 1/3 of the
+        // memory occupied by the base level
+        double mipmapsMemory = 
+            std::floor(requiredMemory/memoryPerPixel/(is2D?3:7))*memoryPerPixel;
+        auto uom1 = Helpers::autoRescaleMemoryValue(requiredMemory);
+        auto uom2 = Helpers::autoRescaleMemoryValue(mipmapsMemory);
+        ImGui::PushStyleColor(ImGuiCol_Text, {1.f,1.f,0.f,1.f});
+        ImGui::Text(
+R"(This texture will occupy at least 
+%.1f %s of free VRAM, and up to 
+an additional %.1f %s for mipmaps. 
+Please, make sure your system has 
+at least the reported amount of 
+free VRAM to avoid program and/or 
+system crashes)",
+            requiredMemory, 
+            uom1,
+            mipmapsMemory, 
+            uom2
+        );
+        ImGui::PopStyleColor();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+bool createOrResizeOrReformatTexture2DGui
+(
+    UPtr<Resource>& resource,
+    const bool enablePopup,
+    const bool resetValues,
+    const ImVec2 buttonSize
+)
+{
+    bool valid = false;
+    static glm::ivec2 resolution(1, 1);
+    static InternalFormat internalFormat = InternalFormat::RGBA_SF_32;
+    if (enablePopup && ImGui::Button("Create texture-2D", buttonSize))
+    {
+        ImGui::OpenPopup("##createTexturePopup");
+        resolution = {1,1};
+        internalFormat = InternalFormat::RGBA_SF_32;
+    }
+    if (resetValues && resource != nullptr)
+    {
+        resolution.x = resource->width();
+        resolution.y = resource->height();
+        internalFormat = resource->internalFormat();
+    }
+    if (ImGui::BeginPopup("##createTexturePopup") || !enablePopup)
+    {
+        if (resource == nullptr)
+        {
+            ImGui::Text(
+R"(Create a blank texture, useful for e.g., 
+shader data storage via imageLoad and
+imageStore operations. Data written to 
+these textures will not be saved within 
+the project)");
+            ImGui::Separator();
+        }
+        if (enablePopup)
+            ImGui::Text("Resolution ");
+        else
+            ImGui::Text("Resolution          ");
+        ImGui::SameLine();
+        float itemWidth = -1; //resource == nullptr ? -1 : 12*ImGui::GetFontSize();
+        ImGui::PushItemWidth(itemWidth);
+        if 
+        (
+            ImGui::InputInt2
+            (
+                "##windowResolution", 
+                glm::value_ptr(resolution)
+            )
+        )
+        {
+            resolution.x = std::min(std::max(resolution.x, 1), 4096);
+            resolution.y = std::min(std::max(resolution.y, 1), 4096);
+        }
+        ImGui::PopItemWidth();
+        if (enablePopup)
+            ImGui::Text("Format     ");
+        else
+            ImGui::Text("Format              ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(itemWidth);
+        // RGB formats are not easy to work with due to memory-alignment 
+        // limitations so they are omitted
+        static std::vector<InternalFormat> supportedFormats = 
+        {
+            InternalFormat::R_UI_32,
+            InternalFormat::R_SF_32,
+            InternalFormat::RG_UI_32,
+            InternalFormat::RG_SF_32,
+            InternalFormat::RGBA_UI_32,
+            InternalFormat::RGBA_SF_32
+        };
+        if
+        (
+            ImGui::BeginCombo
+            (
+                "##textureFormatCombo",
+                vir::TextureBuffer2D::internalFormatToName.at
+                (
+                    internalFormat
+                ).c_str()
+            )
+        )
+        {
+            for (auto format : supportedFormats)
+            {
+                if 
+                (
+                    ImGui::Selectable
+                    (
+                        vir::TextureBuffer2D::internalFormatToName.at
+                        (
+                            format
+                        ).c_str()
+                    )
+                )
+                {
+                    internalFormat = format;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
+        bool disabled = false;
+        if (resource != nullptr)
+        {
+            ImGui::Text("VRAM footprint      ");
+            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            {
+                ImGui::Text("VRAM memory occupied by this texture");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            double maxMemoryFootprint = resource->maxMemoryFootprint();
+            auto uom = Helpers::autoRescaleMemoryValue(maxMemoryFootprint);
+            ImGui::Text("%.1f %s", maxMemoryFootprint, uom);
+            
+            if 
+            (
+                (int)resource->width() == resolution.x && 
+                (int)resource->height() == resolution.y && 
+                resource->internalFormat() == internalFormat
+            )
+            {
+                ImGui::BeginDisabled();
+                disabled = true;
+            }
+        }
+        if 
+        (
+            ImGui::Button
+            (
+                resource == nullptr ? "Create texture-2D" : "Resize or reformat", 
+                ImVec2(-1, 0)
+            )
+        )
+        {
+            if (resource != nullptr)
+            {
+                auto wrapMode0 = resource->wrapMode(0);
+                auto wrapMode1 = resource->wrapMode(1);
+                auto minFilterMode = resource->minFilterMode();
+                auto magFilterMode = resource->magFilterMode();
+                auto format0 = resource->internalFormat();
+                if 
+                (
+                    ((Texture2DResource*)resource.get())->set
+                    (
+                        resolution.x, 
+                        resolution.y, 
+                        internalFormat
+                    )
+                )
+                {
+                    valid = true;
+                    auto format = resource->internalFormat();
+                    resource->setWrapMode(0, wrapMode0);
+                    resource->setWrapMode(1, wrapMode1);
+                    resource->setMinFilterMode(minFilterMode);
+                    resource->setMagFilterMode(magFilterMode);
+                    if (format != format0)
+                    {
+                        if (resource->clientUniforms_.size() > 0)
+                            Layer::Flags::requestRecompilation = true;
+                    }
+                }
+            }
+            else
+            {
+                auto newResource = 
+                    Resource::create
+                    (
+                        resolution.x,
+                        resolution.y,
+                        internalFormat
+                    );
+                if (newResource != nullptr)
+                {
+                    resource = newResource;
+                    valid = true;
+                }
+            }
+            resolution.x = resource->width();
+            resolution.y = resource->height();
+            internalFormat = ((Texture2DResource*)resource)->internalFormat();
+        }
+        if (!disabled || resource == nullptr)
+        {
+            createOrResizeOrReformatTextureMemoryEstimateGui
+            (
+                uint64_t(resolution.x)*uint64_t(resolution.y),
+                internalFormat,
+                true
+            );
+        }
+        if (disabled)
+            ImGui::EndDisabled();
+        if (enablePopup)
+            ImGui::EndPopup();
+    }
+    return valid;
+}
+
+*/
 
 } // End of GUI namespace
 

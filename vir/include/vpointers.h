@@ -321,7 +321,7 @@ public:
         if (ptr_ != static_cast<T*>(ptr)) 
         {
             valid_.reset();  // Invalidate all existing WeakPtrs to this
-            ptr_ = std::unique_ptr<T>(ptr);
+            ptr_ = static_cast<T*>(ptr);
             valid_ = ptr ? std::make_shared<bool>(true) : nullptr;
             if constexpr (weakFromThisEnabled_) 
                 ptr_->setValid(valid_);
