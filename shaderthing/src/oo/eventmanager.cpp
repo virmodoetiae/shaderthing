@@ -154,14 +154,50 @@ void EventManager::onReceive(vir::Event::MouseButtonReleaseEvent& event)
     //su.updateDataRangeII = true;
 }
 
-void EventManager::onReceive(vir::Event::KeyPressEvent& e)
+void EventManager::onReceive(vir::Event::KeyPressEvent& event)
 {
-    (void)e;
+    if 
+    (
+        event.keyCode == VIR_KEY_ESCAPE &&
+        vir::Window::instance()->cursorStatus() == 
+            vir::Window::CursorStatus::Captured
+    ) // Un-capture mouse on ESC
+    {
+        setMouseCaptured(appData_, false);
+    }
+    auto stKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
+    if (stKeyCode > 256)
+        return;
+    auto& su(appData_.sharedUniforms);
+    auto& data(su.iKeyboard[stKeyCode]);
+    static auto* inputState = vir::InputState::instance();
+    auto& status = inputState->keyState(event.keyCode);
+    data.x = (int)status.isPressed();
+    data.y = (int)status.isHeld();
+    data.z = (int)status.isToggled();
+    su.fBuffer->markArrayUniformRangeForSubmission
+    (
+        su.iKeyboardUniform.get(), 
+        stKeyCode
+    );
 }
 
-void EventManager::onReceive(vir::Event::KeyReleaseEvent& e)
+void EventManager::onReceive(vir::Event::KeyReleaseEvent& event)
 {
-    (void)e;
+    auto stKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
+    if (stKeyCode > 256)
+        return;
+    auto& su(appData_.sharedUniforms);
+    auto& data(su.iKeyboard[stKeyCode]);
+    static auto* inputState = vir::InputState::instance();
+    data.x = 0;
+    data.y = 0;
+    data.z = (int)inputState->keyState(event.keyCode).isToggled();
+    su.fBuffer->markArrayUniformRangeForSubmission
+    (
+        su.iKeyboardUniform.get(), 
+        stKeyCode
+    );
 }
 
 }

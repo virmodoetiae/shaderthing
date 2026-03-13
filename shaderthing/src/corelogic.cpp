@@ -1877,4 +1877,56 @@ void setMouseInputsClamped(AppData& appData, bool flag)
     su.toggles.updateDataRangeII = true;
 }
 
+//----------------------------------------------------------------------------//
+
+void setMouseCaptured(AppData& appData, bool flag)
+{
+    auto window = vir::Window::instance();
+    auto eventManager = vir::GlobalPtr<EventManager>::get();
+    static std::string mouseCapturedMessage = 
+        "Mouse cursor captured by window (press ESC to free)";
+    if (!flag)
+    {
+        window->setCursorStatus(vir::Window::CursorStatus::Normal);
+        StatusBar::removeMessageFromQueue(mouseCapturedMessage);
+        StatusBar::queueTemporaryMessage("Mouse cursor freed");
+    }
+    if (flag)
+    {
+        auto position = 
+            vir::Window::instance()->position
+            (
+                vir::Window::PositionOf::Center
+            );
+        auto pauseForOneBroadcast = []
+        (
+            vir::Event::Receiver* receiver, 
+            vir::Event::Type type
+        )
+        {
+            if (!receiver->isEventReceptionPaused(type))
+                receiver->pauseEventReception(type, 1);
+        };
+        pauseForOneBroadcast(eventManager, vir::Event::Type::MouseMotion);
+        pauseForOneBroadcast(eventManager, vir::Event::Type::MouseButtonPress);
+        pauseForOneBroadcast(eventManager, vir::Event::Type::MouseButtonRelease);
+        pauseForOneBroadcast
+        (
+            (vir::InputCamera*)appData.sharedUniforms.shaderCamera.get(), 
+            vir::Event::Type::MouseMotion
+        );
+        window->setCursorStatus(vir::Window::CursorStatus::Hidden);
+        vir::InputState::instance()->setMousePositionNativeOS
+        (
+            vir::MousePosition(position), 5
+        );
+        vir::Event::Broadcaster::instance()->broadcastNativeQueue();
+        window->setCursorStatus(vir::Window::CursorStatus::Captured);
+        vir::InputState::instance()->leftMouseButtonClickNativeOS(5);
+        vir::Event::Broadcaster::instance()->broadcastNativeQueue();
+        StatusBar::queueMessage(mouseCapturedMessage);
+    }
+
+}
+
 }

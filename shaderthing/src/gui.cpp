@@ -199,11 +199,8 @@ project exports)");
                 )
                     toggleRenderingPaused(appData, false);
 
-                // TODO 
-                /*
                 if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
-                    sharedUniforms_->setMouseCaptured(true);
-                */
+                    setMouseCaptured(appData, true);
 
                 ImGui::EndMenu();
             }

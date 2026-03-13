@@ -105,4 +105,6 @@ void toggleCameraKeyboardInputs(AppData& appData);
 
 void setMouseInputsClamped(AppData& appData, bool flag);
 
+void setMouseCaptured(AppData& appData, bool flag);
+
 }
