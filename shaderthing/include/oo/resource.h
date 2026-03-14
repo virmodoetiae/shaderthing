@@ -119,6 +119,13 @@ public:
     virtual void           updateMipmap() = 0;
 
     static const std::map<Resource::Type, const char*> typeToName;
+
+    struct GUI
+    {
+        bool isOpen = false;
+        bool isDetachedFromControlPanel = true;
+    };
+    static GUI gui;
 };
 
 //----------------------------------------------------------------------------//

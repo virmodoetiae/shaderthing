@@ -279,8 +279,9 @@ project exports)");
     }
 
     // TODO
-    // if (Resource::isGuiDetachedFromMenu)
-    //    Resource::renderResourcesGui(resources_, layers_);
+    if (Resource::gui.isDetachedFromControlPanel)
+        //Resource::renderResourcesGui(resources_, layers_);
+        renderResources(appData);
     if (appData.sharedStorage.isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
             appData.sharedStorage.renderGui();
@@ -3094,39 +3095,113 @@ bool renderUniformTableRow
 
 void renderResourcesMenuItem(AppData& appData)
 {
-    static bool isGuiDetachedFromMenu(true);
-    static bool isGuiOpen(false);
     if 
     (
         ImGui::SmallButton
         (
-            isGuiDetachedFromMenu ? 
+            Resource::gui.isDetachedFromControlPanel ? 
             ICON_FA_WINDOW_MAXIMIZE : 
             ICON_FA_ARROW_RIGHT
         )
     )
-        isGuiDetachedFromMenu = !isGuiDetachedFromMenu;
+        Resource::gui.isDetachedFromControlPanel = 
+            !Resource::gui.isDetachedFromControlPanel;
     ImGui::SameLine();
-    if (!isGuiDetachedFromMenu)
+    if (!Resource::gui.isDetachedFromControlPanel)
     {
         if (ImGui::BeginMenu("Resource manager"))
         {
-            isGuiOpen = true;
+            Resource::gui.isOpen = true;
             renderResources(appData);
             ImGui::EndMenu();
         }
         else
-            isGuiOpen = false;
+            Resource::gui.isOpen = false;
         return;
     }
-    ImGui::MenuItem("Resource manager", NULL, &isGuiOpen);
+    ImGui::MenuItem("Resource manager", NULL, &Resource::gui.isOpen);
 }
 
 //----------------------------------------------------------------------------//
 
 void renderResources(AppData& appData)
 {
+    if (!Resource::gui.isOpen)
+        return;
+    if (Resource::gui.isDetachedFromControlPanel)
+    {
+        ImGui::SetNextWindowSize(ImVec2(900,350), ImGuiCond_FirstUseEver);
+        static ImGuiWindowFlags windowFlags(ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Resource manager", &Resource::gui.isOpen, windowFlags);
 
+        // Refresh icon if needed
+        static bool isIconSet(false);
+        static bool isWindowDocked(ImGui::IsWindowDocked());
+        if (!isIconSet || isWindowDocked != ImGui::IsWindowDocked())
+        {
+            isIconSet = vir::ImGuiRenderer::setWindowIcon
+            (
+                "Resource manager", 
+                ByteData::Icon::sTIconData, 
+                ByteData::Icon::sTIconSize,
+                false
+            );
+            isWindowDocked = ImGui::IsWindowDocked();
+        }
+    }
+
+    float cursorPosY0 = ImGui::GetCursorPosY();
+    float fontSize = ImGui::GetFontSize();
+    static float tableHeight = 0;
+    ImGuiTableFlags flags = 
+        ImGuiTableFlags_BordersV | 
+        ImGuiTableFlags_BordersOuterH |
+        ImGuiTableFlags_SizingFixedFit;
+    if (ImGui::BeginTable("##resourceTable", 6, flags, ImVec2(0., tableHeight)))
+    {
+        // Declare columns
+        static ImGuiTableColumnFlags flags = 0;
+        ImGui::TableSetupColumn("##controls", flags, 8.0*fontSize);
+        ImGui::TableSetupColumn("Type", flags, 8.0*fontSize);
+        ImGui::TableSetupColumn("Preview", flags, 4.0*fontSize);
+        ImGui::TableSetupColumn("Name", flags, 8.0*fontSize);
+        ImGui::TableSetupColumn("Resolution", flags, 10.0*fontSize);
+        ImGui::TableSetupColumn
+        (
+            "Aspect ratio", 
+            flags, 
+            Resource::gui.isDetachedFromControlPanel ? 
+            ImGui::GetContentRegionAvail().x : 8.0*fontSize
+        );
+        ImGui::TableHeadersRow();
+
+        int deleteRow = -1;
+        bool deleteResource = false;
+        const int nRows = appData.resources.size();
+        for (int row=0; row<nRows; row++)
+        {
+            //renderResourceGui(deleteResource, appData.resources, row);
+            if (deleteResource)
+            {
+                deleteRow = row;
+                deleteResource = false;
+            }
+        }
+        //renderAddResourceButtonGui(appData.resources, nRows);
+        tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
+        if (deleteRow != -1)
+        {
+            auto& resource = appData.resources[deleteRow];
+            for (auto& layer : appData.layers)
+                //layer->removeResourceFromUniforms(resource);
+                continue;
+            appData.resources.erase(appData.resources.begin()+deleteRow);
+        }
+        ImGui::EndTable();
+    }
+
+    if (Resource::gui.isDetachedFromControlPanel)
+        ImGui::End();
 }
 
 /*

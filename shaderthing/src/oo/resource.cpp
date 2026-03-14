@@ -16,6 +16,8 @@ const std::map<Resource::Type, const char*> Resource::typeToName =
     {Resource::Type::Framebuffer,       "Layer"}
 };
 
+Resource::GUI Resource::gui = {};
+
 //----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
