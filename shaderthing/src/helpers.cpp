@@ -20,6 +20,7 @@
 
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/structs.h"
+#include "shaderthing/include/oo/resource.h"
 
 #include "vir/include/vir.h"
 
@@ -357,6 +358,123 @@ TYPED_GET_FORMAT_FUNC(glm::vec2){RETURN_VECTOR_FORMAT(2)}
 TYPED_GET_FORMAT_FUNC(glm::vec3){RETURN_VECTOR_FORMAT(3)}
 
 TYPED_GET_FORMAT_FUNC(glm::vec4){RETURN_VECTOR_FORMAT(4)}
+
+template<>
+void enforceUniqueName
+(
+    std::string& name, 
+    const UPtrVector<Resource>& items, 
+    const Resource* skipItem,
+    bool disallowSpaces
+)
+{
+    if (name == "")
+        name = Helpers::randomString(6);
+    if (disallowSpaces)
+        std::replace(name.begin(), name.end(), ' ', '_');
+    std::string name0(name);
+    int index(2);
+    bool run(true);
+    while(run)
+    {
+        run = false;
+        for (const UPtr<Resource>& uitemi : items)
+        {
+            const Resource* itemi = uitemi.get();
+            if 
+            (
+                itemi->name() != name || 
+                (skipItem != nullptr && skipItem == itemi)
+            )
+                continue;
+            if (!run) 
+                run = true;
+            if (disallowSpaces)
+                name = name0 + "_" + std::to_string(index)+"";
+            else 
+                name = name0 + " (" + std::to_string(index)+")";
+            ++index;
+        }
+    }
+}
+
+template<>
+void enforceUniqueName
+(
+    std::string& name, 
+    const UPtrVector<Layer>& items, 
+    const Layer* skipItem,
+    bool disallowSpaces
+)
+{
+    if (name == "")
+        name = Helpers::randomString(6);
+    if (disallowSpaces)
+        std::replace(name.begin(), name.end(), ' ', '_');
+    std::string name0(name);
+    int index(2);
+    bool run(true);
+    while(run)
+    {
+        run = false;
+        for (const UPtr<Layer>& uitemi : items)
+        {
+            const Layer* itemi = uitemi.get();
+            if 
+            (
+                itemi->name != name || 
+                (skipItem != nullptr && skipItem == itemi)
+            )
+                continue;
+            if (!run) 
+                run = true;
+            if (disallowSpaces)
+                name = name0 + "_" + std::to_string(index)+"";
+            else 
+                name = name0 + " (" + std::to_string(index)+")";
+            ++index;
+        }
+    }
+}
+
+template<>
+void enforceUniqueName
+(
+    std::string& name, 
+    const UPtrVector<Uniform>& items, 
+    const Uniform* skipItem,
+    bool disallowSpaces
+)
+{
+    if (name == "")
+        name = Helpers::randomString(6);
+    if (disallowSpaces)
+        std::replace(name.begin(), name.end(), ' ', '_');
+    std::string name0(name);
+    int index(2);
+    bool run(true);
+    while(run)
+    {
+        run = false;
+        for (const UPtr<Uniform>& uitemi : items)
+        {
+            const Uniform* itemi = uitemi.get();
+            if 
+            (
+                itemi->name != name || 
+                (skipItem != nullptr && skipItem == itemi)
+            )
+                continue;
+            if (!run) 
+                run = true;
+            if (disallowSpaces)
+                name = name0 + "_" + std::to_string(index)+"";
+            else 
+                name = name0 + " (" + std::to_string(index)+")";
+            ++index;
+        }
+    }
+}
 
 }
 

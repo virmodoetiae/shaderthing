@@ -281,7 +281,7 @@ project exports)");
     // TODO
     if (Resource::gui.isDetachedFromControlPanel)
         //Resource::renderResourcesGui(resources_, layers_);
-        renderResources(appData);
+        renderResourcesTable(appData);
     if (appData.sharedStorage.isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
             appData.sharedStorage.renderGui();
@@ -363,7 +363,15 @@ void renderLayerMenu
         static std::unique_ptr<char[]> label(new char[24]);
         std::sprintf(label.get(), "##layer%dInputText", layer->id);
         ImGui::PushItemWidth(entryWidth);
-        ImGui::InputText(label.get(), &layer->name);
+        if (ImGui::InputText(label.get(), &layer->name))
+        {
+            Helpers::enforceUniqueName
+            (
+                layer->name,
+                appData.layers,
+                layer.get()
+            );
+        }
         ImGui::PopItemWidth();
         
         static std::map<Layer::Rendering::Target, const char*> 
@@ -2110,6 +2118,13 @@ bool renderUniformTableRow
                 sharedUniforms.fBuffer_->markUniformForSubmission(uniform.get());
             */
             nameChanged = true;
+            Helpers::enforceUniqueName
+            (
+                uniform->name,
+                layer->uniforms,
+                uniform.get(),
+                true
+            );
         }
     }
     bool named(uniform->name.size() > 0);
@@ -3112,7 +3127,7 @@ void renderResourcesMenuItem(AppData& appData)
         if (ImGui::BeginMenu("Resource manager"))
         {
             Resource::gui.isOpen = true;
-            renderResources(appData);
+            renderResourcesTable(appData);
             ImGui::EndMenu();
         }
         else
@@ -3124,7 +3139,7 @@ void renderResourcesMenuItem(AppData& appData)
 
 //----------------------------------------------------------------------------//
 
-void renderResources(AppData& appData)
+void renderResourcesTable(AppData& appData)
 {
     if (!Resource::gui.isOpen)
         return;
@@ -3175,34 +3190,238 @@ void renderResources(AppData& appData)
         );
         ImGui::TableHeadersRow();
 
-        int deleteRow = -1;
-        bool deleteResource = false;
         const int nRows = appData.resources.size();
         for (int row=0; row<nRows; row++)
         {
-            //renderResourceGui(deleteResource, appData.resources, row);
-            if (deleteResource)
-            {
-                deleteRow = row;
-                deleteResource = false;
-            }
+            renderResourcesTableRow(appData, row);
         }
-        //renderAddResourceButtonGui(appData.resources, nRows);
+        renderAddResourceButton(appData, nRows);
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
-        if (deleteRow != -1)
-        {
-            auto& resource = appData.resources[deleteRow];
-            for (auto& layer : appData.layers)
-                //layer->removeResourceFromUniforms(resource);
-                continue;
-            appData.resources.erase(appData.resources.begin()+deleteRow);
-        }
         ImGui::EndTable();
     }
 
     if (Resource::gui.isDetachedFromControlPanel)
         ImGui::End();
 }
+
+//----------------------------------------------------------------------------//
+
+void renderResourcesTableRow(AppData& appData, int row)
+{
+    UPtr<Resource>& resource = appData.resources[row];
+    float fontSize = ImGui::GetFontSize();
+    int column = 0;
+    START_ROW(row, column)
+    START_COLUMN(column) // Actions column -------------------------------------
+    renderResourceActionsButton(appData, row);
+    END_COLUMN(column)
+    START_COLUMN(column) // Type column ----------------------------------------
+    std::string typeName = Resource::typeToName.at(resource->type());
+    if (auto texture = dynamic_cast<Texture2DResource*>(resource.get()))
+    {
+        // Small fix to distinguish storage textures from "regular" image-
+        // loaded textures. I will need to revist the whole storage-texture
+        // thing in the future, or add the same functionalities (namely
+        // resizing/reformatting) to "regular" image-loaded textures to 
+        // remove such somewhat artificial distinctions altogether
+        if (!texture->hasRawData())
+            typeName += " (S)";
+    }
+    ImGui::Text(typeName.c_str());
+    END_COLUMN(column)
+    START_COLUMN(column) // Preview column -------------------------------------
+    float x = resource->width();
+    float y = resource->height();
+    float aspectRatio = x/y;
+    auto previewTexture2D = 
+    [&aspectRatio]
+    (
+        const Resource* resource, 
+        float sideSize, 
+        float offset
+    )->void
+    {
+        ImVec2 previewSize;
+        ImVec2 hoverSize{256,256};
+        if (aspectRatio > 1.0)
+        {
+            previewSize = ImVec2(sideSize, sideSize/aspectRatio);
+            hoverSize.y /= aspectRatio;
+        }
+        else
+        { 
+            previewSize = ImVec2(sideSize*aspectRatio, sideSize);
+            hoverSize.x *= aspectRatio;
+        }
+        float startx = ImGui::GetCursorPosX();
+        ImGui::SetCursorPosX(startx + offset);
+#define SHOW_IMAGE(size)                                                \
+ImGui::Image                                                            \
+(                                                                       \
+    (ImTextureID)                                                       \
+    (                                                                   \
+        resource->type() != Resource::Type::AnimatedTexture2D ?         \
+        resource->id() :                                                \
+        ((AnimatedTexture2DResource*)(resource))->frameId()             \
+    ),                                                                  \
+    size,                                                               \
+    {0,1},                                                              \
+    {1,0}                                                               \
+);
+        SHOW_IMAGE(previewSize)
+        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+        {
+            SHOW_IMAGE(hoverSize)
+            ImGui::EndTooltip();
+        }
+    };
+    if (resource->isInternalFormatUnsigned())
+        ImGui::Text("N/A");
+    else if 
+    (
+        resource->type() == Resource::Type::Texture2D ||
+        resource->type() == Resource::Type::AnimatedTexture2D ||
+        resource->type() == Resource::Type::Framebuffer
+    )
+        previewTexture2D(resource.get(), 1.4*fontSize, 1.3*fontSize);
+    else if (resource->type() == Resource::Type::Cubemap)
+    {
+        auto cubemap = (CubemapResource*)resource.get();
+        for (int i=0; i<6; i++)
+        {
+            float offset = (i == 0 || i == 3) ? 0.75*fontSize : 0.0;
+            previewTexture2D
+            (
+                cubemap->faces()[i].get(), 
+                0.5*fontSize, 
+                offset
+            );
+            if ((i+1)%3 != 0)
+                ImGui::SameLine();
+        }
+    }
+    END_COLUMN(column)
+    START_COLUMN(column) // Name column ----------------------------------------
+    if (resource->type() != Resource::Type::Framebuffer)
+    {
+        if (ImGui::InputText("##resourceName", resource->namePtr()))
+        {
+            Helpers::enforceUniqueName
+            (
+                *(resource->namePtr()),
+                appData.resources,
+                resource.get()
+            );
+        }
+    }
+    else
+        ImGui::Text(resource->name().c_str());
+    END_COLUMN(column)
+    START_COLUMN(column) // Resolution column ----------------------------------
+    if (resource->type() == Resource::Type::Texture3D)
+        ImGui::Text("%d x %d x %d", (int)x, (int)y, (int)resource->depth());
+    else
+        ImGui::Text("%d x %d", (int)x, (int)y);
+    END_COLUMN(column)
+    START_COLUMN(column) // Aspect ratio column --------------------------------
+    ImGui::Text("%.3f", aspectRatio);
+    END_COLUMN(column)
+    END_ROW(row)
+}
+
+//----------------------------------------------------------------------------//
+
+void renderAddResourceButton(AppData& appData, int row)
+{
+    int column = 0;
+    START_ROW(row, column)
+    NEXT_COLUMN(column)
+    if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1,0)))
+        ImGui::OpenPopup("##addResourcePopup");
+    if (ImGui::BeginPopup("##addResourcePopup"))
+    {
+        float buttonWidth = 12*ImGui::GetFontSize();
+        if 
+        (
+            ImGui::Button
+            (
+                "Load texture-2D",
+                ImVec2(buttonWidth, 0)
+            )
+        )
+        {
+            Resource::fileDialog.runOpenFileDialog
+            (
+                "Select an image",
+                {
+                    "Image files (.png,.jpg,.jpeg,.bmp)", 
+                    "*.png *.jpg *.jpeg *.bmp"
+                },
+                "."
+            );
+            appData.deferredActionBuffer.add
+            (
+                [&appData]()
+                {
+                    auto filepath = Resource::fileDialog.selection().front();
+                    auto& r = appData.resources.emplace_back
+                    (
+                        Texture2DResource::create(filepath)
+                    );
+                    std::string name = Helpers::filename(filepath);
+                    Helpers::enforceUniqueName
+                    (
+                        name, 
+                        appData.resources, 
+                        r.get()
+                    );
+                    r->setName(name);
+                },
+                []() -> bool
+                {
+                    return Resource::fileDialog.validSelection();
+                }
+            );
+        }
+        ImGui::EndPopup();
+    }
+    END_ROW(row)
+}
+
+//----------------------------------------------------------------------------//
+
+void renderResourceActionsButton(AppData& appData, int row)
+{
+    if (row >= appData.resources.size())
+        return;
+    UPtr<Resource>& resource = appData.resources[row];
+    if (!resource.valid() || resource->type() == Resource::Type::Framebuffer)
+        return;
+    if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1,0)))
+        ImGui::OpenPopup("##textureManagerSettings");
+    if (ImGui::BeginPopup("##textureManagerSettings"))
+    {
+        auto size = ImVec2(12*ImGui::GetFontSize(), 0);
+        if (ImGui::Button(ICON_FA_TRASH, size))
+        {
+            appData.deferredActionBuffer.add
+            (
+                [&appData, row]()
+                {
+                    UPtr<Resource>& resource = appData.resources[row];
+                    for (auto& layer : appData.layers)
+                        // TODO
+                        // layer->removeResourceFromUniforms(resource);
+                        continue;
+                    appData.resources.erase(appData.resources.begin()+row);
+                }
+            );
+        }
+        ImGui::EndPopup();
+    }
+}
+
+//----------------------------------------------------------------------------//
 
 /*
 

@@ -98,33 +98,9 @@ void enforceUniqueName
 (
     std::string& name, 
     const UPtrVector<T>& items, 
-    const T* skipItem=nullptr
-)
-{
-    if (name == "")
-        name = Helpers::randomString(6);
-    std::replace(name.begin(), name.end(), ' ', '_');
-    std::string name0(name);
-    int index(2);
-    bool run(true);
-    while(run)
-    {
-        run = false;
-        for (T* itemi : items)
-        {
-            if 
-            (
-                itemi->name != name || 
-                (skipItem != nullptr && skipItem == itemi)
-            )
-                continue;
-            if (!run) 
-                run = true;
-            name = name0 + "(" + std::to_string(index)+")";
-            ++index;
-        }
-    }
-}
+    const T* skipItem=nullptr,
+    bool disallowSpaces=false
+);
 
 }
 

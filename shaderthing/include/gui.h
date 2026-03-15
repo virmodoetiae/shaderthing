@@ -77,7 +77,16 @@ bool renderUniformTableRow
 void renderResourcesMenuItem(AppData& appData);
 
 //
-void renderResources(AppData& appData);
+void renderResourcesTable(AppData& appData);
+
+//
+void renderResourcesTableRow(AppData& appData, int row);
+
+//
+void renderAddResourceButton(AppData& appData, int row);
+
+//
+void renderResourceActionsButton(AppData& appData, int row);
 
 }
 

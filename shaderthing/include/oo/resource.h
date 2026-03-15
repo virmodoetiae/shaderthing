@@ -17,6 +17,7 @@
 
 #include <array>
 #include "vir/include/vir.h"
+#include "shaderthing/include/helpers.h"
 #include "shaderthing/include/typedefs.h"
 
 namespace ShaderThing
@@ -31,6 +32,7 @@ typedef vir::TextureBuffer::DataType       DataType;
 class Layer;
 class Uniform;
 class ObjectIO;
+class FileDialog;
 
 class Texture2DResource;
 class AnimatedTexture2DResource;
@@ -68,7 +70,11 @@ protected:
     // List of uniforms using this resource as value
     std::vector<Uniform*> clientUniforms_ = {};
     
-    Resource(Type type) : type_(type) {};
+    Resource(Type type) : type_(type) 
+    {
+        namePtr_ = new std::string(Helpers::randomString(6));
+        //*namePtr_ = ;
+    };
     DELETE_COPY(Resource)
 
 public:
@@ -82,6 +88,7 @@ public:
     unsigned int           imageUnit() const {return imageUnit_;}
     
     std::string            name() const;
+    std::string* const&    namePtr() const {return namePtr_;}
     void                   setName(const std::string& name);
     void                   setName(std::string* namePtr);
     void                   addClientUniform(Uniform* u);
@@ -126,6 +133,8 @@ public:
         bool isDetachedFromControlPanel = true;
     };
     static GUI gui;
+
+    static FileDialog fileDialog;
 };
 
 //----------------------------------------------------------------------------//
@@ -366,6 +375,11 @@ public:
     );
     
     bool set(const std::array<WPtr<Texture2DResource>, 6>& faces);
+
+    const std::array<WPtr<Texture2DResource>, 6>& faces() const 
+    {
+        return unmanagedFaces_;
+    }
 };
 
 //----------------------------------------------------------------------------//

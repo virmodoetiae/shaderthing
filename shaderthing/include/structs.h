@@ -241,7 +241,7 @@ struct Layer
     
     Layer(unsigned int aId) : 
         id(aId), 
-        imGuiMenuId("menuLayer"+std::to_string(id)), 
+        imGuiMenuId("menuLayer"+std::to_string(id)),
         imGuiTabId("tabLayer"+std::to_string(id)) {}
     DELETE_COPY(Layer)
 };

@@ -1,6 +1,7 @@
 #include "vir/include/vpch.h"
 #include "shaderthing/include/oo/resource.h"
 #include "shaderthing/include/oo/objectio.h"
+#include "shaderthing/include/oo/filedialog.h"
 #include "shaderthing/include/structs.h"
 #include "shaderthing/include/helpers.h"
 
@@ -17,6 +18,8 @@ const std::map<Resource::Type, const char*> Resource::typeToName =
 };
 
 Resource::GUI Resource::gui = {};
+
+FileDialog Resource::fileDialog = FileDialog();
 
 //----------------------------------------------------------------------------//
 
