@@ -910,7 +910,7 @@ std::string assembleFragmentShaderHeader
                     header += 
                         "layout(binding="+std::to_string(imageBindingPoint++)+
                         ", "+resource->internalFormatName()+") ";
-                    // This logic should be handled different at the vir:: 
+                    // This logic should be handled differently at the vir:: 
                     // level and exposed via Resource::, not here
                     if (resource->isInternalFormatUnsigned())
                         uniformTypeName = "u"+uniformTypeName;
@@ -1294,7 +1294,7 @@ void renderLayerShader
     // as the shared user-added uniforms
     rendering.shader->bind();
 
-    /* TODO, set sampler/image uniforms once Resource-stuff implemented
+    //TODO, set sampler/image uniforms once Resource-stuff implemented
     unsigned int textureUnit = 0;
     unsigned int imageUnit = 0;
     auto setSamplerUniforms = []
@@ -1474,7 +1474,7 @@ void renderLayerShader
         textureUnit, 
         imageUnit
     );
-    */
+
     rendering.uniformBuffer->submitUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
