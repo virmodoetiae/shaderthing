@@ -1,5 +1,6 @@
 #pragma once
 
+ #include <random>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -95,6 +96,8 @@ struct SharedUniforms
     // Movable camera which responds to keyboard and mouse controls and is
     // used to provide values to iWASD, iLook uniforms
     UPtr<vir::Camera>        shaderCamera;
+    // Random number generator
+    std::mt19937_64          rndGenerator;
     
     float      iTime          = 0.f;
     float      iTimeDelta     = 0.f;

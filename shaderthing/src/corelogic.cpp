@@ -164,12 +164,9 @@ void initializeSharedUniforms(AppData& appData)
     su.shaderCamera->setPosition(su.iWASD);
     su.screenCamera->update();
     su.shaderCamera->update();
-    //iMVP_ = screenCamera_->projectionViewMatrix();
 
-    // Init random number generator and set initial random number
-    //if (random_ == nullptr)
-    //    random_ = new Random();
-    //iRandom_ = random_->generateFloat();
+    // Init random random number
+    su.iRandom = std::uniform_real_distribution<float>(0, 1)(su.rndGenerator);
 
     // Init uniform buffers, bind to designated binding points and set
     // initial data
@@ -473,14 +470,17 @@ void postRenderUpdate(AppData& appData)
     }
 
     // The shaderCamera has its own event listeners, but all of its updates are
-    // deferred (just like here nothing is processed/sent to the GPU in the
+    // deferred (just like here, nothing is processed/sent to the GPU in the
     // event callback), so we update it here and check whether the GPU data
     // should be updated as well
     su.shaderCamera->update();
 
     // Re-gen random number
     if (!su.isRandomNumberGeneratorPaused)
-        su.iRandom = 0.5; // TODO random_->generateFloat();
+        su.iRandom = std::uniform_real_distribution<float>(0, 1)
+        (
+            su.rndGenerator
+        );
 
     if 
     (
@@ -502,14 +502,6 @@ void postRenderUpdate(AppData& appData)
         su.iFrameUniform.get(), 
         su.iRandomUniform.get()
     );
-    /*
-    if (!flags_.updateDataRangeII)
-        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeISize(), 0);
-    else
-    {
-        fBuffer_->setData(&fBlock_, FragmentBlock::dataRangeIISize(), 0);
-        flags_.updateDataRangeII = false;
-    }*/
     if (su.toggles.updateDataRangeII)
     {
         su.fBuffer->markContiguousUniformsForSubmission
