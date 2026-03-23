@@ -77,6 +77,14 @@ void renderLayerShader
     AppData& appData
 );
 
+void addLayerToResources(UPtr<Layer>& layer, UPtrVector<Resource>& resources);
+
+void removeLayerFromResources
+(
+    UPtr<Layer>& layer, 
+    UPtrVector<Resource>& resources
+);
+
 void addUniformToLayer(UPtr<Uniform>&& uniform, UPtr<Layer>& layer);
 
 UPtr<Uniform> removeUniformFromLayer

@@ -393,18 +393,18 @@ void renderLayerMenuItem(UPtr<Layer>& layer, AppData& appData)
                 if (target != rendering.target)
                 {
                     rendering.target = target;
-                    /*if (rendering.target == Layer::Rendering::Target::Window)
-                        LayerResource::removeFromResources
+                    if (rendering.target != Layer::Rendering::Target::Window)
+                        addLayerToResources
                         (
-                            this,
-                            resources
+                            layer,
+                            appData.resources
                         );
                     else
-                        LayerResource::insertInResources
+                        removeLayerFromResources
                         (
-                            this,
-                            resources
-                        );*/
+                            layer,
+                            appData.resources
+                        );
                 }
             }
             ImGui::EndCombo();

@@ -429,7 +429,7 @@ class Layer;
 // TODO leverage WPtr/UPtr for cleaner and safer implementation
 class LayerResource : public Resource
 {
-    Layer*             layer_  = nullptr;
+    WPtr<Layer>        layer_;
     vir::Framebuffer** native_ = nullptr;
     LayerResource() : Resource(Type::Framebuffer) {isNameManaged_=false;}
 
@@ -437,25 +437,14 @@ public:
 
     static UPtr<LayerResource> create
     (
-        Layer* layer
+        const UPtr<Layer>& layer
     );
 
     ~LayerResource();
 
-    static bool insertInResources
-    (
-        Layer* layer,
-        std::vector<UPtr<Resource>>& resources
-    );
-    static bool removeFromResources
-    (
-        const Layer& layer,
-        std::vector<UPtr<Resource>>& resources
-    );
-
     virtual void save(ObjectIO& io) override {(void)io;}
     
-    bool set(Layer* layer);
+    bool set(const UPtr<Layer>& layer);
     
     void bind(unsigned int unit) override 
     {

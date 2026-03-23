@@ -31,7 +31,7 @@ Resource::~Resource()
         delete namePtr_;
 }
 
-std::string Resource::name() const 
+std::string Resource::name() const
 {
     return namePtr_ == nullptr? "" : *namePtr_;
 }
@@ -41,7 +41,7 @@ void Resource::setName(const std::string& name)
     if (namePtr_ != nullptr && isNameManaged_)
         delete namePtr_;
     namePtr_ = new std::string(name);
-    isNameManaged_ = false;
+    isNameManaged_ = true;
 }
 
 void Resource::setName(std::string* namePtr)
@@ -49,7 +49,7 @@ void Resource::setName(std::string* namePtr)
     if (namePtr_ != nullptr && isNameManaged_)
         delete namePtr_;
     namePtr_ = namePtr;
-    isNameManaged_ = true;
+    isNameManaged_ = false;
 }
 
 void Resource::addClientUniform(Uniform* u) 
@@ -705,7 +705,7 @@ void Texture3DResource::readData(float*& data, bool allocate) const
 
 UPtr<LayerResource> LayerResource::create
 (
-    Layer* layer
+    const UPtr<Layer>& layer
 )
 {
     auto resource = UPtr<LayerResource>(new LayerResource());
@@ -725,56 +725,13 @@ LayerResource::~LayerResource()
     }
 }
 
-bool LayerResource::set(Layer* layer)
+bool LayerResource::set(const UPtr<Layer>& layer)
 {
-    if (layer == nullptr || layer->rendering.resourceFramebuffer == nullptr)
+    if (!layer.valid() || layer->rendering.resourceFramebuffer == nullptr)
         return false;
-    layer_ = layer;
+    layer_ = layer.getWeak();
     native_ = &layer->rendering.resourceFramebuffer;
     return true;
-}
-
-bool LayerResource::insertInResources
-(
-    Layer* layer,
-    std::vector<UPtr<Resource>>& resources
-)
-{
-    for (int i=0; i<(int)resources.size(); i++)
-    {
-        auto& resource = resources[i];
-        if (!resource.valid())
-            continue;
-        if (resource->type() != Type::Framebuffer)
-            continue;
-        if (resource->name() == layer->name)
-            return false;
-    }
-    auto& resource = resources.emplace_back(LayerResource::create(layer));
-    resource->setName(&(layer->name));
-    return true;
-}
-
-bool LayerResource::removeFromResources
-(
-    const Layer& layer,
-    std::vector<UPtr<Resource>>& resources
-)
-{
-    for (int i=0; i<(int)resources.size(); i++)
-    {
-        auto& resource = resources[i];
-        if (!resource.valid())
-            continue;
-        if (resource->type() != Type::Framebuffer)
-            continue;
-        if (resource->name() == layer.name)
-        {
-            resources.erase(resources.begin()+i);
-            return true;
-        }
-    }
-    return false;
 }
 
 }

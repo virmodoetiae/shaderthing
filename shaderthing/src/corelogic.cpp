@@ -1672,6 +1672,44 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
 
 //----------------------------------------------------------------------------//
 
+void addLayerToResources(UPtr<Layer>& layer, UPtrVector<Resource>& resources)
+{
+    for (int i=0; i<(int)resources.size(); i++)
+    {
+        UPtr<Resource>& resource = resources[i];
+        if (resource->type() != Resource::Type::Framebuffer)
+            continue;
+        if (resource->name() == layer->name)
+            return;
+    }
+    UPtr<Resource>& resource = 
+        resources.emplace_back(LayerResource::create(layer));
+    resource->setName(&(layer->name));
+}
+
+//----------------------------------------------------------------------------//
+
+void removeLayerFromResources
+(
+    UPtr<Layer>& layer, 
+    UPtrVector<Resource>& resources
+)
+{
+    for (int i=0; i<(int)resources.size(); i++)
+    {
+        UPtr<Resource>& resource = resources[i];
+        if (resource->type() != Resource::Type::Framebuffer)
+            continue;
+        if (resource->name() == layer->name)
+        {
+            resources.erase(resources.begin()+i);
+            return;
+        }
+    }
+}
+
+//----------------------------------------------------------------------------//
+
 void addUniformToLayer(UPtr<Uniform>&& uniform, UPtr<Layer>& layer)
 {
     if (uniform == nullptr)
