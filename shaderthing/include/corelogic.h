@@ -53,7 +53,7 @@ void rebuildLayerFramebuffers
     UPtr<Layer>& layer,
     const vir::TextureBuffer::InternalFormat& internalFormat, 
     const glm::ivec2& resolution,
-    const AppData& appData
+    const bool isTiledRenderingEnabled
 );
 void clearLayerFramebuffers(Layer& layer);
 std::string assembleFragmentShaderHeader

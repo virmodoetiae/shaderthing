@@ -199,7 +199,6 @@ void initializeSharedUniforms(AppData& appData)
         Uniform::Type::Int
     );
     su.iFrameUniform->gui.showBounds = false;
-    //su.iFrameUniform->specialType = Uniform::SpecialType::Frame;
     su.fBuffer->addUniform(su.iFrameUniform);
 
     su.iRenderPassUniform = Uniform::create();
@@ -210,13 +209,11 @@ void initializeSharedUniforms(AppData& appData)
         Uniform::Type::Int
     );
     su.iRenderPassUniform->gui.showBounds = false;
-    //su.iRenderPassUniform->specialType = Uniform::SpecialType::RenderPass;
     su.fBuffer->addUniform(su.iRenderPassUniform);
     
     su.iTimeUniform = Uniform::create();
     su.iTimeUniform->name = "iTime";
     su.iTimeUniform->setValuePtr(&su.iTime, Uniform::Type::Float);
-    //su.iTimeUniform->specialType = Uniform::SpecialType::Time;
     su.fBuffer->addUniform(su.iTimeUniform);
     
     su.iTimeDeltaUniform = Uniform::create();
@@ -235,7 +232,6 @@ void initializeSharedUniforms(AppData& appData)
     su.iUserActionUniform->name = "iUserAction";
     su.iUserActionUniform->setValuePtr(&su.iUserAction, Uniform::Type::Bool);
     su.iUserActionUniform->gui.showBounds = false;
-    //su.iUserActionUniform->specialType = Uniform::SpecialType::UserAction;
     su.fBuffer->addUniform(su.iUserActionUniform);
 
     su.iExportUniform = Uniform::create();
@@ -251,42 +247,36 @@ void initializeSharedUniforms(AppData& appData)
     su.iWASDUniform = Uniform::create();
     su.iWASDUniform->name = "iWASD";
     su.iWASDUniform->setValuePtr(&su.iWASD, Uniform::Type::Float3);
-    //su.iWASDUniform->specialType = Uniform::SpecialType::CameraPosition;
     su.fBuffer->addUniform(su.iWASDUniform);
 
     su.iLookUniform = Uniform::create();
     su.iLookUniform->name = "iLook";
     su.iLookUniform->setValuePtr(&su.iLook, Uniform::Type::Float3);
     su.iLookUniform->gui.showBounds = false;
-    //su.iLookUniform->specialType = Uniform::SpecialType::CameraDirection;
     su.fBuffer->addUniform(su.iLookUniform);
 
     su.iMouseUniform = Uniform::create();
     su.iMouseUniform->name = "iMouse";
     su.iMouseUniform->setValuePtr(&su.iMouse, Uniform::Type::Float4);
     su.iMouseUniform->gui.showBounds = false;
-    //su.iMouseUniform->specialType = Uniform::SpecialType::Mouse;
     su.fBuffer->addUniform(su.iMouseUniform);
 
     su.iAspectRatioUniform = Uniform::create();
     su.iAspectRatioUniform->name = "iWindowAspectRatio";
     su.iAspectRatioUniform->setValuePtr(&su.iAspectRatio, Uniform::Type::Float);
     su.iAspectRatioUniform->gui.showBounds = false;
-    //su.iAspectRatioUniform->specialType = Uniform::SpecialType::WindowAspectRatio;
     su.fBuffer->addUniform(su.iAspectRatioUniform);
 
     su.iResolutionUniform = Uniform::create();
     su.iResolutionUniform->name = "iWindowResolution";
     su.iResolutionUniform->setValuePtr(&su.iResolution, Uniform::Type::Float2);
     su.iResolutionUniform->gui.showBounds = false;
-    //su.iResolutionUniform->specialType = Uniform::SpecialType::WindowResolution;
     su.fBuffer->addUniform(su.iResolutionUniform);
 
     su.iKeyboardUniform = Uniform::create();
     su.iKeyboardUniform->name = "iKeyboard";
     su.iKeyboardUniform->setValuePtr(&su.iKeyboard, Uniform::Type::Int3, 256);
     su.iKeyboardUniform->gui.showBounds = false;
-    //su.iKeyboardUniform->specialType = Uniform::SpecialType::Keyboard;
     su.fBuffer->addUniform(su.iKeyboardUniform);
 }
 
@@ -1578,10 +1568,9 @@ RenderResult renderShaders
         for (auto& layer : appData.layers)
         {
             renderLayerShader(layer, target, clearTarget, appData);
-            //layer->renderShader(target, clearTarget, sharedUniforms);
             // At the end of this loop, the status of clearTarget will 
             // represent whether the main window has been cleared of its 
-            // contents at least once (true if not cleared at least once)
+            // contents at least once (true if NOT cleared at least once)
             if 
             (
                 clearTarget &&
@@ -1635,9 +1624,8 @@ RenderResult renderShaders
     // rendering to the window at all (i.e., if renderTarget != nullptr, which 
     // is only true during exports), then render a dummy/void/blank window, 
     // simply to avoid visual artifacts when nothing is rendering to the main
-    // window. As for the internalFramebufferShader in Layer::renderShader, the 
-    // lifetimeof the shader (and quad) is managed statically within here simply
-    // for convenience
+    // window. Both the blank shader and quad are managed statically here, for
+    // convenience
     if (frameRendered && (clearTarget || target != nullptr))
     {
         static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
@@ -1675,8 +1663,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
             blankShader.get()
         );
     }
-
-    return 
+    return RenderResult
     {
         iRenderPass == nRenderPasses-1, 
         frameRendered

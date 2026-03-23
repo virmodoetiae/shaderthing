@@ -21,9 +21,15 @@ void renderMenuBar
     AppData& appData
 );
 
-void renderLayerMenu
+void renderLayerMenuItem
 (
     UPtr<Layer>& layer, 
+    AppData& appData
+);
+
+void renderLayerFramebufferSettings
+(
+    UPtr<Layer>& layer,
     AppData& appData
 );
 

@@ -26,10 +26,7 @@ namespace GUI
 // General -------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void renderControlPanel
-(
-    AppData& appData
-)
+void renderControlPanel(AppData& appData)
 {
     // Move to deferred update
     //font_.checkLoadJapaneseAndOrSimplifiedChinese();
@@ -68,10 +65,7 @@ void renderControlPanel
 
 //----------------------------------------------------------------------------//
 
-void renderMenuBar
-(
-    AppData& appData
-)
+void renderMenuBar(AppData& appData)
 {
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
@@ -206,7 +200,7 @@ project exports)");
             }
 
             for (auto& layer : appData.layers)
-                renderLayerMenu(layer, appData);
+                renderLayerMenuItem(layer, appData);
             /* TODO
             ImGui::Separator();
             Layer::renderShaderLanguangeExtensionsMenuGui
@@ -280,7 +274,6 @@ project exports)");
 
     // TODO
     if (Resource::gui.isDetachedFromControlPanel)
-        //Resource::renderResourcesGui(resources_, layers_);
         renderResourcesTable(appData);
     if (appData.sharedStorage.isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
@@ -341,11 +334,7 @@ project exports)");
 
 //----------------------------------------------------------------------------//
 
-void renderLayerMenu
-(
-    UPtr<Layer>& layer, 
-    AppData& appData
-)
+void renderLayerMenuItem(UPtr<Layer>& layer, AppData& appData)
 {
     if
     (
@@ -509,7 +498,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         if (rendering.target != Layer::Rendering::Target::Window)
         {
             ImGui::SeparatorText("Framebuffer settings");
-            //renderFramebufferPropertiesGui();
+            renderLayerFramebufferSettings(layer, appData);
 
             // TODO
             /*
@@ -651,10 +640,179 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
 
 //----------------------------------------------------------------------------//
 
-void renderLayersTabBar
+void renderLayerFramebufferSettings
 (
+    UPtr<Layer>& layer,
     AppData& appData
 )
+{
+    const float entryWidth(14*ImGui::GetFontSize());
+    ImGui::Text("Internal data format ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    Layer::Rendering& rendering = layer->rendering;
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerInternalFormatCombo",
+            vir::TextureBuffer::internalFormatToName.at
+            (
+                rendering.backFramebuffer->
+                    colorBufferInternalFormat()
+            ).c_str()
+        )
+    )
+    {
+        static vir::TextureBuffer::InternalFormat 
+        supportedInternalFormats[2]
+        {
+            vir::TextureBuffer::InternalFormat::RGBA_UNI_8, 
+            vir::TextureBuffer::InternalFormat::RGBA_SF_32
+        };
+        for (auto internalFormat : supportedInternalFormats)
+        {
+            if 
+            (
+                ImGui::Selectable
+                (
+                    vir::TextureBuffer::internalFormatToName.at
+                    (
+                        internalFormat
+                    ).c_str()
+                )
+            )
+                rebuildLayerFramebuffers
+                (
+                    layer,
+                    internalFormat,
+                    layer->resolution,
+                    appData.rendering.isTiledRenderingEnabled
+                );
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    //
+    std::string selectedWrapModeX = "";
+    std::string selectedWrapModeY = "";
+    std::string selectedMagFilterMode = "";
+    std::string selectedMinFilterMode = "";
+    if (rendering.backFramebuffer != nullptr)
+    {
+        selectedWrapModeX = vir::TextureBuffer::wrapModeToName.at
+        (
+            rendering.backFramebuffer->colorBufferWrapMode(0)
+        );
+        selectedWrapModeY = vir::TextureBuffer::wrapModeToName.at
+        (
+            rendering.backFramebuffer->colorBufferWrapMode(1)
+        );
+        selectedMagFilterMode = 
+            vir::TextureBuffer::filterModeToName.at
+            (
+                rendering.backFramebuffer->colorBufferMagFilterMode()
+            );
+        selectedMinFilterMode = 
+            vir::TextureBuffer::filterModeToName.at
+            (
+                rendering.backFramebuffer->colorBufferMinFilterMode()
+            );
+    }
+    ImGui::Text("Horizontal wrap mode ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerWrapModeXCombo",
+            selectedWrapModeX.c_str()
+        ) && rendering.backFramebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::wrapModeToName)
+        {
+            if (ImGui::Selectable(entry.second.c_str()))
+                setLayerFramebufferWrapMode(layer, 0, entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+    ImGui::Text("Vertical   wrap mode ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerWrapModeYCombo",
+            selectedWrapModeY.c_str()
+        ) && rendering.backFramebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::wrapModeToName)
+        {
+            if (ImGui::Selectable(entry.second.c_str()))
+                setLayerFramebufferWrapMode(layer, 1, entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    ImGui::Text("Magnification filter ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerMagModeCombo",
+            selectedMagFilterMode.c_str()
+        ) && rendering.backFramebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::filterModeToName)
+        {
+            if 
+            (
+                entry.first != FilterMode::Nearest&&
+                entry.first != FilterMode::Linear
+            )
+                continue;
+            if (ImGui::Selectable(entry.second.c_str()))
+                setLayerFramebufferMagFilterMode(layer, entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    ImGui::Text("Minimization  filter ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(entryWidth);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##layerMinModeCombo",
+            selectedMinFilterMode.c_str()
+        ) && rendering.backFramebuffer != nullptr
+    )
+    {
+        for (auto entry : vir::TextureBuffer::filterModeToName)
+        {
+            if (ImGui::Selectable(entry.second.c_str()))
+                setLayerFramebufferMinFilterMode(layer, entry.first);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+}
+
+//----------------------------------------------------------------------------//
+
+void renderLayersTabBar(AppData& appData)
 {
     auto& layers = appData.layers;
     static bool compilationErrors(false);
@@ -920,11 +1078,7 @@ void renderLayersTabBar
 
 //----------------------------------------------------------------------------//
 
-void renderLayerTab
-(
-    UPtr<Layer>& layer,
-    AppData& appData
-)
+void renderLayerTab(UPtr<Layer>& layer,AppData& appData)
 {
     static unsigned int gActiveTabId = 0;
     static unsigned int gActiveLayerId = 0;
@@ -1039,11 +1193,7 @@ void renderLayerTab
 // Uniforms ------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void renderUniformsTab
-(
-    UPtr<Layer>& layer, 
-    AppData& appData
-)
+void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
 {
     //--------------------------------------------------------------------------
     auto& sharedUniforms = appData.sharedUniforms;
