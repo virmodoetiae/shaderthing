@@ -151,7 +151,7 @@ void Uniform::setType
     bool doNotReinitializeIfImageOrSampler
 )
 {
-    setType(type, doNotReinitializeIfImageOrSampler, valueArraySize_);
+    setType(type, valueArraySize_, doNotReinitializeIfImageOrSampler);
 }
 
 void Uniform::submitToAllClientBuffers()
