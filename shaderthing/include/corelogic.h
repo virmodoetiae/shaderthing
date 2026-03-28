@@ -85,6 +85,7 @@ void removeLayerFromResources
     UPtrVector<Resource>& resources
 );
 
+/*
 void addUniformToLayer(UPtr<Uniform>&& uniform, UPtr<Layer>& layer);
 
 UPtr<Uniform> removeUniformFromLayer
@@ -100,6 +101,7 @@ UPtr<Uniform> removeUniformFromSharedUniforms
     UPtr<Uniform>& uniform, 
     AppData& appData
 );
+*/
 
 void toggleRenderingPaused(AppData& appData, bool dueToFlowFps);
 

@@ -11,20 +11,46 @@
 namespace ShaderThing
 {
 
+struct UniformContainer
+{
+    UPtrVector<Uniform>             uniforms;
+    UPtr<vir::DynamicUniformBuffer> uniformBuffer;
+    unsigned int                    uniformBufferBindingPoint;
+};
+
+//----------------------------------------------------------------------------//
+
 class Uniform : public vir::Uniform
 {
 protected :
 
-    Uniform() = default;
+    Uniform(UniformContainer& owner) : owner_(&owner) {};
     DELETE_COPY(Uniform);
+
+    // Owner of this uniform
+    UniformContainer* owner_;
+
+    //
+    WPtr<Uniform> resourceResolutionUniform_;
+
+    //
+    virtual void setType
+    (
+        Type type, 
+        uint32_t valueArraySize,
+        bool doNotReinitializeIfImageOrSampler,
+        bool updateClientBuffers
+    ) override;
 
 public:
 
     static std::string supportedTypeNames[15];
 
-    static UPtr<Uniform> create()
+    static const UPtr<Uniform>& create(UniformContainer& owner);
+
+    static const UPtr<Uniform>& create(const UPtr<UniformContainer>& owner)
     {
-        return UPtr<Uniform>(new Uniform());
+        return create(*owner);
     }
 
     typedef vir::Uniform::Type Type;
@@ -34,6 +60,7 @@ public:
         None,
         LayerAspectRatio,
         LayerResolution,
+        ResourceResolution
     };
 
     // Further uniform qualifier for automatically-managed uniforms (i.e., 
@@ -45,18 +72,17 @@ public:
     bool          isLogarithmic          = false; // For floats only
     bool          isMarkedForDeletion    = false;
 
-    // If a uniform wraps a resource (which can consists of some form of
-    // texture 2D/3D texture buffer), it is very convenient to automatically
-    // add an additional automatically managed uniform that contains the value
-    // of the resolution (W x H or W x H x D) of the wrapped resource. This is
-    // what resourceResolutionUniform is for
-    UPtr<Uniform> resourceResolutionUniform;
-    
-    void deleteValue(bool deleteCache) override
-    {
-        vir::Uniform::deleteValue(deleteCache);
-        resourceResolutionUniform.reset();
-    }
+    ~Uniform();
+
+    void deleteSelf();
+
+    void deleteValue(bool deleteCache) override;
+
+    void setType
+    (
+        Type type, 
+        bool doNotReinitializeIfImageOrSampler = false 
+    );
 
     void setResourcePtr
     (
@@ -71,6 +97,16 @@ public:
     )   {setResourcePtr(value.get(), uniformBuffer);}
 
     bool isResource() const;
+
+    // If a uniform wraps a resource (which can consists of some form of
+    // texture 2D/3D texture buffer), it is very convenient to automatically
+    // add a managed uniform that contains the value of the resolution
+    // (W x H or W x H x D) of the wrapped resource
+    WPtr<Uniform> resourceResolutionUniform() const {return resourceResolutionUniform_;};
+
+    void setOwner(UniformContainer& owner);
+
+    void setOwner(const UPtr<UniformContainer>& owner) {setOwner(*owner.get());}
 
     struct GUI
     {

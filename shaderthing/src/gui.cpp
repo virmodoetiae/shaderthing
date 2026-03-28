@@ -945,19 +945,7 @@ void renderLayersTabBar(AppData& appData)
     {
         reorderable = true;
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
-        {
             createNewLayer(appData);
-            if (appData.rendering.isTiledRenderingEnabled)
-            {    
-                /*
-                Layer::setRenderingTiles
-                (
-                    layers, 
-                    Layer::Rendering::TileController::nTiles
-                );
-                */
-            }
-        }
         auto tabBar = ImGui::GetCurrentTabBar();
         std::pair<unsigned int, unsigned int> swap {0,0};
         for (int i = 0; i < (int)layers.size(); i++)
@@ -1250,8 +1238,15 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
             row = renderBuiltInSharedUniforms(appData);
 
         // Then, render the user-created shared uniforms
-        for (auto& uniform : sharedUniforms.userUniforms)
+        int nSharedUniforms = 
+            sharedUniforms.fragment.uniforms.size()-
+            sharedUniforms.userUniformsStartIndex;
+        for (unsigned int i=0; i < nSharedUniforms; i++)
         {
+            auto& uniform = sharedUniforms.fragment.uniforms
+            [
+                i + sharedUniforms.userUniformsStartIndex
+            ];
             atLeastOneSharedUniformStateChanged = 
                 atLeastOneSharedUniformStateChanged ||
                 renderUniformTableRow
@@ -1259,8 +1254,8 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
                     uniform,
                     layer,
                     appData,
-                    row,
-                    uniform == sharedUniforms.userUniforms.back()
+                    row++,
+                    i == nSharedUniforms-1
                 );
             if (uniform->isMarkedForDeletion)
                 atLeastOneUniformMarkedForDeletion = true;
@@ -1269,8 +1264,9 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         }
 
         // Finally, render the user-created layer-specific uniforms
-        for(auto& uniform : layer->uniforms)
+        for(unsigned int i=0; i<layer->uniforms.size(); i++)
         {
+            auto& uniform = layer->uniforms[i];
             atLeastOneUniformTypeChanged = 
                 atLeastOneUniformTypeChanged ||
                 renderUniformTableRow
@@ -1278,7 +1274,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
                     uniform,
                     layer,
                     appData,
-                    row,
+                    row++,
                     false,
                     showSharedAndDefaultUniforms
                 );
@@ -1292,7 +1288,10 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         START_ROW(row, column)
         START_COLUMN(column)
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
-            addUniformToLayer(Uniform::create(), layer);
+        {
+            auto& u = Uniform::create(layer);
+            layer->cache.uncompiledUniforms.emplace_back(u.getWeak());
+        }
         if 
         (
             ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
@@ -1326,29 +1325,15 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
             UPtr<Uniform>& u = layer->uniforms[i];
             if (!u->isMarkedForDeletion)
                 continue;
-            if (u->isResource())
-            {
-                auto resource = u->getValuePtr<Resource>();
-                if (resource->isUsedByUniform(u.get()))
-                    resource->removeClientUniform(u.get());
-                resource->unbind();
-            }
-            removeUniformFromLayer(u, layer);
+            u->deleteSelf();
             i--;
         }
-        for (unsigned int i=0; i<sharedUniforms.userUniforms.size(); i++)
+        for (unsigned int i=0; i<sharedUniforms.fragment.uniforms.size(); i++)
         {
-            UPtr<Uniform>& u = sharedUniforms.userUniforms[i];
+            UPtr<Uniform>& u = sharedUniforms.fragment.uniforms[i];
             if (!u->isMarkedForDeletion)
                 continue;
-            if (u->isResource())
-            {
-                auto resource = u->getValuePtr<Resource>();
-                if (resource->isUsedByUniform(u.get()))
-                    resource->removeClientUniform(u.get());
-                resource->unbind();
-            }
-            removeUniformFromSharedUniforms(u, appData);
+            u->deleteSelf();
             i--;
             atLeastOneSharedUniformStateChanged = true;
         }
@@ -1374,28 +1359,18 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
             continue;
         uniform->hasSharedByUserChanged = false;
-        addUniformToSharedUniforms
-        (
-            removeUniformFromLayer(uniform, layer), 
-            appData
-        );
-        //sharedUniforms.addUserUniform(layer->removeUniform(uniform.get()));
+        uniform->setOwner(sharedUniforms.fragment);
         i--;
     }
 
     // Check if the uniform state was changed from shared to non-shared
-    for (unsigned int i=0; i<sharedUniforms.userUniforms.size(); i++)
+    for (unsigned int i=0; i<sharedUniforms.fragment.uniforms.size(); i++)
     {
-        auto& uniform = sharedUniforms.userUniforms[i];
+        auto& uniform = sharedUniforms.fragment.uniforms[i];
         if (!(uniform->hasSharedByUserChanged && !uniform->isSharedByUser))
             continue;
         uniform->hasSharedByUserChanged = false;
-        addUniformToLayer
-        (
-            removeUniformFromSharedUniforms(uniform, appData),
-            layer
-        );
-        //layer->addUniform(sharedUniforms.removeUserUniform(uniform.get()));
+        uniform->setOwner(layer);
         i--;
     }
 
@@ -1403,9 +1378,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
     // uniform type changes or deletions (both of which can alter block layout:
     // compile right away automatically without asking the user
     for (auto& l : appData.layers)
-    {
         compileShader(l, appData);
-    }
 }
 
 //----------------------------------------------------------------------------//
@@ -1800,20 +1773,17 @@ int renderBuiltInSharedUniforms(AppData& appData)
     // iMouse --------------------------------------------------------------
     START_ROW(row, column)
     NEXT_COLUMN(column)
-    // TODO
-    /*
     if 
     (
         ImGui::Button
         (
-            sharedUniforms.flags_.isMouseInputEnabled ? 
+            sharedUniforms.isMouseInputEnabled ? 
             ICON_FA_PAUSE : 
             ICON_FA_PLAY, 
             ImVec2(-1, 0)
         )
     )
-        sharedUniforms.toggleMouseInputs();
-    */
+        toggleMouseInputs(appData);
     if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
         ImGui::OpenPopup("##iMouseSettings");
     if (ImGui::BeginPopup("##iMouseSettings"))
@@ -1973,7 +1943,11 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::EndPopup();
     }
 
-    bool showSeparator(sharedUniforms.userUniforms.size() == 0);
+    bool showSeparator
+    (
+        sharedUniforms.fragment.uniforms.size() == 
+        sharedUniforms.userUniformsStartIndex
+    );
     if (showSeparator)
     {
         posY = ImGui::GetCursorPosY();
@@ -2053,7 +2027,7 @@ motion only if the left mouse button (LMB) is held)");
 
 bool renderEditUniformBoundsButton
 (
-    UPtr<Uniform>& uniform,
+    vir::Ptr<Uniform>& uniform,
     bool renderDragStepSlider
 )
 {
@@ -2168,7 +2142,7 @@ bool renderUniformTableRow
     UPtr<Uniform>& uniform,
     UPtr<Layer>& layer,
     AppData& appData,
-    int& row,
+    int row,
     const bool showSeparator,
     const bool showSharedAndDefaultUniforms
 )
@@ -2261,12 +2235,6 @@ bool renderUniformTableRow
         if (ImGui::InputText("##uniformName", &uniform->name))
         {
             uniform->markForSubmissionToAllClientBuffers();
-            /*
-            if (!uniform->isSharedByUser)
-                layer->uniformBuffer_->markUniformForSubmission(uniform.get());
-            else
-                sharedUniforms.fBuffer_->markUniformForSubmission(uniform.get());
-            */
             nameChanged = true;
             Helpers::enforceUniqueName
             (
@@ -2303,165 +2271,7 @@ bool renderUniformTableRow
             if (selectedType == uniform->type())
                 continue;
             typeChanged = true;
-            bool typeIsSamplerOrImage2D = 
-            (
-                uniform->type() == 
-                vir::Uniform::Type::Sampler2D ||
-                uniform->type() == 
-                vir::Uniform::Type::Image2D
-            );
-            bool selectedTypeIsSamplerOrImage2D = 
-            (
-                selectedType == 
-                vir::Uniform::Type::Sampler2D ||
-                selectedType == 
-                vir::Uniform::Type::Image2D
-            );
-            bool typeIsSamplerOrImage3D = 
-            (
-                uniform->type() == 
-                vir::Uniform::Type::Sampler3D ||
-                uniform->type() == 
-                vir::Uniform::Type::Image3D
-            );
-            bool selectedTypeIsSamplerOrImage3D = 
-            (
-                selectedType == 
-                vir::Uniform::Type::Sampler3D ||
-                selectedType == 
-                vir::Uniform::Type::Image3D
-            );
-            bool typeIsSamplerOrImageCube = 
-            (
-                uniform->type() == 
-                vir::Uniform::Type::SamplerCube ||
-                uniform->type() == 
-                vir::Uniform::Type::ImageCube
-            );
-            bool selectedTypeIsSamplerOrImageCube = 
-            (
-                selectedType == 
-                vir::Uniform::Type::SamplerCube ||
-                selectedType == 
-                vir::Uniform::Type::ImageCube
-            );
-            bool typeChangedFromResourceToNonResourceType =
-                (
-                    typeIsSamplerOrImage2D ||
-                    typeIsSamplerOrImage3D ||
-                    typeIsSamplerOrImageCube
-                ) &&
-                !(
-                    selectedTypeIsSamplerOrImage2D ||
-                    selectedTypeIsSamplerOrImage3D ||
-                    selectedTypeIsSamplerOrImageCube
-                );
-            bool typeChangedFromNonResourceToResource =
-                !(
-                    typeIsSamplerOrImage2D ||
-                    typeIsSamplerOrImage3D ||
-                    typeIsSamplerOrImageCube
-                ) &&
-                (
-                    selectedTypeIsSamplerOrImage2D ||
-                    selectedTypeIsSamplerOrImage3D ||
-                    selectedTypeIsSamplerOrImageCube
-                );
-            bool typeChangedFromResourceToIncompatibleResource = 
-                (
-                    typeIsSamplerOrImage2D && 
-                    (
-                        selectedTypeIsSamplerOrImage3D || 
-                        selectedTypeIsSamplerOrImageCube
-                    )
-                ) ||
-                (
-                    typeIsSamplerOrImage3D && 
-                    (
-                        selectedTypeIsSamplerOrImage2D || 
-                        selectedTypeIsSamplerOrImageCube
-                    )
-                ) ||
-                (
-                    typeIsSamplerOrImageCube && 
-                    (
-                        selectedTypeIsSamplerOrImage2D || 
-                        selectedTypeIsSamplerOrImage3D
-                    )
-                );
-            
-            // This is only for setting the inUseByLayers_ member of
-            // the resource, which in turn is only used to determine
-            // whether a full shader recompilation is required
-            // after changing the internal format of any resource
-            // that is actively used by a layer. This is necessary
-            // because, as the choice of using e.g., a 'usampler' or
-            // a 'sampler' qualifier for the uniform is automatic,
-            // changing the internal uniform type might require
-            // changing the qualifier, and this can only be changed
-            // in the shader source code with a recompilation
-            if (typeChangedFromResourceToNonResourceType)
-            {
-                auto resource = uniform->getValuePtr<Resource>();
-                if (resource != nullptr)
-                    resource->removeClientUniform(uniform.get());
-            }
-            else if (typeChangedFromNonResourceToResource)
-                //layer->uniformBuffer_->removeUniform(uniform.get());
-                uniform->removeFromAllClientBuffers();
-
-            if 
-            (
-                typeChangedFromResourceToNonResourceType ||
-                typeChangedFromResourceToIncompatibleResource
-            )
-                /*
-                // TODO: Check if madking an ad-hoc function for this in 
-                // ShaderThing::Uniform is cleaner
-                layer->rendering.uniformBuffer->removeUniform
-                (
-                    uniform->resourceResolutionUniform
-                );
-                */
-                uniform->resourceResolutionUniform->
-                    removeFromAllClientBuffers();
-            
-            uniform->setType(selectedType, true);
-            uniform->gui.showBounds = 
-            (
-                selectedType != vir::Uniform::Type::Bool &&
-                selectedType != vir::Uniform::Type::Sampler2D &&
-                selectedType != vir::Uniform::Type::Sampler3D &&
-                selectedType != vir::Uniform::Type::SamplerCube &&
-                selectedType != vir::Uniform::Type::Image2D &&
-                selectedType != vir::Uniform::Type::Image3D &&
-                selectedType != vir::Uniform::Type::ImageCube
-            );
-
-            // Add uniform to the buffer if it is a non-resource type now
-            // that the type has been set (cannot do it before, as I need
-            // to have the new uniform type already set before adding the
-            // uniform the buffer)
-            if (typeChangedFromResourceToNonResourceType)
-                layer->rendering.uniformBuffer->addUniform(uniform);
-
-            if 
-            (
-                    selectedTypeIsSamplerOrImage2D ||
-                    selectedTypeIsSamplerOrImage3D ||
-                    selectedTypeIsSamplerOrImageCube
-            )
-                continue;
-            
-            // TODO: Check if not needed (already managed when adding/removing
-            // uniforms in the buffer itself, right?)
-            layer->rendering.uniformBuffer->
-                recalculateUniformSizesAndOffsets();
-            /*
-            layer->rendering.uniformBuffer->
-                markUniformForSubmission(uniform.get());
-            */
-           uniform->markForSubmissionToAllClientBuffers();
+            uniform->setType(selectedType);
         }
         ImGui::EndCombo();
     }
@@ -2481,16 +2291,6 @@ bool renderUniformTableRow
         ImGui::Separator();
     }
     END_COLUMN(column)
-
-    #define SET_UNIFORM_VALUE(Type)                                         \
-    if (!isSharedByUser0)                                                   \
-    {                                                                       \
-        layer->uniformBuffer_->markUniformForSubmission(uniform.get());     \
-    }                                                                       \
-    else                                                                    \
-    {                                                                       \
-        sharedUniforms.fBuffer_->markUniformForSubmission(uniform.get());   \
-    }
 
     START_COLUMN(column) // Value column ---------------------------------------
     switch(uniform->type())
@@ -2828,10 +2628,10 @@ bool renderUniformTableRow
             bool input(false);
             if 
             (
-                //uniform->specialType == 
-                //    Uniform::SpecialType::WindowResolution || 
                 uniform->managedType == 
-                    Uniform::ManagedType::LayerResolution
+                    Uniform::ManagedType::LayerResolution || 
+                uniform->managedType == 
+                    Uniform::ManagedType::ResourceResolution 
             )
             {
                 auto value = uniform->getValue<glm::vec2>();
@@ -2953,15 +2753,6 @@ bool renderUniformTableRow
                         value.z = std::max(value.z, bounds.x);
                         value.z = std::min(value.z, bounds.y);
                     }
-                    /*
-                    bool isCameraDirection
-                    (
-                        uniform->specialType == 
-                            Uniform::SpecialType::CameraDirection
-                    );
-                    if (isCameraDirection)
-                        value = glm::normalize(value);
-                    */
                     uniform->setValue(value, Type::Float3);
                     if (named)
                     {
@@ -3098,17 +2889,17 @@ bool renderUniformTableRow
             {                                                                  \
                 appData.rendering.toggles.requestFullRecompilation =           \
                     appData.rendering.toggles.requestFullRecompilation ||      \
-                    resource->isInternalFormatUnsigned() !=                    \
-                    r->isInternalFormatUnsigned();                             \
+                    (resource->isInternalFormatUnsigned() !=                   \
+                    r->isInternalFormatUnsigned() && named);                   \
                 if (resource->isUsedByUniform(uniform.get()))                  \
                     resource->removeClientUniform(uniform.get());              \
             }                                                                  \
-            else                                                               \
+            else if (named)                                                    \
                 appData.rendering.toggles.requestFullRecompilation = true;     \
             if (!r->isUsedByUniform(uniform.get()))                            \
                 r->addClientUniform(uniform.get());                            \
             auto& ubo = uniform->isSharedByUser ?                              \
-                sharedUniforms.fBuffer : layer->rendering.uniformBuffer;       \
+                sharedUniforms.fragment.uniformBuffer : layer->uniformBuffer;  \
             uniform->setResourcePtr(r, ubo);                                   \
             sharedUniforms.iUserAction = true;                                 \
             sharedUniforms.toggles.updateDataRangeII = true;                   \

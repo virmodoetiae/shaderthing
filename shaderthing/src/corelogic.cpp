@@ -123,8 +123,8 @@ void main(){fragColor = texture(tx, tc);})";
     Layer::Rendering::textureMapperShader->bind();
     Layer::Rendering::textureMapperShader->bindUniformBlock
     (
-        appData.sharedUniforms.vBuffer->name(),
-        appData.sharedUniforms.vBufferBindingPoint
+        appData.sharedUniforms.vertex.uniformBuffer->name(),
+        appData.sharedUniforms.vertex.uniformBufferBindingPoint
     );
     Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
 
@@ -170,12 +170,16 @@ void initializeSharedUniforms(AppData& appData)
 
     // Init uniform buffers, bind to designated binding points and set
     // initial data
-    su.vBuffer = 
+    su.vertex.uniformBuffer = 
             vir::DynamicUniformBuffer::create(64, "vertexSharedUniformBlock");
-    su.vBuffer->bind();
-    su.vBuffer->setBindingPoint(su.vBufferBindingPoint);
+    su.vertex.uniformBuffer->bind();
+    su.vertex.uniformBufferBindingPoint = 1;
+    su.vertex.uniformBuffer->setBindingPoint
+    (
+        su.vertex.uniformBufferBindingPoint
+    );
 
-    su.iMVPUniform = Uniform::create();
+    su.iMVPUniform = Uniform::create(su.vertex).getWeak();
     su.iMVPUniform->name = "iMVP";
     su.iMVPUniform->setValuePtr
     (
@@ -183,15 +187,18 @@ void initializeSharedUniforms(AppData& appData)
         Uniform::Type::Mat4
     );
     su.iMVPUniform->gui.showBounds = false;
-    su.vBuffer->addUniform(su.iMVPUniform);
 
-    su.fBuffer = 
+    su.fragment.uniformBuffer = 
             vir::DynamicUniformBuffer::create(8196, "sharedUniformBlock");
-    su.fBuffer->bind();
-    su.fBuffer->setBindingPoint(su.fBufferBindingPoint);
+    su.fragment.uniformBuffer->bind();
+    su.fragment.uniformBufferBindingPoint = 0;
+    su.fragment.uniformBuffer->setBindingPoint
+    (
+        su.fragment.uniformBufferBindingPoint
+    );
 
     // Init uniform wrappers
-    su.iFrameUniform = Uniform::create();
+    su.iFrameUniform = Uniform::create(su.fragment).getWeak();
     su.iFrameUniform->name = "iFrame";
     su.iFrameUniform->setValuePtr
     (
@@ -199,9 +206,8 @@ void initializeSharedUniforms(AppData& appData)
         Uniform::Type::Int
     );
     su.iFrameUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iFrameUniform);
 
-    su.iRenderPassUniform = Uniform::create();
+    su.iRenderPassUniform = Uniform::create(su.fragment).getWeak();
     su.iRenderPassUniform->name = "iRenderPass";
     su.iRenderPassUniform->setValuePtr
     (
@@ -209,32 +215,27 @@ void initializeSharedUniforms(AppData& appData)
         Uniform::Type::Int
     );
     su.iRenderPassUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iRenderPassUniform);
     
-    su.iTimeUniform = Uniform::create();
+    su.iTimeUniform = Uniform::create(su.fragment).getWeak();
     su.iTimeUniform->name = "iTime";
     su.iTimeUniform->setValuePtr(&su.iTime, Uniform::Type::Float);
-    su.fBuffer->addUniform(su.iTimeUniform);
     
-    su.iTimeDeltaUniform = Uniform::create();
+    su.iTimeDeltaUniform = Uniform::create(su.fragment).getWeak();
     su.iTimeDeltaUniform->name = "iTimeDelta";
     su.iTimeDeltaUniform->setValuePtr(&su.iTimeDelta, Uniform::Type::Float);
     su.iTimeDeltaUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iTimeDeltaUniform);
 
-    su.iRandomUniform = Uniform::create();
+    su.iRandomUniform = Uniform::create(su.fragment).getWeak();
     su.iRandomUniform->name = "iRandom";
     su.iRandomUniform->setValuePtr(&su.iRandom, Uniform::Type::Float);
     su.iRandomUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iRandomUniform);
 
-    su.iUserActionUniform = Uniform::create();
+    su.iUserActionUniform = Uniform::create(su.fragment).getWeak();
     su.iUserActionUniform->name = "iUserAction";
     su.iUserActionUniform->setValuePtr(&su.iUserAction, Uniform::Type::Bool);
     su.iUserActionUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iUserActionUniform);
 
-    su.iExportUniform = Uniform::create();
+    su.iExportUniform = Uniform::create(su.fragment).getWeak();
     su.iExportUniform->name = "iExport";
     su.iExportUniform->setValuePtr
     (
@@ -242,42 +243,35 @@ void initializeSharedUniforms(AppData& appData)
         Uniform::Type::Bool
     );
     su.iExportUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iExportUniform);
 
-    su.iWASDUniform = Uniform::create();
+    su.iWASDUniform = Uniform::create(su.fragment).getWeak();
     su.iWASDUniform->name = "iWASD";
     su.iWASDUniform->setValuePtr(&su.iWASD, Uniform::Type::Float3);
-    su.fBuffer->addUniform(su.iWASDUniform);
 
-    su.iLookUniform = Uniform::create();
+    su.iLookUniform = Uniform::create(su.fragment).getWeak();
     su.iLookUniform->name = "iLook";
     su.iLookUniform->setValuePtr(&su.iLook, Uniform::Type::Float3);
     su.iLookUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iLookUniform);
 
-    su.iMouseUniform = Uniform::create();
+    su.iMouseUniform = Uniform::create(su.fragment).getWeak();
     su.iMouseUniform->name = "iMouse";
     su.iMouseUniform->setValuePtr(&su.iMouse, Uniform::Type::Float4);
     su.iMouseUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iMouseUniform);
 
-    su.iAspectRatioUniform = Uniform::create();
+    su.iAspectRatioUniform = Uniform::create(su.fragment).getWeak();
     su.iAspectRatioUniform->name = "iWindowAspectRatio";
     su.iAspectRatioUniform->setValuePtr(&su.iAspectRatio, Uniform::Type::Float);
     su.iAspectRatioUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iAspectRatioUniform);
 
-    su.iResolutionUniform = Uniform::create();
+    su.iResolutionUniform = Uniform::create(su.fragment).getWeak();
     su.iResolutionUniform->name = "iWindowResolution";
     su.iResolutionUniform->setValuePtr(&su.iResolution, Uniform::Type::Float2);
     su.iResolutionUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iResolutionUniform);
 
-    su.iKeyboardUniform = Uniform::create();
+    su.iKeyboardUniform = Uniform::create(su.fragment).getWeak();
     su.iKeyboardUniform->name = "iKeyboard";
     su.iKeyboardUniform->setValuePtr(&su.iKeyboard, Uniform::Type::Int3, 256);
     su.iKeyboardUniform->gui.showBounds = false;
-    su.fBuffer->addUniform(su.iKeyboardUniform);
 }
 
 //----------------------------------------------------------------------------//
@@ -342,9 +336,9 @@ void setWindowResolution
     su.screenCamera->update();
 
     //iMVP_ = screenCamera_->projectionViewMatrix();
-    su.vBuffer->markUniformForSubmission(su.iMVPUniform.get());
-    su.fBuffer->markUniformForSubmission(su.iAspectRatioUniform.get());
-    su.fBuffer->markUniformForSubmission(su.iResolutionUniform.get());
+    su.vertex.uniformBuffer->markUniformForSubmission(su.iMVPUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iAspectRatioUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iResolutionUniform.get());
     
     // Set the actual window resolution and propagate event if not preparing
     // for export
@@ -487,14 +481,14 @@ void postRenderUpdate(AppData& appData)
     // Data range I is always updated, data range III is updated on the spot
     // in setResolution, the keyboard data range is updated on the spot in
     // onReceive(KeyPressEvent/KeyReleaseEvent)
-    su.fBuffer->markContiguousUniformsForSubmission
+    su.fragment.uniformBuffer->markContiguousUniformsForSubmission
     (
         su.iFrameUniform.get(), 
         su.iRandomUniform.get()
     );
     if (su.toggles.updateDataRangeII)
     {
-        su.fBuffer->markContiguousUniformsForSubmission
+        su.fragment.uniformBuffer->markContiguousUniformsForSubmission
         (
             su.iUserActionUniform.get(), 
             su.iMouseUniform.get()
@@ -502,8 +496,8 @@ void postRenderUpdate(AppData& appData)
         su.toggles.updateDataRangeII = false;
     }
 
-    su.vBuffer->submitUniforms();
-    su.fBuffer->submitUniforms();
+    su.vertex.uniformBuffer->submitUniforms();
+    su.fragment.uniformBuffer->submitUniforms();
 
     if (su.iUserAction) // Always reset
     {
@@ -648,30 +642,32 @@ void createNewLayer(AppData& appData, bool compileShader)
     setLayerDepth(layer, (float)appData.layers.size()/Layer::nMaxLayers);
 
     // Init unfiorm buffer storage
-    layer->rendering.uniformBuffer = 
+    layer->uniformBuffer = 
         vir::DynamicUniformBuffer::create(1024, "privateUniformBlock");
     // First two points taken by shared vertex shader uniform block and shared
     // fragment uniform block
     unsigned int bindingPoint = 2+id;
-    layer->rendering.uniformBufferBindingPoint = bindingPoint;
-    layer->rendering.uniformBuffer->setBindingPoint(bindingPoint);
+    layer->uniformBufferBindingPoint = bindingPoint;
+    layer->uniformBuffer->setBindingPoint(bindingPoint);
 
     // Add default uniforms
-    auto u = Uniform::create();
-    u->managedType = Uniform::ManagedType::LayerAspectRatio;
-    u->name = "iAspectRatio";
-    u->setValuePtr(&layer->aspectRatio, Uniform::Type::Float);
-    u->gui.showBounds = false;
-    layer->rendering.iAspectRatioUniform = u.getWeak();
-    addUniformToLayer(std::move(u), layer);
-    u = Uniform::create();
-    u->managedType = Uniform::ManagedType::LayerResolution;
-    u->name = "iResolution";
-    u->setValuePtr(&layer->resolution, Uniform::Type::Float2);
-    u->gui.bounds = glm::vec2(1.0f, 4096.0f);
-    u->gui.showBounds = false;
-    layer->rendering.iResolutionUniform = u.getWeak();
-    addUniformToLayer(std::move(u), layer);
+    {
+        auto& u = Uniform::create(layer);
+        u->managedType = Uniform::ManagedType::LayerAspectRatio;
+        u->name = "iAspectRatio";
+        u->setValuePtr(&layer->aspectRatio, Uniform::Type::Float);
+        u->gui.showBounds = false;
+        layer->rendering.iAspectRatioUniform = u.getWeak();
+    }
+    {
+        auto& u = Uniform::create(layer);
+        u->managedType = Uniform::ManagedType::LayerResolution;
+        u->name = "iResolution";
+        u->setValuePtr(&layer->resolution, Uniform::Type::Float2);
+        u->gui.bounds = glm::vec2(1.0f, 4096.0f);
+        u->gui.showBounds = false;
+        layer->rendering.iResolutionUniform = u.getWeak();
+    }
 
     // Set default fragment source in editor
     layer->sourceEditor.setText
@@ -710,6 +706,9 @@ R"(void main()
 
     if (compileShader)
         ShaderThing::compileShader(layer, appData);
+
+    if (appData.rendering.isTiledRenderingEnabled)  
+        setRenderingTiles(appData, appData.rendering.nTiles);
 }
 
 //----------------------------------------------------------------------------//
@@ -861,7 +860,7 @@ std::string assembleFragmentShaderHeader
         vir::Shader::currentContextShadingLanguageDirectives() +
         "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n" +
         appData.sharedStorage.shaderSource() +
-        appData.sharedUniforms.fBuffer->shaderSource() +
+        appData.sharedUniforms.fragment.uniformBuffer->shaderSource() +
         "\n";
     unsigned int nLines = 0;
     unsigned int imageBindingPoint = 0;
@@ -899,8 +898,8 @@ std::string assembleFragmentShaderHeader
                     header += "uniform "+uniformTypeName+" "+u->name+";\n";
                     ++nLines;
                     // Also update name of linked resolution uniform
-                    if (u->resourceResolutionUniform.valid())
-                        u->resourceResolutionUniform->name = u->name +
+                    if (u->resourceResolutionUniform().valid())
+                        u->resourceResolutionUniform()->name = u->name +
                             "Resolution";
                     break;
                 }
@@ -918,8 +917,8 @@ std::string assembleFragmentShaderHeader
                     header += "uniform "+uniformTypeName+" "+u->name+";\n";
                     ++nLines;
                     // Also update name of linked resolution uniform
-                    if (u->resourceResolutionUniform.valid())
-                        u->resourceResolutionUniform->name = u->name +
+                    if (u->resourceResolutionUniform().valid())
+                        u->resourceResolutionUniform()->name = u->name +
                             "Resolution";
                     break;
                 }
@@ -930,7 +929,7 @@ std::string assembleFragmentShaderHeader
     };
     writeResourceUniformsToHeader
     (
-        appData.sharedUniforms.userUniforms,
+        appData.sharedUniforms.fragment.uniforms,
         header,
         nLines,
         imageBindingPoint
@@ -942,7 +941,7 @@ std::string assembleFragmentShaderHeader
         nLines,
         imageBindingPoint
     );
-    header += layer->rendering.uniformBuffer->shaderSource();
+    header += layer->uniformBuffer->shaderSource();
     return header;
 }
 
@@ -957,7 +956,7 @@ R"(layout (location=0) in vec3 iqc;
 layout (location=1) in vec2 itc;
 out vec2 qc;
 out vec2 tc;
-)" + appData.sharedUniforms.vBuffer->shaderSource() +
+)" + appData.sharedUniforms.vertex.uniformBuffer->shaderSource() +
 R"(
 void main(){
     gl_Position = iMVP*vec4(iqc, 1.);
@@ -1006,18 +1005,18 @@ bool compileShader(UPtr<Layer>& layer, AppData& appData, bool setBlankShaderOnEr
         layer->hasUncompiledEdits = false;
         shader->bindUniformBlock
         (
-            layer->rendering.uniformBuffer->name(), 
-            layer->rendering.uniformBufferBindingPoint
+            layer->uniformBuffer->name(), 
+            layer->uniformBufferBindingPoint
         );
         shader->bindUniformBlock
         (
-            appData.sharedUniforms.fBuffer->name(),
-            appData.sharedUniforms.fBufferBindingPoint
+            appData.sharedUniforms.fragment.uniformBuffer->name(),
+            appData.sharedUniforms.fragment.uniformBufferBindingPoint
         );
         shader->bindUniformBlock
         (
-            appData.sharedUniforms.vBuffer->name(),
-            appData.sharedUniforms.vBufferBindingPoint
+            appData.sharedUniforms.vertex.uniformBuffer->name(),
+            appData.sharedUniforms.vertex.uniformBufferBindingPoint
         );
         appData.sharedStorage.bindShader(shader.get());
         shader->bind();
@@ -1318,9 +1317,9 @@ void renderLayerShader
             
             // Update resource resolution
             auto ubo = u->isSharedByUser ? 
-                sharedUniforms.fBuffer.get() : 
-                layer->rendering.uniformBuffer.get();
-            UPtr<Uniform>& rru =  u->resourceResolutionUniform;
+                sharedUniforms.fragment.uniformBuffer.get() : 
+                layer->uniformBuffer.get();
+            auto rru = u->resourceResolutionUniform();
             if (!rru.valid())
                 continue; // TODO log or handle
             if (rru->type() == Uniform::Type::Float2)
@@ -1442,7 +1441,7 @@ void renderLayerShader
     };
     setSamplerUniforms
     (
-        appData.sharedUniforms.userUniforms, 
+        appData.sharedUniforms.fragment.uniforms, 
         layer, 
         appData.sharedUniforms, 
         textureUnit, 
@@ -1457,7 +1456,7 @@ void renderLayerShader
         imageUnit
     );
 
-    rendering.uniformBuffer->submitUniforms();
+    layer->uniformBuffer->submitUniforms();
     
     // Re-direct rendering & disable blending if not rendering to the window
     static auto globalRendering = vir::Renderer::instance();
@@ -1611,7 +1610,7 @@ RenderResult renderShaders
                 ++appData.rendering.passIndex;
             else
                 appData.rendering.passIndex = 0;
-            sharedUniforms.fBuffer->markUniformForSubmission
+            sharedUniforms.fragment.uniformBuffer->markUniformForSubmission
             (
                 sharedUniforms.iRenderPassUniform.get()
             );
@@ -1646,13 +1645,13 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
                 );
             shader->bindUniformBlock
             (
-                appData.sharedUniforms.fBuffer->name(),
-                appData.sharedUniforms.fBufferBindingPoint
+                appData.sharedUniforms.fragment.uniformBuffer->name(),
+                appData.sharedUniforms.fragment.uniformBufferBindingPoint
             );
             shader->bindUniformBlock
             (
-                appData.sharedUniforms.vBuffer->name(),
-                appData.sharedUniforms.vBufferBindingPoint
+                appData.sharedUniforms.vertex.uniformBuffer->name(),
+                appData.sharedUniforms.vertex.uniformBufferBindingPoint
             );
             return shader;
         };
@@ -1710,6 +1709,7 @@ void removeLayerFromResources
 
 //----------------------------------------------------------------------------//
 
+/*
 void addUniformToLayer(UPtr<Uniform>&& uniform, UPtr<Layer>& layer)
 {
     if (uniform == nullptr)
@@ -1773,13 +1773,13 @@ void addUniformToSharedUniforms(UPtr<Uniform>&& uniform, AppData& appData)
     sharedUniforms.fBuffer->addUniform(vir::castUnique<vir::Uniform>(uniform));
     auto it = std::find
     (
-        sharedUniforms.userUniforms.begin(), 
-        sharedUniforms.userUniforms.end(), 
+        sharedUniforms.uniforms.begin(), 
+        sharedUniforms.uniforms.end(), 
         uniform
     );
-    if (it == sharedUniforms.userUniforms.end())
+    if (it == sharedUniforms.uniforms.end())
     {
-        auto& u = sharedUniforms.userUniforms.emplace_back(std::move(uniform));
+        auto& u = sharedUniforms.uniforms.emplace_back(std::move(uniform));
         if (u->isResource())
         {
             auto* resource = u->getValuePtr<Resource>();
@@ -1799,9 +1799,9 @@ UPtr<Uniform> removeUniformFromSharedUniforms
     auto& sharedUniforms = appData.sharedUniforms;
     sharedUniforms.fBuffer->removeUniform(uniform);
     int index = -1;
-    for (unsigned int i = 0; i<sharedUniforms.userUniforms.size(); i++)
+    for (unsigned int i = 0; i<sharedUniforms.uniforms.size(); i++)
     {
-        if (sharedUniforms.userUniforms[i] == uniform)
+        if (sharedUniforms.uniforms[i] == uniform)
         {
             index = i;
             break;
@@ -1809,10 +1809,10 @@ UPtr<Uniform> removeUniformFromSharedUniforms
     }
     if (index == -1)
         return vir::nullUniquePtr<Uniform>();
-    auto u = std::move(sharedUniforms.userUniforms[index]);
-    sharedUniforms.userUniforms.erase
+    auto u = std::move(sharedUniforms.uniforms[index]);
+    sharedUniforms.uniforms.erase
     (
-        sharedUniforms.userUniforms.begin()+index
+        sharedUniforms.uniforms.begin()+index
     );
     if (u->isResource())
         sharedUniforms.fBuffer->removeUniform
@@ -1821,6 +1821,7 @@ UPtr<Uniform> removeUniformFromSharedUniforms
         );
     return u;
 }
+*/
 
 //----------------------------------------------------------------------------//
 

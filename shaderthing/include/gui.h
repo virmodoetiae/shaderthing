@@ -62,7 +62,7 @@ int renderBuiltInSharedUniforms
 // whether the bounds have been changed during this frame
 bool renderEditUniformBoundsButton
 (
-    UPtr<Uniform>& uniform,
+    vir::Ptr<Uniform>& uniform,
     bool renderDragStepSlider = false
 );
 
@@ -74,7 +74,7 @@ bool renderUniformTableRow
     UPtr<Uniform>& uniform,
     UPtr<Layer>& layer,
     AppData& appData,
-    int& row,
+    int row,
     const bool showSeparator = false,
     const bool showSharedAndDefaultUniforms = true
 );

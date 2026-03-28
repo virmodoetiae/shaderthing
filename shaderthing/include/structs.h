@@ -90,6 +90,7 @@ struct Font
 
 struct SharedUniforms
 {
+public :
     // Fixed camera used to retrieve the value of the projection view 
     // matrix iMVP
     UPtr<vir::Camera>        screenCamera;
@@ -110,29 +111,25 @@ struct SharedUniforms
     glm::vec2  iResolution    = {512,512};
     glm::ivec3 iKeyboard[256] = {};
 
-    UPtr<Uniform> iFrameUniform;
-    UPtr<Uniform> iRenderPassUniform;
-    UPtr<Uniform> iTimeUniform;
-    UPtr<Uniform> iTimeDeltaUniform;
-    UPtr<Uniform> iRandomUniform;
-    UPtr<Uniform> iUserActionUniform;
-    UPtr<Uniform> iExportUniform;
-    UPtr<Uniform> iWASDUniform;
-    UPtr<Uniform> iLookUniform;
-    UPtr<Uniform> iMouseUniform;
-    UPtr<Uniform> iAspectRatioUniform;
-    UPtr<Uniform> iResolutionUniform;
-    UPtr<Uniform> iKeyboardUniform;
-    UPtr<Uniform> iMVPUniform;
-    
-    UPtrVector<Uniform> userUniforms;
+    UniformContainer fragment;
+    WPtr<Uniform> iFrameUniform;
+    WPtr<Uniform> iRenderPassUniform;
+    WPtr<Uniform> iTimeUniform;
+    WPtr<Uniform> iTimeDeltaUniform;
+    WPtr<Uniform> iRandomUniform;
+    WPtr<Uniform> iUserActionUniform;
+    WPtr<Uniform> iExportUniform;
+    WPtr<Uniform> iWASDUniform;
+    WPtr<Uniform> iLookUniform;
+    WPtr<Uniform> iMouseUniform;
+    WPtr<Uniform> iAspectRatioUniform;
+    WPtr<Uniform> iResolutionUniform;
+    WPtr<Uniform> iKeyboardUniform;
 
-    // Fragment shader shared uniform buffer
-    UPtr<vir::DynamicUniformBuffer> fBuffer;
-    static const unsigned int       fBufferBindingPoint = 0;
-    // Vertex shader shared uniform buffer
-    UPtr<vir::DynamicUniformBuffer> vBuffer;
-    static const unsigned int       vBufferBindingPoint = 1;
+    UniformContainer vertex;
+    WPtr<Uniform> iMVPUniform;
+
+    const unsigned int userUniformsStartIndex = 13;
 
     bool isTimePaused                       = false;
     bool isTimePausedBecauseRenderingPaused = false;
@@ -158,8 +155,9 @@ struct SharedUniforms
 
 //----------------------------------------------------------------------------//
 
-struct Layer
+struct Layer : public UniformContainer
 {
+public :
     struct Rendering
     {
         enum class Target
@@ -176,8 +174,6 @@ struct Layer
         vir::Framebuffer*               backFramebuffer     = nullptr;
         vir::Framebuffer*               resourceFramebuffer = nullptr;
         UPtr<vir::Shader>               shader;
-        UPtr<vir::DynamicUniformBuffer> uniformBuffer;
-        unsigned int                    uniformBufferBindingPoint;
         WPtr<Uniform>                   iAspectRatioUniform;
         WPtr<Uniform>                   iResolutionUniform;
         static UPtr<vir::Shader>        textureMapperShader;
@@ -234,7 +230,6 @@ struct Layer
           float               aspectRatio;
           float               depth;
           Rendering           rendering;
-          UPtrVector<Uniform> uniforms;
           TextEditor          sourceEditor;
           std::string         sourceHeader;
           std::string         headerErrors;

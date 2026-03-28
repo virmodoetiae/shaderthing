@@ -87,8 +87,8 @@ void EventManager::onReceive(vir::Event::MouseButtonPressEvent& event)
         return;
     su.iUserAction = true;
     su.iMouse = mouse;
-    su.fBuffer->markUniformForSubmission(su.iUserActionUniform.get());
-    su.fBuffer->markUniformForSubmission(su.iMouseUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iUserActionUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iMouseUniform.get());
     //su.updateDataRangeII = true;
 }
 
@@ -126,8 +126,8 @@ void EventManager::onReceive(vir::Event::MouseMotionEvent& event)
         return;
     su.iUserAction = true;
     su.iMouse = mouse;
-    su.fBuffer->markUniformForSubmission(su.iUserActionUniform.get());
-    su.fBuffer->markUniformForSubmission(su.iMouseUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iUserActionUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iMouseUniform.get());
     //su.updateDataRangeII = true;
 }
  
@@ -149,8 +149,8 @@ void EventManager::onReceive(vir::Event::MouseButtonReleaseEvent& event)
         return;
     su.iUserAction = true;
     su.iMouse.z = mouse.z;
-    su.fBuffer->markUniformForSubmission(su.iUserActionUniform.get());
-    su.fBuffer->markUniformForSubmission(su.iMouseUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iUserActionUniform.get());
+    su.fragment.uniformBuffer->markUniformForSubmission(su.iMouseUniform.get());
     //su.updateDataRangeII = true;
 }
 
@@ -175,7 +175,7 @@ void EventManager::onReceive(vir::Event::KeyPressEvent& event)
     data.x = (int)status.isPressed();
     data.y = (int)status.isHeld();
     data.z = (int)status.isToggled();
-    su.fBuffer->markArrayUniformRangeForSubmission
+    su.fragment.uniformBuffer->markArrayUniformRangeForSubmission
     (
         su.iKeyboardUniform.get(), 
         stKeyCode
@@ -193,7 +193,7 @@ void EventManager::onReceive(vir::Event::KeyReleaseEvent& event)
     data.x = 0;
     data.y = 0;
     data.z = (int)inputState->keyState(event.keyCode).isToggled();
-    su.fBuffer->markArrayUniformRangeForSubmission
+    su.fragment.uniformBuffer->markArrayUniformRangeForSubmission
     (
         su.iKeyboardUniform.get(), 
         stKeyCode

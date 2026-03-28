@@ -61,6 +61,9 @@ public:
 template<typename T>
 class WeakPtr : public Ptr<T>
 {
+template<typename U>
+friend class WeakPtr; // To enable move ctor with WeakPtr<D> where T is 
+                      // a base of D
 private:
 
     T* ptr_;
@@ -68,9 +71,13 @@ private:
 
 public:
 
-    WeakPtr() : ptr_(nullptr), valid_() {} // Default ctor -> invalid WeakPtr
+    WeakPtr() : ptr_(nullptr), valid_() {}
     WeakPtr(T* p, std::shared_ptr<bool> valid) : ptr_(p), valid_(valid) {}
     WeakPtr(const WeakPtr& other) : ptr_(other.ptr_), valid_(other.valid_) {}
+    template<typename D, typename = std::enable_if_t<
+        std::is_base_of_v<T, D> && 
+        !std::is_same_v<T, D>>>
+    WeakPtr(const WeakPtr<D>& other) : ptr_(other.ptr_), valid_(other.valid_) {}
     WeakPtr& operator=(const WeakPtr& other)
     {
         ptr_ = other.ptr_;
@@ -367,6 +374,14 @@ template<typename T, typename D, typename =
 UniquePtr<T>& castUnique(UniquePtr<D>& derived) 
 {
     return *reinterpret_cast<UniquePtr<T>*>(&derived);
+}
+
+// A reinterpret cast of a WeakPtr<D>& to a WeakPtr<T>& if D derives fromT
+template<typename T, typename D, typename = 
+    std::enable_if_t<std::is_base_of_v<T, D> && !std::is_same_v<T, D>>>
+WeakPtr<T>& castWeak(WeakPtr<D>& derived) 
+{
+    return *reinterpret_cast<WeakPtr<T>*>(&derived);
 }
 
 // Just for code clarity to represent nullptrs when working with UniquePtrs

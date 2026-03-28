@@ -29,7 +29,7 @@ public:
         Image2D,   Image3D,   ImageCube
     };
 
-private:
+protected:
 
     bool     isValueOwner_   = true;
     void*    value_          = nullptr;
@@ -47,14 +47,13 @@ private:
     Uniform(const Uniform&)                  = delete;
     Uniform& operator=(const Uniform& other) = delete;
     
-    void setType
+    virtual void setType
     (
         Type type, 
         uint32_t valueArraySize,
-        bool doNotReinitializeIfImageOrSampler
+        bool doNotReinitializeIfImageOrSampler,
+        bool updateClientBuffers
     );
-
-protected:
     
     // Protected ctor: objects are meant to be initialized via the ::create()
     // method
@@ -128,6 +127,11 @@ public:
         valueArraySize_ = valueArraySize;
         type_ = type;
         isValueOwner_ = isValueOwner;
+        for (auto& dub: clientBuffers_)
+        {
+            if (dub.valid())
+                dub->recalculateUniformSizesAndOffsets();
+        }
     }
     
     // Returns the naked native value pointer (regardless of ownership)
@@ -156,10 +160,16 @@ public:
     template<class ValueType>
     void setValue(ValueType value, Type type, uint32_t valueArraySize=1)
     {
-        setType(type, valueArraySize, false); // Also does reinitialization 
-                                              // if type != type_
+        setType(type, valueArraySize, false, false); // Also does 
+                                                     // reinitialization if 
+                                                     // type != type_
         *(ValueType*)(value_) = value;
         isValueOwner_ = true;
+        for (auto& dub: clientBuffers_)
+        {
+            if (dub.valid())
+                dub->recalculateUniformSizesAndOffsets();
+        }
     }
     
     // Returns the native value if the native value is initialized, else

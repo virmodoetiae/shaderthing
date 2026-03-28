@@ -80,12 +80,12 @@ void Uniform::deleteValue(bool deleteCache)
     value_ = nullptr;
 }
 
-// TODO 19/11/25 - check if convenient to update clientBuffers_ layouts here
 void Uniform::setType
 (
     Type type, 
     uint32_t valueArraySize,
-    bool doNotReinitializeIfImageOrSampler
+    bool doNotReinitializeIfImageOrSampler,
+    bool updateClientBuffers
 )
 {
     if (value_ != nullptr && type == type_ && valueArraySize == valueArraySize_)
@@ -143,6 +143,14 @@ void Uniform::setType
         case Uniform::Type::ImageCube :
             break;
     }
+
+    if (!updateClientBuffers)
+        return;
+    for (auto& dub: clientBuffers_)
+    {
+        if (dub.valid())
+            dub->recalculateUniformSizesAndOffsets();
+    }
 }
 
 void Uniform::setType
@@ -151,7 +159,7 @@ void Uniform::setType
     bool doNotReinitializeIfImageOrSampler
 )
 {
-    setType(type, valueArraySize_, doNotReinitializeIfImageOrSampler);
+    setType(type, valueArraySize_, doNotReinitializeIfImageOrSampler, true);
 }
 
 void Uniform::submitToAllClientBuffers()
