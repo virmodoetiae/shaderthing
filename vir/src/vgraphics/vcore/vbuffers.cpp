@@ -1169,9 +1169,9 @@ bool DynamicUniformBuffer::removeUniform(WeakPtr<Uniform> uniform)
         uw->next->previous = uw->previous;
     if (uw->previous != nullptr)
         uw->previous->next = uw->next;
-    delete uw;
     uniformWrappers_.erase(it);
-    uniformWrappersMap_.erase(uniform.get());
+    uniformWrappersMap_.erase(uniform.getRaw());
+    delete uw;
     recalculateUniformSizesAndOffsets();
     if (!uniform.valid())
         return true;

@@ -1241,7 +1241,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         int nSharedUniforms = 
             sharedUniforms.fragment.uniforms.size()-
             sharedUniforms.userUniformsStartIndex;
-        for (unsigned int i=0; i < nSharedUniforms; i++)
+        for (int i=0; i < nSharedUniforms; i++)
         {
             auto& uniform = sharedUniforms.fragment.uniforms
             [
@@ -2027,7 +2027,7 @@ motion only if the left mouse button (LMB) is held)");
 
 bool renderEditUniformBoundsButton
 (
-    vir::Ptr<Uniform>& uniform,
+    const vir::Ptr<Uniform>& uniform,
     bool renderDragStepSlider
 )
 {
@@ -2139,8 +2139,8 @@ set by adjusting the slider)");
 
 bool renderUniformTableRow
 (
-    UPtr<Uniform>& uniform,
-    UPtr<Layer>& layer,
+    const UPtr<Uniform>& uniform,
+    const UPtr<Layer>& layer,
     AppData& appData,
     int row,
     const bool showSeparator,
@@ -2153,7 +2153,11 @@ bool renderUniformTableRow
     (
         uniform->managedType != ManagedType::None
     );
-    if (managed && !showSharedAndDefaultUniforms)
+    if 
+    (
+        (managed && !showSharedAndDefaultUniforms) ||
+        uniform->managedType == ManagedType::ResourceResolution
+    )
         return false;
     bool isSharedByUser0 = uniform->isSharedByUser;
     bool nameChanged = false;
@@ -2272,6 +2276,7 @@ bool renderUniformTableRow
                 continue;
             typeChanged = true;
             uniform->setType(selectedType);
+            int breakpoint = 0;
         }
         ImGui::EndCombo();
     }
@@ -2303,7 +2308,6 @@ bool renderUniformTableRow
                 uniform->setValue(value, Type::Bool);
                 if (named)
                 {
-                    //SET_UNIFORM_VALUE(Bool)
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2338,7 +2342,6 @@ bool renderUniformTableRow
                 uniform->setValue(value, Type::UInt);
                 if (named)
                 {
-                    //SET_UNIFORM_VALUE(Int)
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2373,7 +2376,6 @@ bool renderUniformTableRow
                 uniform->setValue(value, Type::Int);
                 if (named)
                 {
-                    //SET_UNIFORM_VALUE(Int)
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2442,7 +2444,6 @@ bool renderUniformTableRow
                 uniform->setValue(value, Type::Int2);
                 if (named)
                 {
-                    //SET_UNIFORM_VALUE(Int2)
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2485,7 +2486,6 @@ bool renderUniformTableRow
                 uniform->setValue(value, Type::Int3);
                 if (named)
                 {
-                    //SET_UNIFORM_VALUE(Int3)
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2532,7 +2532,6 @@ bool renderUniformTableRow
                 uniform->setValue(value, Type::Int4);
                 if (named)
                 {
-                    //SET_UNIFORM_VALUE(Int4)
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2551,8 +2550,6 @@ bool renderUniformTableRow
             bool input(false);
             if 
             (
-                //uniform->managedType == 
-                //    Uniform::ManagedType::WindowAspectRatio ||
                 uniform->managedType == 
                     Uniform::ManagedType::LayerAspectRatio
             )
@@ -2606,8 +2603,7 @@ bool renderUniformTableRow
                 }
                 uniform->setValue(value, Type::Float);
                 if (named)
-                {
-                    //SET_UNIFORM_VALUE(Float)                                                                
+                {                                                              
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2694,7 +2690,6 @@ bool renderUniformTableRow
                 uniform->setValue(value, Type::Float2);
                 if (named)
                 {
-                    //SET_UNIFORM_VALUE(Float2)
                     uniform->markForSubmissionToAllClientBuffers();
                     sharedUniforms.iUserAction = true;
                     sharedUniforms.toggles.updateDataRangeII = true;
@@ -2756,7 +2751,6 @@ bool renderUniformTableRow
                     uniform->setValue(value, Type::Float3);
                     if (named)
                     {
-                        //SET_UNIFORM_VALUE(Float3)
                         uniform->markForSubmissionToAllClientBuffers();
                         sharedUniforms.iUserAction = true;
                         sharedUniforms.toggles.updateDataRangeII = true;
@@ -2780,7 +2774,6 @@ bool renderUniformTableRow
                     uniform->setValue(value, Type::Float3);
                     if (named)
                     {
-                        //SET_UNIFORM_VALUE(Float3);
                         uniform->markForSubmissionToAllClientBuffers();
                         sharedUniforms.iUserAction = true;
                         sharedUniforms.toggles.updateDataRangeII = true;
@@ -2847,7 +2840,6 @@ bool renderUniformTableRow
                     uniform->setValue(value, Type::Float4);
                     if (named)
                     {
-                        //SET_UNIFORM_VALUE(Float4)
                         uniform->markForSubmissionToAllClientBuffers();
                         sharedUniforms.iUserAction = true;
                         sharedUniforms.toggles.updateDataRangeII = true;
@@ -2872,7 +2864,6 @@ bool renderUniformTableRow
                     uniform->setValue(value, Type::Float4);
                     if (named)
                     {
-                        //SET_UNIFORM_VALUE(Float4)
                         uniform->markForSubmissionToAllClientBuffers();
                         sharedUniforms.iUserAction = true;
                         sharedUniforms.toggles.updateDataRangeII = true;
@@ -2898,9 +2889,11 @@ bool renderUniformTableRow
                 appData.rendering.toggles.requestFullRecompilation = true;     \
             if (!r->isUsedByUniform(uniform.get()))                            \
                 r->addClientUniform(uniform.get());                            \
-            auto& ubo = uniform->isSharedByUser ?                              \
-                sharedUniforms.fragment.uniformBuffer : layer->uniformBuffer;  \
-            uniform->setResourcePtr(r, ubo);                                   \
+            appData.deferredActionBuffer.add                                   \
+            (                                                                  \
+                [&uniform, &r]()                                               \
+                {uniform->setResourcePtr(r);}                                  \
+            );                                                                 \
             sharedUniforms.iUserAction = true;                                 \
             sharedUniforms.toggles.updateDataRangeII = true;                   \
         }

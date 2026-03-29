@@ -27,6 +27,8 @@ FileDialog Resource::fileDialog = FileDialog();
 
 Resource::~Resource()
 {
+    for (auto& u : clientUniforms_)
+        u->deleteValue(true);
     if (namePtr_ != nullptr && isNameManaged_)
         delete namePtr_;
 }

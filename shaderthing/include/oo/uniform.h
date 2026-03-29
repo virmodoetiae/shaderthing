@@ -13,6 +13,11 @@ namespace ShaderThing
 
 struct UniformContainer
 {
+friend Uniform;
+private:
+    bool isBeingDestroyed_ = false;
+public:
+    ~UniformContainer(){isBeingDestroyed_ = true;}
     UPtrVector<Uniform>             uniforms;
     UPtr<vir::DynamicUniformBuffer> uniformBuffer;
     unsigned int                    uniformBufferBindingPoint;
@@ -41,6 +46,8 @@ protected :
         bool doNotReinitializeIfImageOrSampler,
         bool updateClientBuffers
     ) override;
+
+    void deleteResourceResolutionUniform();
 
 public:
 
@@ -84,17 +91,7 @@ public:
         bool doNotReinitializeIfImageOrSampler = false 
     );
 
-    void setResourcePtr
-    (
-        Resource* value, 
-        UPtr<vir::DynamicUniformBuffer>& uniformBuffer
-    );
-
-    void setResourcePtr
-    (
-        UPtr<Resource>& value, 
-        UPtr<vir::DynamicUniformBuffer>& uniformBuffer
-    )   {setResourcePtr(value.get(), uniformBuffer);}
+    void setResourcePtr(const UPtr<Resource>& value);
 
     bool isResource() const;
 

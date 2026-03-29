@@ -101,6 +101,9 @@ public:
     // Returns ptr to the owner or nullptr if the owner was destroyed
     T* get() const override {return valid() ? ptr_ : nullptr;}
 
+    // Returns raw ptr without validity checks
+    T* getRaw() const {return ptr_;}
+
     // Return a weak-like ptr to safely access and check for the existence 
     // of the internally managed object
     WeakPtr<T> getWeak() const override {return *this;}
@@ -374,14 +377,6 @@ template<typename T, typename D, typename =
 UniquePtr<T>& castUnique(UniquePtr<D>& derived) 
 {
     return *reinterpret_cast<UniquePtr<T>*>(&derived);
-}
-
-// A reinterpret cast of a WeakPtr<D>& to a WeakPtr<T>& if D derives fromT
-template<typename T, typename D, typename = 
-    std::enable_if_t<std::is_base_of_v<T, D> && !std::is_same_v<T, D>>>
-WeakPtr<T>& castWeak(WeakPtr<D>& derived) 
-{
-    return *reinterpret_cast<WeakPtr<T>*>(&derived);
 }
 
 // Just for code clarity to represent nullptrs when working with UniquePtrs

@@ -988,7 +988,6 @@ bool compileShader(UPtr<Layer>& layer, AppData& appData, bool setBlankShaderOnEr
     );
     if (shader->valid())
     {
-        //delete rendering_.shader;
         layer->headerErrors.clear();
         layer->sourceEditor.setErrorMarkers({});
         appData.sharedSourceEditor.setErrorMarkers({});
@@ -998,7 +997,13 @@ bool compileShader(UPtr<Layer>& layer, AppData& appData, bool setBlankShaderOnEr
             (
                 layer->cache.uncompiledUniforms.begin(),
                 layer->cache.uncompiledUniforms.end(),
-                [](auto& u){return u->name.size()>0;}
+                [](WPtr<Uniform>& u)
+                {
+                    if (u.valid())
+                        return u->name.size()>0;
+                    else
+                        return true;
+                }
             ),
             layer->cache.uncompiledUniforms.end()
         );
@@ -1706,122 +1711,6 @@ void removeLayerFromResources
         }
     }
 }
-
-//----------------------------------------------------------------------------//
-
-/*
-void addUniformToLayer(UPtr<Uniform>&& uniform, UPtr<Layer>& layer)
-{
-    if (uniform == nullptr)
-        return;
-    auto& u = layer->uniforms.emplace_back(std::move(uniform));
-    layer->rendering.uniformBuffer->addUniform
-    (
-        vir::castUnique<vir::Uniform>(u)
-    );
-    if (u->isResource())
-    {
-        auto* resource = u->getValuePtr<Resource>();
-        u->setResourcePtr(resource, layer->rendering.uniformBuffer);
-    }
-    layer->cache.uncompiledUniforms.emplace_back(u.getWeak());
-}
-
-//----------------------------------------------------------------------------//
-
-UPtr<Uniform> removeUniformFromLayer(UPtr<Uniform>& uniform, UPtr<Layer>& layer)
-{
-    if (uniform == nullptr)
-        return vir::nullUniquePtr<Uniform>();
-    layer->rendering.uniformBuffer->removeUniform(uniform);
-    int index = -1;
-    for (unsigned int i = 0; i<layer->uniforms.size(); i++)
-    {
-        if (layer->uniforms[i] == uniform)
-        {
-            index = i;
-            break;
-        }
-    }
-    if (index == -1)
-        return vir::nullUniquePtr<Uniform>();
-    layer->cache.uncompiledUniforms.erase
-    (
-        std::remove
-        (
-            layer->cache.uncompiledUniforms.begin(), 
-            layer->cache.uncompiledUniforms.end(), 
-            uniform
-        ), 
-        layer->cache.uncompiledUniforms.end()
-    );
-    auto u = std::move(layer->uniforms[index]);
-    layer->uniforms.erase(layer->uniforms.begin()+index);
-    if (u->isResource())
-        layer->rendering.uniformBuffer->removeUniform
-        (
-            u->resourceResolutionUniform
-        );
-    return u;
-}
-
-//----------------------------------------------------------------------------//
-
-void addUniformToSharedUniforms(UPtr<Uniform>&& uniform, AppData& appData)
-{
-    auto& sharedUniforms = appData.sharedUniforms;
-    sharedUniforms.fBuffer->addUniform(vir::castUnique<vir::Uniform>(uniform));
-    auto it = std::find
-    (
-        sharedUniforms.uniforms.begin(), 
-        sharedUniforms.uniforms.end(), 
-        uniform
-    );
-    if (it == sharedUniforms.uniforms.end())
-    {
-        auto& u = sharedUniforms.uniforms.emplace_back(std::move(uniform));
-        if (u->isResource())
-        {
-            auto* resource = u->getValuePtr<Resource>();
-            u->setResourcePtr(resource, sharedUniforms.fBuffer);
-        }
-    }
-}
-
-//----------------------------------------------------------------------------//
-
-UPtr<Uniform> removeUniformFromSharedUniforms
-(
-    UPtr<Uniform>& uniform, 
-    AppData& appData
-)
-{
-    auto& sharedUniforms = appData.sharedUniforms;
-    sharedUniforms.fBuffer->removeUniform(uniform);
-    int index = -1;
-    for (unsigned int i = 0; i<sharedUniforms.uniforms.size(); i++)
-    {
-        if (sharedUniforms.uniforms[i] == uniform)
-        {
-            index = i;
-            break;
-        }
-    }
-    if (index == -1)
-        return vir::nullUniquePtr<Uniform>();
-    auto u = std::move(sharedUniforms.uniforms[index]);
-    sharedUniforms.uniforms.erase
-    (
-        sharedUniforms.uniforms.begin()+index
-    );
-    if (u->isResource())
-        sharedUniforms.fBuffer->removeUniform
-        (
-            u->resourceResolutionUniform
-        );
-    return u;
-}
-*/
 
 //----------------------------------------------------------------------------//
 

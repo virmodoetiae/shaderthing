@@ -40,56 +40,53 @@ const UPtr<Uniform>& Uniform::create(UniformContainer& owner)
 
 Uniform::~Uniform()
 {
-    (void)this;
     if (!isResource())
         return;
-    // Delete resource resolution uniform
-    if (resourceResolutionUniform_.valid())
-    {
-        owner_->uniformBuffer->removeUniform(resourceResolutionUniform_);
-        auto it = std::find
-        (
-            owner_->uniforms.begin(), 
-            owner_->uniforms.end(), 
-            resourceResolutionUniform_
-        );
-        std::size_t index = std::distance(owner_->uniforms.begin(), it);
-        owner_->uniforms.erase(owner_->uniforms.begin()+index);
-    }
+    deleteResourceResolutionUniform();
     auto resource = getValuePtr<Resource>();
     if (resource != nullptr && resource->isUsedByUniform(this))
     {
         resource->removeClientUniform(this);
         resource->unbind();
     }
+    // The isBeingDestroyed_ flag check is to prevent running std::find on
+    // a vector that is actively being destroyed e.g., at program termination
+    if (owner_->isBeingDestroyed_ || !owner_->uniformBuffer.valid())
+        return;
+    auto it = std::find
+    (
+        owner_->uniforms.begin(), 
+        owner_->uniforms.end(), 
+        this
+    );
+    owner_->uniformBuffer->removeUniform(*it);
 }
 
 //----------------------------------------------------------------------------//
 
 void Uniform::deleteSelf()
 {
-    auto it = std::find_if
+    auto it = std::find
     (
         owner_->uniforms.begin(), 
         owner_->uniforms.end(), 
-        [this](const UPtr<Uniform>& u)
-        {
-            return u == this;
-        }
+        this
     );
-    owner_->uniformBuffer->removeUniform(*it);
     std::size_t index = std::distance(owner_->uniforms.begin(), it);
     owner_->uniforms.erase(owner_->uniforms.begin()+index);
 }
 
 //----------------------------------------------------------------------------//
 
-void Uniform::deleteValue(bool deleteCache)
+void Uniform::deleteResourceResolutionUniform()
 {
-    vir::Uniform::deleteValue(deleteCache);
-
-    // Also reset resource resolution uniform
-    if (isResource() && resourceResolutionUniform_.valid()) 
+    // The isBeingDestroyed_ flag check is to prevent running std::find on
+    // a vector that is actively being destroyed e.g., at program termination
+    if 
+    (
+        isResource() && resourceResolutionUniform_.valid() && 
+        !owner_->isBeingDestroyed_
+    ) 
     {
         auto it = std::find
         (
@@ -103,6 +100,14 @@ void Uniform::deleteValue(bool deleteCache)
             owner_->uniforms.erase(owner_->uniforms.begin()+index);
         }
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void Uniform::deleteValue(bool deleteCache)
+{
+    vir::Uniform::deleteValue(deleteCache);
+    deleteResourceResolutionUniform();
 }
 
 //----------------------------------------------------------------------------//
@@ -158,49 +163,16 @@ void Uniform::setType
         vir::Uniform::Type::ImageCube
     );
     bool typeChangedFromResourceToNonResourceType =
-        (
-            typeIsSamplerOrImage2D ||
-            typeIsSamplerOrImage3D ||
-            typeIsSamplerOrImageCube
-        ) &&
-        !(
-            selectedTypeIsSamplerOrImage2D ||
-            selectedTypeIsSamplerOrImage3D ||
-            selectedTypeIsSamplerOrImageCube
-        );
-    bool typeChangedFromNonResourceToResource =
-        !(
-            typeIsSamplerOrImage2D ||
-            typeIsSamplerOrImage3D ||
-            typeIsSamplerOrImageCube
-        ) &&
-        (
-            selectedTypeIsSamplerOrImage2D ||
-            selectedTypeIsSamplerOrImage3D ||
-            selectedTypeIsSamplerOrImageCube
-        );
-    bool typeChangedFromResourceToIncompatibleResource = 
-        (
-            typeIsSamplerOrImage2D && 
-            (
-                selectedTypeIsSamplerOrImage3D || 
-                selectedTypeIsSamplerOrImageCube
-            )
-        ) ||
-        (
-            typeIsSamplerOrImage3D && 
-            (
-                selectedTypeIsSamplerOrImage2D || 
-                selectedTypeIsSamplerOrImageCube
-            )
-        ) ||
-        (
-            typeIsSamplerOrImageCube && 
-            (
-                selectedTypeIsSamplerOrImage2D || 
-                selectedTypeIsSamplerOrImage3D
-            )
-        );
+    (
+        typeIsSamplerOrImage2D ||
+        typeIsSamplerOrImage3D ||
+        typeIsSamplerOrImageCube
+    ) &&
+    !(
+        selectedTypeIsSamplerOrImage2D ||
+        selectedTypeIsSamplerOrImage3D ||
+        selectedTypeIsSamplerOrImageCube
+    );
     
     // This is only for setting the inUseByLayers_ member of
     // the resource, which in turn is only used to determine
@@ -218,25 +190,6 @@ void Uniform::setType
         if (resource != nullptr)
             resource->removeClientUniform(this);
     }
-    // TODO - CHECK BIG CHANGE
-    //else if (typeChangedFromNonResourceToResource)
-    //    uniform->removeFromAllClientBuffers();
-    
-    //if 
-    //(
-    //    typeChangedFromResourceToNonResourceType ||
-    //    typeChangedFromResourceToIncompatibleResource
-    //)
-        /*
-        // TODO: Check if madking an ad-hoc function for this in 
-        // ShaderThing::Uniform is cleaner
-        layer->rendering.uniformBuffer->removeUniform
-        (
-            uniform->resourceResolutionUniform
-        );
-        */
-        //uniform->resourceResolutionUniform()->
-        //   removeFromAllClientBuffers();
     
     vir::Uniform::setType(type, valueArraySize, true, updateClientBuffers);
     gui.showBounds = 
@@ -249,24 +202,6 @@ void Uniform::setType
         type != vir::Uniform::Type::Image3D &&
         type != vir::Uniform::Type::ImageCube
     );
-
-    // Add uniform to the buffer if it is a non-resource type now
-    // that the type has been set (cannot do it before, as I need
-    // to have the new uniform type already set before adding the
-    // uniform the buffer)
-
-    if 
-    (
-            selectedTypeIsSamplerOrImage2D ||
-            selectedTypeIsSamplerOrImage3D ||
-            selectedTypeIsSamplerOrImageCube
-    )
-        return;
-    
-    // TODO: Check if not needed (already managed when adding/removing
-    // uniforms in the buffer itself, right?)
-    // layer->uniformBuffer->recalculateUniformSizesAndOffsets();
-    // uniform->markForSubmissionToAllClientBuffers();
 }
 
 //----------------------------------------------------------------------------//
@@ -278,11 +213,7 @@ void Uniform::setType(Type type, bool doNotReinitializeIfImageOrSampler)
 
 //----------------------------------------------------------------------------//
 
-void Uniform::setResourcePtr
-(
-    Resource* resource, 
-    UPtr<vir::DynamicUniformBuffer>& uniformBuffer
-)
+void Uniform::setResourcePtr(const UPtr<Resource>& resource)
 {
     bool is3D;
     switch(type())
@@ -301,7 +232,7 @@ void Uniform::setResourcePtr
             return;
     }
 
-    vir::Uniform::setValuePtr(resource, type(), false);
+    vir::Uniform::setValuePtr(resource.get(), type(), false);
     if (resource == nullptr)
         return;
 
@@ -337,7 +268,6 @@ void Uniform::setResourcePtr
         );
     // addUniform does nothing if resourceResolutionUniform_ already present, as 
     // it should
-    uniformBuffer->addUniform(resourceResolutionUniform_);
 }
 
 //----------------------------------------------------------------------------//
