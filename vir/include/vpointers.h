@@ -342,7 +342,7 @@ public:
     // Throws std::bad_cast on failure
     template<typename D, typename = 
         std::enable_if_t<std::is_base_of_v<T, D> && !std::is_same_v<T, D>>>
-    UniquePtr<D>& dynamicUpcastTo() 
+    UniquePtr<D>& dynamicDowncastTo() 
     {
         if (dynamic_cast<D*>(ptr_) == nullptr)
             throw std::bad_cast();

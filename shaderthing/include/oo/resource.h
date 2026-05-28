@@ -471,6 +471,7 @@ public:
         (*native_)->unbindColorBufferFromImage(); 
         imageUnit_=-1;
     };
+    const WPtr<Layer>& layer() const {return layer_;}
     unsigned int id() const override 
     {
         return (*native_)->colorBufferId();

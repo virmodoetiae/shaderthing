@@ -642,7 +642,7 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
 
 void renderLayerFramebufferSettings
 (
-    UPtr<Layer>& layer,
+    Layer* layer,
     AppData& appData
 )
 {
@@ -3329,11 +3329,27 @@ void renderResourceActionsButton(AppData& appData, int row)
     if (row >= appData.resources.size())
         return;
     UPtr<Resource>& resource = appData.resources[row];
-    if (!resource.valid() || resource->type() == Resource::Type::Framebuffer)
+    if (!resource.valid())
         return;
-    if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1,0)))
-        ImGui::OpenPopup("##textureManagerSettings");
-    if (ImGui::BeginPopup("##textureManagerSettings"))
+    if (resource->type() == Resource::Type::Framebuffer)
+    {
+        if (ImGui::Button(ICON_FA_COG, ImVec2(-1,0)))
+            ImGui::OpenPopup("##framebufferResourceSettings");
+    }
+    else
+    {
+        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1,0)))
+            ImGui::OpenPopup("##resourceActions");
+    }
+
+    if (ImGui::BeginPopup("##framebufferResourceSettings"))
+    {
+        auto& resource = 
+            appData.resources[row].dynamicDowncastTo<LayerResource>();
+        renderLayerFramebufferSettings(resource->layer(), appData);
+        ImGui::EndPopup();
+    }
+    if (ImGui::BeginPopup("##resourceActions"))
     {
         auto size = ImVec2(12*ImGui::GetFontSize(), 0);
         if (ImGui::Button(ICON_FA_TRASH, size))
@@ -3343,10 +3359,8 @@ void renderResourceActionsButton(AppData& appData, int row)
                 [&appData, row]()
                 {
                     UPtr<Resource>& resource = appData.resources[row];
-                    for (auto& layer : appData.layers)
-                        // TODO
-                        // layer->removeResourceFromUniforms(resource);
-                        continue;
+                    // Used to call legacy 'removeResourceFromUniforms' on all
+                    // layers, tentatively removed
                     appData.resources.erase(appData.resources.begin()+row);
                 }
             );

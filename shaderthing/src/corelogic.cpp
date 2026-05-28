@@ -713,6 +713,88 @@ R"(void main()
 
 //----------------------------------------------------------------------------//
 
+void setLayerResolution
+(
+    UPtr<Layer>& layer,
+    glm::ivec2 resolution,
+    const bool isTiledRenderingEnabled,
+    const bool windowFrameManuallyDragged,
+    const bool tryEnfoceWindowAspectRatio,
+    const bool setExportResolution
+)
+{
+    auto& lResolution = layer->resolution;
+    auto& lResolutionRatio = layer->resolutionRatio;
+    auto& lExportData = layer->exportData;
+    static const auto* window(vir::Window::instance());
+    glm::vec2 windowResolution(window->width(), window->height());
+    if (windowFrameManuallyDragged)
+    {
+        resolution = 
+            glm::max(lResolutionRatio*(glm::vec2)resolution+.5f, {1,1});
+        auto viewport = Helpers::normalizedWindowResolution();
+        layer->rendering.quad->update(viewport.x, viewport.y, layer->depth);
+        if (!layer->rescaleWithWindow)
+            return;
+    }
+    else if (!window->iconified())
+        lResolutionRatio = (glm::vec2)resolution/windowResolution;
+
+    if (resolution == (glm::ivec2)lResolution)
+        return;
+
+    if 
+    (
+        tryEnfoceWindowAspectRatio &&
+        layer->isAspectRatioBoundToWindow &&
+        !window->iconified()
+    )
+    {
+        float windowAspectRatio = window->aspectRatio();
+        if (resolution.x == (int)lResolution.x)
+        {
+            lResolution.x = (int)(resolution.y*windowAspectRatio+.5f);
+            lResolution.y = resolution.y;
+        }
+        else if (resolution.y == (int)lResolution.y)
+        {
+            lResolution.y = (int)(resolution.x/windowAspectRatio+.5f);
+            lResolution.x = resolution.x;
+        }
+        lResolutionRatio = lResolution/windowResolution;
+    }
+    else
+        lResolution = resolution;
+    layer->aspectRatio = lResolution.x/lResolution.y;
+
+    if (setExportResolution)
+        lExportData.resolution =
+            lResolution*
+            lExportData.resolutionScale*
+            lExportData.windowResolutionScale + .5f;
+
+    rebuildLayerFramebuffers
+    (
+        layer,
+        layer->rendering.backFramebuffer == nullptr ?
+        vir::TextureBuffer::InternalFormat::RGBA_SF_32 :
+        layer->rendering.backFramebuffer->colorBufferInternalFormat(),
+        lResolution,
+        isTiledRenderingEnabled
+    );
+    if (!layer->rendering.shader.valid())
+        return;
+    layer->rendering.shader->bind();
+    if (layer->rendering.iAspectRatioUniform.valid())
+        layer->rendering.iAspectRatioUniform->
+            markForSubmissionToAllClientBuffers();
+    if (layer->rendering.iResolutionUniform.valid())
+        layer->rendering.iResolutionUniform->
+            markForSubmissionToAllClientBuffers();
+}
+
+//----------------------------------------------------------------------------//
+
 void setLayerDepth(UPtr<Layer>& layer, const float depth)
 {
     layer->depth = depth;
@@ -733,7 +815,7 @@ void setLayerDepth(UPtr<Layer>& layer, const float depth)
 
 //----------------------------------------------------------------------------//
 
-void setLayerFramebufferWrapMode(UPtr<Layer>& layer, int i, WrapMode mode)
+void setLayerFramebufferWrapMode(Layer* layer, int i, WrapMode mode)
 {
     layer->rendering.framebufferA->setColorBufferWrapMode(i, mode);
     layer->rendering.framebufferB->setColorBufferWrapMode(i, mode);
@@ -741,7 +823,7 @@ void setLayerFramebufferWrapMode(UPtr<Layer>& layer, int i, WrapMode mode)
 
 //----------------------------------------------------------------------------//
 
-void setLayerFramebufferMagFilterMode(UPtr<Layer>& layer, FilterMode mode)
+void setLayerFramebufferMagFilterMode(Layer* layer, FilterMode mode)
 {
     layer->rendering.framebufferA->setColorBufferMagFilterMode(mode);
     layer->rendering.framebufferB->setColorBufferMagFilterMode(mode);
@@ -749,7 +831,7 @@ void setLayerFramebufferMagFilterMode(UPtr<Layer>& layer, FilterMode mode)
 
 //----------------------------------------------------------------------------//
 
-void setLayerFramebufferMinFilterMode(UPtr<Layer>& layer, FilterMode mode)
+void setLayerFramebufferMinFilterMode(Layer* layer, FilterMode mode)
 {
     layer->rendering.framebufferA->setColorBufferMinFilterMode(mode);
     layer->rendering.framebufferB->setColorBufferMinFilterMode(mode);
@@ -759,7 +841,7 @@ void setLayerFramebufferMinFilterMode(UPtr<Layer>& layer, FilterMode mode)
 
 void rebuildLayerFramebuffers
 (
-    UPtr<Layer>& layer,
+    Layer* layer,
     const vir::TextureBuffer::InternalFormat& internalFormat, 
     const glm::ivec2& resolution,
     const bool isTiledRenderingEnabled
@@ -1081,87 +1163,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})";
     return false;
 }
 
-//----------------------------------------------------------------------------//
-
-void setLayerResolution
-(
-    UPtr<Layer>& layer,
-    glm::ivec2 resolution,
-    const bool isTiledRenderingEnabled,
-    const bool windowFrameManuallyDragged,
-    const bool tryEnfoceWindowAspectRatio,
-    const bool setExportResolution
-)
-{
-    auto& lResolution = layer->resolution;
-    auto& lResolutionRatio = layer->resolutionRatio;
-    auto& lExportData = layer->exportData;
-    static const auto* window(vir::Window::instance());
-    glm::vec2 windowResolution(window->width(), window->height());
-    if (windowFrameManuallyDragged)
-    {
-        resolution = 
-            glm::max(lResolutionRatio*(glm::vec2)resolution+.5f, {1,1});
-        auto viewport = Helpers::normalizedWindowResolution();
-        layer->rendering.quad->update(viewport.x, viewport.y, layer->depth);
-        if (!layer->rescaleWithWindow)
-            return;
-    }
-    else if (!window->iconified())
-        lResolutionRatio = (glm::vec2)resolution/windowResolution;
-
-    if (resolution == (glm::ivec2)lResolution)
-        return;
-
-    if 
-    (
-        tryEnfoceWindowAspectRatio &&
-        layer->isAspectRatioBoundToWindow &&
-        !window->iconified()
-    )
-    {
-        float windowAspectRatio = window->aspectRatio();
-        if (resolution.x == (int)lResolution.x)
-        {
-            lResolution.x = (int)(resolution.y*windowAspectRatio+.5f);
-            lResolution.y = resolution.y;
-        }
-        else if (resolution.y == (int)lResolution.y)
-        {
-            lResolution.y = (int)(resolution.x/windowAspectRatio+.5f);
-            lResolution.x = resolution.x;
-        }
-        lResolutionRatio = lResolution/windowResolution;
-    }
-    else
-        lResolution = resolution;
-    layer->aspectRatio = lResolution.x/lResolution.y;
-
-    if (setExportResolution)
-        lExportData.resolution =
-            lResolution*
-            lExportData.resolutionScale*
-            lExportData.windowResolutionScale + .5f;
-
-    rebuildLayerFramebuffers
-    (
-        layer,
-        layer->rendering.backFramebuffer == nullptr ?
-        vir::TextureBuffer::InternalFormat::RGBA_SF_32 :
-        layer->rendering.backFramebuffer->colorBufferInternalFormat(),
-        lResolution,
-        isTiledRenderingEnabled
-    );
-    if (!layer->rendering.shader.valid())
-        return;
-    layer->rendering.shader->bind();
-    if (layer->rendering.iAspectRatioUniform.valid())
-        layer->rendering.iAspectRatioUniform->
-            markForSubmissionToAllClientBuffers();
-    if (layer->rendering.iResolutionUniform.valid())
-        layer->rendering.iResolutionUniform->
-            markForSubmissionToAllClientBuffers();
-}
+//------------------------------------------------------------------------------
 
 void setRenderingTiles
 (
@@ -1213,6 +1215,8 @@ void setRenderingTiles
         tiles.size = nt;
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void renderLayerShader
 (
@@ -1520,6 +1524,8 @@ void renderLayerShader
     );
 }
 
+//----------------------------------------------------------------------------//
+
 RenderResult renderShaders
 (
     AppData& appData,
@@ -1747,7 +1753,7 @@ void toggleMouseInputs(AppData& appData)
 void toggleCameraMouseInputs(AppData& appData)
 {
     auto& su = appData.sharedUniforms;
-    auto& camera = su.shaderCamera.dynamicUpcastTo<vir::InputCamera>();
+    auto& camera = su.shaderCamera.dynamicDowncastTo<vir::InputCamera>();
     su.isCameraMouseInputEnabled = !su.isCameraMouseInputEnabled;
     if (su.isCameraMouseInputEnabled)
         camera->resumeEventReception(vir::Event::Type::MouseMotion);
@@ -1760,7 +1766,7 @@ void toggleCameraMouseInputs(AppData& appData)
 void toggleCameraKeyboardInputs(AppData& appData)
 {
     auto& su = appData.sharedUniforms;
-    auto& camera = su.shaderCamera.dynamicUpcastTo<vir::InputCamera>();
+    auto& camera = su.shaderCamera.dynamicDowncastTo<vir::InputCamera>();
     su.isCameraKeyboardInputEnabled = !su.isCameraKeyboardInputEnabled;
     if (su.isCameraKeyboardInputEnabled)
         camera->resumeEventReception(vir::Event::Type::KeyPress);

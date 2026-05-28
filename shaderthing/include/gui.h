@@ -29,7 +29,7 @@ void renderLayerMenuItem
 
 void renderLayerFramebufferSettings
 (
-    UPtr<Layer>& layer,
+    Layer* layer,
     AppData& appData
 );
 
@@ -93,6 +93,28 @@ void renderAddResourceButton(AppData& appData, int row);
 
 //
 void renderResourceActionsButton(AppData& appData, int row);
+
+// Overloads for convenience ---------------------------------------------------
+
+//
+inline void renderLayerFramebufferSettings
+(
+    const WPtr<Layer>& layer,
+    AppData& appData
+)
+{
+    renderLayerFramebufferSettings(layer.get(), appData);
+}
+
+//
+inline void renderLayerFramebufferSettings
+(
+    const UPtr<Layer>& layer,
+    AppData& appData
+)
+{
+    renderLayerFramebufferSettings(layer.get(), appData);
+}
 
 }
 
