@@ -114,6 +114,17 @@ void setMouseInputsClamped(AppData& appData, bool flag);
 
 void setMouseCaptured(AppData& appData, bool flag);
 
+// Save project to disk
+void saveToDisk
+(
+    AppData& appData, 
+    const std::string& filepath, 
+    bool triggeredByAutosave
+);
+
+// Save layer data to disk
+void saveToDisk(UPtr<Layer>& layer, ObjectIO& io);
+
 // Overloads for convenience ---------------------------------------------------
 
 inline void setLayerFramebufferWrapMode(WPtr<Layer>& layer, int i, WrapMode mode)

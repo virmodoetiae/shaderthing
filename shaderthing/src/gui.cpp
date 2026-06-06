@@ -94,7 +94,7 @@ void renderMenuBar(AppData& appData)
         {
             if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
             {
-                auto& su = appData.sharedUniforms;
+                auto& su = *(appData.sharedUniforms);
                 ImGui::Text("Resolution         ");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
@@ -216,7 +216,7 @@ project exports)");
             // TODO
             renderResourcesMenuItem(appData);
             shadersRequireRecompilation = 
-                appData.sharedStorage.renderMenuItemGui();
+                appData.sharedStorage->renderMenuItemGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
@@ -275,9 +275,9 @@ project exports)");
     // TODO
     if (Resource::gui.isDetachedFromControlPanel)
         renderResourcesTable(appData);
-    if (appData.sharedStorage.isGuiDetachedFromMenu())
+    if (appData.sharedStorage->isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
-            appData.sharedStorage.renderGui();
+            appData.sharedStorage->renderGui();
     /* TODO
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
@@ -323,6 +323,13 @@ project exports)");
         if (ImGui::Button("Confirm"))
         {
             //setProjectAction(Project::Action::New, project_, fileDialog_);
+            appData.deferredActionBuffer.add
+            (
+                [&appData]()
+                {
+                    initialize(appData);
+                }
+            );
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
@@ -1184,7 +1191,7 @@ void renderLayerTab(UPtr<Layer>& layer,AppData& appData)
 void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
 {
     //--------------------------------------------------------------------------
-    auto& sharedUniforms = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
     float fontSize = ImGui::GetFontSize();
     bool atLeastOneUniformMarkedForDeletion = false;
     bool atLeastOneUniformTypeChanged = false;
@@ -1239,13 +1246,13 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
 
         // Then, render the user-created shared uniforms
         int nSharedUniforms = 
-            sharedUniforms.fragment.uniforms.size()-
-            sharedUniforms.userUniformsStartIndex;
+            su.fragment.uniforms.size()-
+            su.userUniformsStartIndex;
         for (int i=0; i < nSharedUniforms; i++)
         {
-            auto& uniform = sharedUniforms.fragment.uniforms
+            auto& uniform = su.fragment.uniforms
             [
-                i + sharedUniforms.userUniformsStartIndex
+                i + su.userUniformsStartIndex
             ];
             atLeastOneSharedUniformStateChanged = 
                 atLeastOneSharedUniformStateChanged ||
@@ -1328,9 +1335,9 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
             u->deleteSelf();
             i--;
         }
-        for (unsigned int i=0; i<sharedUniforms.fragment.uniforms.size(); i++)
+        for (unsigned int i=0; i<su.fragment.uniforms.size(); i++)
         {
-            UPtr<Uniform>& u = sharedUniforms.fragment.uniforms[i];
+            UPtr<Uniform>& u = su.fragment.uniforms[i];
             if (!u->isMarkedForDeletion)
                 continue;
             u->deleteSelf();
@@ -1359,14 +1366,14 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
             continue;
         uniform->hasSharedByUserChanged = false;
-        uniform->setOwner(sharedUniforms.fragment);
+        uniform->setOwner(su.fragment);
         i--;
     }
 
     // Check if the uniform state was changed from shared to non-shared
-    for (unsigned int i=0; i<sharedUniforms.fragment.uniforms.size(); i++)
+    for (unsigned int i=0; i<su.fragment.uniforms.size(); i++)
     {
-        auto& uniform = sharedUniforms.fragment.uniforms[i];
+        auto& uniform = su.fragment.uniforms[i];
         if (!(uniform->hasSharedByUserChanged && !uniform->isSharedByUser))
             continue;
         uniform->hasSharedByUserChanged = false;
@@ -1387,7 +1394,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
 // count
 int renderBuiltInSharedUniforms(AppData& appData)
 {
-    auto& sharedUniforms = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
     int row = 0;
     int column;
     float fontSize = ImGui::GetFontSize();
@@ -1487,14 +1494,14 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            sharedUniforms.isTimeLooped ?
+            su.isTimeLooped ?
             ICON_FA_INFINITY : 
             ICON_FA_CIRCLE_NOTCH,
             ImVec2(halfButtonSize, 0)
         )
     )
-        sharedUniforms.isTimeLooped = 
-            !sharedUniforms.isTimeLooped;
+        su.isTimeLooped = 
+            !su.isTimeLooped;
     if 
     (
         ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
@@ -1503,7 +1510,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     {
         ImGui::Text
         (
-            sharedUniforms.isTimeLooped ? 
+            su.isTimeLooped ? 
             "Disable loop" : 
             "Enable loop"
         );
@@ -1514,15 +1521,15 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            sharedUniforms.isTimePaused ? 
+            su.isTimePaused ? 
             ICON_FA_PLAY : 
             ICON_FA_PAUSE, 
             ImVec2(-1, 0)
         ) && !appData.rendering.isPaused
     )
-        sharedUniforms.isTimePaused = 
-            !sharedUniforms.isTimePaused;
-    if (sharedUniforms.isTimePaused)
+        su.isTimePaused = 
+            !su.isTimePaused;
+    if (su.isTimePaused)
     {
         if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
             appData.rendering.toggles.stepToNextFrame = true;
@@ -1543,13 +1550,13 @@ int renderBuiltInSharedUniforms(AppData& appData)
     NEXT_COLUMN(column)
     ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
     NEXT_COLUMN(column)
-    glm::vec2* bounds = &sharedUniforms.iTimeUniform->gui.bounds;
+    glm::vec2* bounds = &su.iTimeUniform->gui.bounds;
     bool boundsChanged = renderEditUniformBoundsButton
     (
-        sharedUniforms.iTimeUniform
+        su.iTimeUniform
     );
     NEXT_COLUMN(column)
-    auto iTimePtr = &sharedUniforms.iTime;
+    auto iTimePtr = &su.iTime;
     if (!boundsChanged)
     {
         bounds->x = std::min(*iTimePtr, bounds->x);
@@ -1573,8 +1580,8 @@ int renderBuiltInSharedUniforms(AppData& appData)
             *iTimePtr = std::max(*iTimePtr, bounds->x);
             *iTimePtr = std::min(*iTimePtr, bounds->y);
         }
-        sharedUniforms.iUserAction = true;
-        sharedUniforms.toggles.updateDataRangeII = true;
+        su.iUserAction = true;
+        su.toggles.updateDataRangeII = true;
     }
     ImGui::PopItemWidth();
     END_ROW(row)
@@ -1585,21 +1592,21 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            sharedUniforms.isTimeResetOnFrameCounterReset ? 
+            su.isTimeResetOnFrameCounterReset ? 
             ICON_FA_BAN " " ICON_FA_UNDO: 
             ICON_FA_CHECK " " ICON_FA_UNDO, 
             ImVec2(-1, 0)
         )
     )
-        sharedUniforms.isTimeResetOnFrameCounterReset =
-            !sharedUniforms.isTimeResetOnFrameCounterReset;
+        su.isTimeResetOnFrameCounterReset =
+            !su.isTimeResetOnFrameCounterReset;
     if 
     (
         ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
         ImGui::BeginTooltip()
     )
     {
-        if (sharedUniforms.isTimeResetOnFrameCounterReset)
+        if (su.isTimeResetOnFrameCounterReset)
             ImGui::Text("Disable time reset on rendering restart");
         else
             ImGui::Text("Enable time reset on rendering restart");
@@ -1614,21 +1621,21 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            sharedUniforms.isTimeDeltaSmooth ?
+            su.isTimeDeltaSmooth ?
             ICON_FA_WAVE_SQUARE : 
             ICON_FA_SIGNATURE, 
             ImVec2(-1, 0)
         )
     )
-        sharedUniforms.isTimeDeltaSmooth =
-            !sharedUniforms.isTimeDeltaSmooth;
+        su.isTimeDeltaSmooth =
+            !su.isTimeDeltaSmooth;
     if 
     (
         ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
         ImGui::BeginTooltip()
     )
     {
-        if (sharedUniforms.isTimeDeltaSmooth)
+        if (su.isTimeDeltaSmooth)
             ImGui::Text("Disable time step smoothing");
         else
             ImGui::Text("Enable time step smoothing");
@@ -1645,24 +1652,24 @@ int renderBuiltInSharedUniforms(AppData& appData)
     if 
     (
         appData.rendering.isPaused || 
-        sharedUniforms.isTimePaused
+        su.isTimePaused
     )
     {
         ImGui::InputFloat
         (
             "##iTimeDeltaSliderFloat", 
-            &sharedUniforms.iTimeDelta,
+            &su.iTimeDelta,
             0,
             0,
             "%.6f"
         );
-        sharedUniforms.iTimeDelta = 
-            std::max(sharedUniforms.iTimeDelta, 0.f);
+        su.iTimeDelta = 
+            std::max(su.iTimeDelta, 0.f);
         ImGui::SameLine();
         ImGui::Text("s");
     }
     else
-        ImGui::Text("%.6f s", sharedUniforms.iTimeDelta);
+        ImGui::Text("%.6f s", su.iTimeDelta);
     END_ROW(row)
     ImGui::Dummy({0, 0.1f*fontSize});
 
@@ -1673,14 +1680,14 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            sharedUniforms.isRandomNumberGeneratorPaused ? 
+            su.isRandomNumberGeneratorPaused ? 
             ICON_FA_PLAY : 
             ICON_FA_PAUSE, 
             ImVec2(-1, 0)
         )
     )
-        sharedUniforms.isRandomNumberGeneratorPaused = 
-            !sharedUniforms.isRandomNumberGeneratorPaused;
+        su.isRandomNumberGeneratorPaused = 
+            !su.isRandomNumberGeneratorPaused;
     NEXT_COLUMN(column)
     ImGui::Text("iRandom");
     NEXT_COLUMN(column)
@@ -1688,7 +1695,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     NEXT_COLUMN(column)
     // No bounds
     NEXT_COLUMN(column)
-    ImGui::Text("%.6f", sharedUniforms.iRandom);
+    ImGui::Text("%.6f", su.iRandom);
     END_ROW(row)
 
     // iWindowAspectRatio --------------------------------------------------
@@ -1704,7 +1711,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     NEXT_COLUMN(column)
     ImGui::Text
     (
-        "%.3f", sharedUniforms.iAspectRatio
+        "%.3f", su.iAspectRatio
     );
     END_ROW(row)
     ImGui::Dummy({0, 0.1f*fontSize});
@@ -1723,8 +1730,8 @@ int renderBuiltInSharedUniforms(AppData& appData)
     ImGui::Text
     (
         "%d x %d", 
-        (int)sharedUniforms.iResolution.x, 
-        (int)sharedUniforms.iResolution.y
+        (int)su.iResolution.x, 
+        (int)su.iResolution.y
     );
     END_ROW(row)
     
@@ -1735,7 +1742,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            sharedUniforms.isKeyboardInputEnabled ? 
+            su.isKeyboardInputEnabled ? 
             ICON_FA_PAUSE : 
             ICON_FA_PLAY, 
             ImVec2(-1, 0)
@@ -1754,7 +1761,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     std::string toggled = "Toggled:";
     for (int key=0; key<255; key++)
     {
-        auto& keyData(sharedUniforms.iKeyboard[key]);
+        auto& keyData(su.iKeyboard[key]);
         if (keyData.x > 0)
             pressed += " "+vir::keyCodeToName[key];
         else if (keyData.y > 0)
@@ -1777,7 +1784,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            sharedUniforms.isMouseInputEnabled ? 
+            su.isMouseInputEnabled ? 
             ICON_FA_PAUSE : 
             ICON_FA_PLAY, 
             ImVec2(-1, 0)
@@ -1788,15 +1795,15 @@ int renderBuiltInSharedUniforms(AppData& appData)
         ImGui::OpenPopup("##iMouseSettings");
     if (ImGui::BeginPopup("##iMouseSettings"))
     {
-        bool enabled = sharedUniforms.isMouseInputEnabled;
+        bool enabled = su.isMouseInputEnabled;
         std::string text = enabled ? "Disable inputs" : "Enable inputs";
         if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
             toggleMouseInputs(appData);
         ImGui::Text("Clamp value to window resolution ");
         ImGui::SameLine();
-        bool status = sharedUniforms.isMouseInputClampedToWindow;
+        bool status = su.isMouseInputClampedToWindow;
         ImGui::Checkbox("##iMouseSettings_ClampValue", &status);
-        if (status != sharedUniforms.isMouseInputClampedToWindow)
+        if (status != su.isMouseInputClampedToWindow)
             setMouseInputsClamped(appData, status);
         ImGui::Text("Input requires holding LMB       ");
         if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -1810,7 +1817,7 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::Checkbox
         (
             "##iMouseSettings_LMBHold", 
-            &(sharedUniforms.mouseInputRequiresLMBHold)
+            &(su.mouseInputRequiresLMBHold)
         );
         ImGui::EndPopup();
     }
@@ -1824,10 +1831,10 @@ motion only if the left mouse button (LMB) is held)");
     ImGui::Text
     (
         "%d, %d, %d, %d", 
-        (int)sharedUniforms.iMouse.x, 
-        (int)sharedUniforms.iMouse.y, 
-        (int)sharedUniforms.iMouse.z, 
-        (int)sharedUniforms.iMouse.w
+        (int)su.iMouse.x, 
+        (int)su.iMouse.y, 
+        (int)su.iMouse.z, 
+        (int)su.iMouse.w
     );
     if 
     (
@@ -1853,7 +1860,7 @@ is currently being held down)");
         ImGui::OpenPopup("##iLookSettings");
     if (ImGui::BeginPopup("##iLookSettings"))
     {
-        bool enabled = sharedUniforms.isCameraMouseInputEnabled;
+        bool enabled = su.isCameraMouseInputEnabled;
         std::string text = enabled ? "Disable inputs" : "Enable inputs";
         if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
             toggleCameraMouseInputs(appData);
@@ -1869,7 +1876,7 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::Checkbox
         (
             "##iLookSettings_LMBHold", 
-            &(sharedUniforms.cameraMouseInputRequiresLMBHold)
+            &(su.cameraMouseInputRequiresLMBHold)
         );
         ImGui::Text("Mouse sensitivity ");
         ImGui::SameLine();
@@ -1877,7 +1884,7 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::SliderFloat
         (
             "##iLookSensitivity", 
-            &sharedUniforms.shaderCamera->mouseSensitivityRef(),
+            &su.shaderCamera->mouseSensitivityRef(),
             1e-3,
             1
         );
@@ -1892,7 +1899,7 @@ motion only if the left mouse button (LMB) is held)");
     // All cmpts always bounds in [-1, 1]
     NEXT_COLUMN(column)
     {
-        glm::vec3 value = sharedUniforms.iLook;
+        glm::vec3 value = su.iLook;
         std::string format = Helpers::getFormat(value);
         ImGui::PushItemWidth(-1);
         if 
@@ -1908,10 +1915,10 @@ motion only if the left mouse button (LMB) is held)");
         )
         {
             value = glm::normalize(value);
-            sharedUniforms.iLook = value;
-            sharedUniforms.shaderCamera->setDirection(value);
-            sharedUniforms.iUserAction = true;
-            sharedUniforms.toggles.updateDataRangeII = true;
+            su.iLook = value;
+            su.shaderCamera->setDirection(value);
+            su.iUserAction = true;
+            su.toggles.updateDataRangeII = true;
         }
         ImGui::PopItemWidth();
     }
@@ -1925,7 +1932,7 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::OpenPopup("##iWASDSettings");
     if (ImGui::BeginPopup("##iWASDSettings"))
     {
-        bool enabled = sharedUniforms.isCameraKeyboardInputEnabled;
+        bool enabled = su.isCameraKeyboardInputEnabled;
         std::string text = enabled ? "Disable inputs" : "Enable inputs";
         if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
             toggleCameraKeyboardInputs(appData);
@@ -1935,7 +1942,7 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::SliderFloat
         (
             "##iWASDSensitivity", 
-            &sharedUniforms.shaderCamera->keySensitivityRef(),
+            &su.shaderCamera->keySensitivityRef(),
             1e-1,
             50
         );
@@ -1945,8 +1952,8 @@ motion only if the left mouse button (LMB) is held)");
 
     bool showSeparator
     (
-        sharedUniforms.fragment.uniforms.size() == 
-        sharedUniforms.userUniformsStartIndex
+        su.fragment.uniforms.size() == 
+        su.userUniformsStartIndex
     );
     if (showSeparator)
     {
@@ -1968,16 +1975,16 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::Separator();
     }
     NEXT_COLUMN(column)
-    bounds = &sharedUniforms.iWASDUniform->gui.bounds;
+    bounds = &su.iWASDUniform->gui.bounds;
     boundsChanged = renderEditUniformBoundsButton
     (
-        sharedUniforms.iWASDUniform
+        su.iWASDUniform
     );
     if (showSeparator)
         ImGui::Separator();
     NEXT_COLUMN(column)
     {
-        glm::vec3 value = sharedUniforms.iWASD;
+        glm::vec3 value = su.iWASD;
         std::string format = Helpers::getFormat(value);
         if (!boundsChanged)
         {
@@ -2010,10 +2017,10 @@ motion only if the left mouse button (LMB) is held)");
                 value.z = std::max(value.z, bounds->x);
                 value.z = std::min(value.z, bounds->y);
             }
-            sharedUniforms.iWASD = value;
-            sharedUniforms.shaderCamera->setPosition(value);
-            sharedUniforms.iUserAction = true;
-            sharedUniforms.toggles.updateDataRangeII = true;
+            su.iWASD = value;
+            su.shaderCamera->setPosition(value);
+            su.iUserAction = true;
+            su.toggles.updateDataRangeII = true;
         }
         ImGui::PopItemWidth();
     }
@@ -2162,7 +2169,7 @@ bool renderUniformTableRow
     bool isSharedByUser0 = uniform->isSharedByUser;
     bool nameChanged = false;
     bool typeChanged = false;
-    auto& sharedUniforms = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
     auto& resources = appData.resources;
     
     START_ROW(row, column)
@@ -2276,7 +2283,6 @@ bool renderUniformTableRow
                 continue;
             typeChanged = true;
             uniform->setType(selectedType);
-            int breakpoint = 0;
         }
         ImGui::EndCombo();
     }
@@ -2309,8 +2315,8 @@ bool renderUniformTableRow
                 if (named)
                 {
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2343,8 +2349,8 @@ bool renderUniformTableRow
                 if (named)
                 {
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2377,8 +2383,8 @@ bool renderUniformTableRow
                 if (named)
                 {
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2445,8 +2451,8 @@ bool renderUniformTableRow
                 if (named)
                 {
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2487,8 +2493,8 @@ bool renderUniformTableRow
                 if (named)
                 {
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2533,8 +2539,8 @@ bool renderUniformTableRow
                 if (named)
                 {
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2605,8 +2611,8 @@ bool renderUniformTableRow
                 if (named)
                 {                                                              
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2691,8 +2697,8 @@ bool renderUniformTableRow
                 if (named)
                 {
                     uniform->markForSubmissionToAllClientBuffers();
-                    sharedUniforms.iUserAction = true;
-                    sharedUniforms.toggles.updateDataRangeII = true;
+                    su.iUserAction = true;
+                    su.toggles.updateDataRangeII = true;
                 }
             }
             break;
@@ -2752,8 +2758,8 @@ bool renderUniformTableRow
                     if (named)
                     {
                         uniform->markForSubmissionToAllClientBuffers();
-                        sharedUniforms.iUserAction = true;
-                        sharedUniforms.toggles.updateDataRangeII = true;
+                        su.iUserAction = true;
+                        su.toggles.updateDataRangeII = true;
                     }
                 }
             }
@@ -2775,8 +2781,8 @@ bool renderUniformTableRow
                     if (named)
                     {
                         uniform->markForSubmissionToAllClientBuffers();
-                        sharedUniforms.iUserAction = true;
-                        sharedUniforms.toggles.updateDataRangeII = true;
+                        su.iUserAction = true;
+                        su.toggles.updateDataRangeII = true;
                     }
                 }
             }
@@ -2841,8 +2847,8 @@ bool renderUniformTableRow
                     if (named)
                     {
                         uniform->markForSubmissionToAllClientBuffers();
-                        sharedUniforms.iUserAction = true;
-                        sharedUniforms.toggles.updateDataRangeII = true;
+                        su.iUserAction = true;
+                        su.toggles.updateDataRangeII = true;
                     }
                 }
             }
@@ -2865,8 +2871,8 @@ bool renderUniformTableRow
                     if (named)
                     {
                         uniform->markForSubmissionToAllClientBuffers();
-                        sharedUniforms.iUserAction = true;
-                        sharedUniforms.toggles.updateDataRangeII = true;
+                        su.iUserAction = true;
+                        su.toggles.updateDataRangeII = true;
                     }
                 }
             }
@@ -2894,8 +2900,8 @@ bool renderUniformTableRow
                 [&uniform, &r]()                                               \
                 {uniform->setResourcePtr(r);}                                  \
             );                                                                 \
-            sharedUniforms.iUserAction = true;                                 \
-            sharedUniforms.toggles.updateDataRangeII = true;                   \
+            su.iUserAction = true;                                 \
+            su.toggles.updateDataRangeII = true;                   \
         }
 
         case vir::Uniform::Type::Sampler2D :
@@ -3358,7 +3364,7 @@ void renderResourceActionsButton(AppData& appData, int row)
             (
                 [&appData, row]()
                 {
-                    UPtr<Resource>& resource = appData.resources[row];
+                    // UPtr<Resource>& resource = appData.resources[row];
                     // Used to call legacy 'removeResourceFromUniforms' on all
                     // layers, tentatively removed
                     appData.resources.erase(appData.resources.begin()+row);

@@ -296,13 +296,13 @@ struct AppData
 {
     std::string          controlPanelTitle = "Control panel###CP";
     DeferredActionBuffer deferredActionBuffer;
-    Exporter             exporter;
     Font                 font;
     Project              project;
     Rendering            rendering;
-    SharedStorage        sharedStorage;
-    SharedUniforms       sharedUniforms;
     TextEditor           sharedSourceEditor;
+    UPtr<Exporter>       exporter;
+    UPtr<SharedStorage>  sharedStorage;
+    UPtr<SharedUniforms> sharedUniforms;
     UPtrVector<Layer>    layers;
     UPtrVector<Resource> resources;
 };

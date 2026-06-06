@@ -20,9 +20,6 @@ void run()
     // Initialize application
     AppData appData = {};
     initialize(appData);
-    
-    // Initialize event manager
-    GPtr<EventManager>(new EventManager(appData));
 
     // Main loop
     auto window = vir::Window::instance();

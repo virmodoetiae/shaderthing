@@ -422,6 +422,12 @@ public:
     // Get a naked pointer to the internally managed object
     static T* get() {return ptr_.get();}
 
+    // Destroy managed object
+    static void reset()
+    {
+        ptr_.reset();
+    }
+
     // Get a naked pointer to the internally managed object
     T* operator->() const { return get(); }
 

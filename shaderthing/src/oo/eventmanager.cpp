@@ -66,7 +66,7 @@ void EventManager::onReceive(vir::Event::WindowResizeEvent& event)
 
 void EventManager::onReceive(vir::Event::MouseButtonPressEvent& event)
 {
-    auto& su = appData_.sharedUniforms;
+    auto& su = *(appData_.sharedUniforms);
     if (!su.isCameraMouseInputEnabled)
         event.handled = true; // Prevent propagation to vir::InputCamera
     if (!su.isMouseInputEnabled)
@@ -94,7 +94,7 @@ void EventManager::onReceive(vir::Event::MouseButtonPressEvent& event)
 
 void EventManager::onReceive(vir::Event::MouseMotionEvent& event)
 {
-    auto& su = appData_.sharedUniforms;
+    auto& su = *(appData_.sharedUniforms);
     bool LMBClicked = 
         vir::InputState::instance()->mouseButtonState(VIR_MOUSE_BUTTON_1)
         .isClicked();
@@ -133,7 +133,7 @@ void EventManager::onReceive(vir::Event::MouseMotionEvent& event)
  
 void EventManager::onReceive(vir::Event::MouseButtonReleaseEvent& event)
 {
-    auto& su = appData_.sharedUniforms;
+    auto& su = *(appData_.sharedUniforms);
     if (!su.isCameraMouseInputEnabled)
         event.handled = true; // Prevent propagation to vir::InputCamera
     if (!su.isMouseInputEnabled)
@@ -168,7 +168,7 @@ void EventManager::onReceive(vir::Event::KeyPressEvent& event)
     auto stKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     if (stKeyCode > 256)
         return;
-    auto& su(appData_.sharedUniforms);
+    auto& su = *(appData_.sharedUniforms);
     auto& data(su.iKeyboard[stKeyCode]);
     static auto* inputState = vir::InputState::instance();
     auto& status = inputState->keyState(event.keyCode);
@@ -187,7 +187,7 @@ void EventManager::onReceive(vir::Event::KeyReleaseEvent& event)
     auto stKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     if (stKeyCode > 256)
         return;
-    auto& su(appData_.sharedUniforms);
+    auto& su = *(appData_.sharedUniforms);
     auto& data(su.iKeyboard[stKeyCode]);
     static auto* inputState = vir::InputState::instance();
     data.x = 0;

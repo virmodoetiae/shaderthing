@@ -134,7 +134,7 @@ Texture2DResource::~Texture2DResource()
         delete[] rawData_;
 }
 
-void Texture2DResource::save(ObjectIO& io)
+void Texture2DResource::saveToDisk(ObjectIO& io)
 {
     io.writeObjectStart(namePtr_->c_str());
     io.write("type", Resource::typeToName.at(type_));
@@ -398,7 +398,7 @@ bool AnimatedTexture2DResource::set
     return true;
 }
 
-void AnimatedTexture2DResource::save(ObjectIO& io)
+void AnimatedTexture2DResource::saveToDisk(ObjectIO& io)
 {
     io.writeObjectStart(namePtr_->c_str());
     io.write("type", Resource::typeToName.at(type_));
@@ -550,7 +550,7 @@ bool CubemapResource::set
     return true;
 }
 
-void CubemapResource::save(ObjectIO& io)
+void CubemapResource::saveToDisk(ObjectIO& io)
 {
     for (int i=0; i<6; i++)
     {
@@ -641,7 +641,7 @@ bool Texture3DResource::set
     return true;
 }
 
-void Texture3DResource::save(ObjectIO& io)
+void Texture3DResource::saveToDisk(ObjectIO& io)
 {
     io.writeObjectStart(namePtr_->c_str());
     io.write("type", Resource::typeToName.at(type_));

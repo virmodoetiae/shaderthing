@@ -3,6 +3,7 @@
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/structs.h"
 #include "shaderthing/include/oo/eventmanager.h"
+#include "shaderthing/include/oo/objectio.h"
 #include "shaderthing/include/oo/texteditor.h"
 #include "shaderthing/include/oo/statusbar.h"
 #include "shaderthing/include/oo/uniform.h"
@@ -17,11 +18,49 @@ UPtr<vir::Shader> Layer::Rendering::textureMapperShader;
 
 void initialize(AppData& appData)
 {
+    static bool firstTime = true;
+
+    // General appData reset
+    appData.project = {};
+    appData.rendering = {};
+    // TODO appData.sharedSourceEditor. ... reset
+    appData.exporter.reset();
+    appData.exporter = vir::makeUnique<Exporter>();
+    appData.sharedStorage.reset();
+    appData.sharedStorage = vir::makeUnique<SharedStorage>();
+    appData.sharedUniforms.reset();
+    appData.sharedUniforms = vir::makeUnique<SharedUniforms>();
+    appData.layers.clear();
+    appData.resources.clear();
+
+    // Reset event manager
+    if (GPtr<EventManager>::valid())
+    {
+        GPtr<EventManager>::reset();
+    }
+
+    // Window setup
+    auto window = vir::Window::instance();
+    window->setSize(512, 512);
+    if (firstTime)
+    {
+        // Set window icon
+        window->setIcon
+        (
+            (unsigned char*)ByteData::Icon::sTIconData,
+            ByteData::Icon::sTIconSize,
+            false
+        );
+    }
+
     // ImGui setup
     ImGuiIO& io = ImGui::GetIO();
     // Do not save config to .ini file
-    io.IniFilename = NULL;
-    io.ConfigDockingTransparentPayload = true;
+    if (firstTime)
+    {
+        io.IniFilename = NULL;
+        io.ConfigDockingTransparentPayload = true;
+    }
     // Custom tab bar color styling
     auto scaleColor = [](unsigned int cid, float s)
     {
@@ -47,96 +86,99 @@ void initialize(AppData& appData)
     // Asian logograms/characters is set so that the latter are (almost)
     // exactly twice as wide as the former, for readability, valid for the
     // selected fonts at hand
-    font.imFont = io.Fonts->AddFontFromMemoryCompressedTTF
-    (
-        (void*)ByteData::Font::CousineRegularData,
-        ByteData::Font::CousineRegularSize, 
-        baseFontSize,
-        &font.imFontConfig,
-        io.Fonts->GetGlyphRangesDefault()
-    );
-    font.imFontConfig.MergeMode = true;
-    font.imFontConfig.RasterizerMultiply = 1.25;
-    io.Fonts->AddFontFromMemoryCompressedTTF
-    (
-        (void*)ByteData::Font::CousineRegularData, 
-        ByteData::Font::CousineRegularSize,
-        baseFontSize,
-        &font.imFontConfig,
-        io.Fonts->GetGlyphRangesCyrillic()
-    );
-    io.Fonts->AddFontFromMemoryCompressedTTF
-    (
-        (void*)ByteData::Font::CousineRegularData, 
-        ByteData::Font::CousineRegularSize,
-        baseFontSize,
-        &font.imFontConfig,
-        io.Fonts->GetGlyphRangesGreek()
-    );
+    if (firstTime)
+    {
+        font.imFont = io.Fonts->AddFontFromMemoryCompressedTTF
+        (
+            (void*)ByteData::Font::CousineRegularData,
+            ByteData::Font::CousineRegularSize, 
+            baseFontSize,
+            &font.imFontConfig,
+            io.Fonts->GetGlyphRangesDefault()
+        );
+        font.imFontConfig.MergeMode = true;
+        font.imFontConfig.RasterizerMultiply = 1.25;
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        (
+            (void*)ByteData::Font::CousineRegularData, 
+            ByteData::Font::CousineRegularSize,
+            baseFontSize,
+            &font.imFontConfig,
+            io.Fonts->GetGlyphRangesCyrillic()
+        );
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        (
+            (void*)ByteData::Font::CousineRegularData, 
+            ByteData::Font::CousineRegularSize,
+            baseFontSize,
+            &font.imFontConfig,
+            io.Fonts->GetGlyphRangesGreek()
+        );
 
-    // Font icons from FontAwesome5 (free)
-    float iconFontSize = baseFontSize*2.f/3.f;
-    static const ImWchar iconRanges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
-    ImFontConfig iconConfig; 
-    iconConfig.MergeMode = true; 
-    iconConfig.PixelSnapH = true; 
-    iconConfig.GlyphMinAdvanceX = iconFontSize;
-    io.Fonts->AddFontFromMemoryCompressedTTF
-    ( 
-        (void*)ByteData::Font::FontAwesome5FreeSolid900Data, 
-        ByteData::Font::FontAwesome5FreeSolid900Size, 
-        iconFontSize,
-        &iconConfig, 
-        iconRanges
-    );
-    io.Fonts->Build();
+        // Font icons from FontAwesome5 (free)
+        float iconFontSize = baseFontSize*2.f/3.f;
+        static const ImWchar iconRanges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
+        ImFontConfig iconConfig; 
+        iconConfig.MergeMode = true; 
+        iconConfig.PixelSnapH = true; 
+        iconConfig.GlyphMinAdvanceX = iconFontSize;
+        io.Fonts->AddFontFromMemoryCompressedTTF
+        ( 
+            (void*)ByteData::Font::FontAwesome5FreeSolid900Data, 
+            ByteData::Font::FontAwesome5FreeSolid900Size, 
+            iconFontSize,
+            &iconConfig, 
+            iconRanges
+        );
+        io.Fonts->Build();
+    }
     font.imFont->Scale = 0.6;
     font.scale = &font.imFont->Scale;
 
-    // Set window icon
-    auto window = vir::Window::instance();
-    window->setIcon
-    (
-        (unsigned char*)ByteData::Icon::sTIconData,
-        ByteData::Icon::sTIconSize,
-        false
-    );
-
     initializeSharedUniforms(appData);
-
-    // Initialize shared texture mapper shader
-    std::string vertexSource = assembleVertexShaderSource(appData);
-    std::string fragmentSource =
-        vir::Shader::currentContextShadingLanguageDirectives()+
+    
+    if (!Layer::Rendering::textureMapperShader.valid())
+    {
+        // Initialize shared texture mapper shader
+        std::string vertexSource = assembleVertexShaderSource(appData);
+        std::string fragmentSource =
+            vir::Shader::currentContextShadingLanguageDirectives()+
 R"(out  vec4      fragColor;
 in      vec2      qc;
 in      vec2      tc;
 uniform sampler2D tx;
 void main(){fragColor = texture(tx, tc);})";
-    Layer::Rendering::textureMapperShader =
-        vir::Shader::create
+        Layer::Rendering::textureMapperShader =
+            vir::Shader::create
+            (
+                vertexSource,
+                fragmentSource,
+                vir::Shader::ConstructFrom::SourceCode
+            );
+        Layer::Rendering::textureMapperShader->bind();
+        Layer::Rendering::textureMapperShader->bindUniformBlock
         (
-            vertexSource,
-            fragmentSource,
-            vir::Shader::ConstructFrom::SourceCode
+            appData.sharedUniforms->vertex.uniformBuffer->name(),
+            appData.sharedUniforms->vertex.uniformBufferBindingPoint
         );
-    Layer::Rendering::textureMapperShader->bind();
-    Layer::Rendering::textureMapperShader->bindUniformBlock
-    (
-        appData.sharedUniforms.vertex.uniformBuffer->name(),
-        appData.sharedUniforms.vertex.uniformBufferBindingPoint
-    );
-    Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
+        Layer::Rendering::textureMapperShader->setUniformInt("tx", 0);
+    }
 
     // Create default layer
     createNewLayer(appData);
+
+    // Initialize event manager
+    GPtr<EventManager>(new EventManager(appData));
+
+    if (firstTime)
+        firstTime = false;
 };
 
 //----------------------------------------------------------------------------//
 
 void initializeSharedUniforms(AppData& appData)
 {
-    SharedUniforms& su = appData.sharedUniforms;
+    SharedUniforms& su = *(appData.sharedUniforms);
 
     // Init CPU block data
     static const auto window = vir::Window::instance();
@@ -239,7 +281,7 @@ void initializeSharedUniforms(AppData& appData)
     su.iExportUniform->name = "iExport";
     su.iExportUniform->setValuePtr
     (
-        &appData.exporter.isActive, 
+        &appData.exporter->isActive, 
         Uniform::Type::Bool
     );
     su.iExportUniform->gui.showBounds = false;
@@ -313,7 +355,7 @@ void setWindowResolution
             std::max(std::min(resolution.y, maxResolution.y), minResolution.y);
     }
 
-    auto& su = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
 
     // Store in iResolution & update aspectRatio
     su.iResolution = resolution;
@@ -324,8 +366,8 @@ void setWindowResolution
     // necessary but I like this behavior better
     if (!prepareForExport)
     {
-        appData.exporter.outputResolution = resolution;
-        appData.exporter.outputResolutionScale = 1.f;
+        appData.exporter->outputResolution = resolution;
+        appData.exporter->outputResolutionScale = 1.f;
     }
 
     // Update screen camera
@@ -354,7 +396,7 @@ void setWindowResolution
 
 void postRenderUpdate(AppData& appData)
 {
-    auto& su = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
     
     // TODO
     //exporter_->update(*sharedUniforms_, layers_, resources_);
@@ -366,11 +408,11 @@ void postRenderUpdate(AppData& appData)
         if 
         (
             appData.rendering.passIndex == 
-            appData.exporter.nRenderPasses-1
+            appData.exporter->nRenderPasses-1
         )
         {
             advanceFrame = true;
-            timeStep = appData.exporter.timeStep;
+            timeStep = appData.exporter->timeStep;
         }
         else
         {
@@ -554,7 +596,7 @@ void postRenderUpdate(AppData& appData)
                 Helpers::format(fps,1)+" fps)"+"###CP";
         elapsedFrames = 0;
         elapsedTime = 0;
-        if (!appData.exporter.isActive)
+        if (!appData.exporter->isActive)
         {
             fpsUpdateCounter++;
             shouldStopRendering = 
@@ -579,15 +621,15 @@ void toggleRenderingPaused(AppData& appData, bool dueToLowFps)
     
     if (appData.rendering.isPaused)
     {
-        appData.sharedUniforms.isTimePausedBecauseRenderingPaused = 
-            !appData.sharedUniforms.isTimePaused;
-        appData.sharedUniforms.isTimePaused = true;
+        appData.sharedUniforms->isTimePausedBecauseRenderingPaused = 
+            !appData.sharedUniforms->isTimePaused;
+        appData.sharedUniforms->isTimePaused = true;
     }
     else if 
     (
-        appData.sharedUniforms.isTimePausedBecauseRenderingPaused
+        appData.sharedUniforms->isTimePausedBecauseRenderingPaused
     )
-        appData.sharedUniforms.isTimePaused = false;
+        appData.sharedUniforms->isTimePaused = false;
 
     // It would be better to update the StatusBar messages elsewhere, but
     // whatever
@@ -941,8 +983,8 @@ std::string assembleFragmentShaderHeader
     std::string header =
         vir::Shader::currentContextShadingLanguageDirectives() +
         "in      vec2   qc;\nin      vec2   tc;\nout     vec4   fragColor;\n" +
-        appData.sharedStorage.shaderSource() +
-        appData.sharedUniforms.fragment.uniformBuffer->shaderSource() +
+        appData.sharedStorage->shaderSource() +
+        appData.sharedUniforms->fragment.uniformBuffer->shaderSource() +
         "\n";
     unsigned int nLines = 0;
     unsigned int imageBindingPoint = 0;
@@ -1011,7 +1053,7 @@ std::string assembleFragmentShaderHeader
     };
     writeResourceUniformsToHeader
     (
-        appData.sharedUniforms.fragment.uniforms,
+        appData.sharedUniforms->fragment.uniforms,
         header,
         nLines,
         imageBindingPoint
@@ -1038,7 +1080,7 @@ R"(layout (location=0) in vec3 iqc;
 layout (location=1) in vec2 itc;
 out vec2 qc;
 out vec2 tc;
-)" + appData.sharedUniforms.vertex.uniformBuffer->shaderSource() +
+)" + appData.sharedUniforms->vertex.uniformBuffer->shaderSource() +
 R"(
 void main(){
     gl_Position = iMVP*vec4(iqc, 1.);
@@ -1097,15 +1139,15 @@ bool compileShader(UPtr<Layer>& layer, AppData& appData, bool setBlankShaderOnEr
         );
         shader->bindUniformBlock
         (
-            appData.sharedUniforms.fragment.uniformBuffer->name(),
-            appData.sharedUniforms.fragment.uniformBufferBindingPoint
+            appData.sharedUniforms->fragment.uniformBuffer->name(),
+            appData.sharedUniforms->fragment.uniformBufferBindingPoint
         );
         shader->bindUniformBlock
         (
-            appData.sharedUniforms.vertex.uniformBuffer->name(),
-            appData.sharedUniforms.vertex.uniformBufferBindingPoint
+            appData.sharedUniforms->vertex.uniformBuffer->name(),
+            appData.sharedUniforms->vertex.uniformBufferBindingPoint
         );
-        appData.sharedStorage.bindShader(shader.get());
+        appData.sharedStorage->bindShader(shader.get());
         shader->bind();
         layer->rendering.shader = std::move(shader);
         return true;
@@ -1450,9 +1492,9 @@ void renderLayerShader
     };
     setSamplerUniforms
     (
-        appData.sharedUniforms.fragment.uniforms, 
+        appData.sharedUniforms->fragment.uniforms, 
         layer, 
-        appData.sharedUniforms, 
+        *(appData.sharedUniforms), 
         textureUnit, 
         imageUnit
     );
@@ -1460,7 +1502,7 @@ void renderLayerShader
     (
         layer->uniforms, 
         layer, 
-        appData.sharedUniforms, 
+        *(appData.sharedUniforms), 
         textureUnit, 
         imageUnit
     );
@@ -1490,7 +1532,7 @@ void renderLayerShader
             rendering.target != Layer::Rendering::Target::Window
         )
     );
-    appData.sharedStorage.gpuMemoryBarrier();
+    appData.sharedStorage->gpuMemoryBarrier();
 
     // Re-enable blending before either leaving or redirecting the rendered 
     // texture to the main window
@@ -1533,7 +1575,7 @@ RenderResult renderShaders
     const unsigned int nRenderPasses
 )
 {
-    auto& sharedUniforms = appData.sharedUniforms;
+    auto& sharedUniforms = *(appData.sharedUniforms);
     static bool clearTarget = true;
     // TODO Fix behavior of stepping to next frame when tiled rendering is
     // enabled
@@ -1656,13 +1698,13 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
                 );
             shader->bindUniformBlock
             (
-                appData.sharedUniforms.fragment.uniformBuffer->name(),
-                appData.sharedUniforms.fragment.uniformBufferBindingPoint
+                appData.sharedUniforms->fragment.uniformBuffer->name(),
+                appData.sharedUniforms->fragment.uniformBufferBindingPoint
             );
             shader->bindUniformBlock
             (
-                appData.sharedUniforms.vertex.uniformBuffer->name(),
-                appData.sharedUniforms.vertex.uniformBufferBindingPoint
+                appData.sharedUniforms->vertex.uniformBuffer->name(),
+                appData.sharedUniforms->vertex.uniformBufferBindingPoint
             );
             return shader;
         };
@@ -1722,10 +1764,10 @@ void removeLayerFromResources
 
 void toggleKeyboardInputs(AppData& appData)
 {
-    appData.sharedUniforms.isKeyboardInputEnabled = 
-        !appData.sharedUniforms.isKeyboardInputEnabled;
+    appData.sharedUniforms->isKeyboardInputEnabled = 
+        !appData.sharedUniforms->isKeyboardInputEnabled;
     auto eventManager = GPtr<EventManager>::get();
-    if (appData.sharedUniforms.isKeyboardInputEnabled)
+    if (appData.sharedUniforms->isKeyboardInputEnabled)
     {
         eventManager->resumeEventReception(vir::Event::Type::KeyPress);
         eventManager->resumeEventReception(vir::Event::Type::KeyRelease);
@@ -1744,15 +1786,15 @@ void toggleMouseInputs(AppData& appData)
     // Mouse-related event-reception not 'really' paused as it does some 
     // important pre-processing required to possibly block input propagation 
     // to the input camera
-    appData.sharedUniforms.isMouseInputEnabled = 
-        !appData.sharedUniforms.isMouseInputEnabled;
+    appData.sharedUniforms->isMouseInputEnabled = 
+        !appData.sharedUniforms->isMouseInputEnabled;
 }
 
 //----------------------------------------------------------------------------//
 
 void toggleCameraMouseInputs(AppData& appData)
 {
-    auto& su = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
     auto& camera = su.shaderCamera.dynamicDowncastTo<vir::InputCamera>();
     su.isCameraMouseInputEnabled = !su.isCameraMouseInputEnabled;
     if (su.isCameraMouseInputEnabled)
@@ -1765,7 +1807,7 @@ void toggleCameraMouseInputs(AppData& appData)
 
 void toggleCameraKeyboardInputs(AppData& appData)
 {
-    auto& su = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
     auto& camera = su.shaderCamera.dynamicDowncastTo<vir::InputCamera>();
     su.isCameraKeyboardInputEnabled = !su.isCameraKeyboardInputEnabled;
     if (su.isCameraKeyboardInputEnabled)
@@ -1778,7 +1820,7 @@ void toggleCameraKeyboardInputs(AppData& appData)
 
 void setMouseInputsClamped(AppData& appData, bool flag)
 {
-    auto& su = appData.sharedUniforms;
+    auto& su = *(appData.sharedUniforms);
     su.isMouseInputClampedToWindow = flag;
     if (flag)
     {
@@ -1825,7 +1867,7 @@ void setMouseCaptured(AppData& appData, bool flag)
         pauseForOneBroadcast(eventManager, vir::Event::Type::MouseButtonRelease);
         pauseForOneBroadcast
         (
-            (vir::InputCamera*)appData.sharedUniforms.shaderCamera.get(), 
+            (vir::InputCamera*)appData.sharedUniforms->shaderCamera.get(), 
             vir::Event::Type::MouseMotion
         );
         window->setCursorStatus(vir::Window::CursorStatus::Hidden);
@@ -1840,6 +1882,174 @@ void setMouseCaptured(AppData& appData, bool flag)
         StatusBar::queueMessage(mouseCapturedMessage);
     }
 
+}
+
+//----------------------------------------------------------------------------//
+
+void saveToDisk
+(
+    AppData& appData, 
+    const std::string& filepath, 
+    bool triggeredByAutosave
+)
+{
+    auto io = ObjectIO(filepath.c_str(), ObjectIO::Mode::Write);
+    
+    // Objects are written maintaining the same save file structure as the old
+    // (i.e., v.0/1.x.x) ShaderThing to maintain compatibility
+
+    io.write("UIScale", *appData.font.scale);
+    io.write("autoSaveEnabled", appData.project.isAutoSaveEnabled);
+    io.write("autoSaveInterval", appData.project.autoSaveInterval);
+    io.write("vSyncEnabled", appData.rendering.isVSyncEnabled);
+    //
+    io.writeObjectStart("resources");
+    for (auto& resource : appData.resources)
+        resource->saveToDisk(io);
+    io.writeObjectEnd();
+    //
+    auto& su = *(appData.sharedUniforms);
+    io.writeObjectStart("sharedUniforms");
+    io.write("windowResolution", su.iResolution);
+    // TODO
+    // io.write("exportWindowResolutionScale", su.exportData.resolutionScale);
+    io.write("time", su.iTime);
+    io.write("timePaused", 
+        su.isTimePaused && su.isTimePausedBecauseRenderingPaused ? 
+        false : su.isTimePaused);
+    io.write("timeLooped", su.isTimeLooped);
+    io.write("timeBounds", su.iTimeUniform->gui.bounds);
+    io.write("randomGeneratorPaused", su.isRandomNumberGeneratorPaused);
+    io.write("iWASD", su.shaderCamera->position());
+    io.write("iWASDSensitivity", su.shaderCamera->keySensitivityRef());
+    io.write("iWASDInputEnabled", su.isCameraKeyboardInputEnabled);
+    io.write("iLook", su.shaderCamera->z());
+    io.write("iLookSensitivity", su.shaderCamera->mouseSensitivityRef());
+    io.write("iLookInputEnabled", su.isCameraMouseInputEnabled);
+    io.write("iLookInputRequiresLMBHold", su.cameraMouseInputRequiresLMBHold);
+    io.write("iMouseInputEnabled", su.isMouseInputEnabled);
+    io.write("iMouseInputClampedToWindow", su.isMouseInputClampedToWindow);
+    io.write("mouseInputRequiresLMBHold", su.mouseInputRequiresLMBHold);
+    io.write("iKeyboardInputEnabled", su.isKeyboardInputEnabled);
+    io.write("smoothTimeDelta", su.isTimeDeltaSmooth);
+    io.write("resetTimeOnFrameCounterReset", su.isTimeResetOnFrameCounterReset);
+    io.write("cursorStatus", 
+        vir::Window::instance()->cursorStatus() == 
+        vir::Window::CursorStatus::Captured);
+    // Write custom user-made shared uniforms
+    io.writeObjectStart("uniforms");
+    for 
+    (
+        unsigned int i=su.userUniformsStartIndex; 
+                     i<su.fragment.uniforms.size(); 
+                     i++)
+    {
+        su.fragment.uniforms[i]->saveToDisk(io);
+    }
+    io.writeObjectEnd(); // End of uniforms
+    io.writeObjectEnd(); // End of sharedUniforms
+    //
+    io.writeObjectStart("layers");
+    for (auto& layer : appData.layers)
+    {
+        saveToDisk(layer, io);
+    }
+    io.writeObjectEnd(); // End of layers
+
+    /*
+    // Resource::       saveAll(resources_, project);
+    // sharedUniforms_->save   (            project);
+    // Layer::          saveAll(layers_,    project);
+    exporter_->      save   (            project);
+    PostProcess::    saveStaticData(     project);
+    */
+   
+    // TODO Could display an error via ImGui on failure
+    io.writeContentsToDisk();
+
+    appData.project.timeSinceLastSave = 0;
+
+    StatusBar::queueTemporaryMessage
+    (
+        triggeredByAutosave ? "Project auto-saved" : "Project saved",
+        StatusBar::defaultMessageDuration,
+        0xff25ff50
+    );
+}
+
+//----------------------------------------------------------------------------//
+
+void saveToDisk(UPtr<Layer>& layer, ObjectIO& io)
+{
+    io.writeObjectStart(layer->name.c_str());
+    io.write("renderTarget", (int)layer->rendering.target);
+    io.write("resolution", (glm::ivec2)layer->resolution);
+    io.write("resolutionRatio", layer->resolutionRatio);
+    io.write("isAspectRatioBoundToWindow", layer->isAspectRatioBoundToWindow);
+    io.write("rescaleWithWindow", layer->rescaleWithWindow);
+    io.write("depth", layer->depth);
+    //
+    io.writeObjectStart("internalFramebuffer");
+    auto framebuffer = layer->rendering.backFramebuffer;
+    io.write("format", (int)framebuffer->colorBufferInternalFormat());
+    io.write
+    (
+        "wrapModes", 
+        glm::ivec2
+        (
+            (int)framebuffer->colorBufferWrapMode(0),
+            (int)framebuffer->colorBufferWrapMode(1)
+        )
+    );
+    io.write
+    (
+        "magFilterMode", 
+        (int)framebuffer->colorBufferMagFilterMode()
+    );
+    io.write
+    (
+        "minFilterMode",
+        (int)framebuffer->colorBufferMinFilterMode()
+    );
+    io.write("exportClearPolicy", (int)layer->exportData.clearPolicy);
+    io.writeObjectEnd(); // End of internalFramebuffer
+    //
+    io.writeObjectStart("exportData");
+    io.write("resolutionScale", layer->exportData.resolutionScale);
+    io.write("rescaleWithOutput", layer->exportData.rescaleWithOutput);
+    io.write("windowResolutionScale", layer->exportData.windowResolutionScale);
+    io.writeObjectEnd(); // End of exportData
+    //
+    io.writeObjectStart("shader");
+    auto fragmentSource = layer->sourceEditor.getText();
+    io.write
+    (
+        "fragmentSource",
+        fragmentSource.c_str(),
+        fragmentSource.size(),
+        true
+    );
+    //
+    io.writeObjectStart("uniforms");
+    for(auto& u : layer->uniforms)
+    {
+        u->saveToDisk(io);
+    }
+    io.writeObjectEnd(); // End of uniforms
+    io.writeObjectEnd(); // End of shaders
+
+    // Write post-processing effects data, if any
+    // TODO
+    /*
+    if (layer->rendering.postProcesses.size() > 0)
+    {
+        io.writeObjectStart("postProcesses");
+        for (auto& postProcess : rendering_.postProcesses)
+            postProcess->save(io);
+        io.writeObjectEnd(); // End of postProcesses
+    }
+    */
+    io.writeObjectEnd(); // End of 'gui_.name'
 }
 
 }

@@ -85,6 +85,8 @@ public:
 
     void deleteValue(bool deleteCache) override;
 
+    void saveToDisk(ObjectIO& io);
+
     void setType
     (
         Type type, 

@@ -95,7 +95,7 @@ public:
     void                   removeClientUniform(Uniform* u);
     bool                   isUsedByUniform(const Uniform *u) const;
 
-    virtual void           save(ObjectIO& io) = 0;
+    virtual void           saveToDisk(ObjectIO& io) = 0;
     virtual void           update(const UpdateArgs& args) {};
     
     virtual void           bind(unsigned int unit) = 0;
@@ -282,7 +282,7 @@ public:
 
     ~Texture2DResource();
 
-    virtual void save(ObjectIO& io) override;
+    virtual void saveToDisk(ObjectIO& io) override;
     static UPtr<Texture2DResource> load(const ObjectIO& io);
     
     bool set(const std::string& filepath);
@@ -331,7 +331,7 @@ public:
 
     ~AnimatedTexture2DResource();
 
-    virtual void save(ObjectIO& io) override;
+    virtual void saveToDisk(ObjectIO& io) override;
     static UPtr<AnimatedTexture2DResource> load
     (
         const ObjectIO& io,
@@ -367,7 +367,7 @@ public:
         const std::array<WPtr<Texture2DResource>, 6>& faces
     );
 
-    virtual void save(ObjectIO& io) override;
+    virtual void saveToDisk(ObjectIO& io) override;
     static UPtr<CubemapResource> load
     (
         const ObjectIO& io,
@@ -403,7 +403,7 @@ public:
 
     ~Texture3DResource() {}
 
-    virtual void save(ObjectIO& io) override;
+    virtual void saveToDisk(ObjectIO& io) override;
     static UPtr<Texture3DResource> load(const ObjectIO& io);
 
     bool set
@@ -442,7 +442,7 @@ public:
 
     ~LayerResource();
 
-    virtual void save(ObjectIO& io) override {(void)io;}
+    virtual void saveToDisk(ObjectIO& io) override {(void)io;}
     
     bool set(const UPtr<Layer>& layer);
     

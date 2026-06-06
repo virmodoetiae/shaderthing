@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "shaderthing/include/oo/uniform.h"
+#include "shaderthing/include/oo/objectio.h"
 #include "shaderthing/include/oo/resource.h"
 #include "shaderthing/include/structs.h"
 
@@ -108,6 +109,104 @@ void Uniform::deleteValue(bool deleteCache)
 {
     vir::Uniform::deleteValue(deleteCache);
     deleteResourceResolutionUniform();
+}
+
+//----------------------------------------------------------------------------//
+
+void Uniform::saveToDisk(ObjectIO& io)
+{
+    if 
+    (
+        name.size() == 0 || 
+        managedType != Uniform::ManagedType::None
+    )
+        return;
+
+    float& min(gui.bounds.x);
+    float& max(gui.bounds.y);
+    io.writeObjectStart(name.c_str());
+    io.write("type", vir::Shader::uniformTypeToName[type()].c_str());
+    io.write("shared", isSharedByUser);
+
+#define WRITE_MIN_MAX       \
+    io.write("min", min);   \
+    io.write("max", max);
+
+    switch(type())
+    {
+        case vir::Uniform::Type::Bool :
+        {
+            io.write("value", getValue<bool>());
+            break;
+        }
+        case vir::Uniform::Type::Int :
+        {
+            io.write("value", getValue<int>());
+            WRITE_MIN_MAX
+            break;
+        }
+        case vir::Uniform::Type::Int2 :
+        {
+            io.write("value", getValue<glm::ivec2>());
+            WRITE_MIN_MAX
+            io.write("dragStep", gui.dragStep);
+            break;
+        }
+        case vir::Uniform::Type::Int3 :
+        {
+            io.write("value", getValue<glm::ivec3>());
+            WRITE_MIN_MAX
+            break;
+        }
+        case vir::Uniform::Type::Int4 :
+        {
+            io.write("value", getValue<glm::ivec4>());
+            WRITE_MIN_MAX
+            break;
+        }
+        case vir::Uniform::Type::Float :
+        {
+            io.write("value", getValue<float>());
+            WRITE_MIN_MAX
+            break;
+        }
+        case vir::Uniform::Type::Float2 :
+        {
+            io.write("value", getValue<glm::vec2>());
+            WRITE_MIN_MAX
+            io.write("dragStep", gui.dragStep);
+            break;
+        }
+        case vir::Uniform::Type::Float3 :
+        {
+            io.write("value", getValue<glm::vec3>());
+            WRITE_MIN_MAX
+            io.write("usesColorPicker", gui.usesColorPicker);
+            break;
+        }
+        case vir::Uniform::Type::Float4 :
+        {
+            io.write("value", getValue<glm::vec4>());
+            WRITE_MIN_MAX
+            io.write("usesColorPicker", gui.usesColorPicker);
+            break;
+        }
+        case vir::Uniform::Type::Sampler2D :
+        case vir::Uniform::Type::Sampler3D :
+        case vir::Uniform::Type::SamplerCube :
+        case vir::Uniform::Type::Image2D :
+        case vir::Uniform::Type::Image3D :
+        case vir::Uniform::Type::ImageCube :
+        {
+            auto r = getValuePtr<Resource>();
+            if (r != nullptr)
+                io.write("value", r->name().c_str());
+            break;
+        }
+        default:
+            break;
+    }
+    io.writeObjectEnd();
 }
 
 //----------------------------------------------------------------------------//
