@@ -81,7 +81,31 @@ void renderMenuBar(AppData& appData)
             if (ImGui::MenuItem("Save", "Ctrl+S"))
                 {}//setProjectAction(Project::Action::Save, project_, fileDialog_);
             if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
-                {}//setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
+            {
+                appData.fileDialog.runSaveFileDialog
+                (
+                    "Save project",
+                    {"ShaderThing file (*.stf)", "*.stf"},
+                    appData.project.filepath.size() == 0 ? 
+                    appData.project.filename.c_str() :
+                    appData.project.filepath.c_str()
+                );
+                appData.deferredActionBuffer.add
+                (
+                    [&appData]()
+                    {
+                        saveToDisk
+                        (
+                            appData, 
+                            appData.fileDialog.selection().front()
+                        );
+                    },
+                    [&appData]()
+                    {
+                        return appData.fileDialog.validSelection();
+                    }
+                );
+            }//setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
             ImGui::Separator();
             if (ImGui::BeginMenu("Export"))
             {

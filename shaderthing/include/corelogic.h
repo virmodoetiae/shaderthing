@@ -119,7 +119,7 @@ void saveToDisk
 (
     AppData& appData, 
     const std::string& filepath, 
-    bool triggeredByAutosave
+    bool triggeredByAutosave = false
 );
 
 // Save layer data to disk

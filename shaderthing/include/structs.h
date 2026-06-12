@@ -296,6 +296,7 @@ struct AppData
 {
     std::string          controlPanelTitle = "Control panel###CP";
     DeferredActionBuffer deferredActionBuffer;
+    FileDialog           fileDialog;
     Font                 font;
     Project              project;
     Rendering            rendering;
