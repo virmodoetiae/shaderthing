@@ -1,11 +1,12 @@
 #pragma once
 
- #include <random>
+#include <random>
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include "shaderthing/include/oo/deferredactionbuffer.h"
 #include "shaderthing/include/oo/filedialog.h"
+#include "shaderthing/include/oo/layer.h"
 #include "shaderthing/include/oo/resource.h"
 #include "shaderthing/include/oo/sharedstorage.h"
 #include "shaderthing/include/oo/texteditor.h"
@@ -155,6 +156,8 @@ public :
 
 //----------------------------------------------------------------------------//
 
+/*
+
 struct Layer : public UniformContainer
 {
 public :
@@ -244,6 +247,8 @@ public :
     DELETE_COPY(Layer)
 };
 
+*/
+
 //----------------------------------------------------------------------------//
 
 struct Project
@@ -259,7 +264,7 @@ struct Project
 
 //----------------------------------------------------------------------------//
 
-struct Rendering
+struct RenderState
 {
     bool              isPaused                = false;
     bool              isTiledRenderingEnabled = false;
@@ -292,20 +297,22 @@ struct RenderResult
 
 //----------------------------------------------------------------------------//
 
-struct AppData
+struct AppState
 {
-    std::string          controlPanelTitle = "Control panel###CP";
+    std::string          controlPanelTitle           = "Control panel###CP";
     DeferredActionBuffer deferredActionBuffer;
     FileDialog           fileDialog;
     Font                 font;
     Project              project;
-    Rendering            rendering;
-    TextEditor           sharedSourceEditor;
+    RenderState          renderState;
     UPtr<Exporter>       exporter;
     UPtr<SharedStorage>  sharedStorage;
     UPtr<SharedUniforms> sharedUniforms;
     UPtrVector<Layer>    layers;
+    bool                 layersHaveUncompiledEdits   = false;
+    bool                 layersHaveCompilationErrors = false;
     UPtrVector<Resource> resources;
+    
 };
 
 //----------------------------------------------------------------------------//

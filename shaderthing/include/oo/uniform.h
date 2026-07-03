@@ -29,7 +29,7 @@ class Uniform : public vir::Uniform
 {
 protected :
 
-    Uniform(UniformContainer& owner) : owner_(&owner) {};
+    Uniform(UniformContainer* owner) : owner_(owner) {};
     DELETE_COPY(Uniform);
 
     // Owner of this uniform
@@ -53,11 +53,12 @@ public:
 
     static std::string supportedTypeNames[15];
 
-    static const UPtr<Uniform>& create(UniformContainer& owner);
+    static const UPtr<Uniform>& create(UniformContainer* owner);
 
-    static const UPtr<Uniform>& create(const UPtr<UniformContainer>& owner)
+    static const UPtr<Uniform>& create(WPtr<UniformContainer> owner)
     {
-        return create(*owner);
+        auto* po = owner.get();
+        return create(po);
     }
 
     typedef vir::Uniform::Type Type;
@@ -103,9 +104,9 @@ public:
     // (W x H or W x H x D) of the wrapped resource
     WPtr<Uniform> resourceResolutionUniform() const {return resourceResolutionUniform_;};
 
-    void setOwner(UniformContainer& owner);
+    void setOwner(UniformContainer* owner);
 
-    void setOwner(const UPtr<UniformContainer>& owner) {setOwner(*owner.get());}
+    void setOwner(const WPtr<UniformContainer>& owner) {setOwner(owner.get());}
 
     struct GUI
     {

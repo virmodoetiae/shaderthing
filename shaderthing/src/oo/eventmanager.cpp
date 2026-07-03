@@ -6,12 +6,12 @@
 namespace ShaderThing
 {
 
-EventManager::EventManager(AppData& appData) : appData_(appData) 
+EventManager::EventManager(AppState& appState) : appState_(appState) 
 {
     tuneIntoEventBroadcaster();
     
     // Receive MouseMotion event before the vir::InputCamera in
-    // appData.sharedUniforms.shaderCamera. This is necessary to enable the
+    // appState.sharedUniforms.shaderCamera. This is necessary to enable the
     // functionality controlled by the cameraMouseInputRequiresLMBHold flag
     setEventReceiverPriority
     (
@@ -48,17 +48,15 @@ void EventManager::onReceive(vir::Event::WindowResizeEvent& event)
         return;
     }
     glm::ivec2 resolution{event.width, event.height};
-    setWindowResolution(appData_, resolution, true);
+    setWindowResolution(appState_, resolution, true);
     event.width = resolution.x;
     event.height = resolution.y;
 
-    for (auto& layer : appData_.layers)
+    for (auto& layer : appState_.layers)
     {
-        setLayerResolution
+        layer->setResolution
         (
-            layer, 
             resolution, 
-            appData_.rendering.isTiledRenderingEnabled, 
             true
         );
     }
@@ -66,7 +64,7 @@ void EventManager::onReceive(vir::Event::WindowResizeEvent& event)
 
 void EventManager::onReceive(vir::Event::MouseButtonPressEvent& event)
 {
-    auto& su = *(appData_.sharedUniforms);
+    auto& su = *(appState_.sharedUniforms);
     if (!su.isCameraMouseInputEnabled)
         event.handled = true; // Prevent propagation to vir::InputCamera
     if (!su.isMouseInputEnabled)
@@ -94,7 +92,7 @@ void EventManager::onReceive(vir::Event::MouseButtonPressEvent& event)
 
 void EventManager::onReceive(vir::Event::MouseMotionEvent& event)
 {
-    auto& su = *(appData_.sharedUniforms);
+    auto& su = *(appState_.sharedUniforms);
     bool LMBClicked = 
         vir::InputState::instance()->mouseButtonState(VIR_MOUSE_BUTTON_1)
         .isClicked();
@@ -133,7 +131,7 @@ void EventManager::onReceive(vir::Event::MouseMotionEvent& event)
  
 void EventManager::onReceive(vir::Event::MouseButtonReleaseEvent& event)
 {
-    auto& su = *(appData_.sharedUniforms);
+    auto& su = *(appState_.sharedUniforms);
     if (!su.isCameraMouseInputEnabled)
         event.handled = true; // Prevent propagation to vir::InputCamera
     if (!su.isMouseInputEnabled)
@@ -163,12 +161,12 @@ void EventManager::onReceive(vir::Event::KeyPressEvent& event)
             vir::Window::CursorStatus::Captured
     ) // Un-capture mouse on ESC
     {
-        setMouseCaptured(appData_, false);
+        setMouseCaptured(appState_, false);
     }
     auto stKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     if (stKeyCode > 256)
         return;
-    auto& su = *(appData_.sharedUniforms);
+    auto& su = *(appState_.sharedUniforms);
     auto& data(su.iKeyboard[stKeyCode]);
     static auto* inputState = vir::InputState::instance();
     auto& status = inputState->keyState(event.keyCode);
@@ -187,7 +185,7 @@ void EventManager::onReceive(vir::Event::KeyReleaseEvent& event)
     auto stKeyCode = vir::inputKeyCodeVirToShaderToy(event.keyCode);
     if (stKeyCode > 256)
         return;
-    auto& su = *(appData_.sharedUniforms);
+    auto& su = *(appState_.sharedUniforms);
     auto& data(su.iKeyboard[stKeyCode]);
     static auto* inputState = vir::InputState::instance();
     data.x = 0;

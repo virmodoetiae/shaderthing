@@ -5,17 +5,17 @@
 namespace ShaderThing
 {
 
-struct AppData;
+struct AppState;
 
 class EventManager : public vir::Event::Receiver
 {
 private:
 
-    AppData& appData_;
+    AppState& appState_;
 
 public:
 
-    EventManager(AppData& appData);
+    EventManager(AppState& appState);
 
     DECLARE_RECEIVABLE_EVENTS
     (

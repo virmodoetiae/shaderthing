@@ -35,7 +35,7 @@ Resource::~Resource()
 
 std::string Resource::name() const
 {
-    return namePtr_ == nullptr? "" : *namePtr_;
+    return namePtr_ == nullptr ? (cNamePtr_ == nullptr ? "" : *cNamePtr_) : *namePtr_;
 }
 
 void Resource::setName(const std::string& name)
@@ -51,6 +51,15 @@ void Resource::setName(std::string* namePtr)
     if (namePtr_ != nullptr && isNameManaged_)
         delete namePtr_;
     namePtr_ = namePtr;
+    isNameManaged_ = false;
+}
+
+void Resource::setName(const std::string* namePtr)
+{
+    if (namePtr_ != nullptr && isNameManaged_)
+        delete namePtr_;
+    // cNamePtr never managed, so just reset it
+    cNamePtr_ = namePtr;
     isNameManaged_ = false;
 }
 
@@ -701,13 +710,13 @@ void Texture3DResource::readData(float*& data, bool allocate) const
     native_->readData(data, allocate);
 }
 
-//----------------------------------------------------------------------------//
+//---------------------------------------------------------------------------s-//
 
 //----------------------------------------------------------------------------//
 
 UPtr<LayerResource> LayerResource::create
 (
-    const UPtr<Layer>& layer
+    WPtr<Layer> layer
 )
 {
     auto resource = UPtr<LayerResource>(new LayerResource());
@@ -727,12 +736,12 @@ LayerResource::~LayerResource()
     }
 }
 
-bool LayerResource::set(const UPtr<Layer>& layer)
+bool LayerResource::set(WPtr<Layer> layer)
 {
-    if (!layer.valid() || layer->rendering.resourceFramebuffer == nullptr)
+    if (!layer.valid() || layer->renderState_.resourceFramebuffer == nullptr)
         return false;
-    layer_ = layer.getWeak();
-    native_ = &layer->rendering.resourceFramebuffer;
+    layer_ = layer;
+    native_ = &layer->renderState_.resourceFramebuffer;
     return true;
 }
 

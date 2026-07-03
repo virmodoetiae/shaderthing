@@ -61,6 +61,7 @@ protected:
 
     const Type            type_;
     std::string*          namePtr_       = nullptr;
+    const std::string*    cNamePtr_      = nullptr;
     // Ture if namePtr_ is owned by this resource (false e.g. if this resource
     // references a Layer, and thus namePtr_ points to the layer name and is
     // thus not owned)
@@ -91,6 +92,7 @@ public:
     std::string* const&    namePtr() const {return namePtr_;}
     void                   setName(const std::string& name);
     void                   setName(std::string* namePtr);
+    void                   setName(const std::string* namePtr);
     void                   addClientUniform(Uniform* u);
     void                   removeClientUniform(Uniform* u);
     bool                   isUsedByUniform(const Uniform *u) const;
@@ -437,14 +439,14 @@ public:
 
     static UPtr<LayerResource> create
     (
-        const UPtr<Layer>& layer
+        WPtr<Layer> layer
     );
 
     ~LayerResource();
 
     virtual void saveToDisk(ObjectIO& io) override {(void)io;}
     
-    bool set(const UPtr<Layer>& layer);
+    bool set(WPtr<Layer> layer);
     
     void bind(unsigned int unit) override 
     {

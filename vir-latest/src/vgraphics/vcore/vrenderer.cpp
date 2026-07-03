@@ -1,0 +1,68 @@
+#include "vpch.h"
+#include "vgraphics/vcore/vopengl/vopenglrenderer.h"
+
+// This bit of code ensures that the most powerful GPU on the system (if there
+// are more than one) is used, at least on Windows. On other systems, I have
+// no clue, but I suspect it cannot be set from ease from the C++ side of
+// things
+#if defined(__WIN32__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+#include "windows.h"
+extern "C" {
+    __declspec(dllexport) DWORD NvOptimusEnablement = 1;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
+
+namespace vir
+{
+
+GlobalPtr<Renderer> Renderer::initialize()
+{
+    if (!GlobalPtr<Window>::valid() || GlobalPtr<Renderer>::valid())
+        return GlobalPtr<Renderer>();
+    switch(Window::instance()->context()->type())
+    {
+        case (GraphicsContext::Type::OpenGL) :
+            return GlobalPtr<Renderer>(new OpenGLRenderer());
+    }
+    return GlobalPtr<Renderer>();
+}
+
+void Renderer::submit
+(
+    GeometricPrimitive& geometricPrimitive, 
+    Shader* shader, 
+    Framebuffer* target, 
+    bool clearTarget
+)
+{
+    // If I provide a target framebuffer, set it as the rendering target 
+    // by binding it
+    auto window = Window::instance();
+    if (target != nullptr)
+    {
+        window->setViewport(target->width(), target->height());
+        target->bind();
+    }
+    // Otherwise (i.e. no target framebuffer provided), I want to render to the 
+    // screen so check if there is any active framebuffer and unbind it
+    else 
+    {
+        window->setViewport(window->width(), window->height());
+        if (Framebuffer::activeOne() != nullptr)
+            Framebuffer::activeOne()->unbind();
+    }
+    if (clearTarget)
+        api_->clear();
+    
+    // Render
+    submit
+    (
+        geometricPrimitive.vertexArray(), 
+        shader
+    );
+    if (target != nullptr)
+        target->updateColorBufferMipmap(true);
+}
+
+}

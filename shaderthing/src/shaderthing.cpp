@@ -18,8 +18,8 @@ void run()
     vir::initialize(settings);
 
     // Initialize application
-    AppData appData = {};
-    initialize(appData);
+    AppState appState = {};
+    initialize(appState);
 
     // Main loop
     auto window = vir::Window::instance();
@@ -28,10 +28,10 @@ void run()
         // Render GUI and record actions that should only be applied after
         // GUI rendering (deferred actions, e.g., deleting layers, uniforms, 
         // etc.)
-        GUI::renderControlPanel(appData);
-        preRenderUpdate(appData);
-        auto renderResult = renderShaders(appData, nullptr, 1u);
-        postRenderUpdate(appData);
+        GUI::renderControlPanel(appState);
+        preRenderUpdate(appState);
+        auto renderResult = renderShaders(appState, nullptr, 1u);
+        postRenderUpdate(appState);
 
         /*
         processProjectActions();

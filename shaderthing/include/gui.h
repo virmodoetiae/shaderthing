@@ -5,61 +5,48 @@
 namespace ShaderThing
 {
 
-struct AppData;
+struct AppState;
 class Uniform;
 
 namespace GUI
 {
 
+// gui_main.cpp
 void renderControlPanel
 (
-    AppData& appData
+    AppState& appState
 );
 
+// gui_main.cpp
 void renderMenuBar
 (
-    AppData& appData
+    AppState& appState
 );
 
-void renderLayerMenuItem
-(
-    UPtr<Layer>& layer, 
-    AppData& appData
-);
-
-void renderLayerFramebufferSettings
-(
-    Layer* layer,
-    AppData& appData
-);
-
+// gui_layer.cpp
 void renderLayersTabBar
 (
-    AppData& appData
+    AppState& appState
 );
 
-void renderLayerTab
-(
-    UPtr<Layer>& layer, 
-    AppData& appData
-);
-
+// gui_uniform.cpp
 void renderUniformsTab
 (
-    UPtr<Layer>& layer, 
-    AppData& appData
+    Layer* layer, 
+    AppState& appState
 );
 
 // Render the default/built-in shared uniforms only as a table and return the
 // row count
+// gui_uniform.cpp
 int renderBuiltInSharedUniforms
 (
-    AppData& appData
+    AppState& appState
 );
-
 
 // Render the button for editing uniform bounds, returns a flag indicating 
 // whether the bounds have been changed during this frame
+// gui_uniform.cpp
 bool renderEditUniformBoundsButton
 (
     const vir::Ptr<Uniform>& uniform,
@@ -69,52 +56,31 @@ bool renderEditUniformBoundsButton
 // Render the GUI of the provided uniform at the provided table row and return
 // true if the uniform type is changed by user interation with this GUI, else
 // false
+// gui_uniform.cpp
 bool renderUniformTableRow
 (
     const UPtr<Uniform>& uniform,
-    const UPtr<Layer>& layer,
-    AppData& appData,
+    Layer* layer,
+    AppState& appState,
     int row,
     const bool showSeparator = false,
     const bool showSharedAndDefaultUniforms = true
 );
 
-//
-void renderResourcesMenuItem(AppData& appData);
+// gui_resource.cpp
+void renderResourcesMenuItem(AppState& appState);
 
-//
-void renderResourcesTable(AppData& appData);
+// gui_resource.cpp
+void renderResourcesTable(AppState& appState);
 
-//
-void renderResourcesTableRow(AppData& appData, int row);
+// gui_resource.cpp
+void renderResourcesTableRow(AppState& appState, int row);
 
-//
-void renderAddResourceButton(AppData& appData, int row);
+// gui_resource.cpp
+void renderAddResourceButton(AppState& appState, int row);
 
-//
-void renderResourceActionsButton(AppData& appData, int row);
-
-// Overloads for convenience ---------------------------------------------------
-
-//
-inline void renderLayerFramebufferSettings
-(
-    const WPtr<Layer>& layer,
-    AppData& appData
-)
-{
-    renderLayerFramebufferSettings(layer.get(), appData);
-}
-
-//
-inline void renderLayerFramebufferSettings
-(
-    const UPtr<Layer>& layer,
-    AppData& appData
-)
-{
-    renderLayerFramebufferSettings(layer.get(), appData);
-}
+// gui_resource.cpp
+void renderResourceActionsButton(AppState& appState, int row);
 
 }
 

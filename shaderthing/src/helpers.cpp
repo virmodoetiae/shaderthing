@@ -422,7 +422,7 @@ void enforceUniqueName
             const Layer* itemi = uitemi.get();
             if 
             (
-                itemi->name != name || 
+                itemi->name() != name || 
                 (skipItem != nullptr && skipItem == itemi)
             )
                 continue;

@@ -26,7 +26,7 @@ namespace GUI
 // General -------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void renderControlPanel(AppData& appData)
+void renderControlPanel(AppState& appState)
 {
     // Move to deferred update
     //font_.checkLoadJapaneseAndOrSimplifiedChinese();
@@ -38,7 +38,7 @@ void renderControlPanel(AppData& appData)
     (
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
     );
-    ImGui::Begin(appData.controlPanelTitle.c_str(), NULL, flags);
+    ImGui::Begin(appState.controlPanelTitle.c_str(), NULL, flags);
 
     // Refresh icon if needed
     static bool isIconSet(false);
@@ -47,7 +47,7 @@ void renderControlPanel(AppData& appData)
     {
         isIconSet = vir::ImGuiRenderer::setWindowIcon
         (
-            appData.controlPanelTitle.c_str(), 
+            appState.controlPanelTitle.c_str(), 
             ByteData::Icon::sTIconData, 
             ByteData::Icon::sTIconSize,
             false
@@ -55,8 +55,8 @@ void renderControlPanel(AppData& appData)
         isWindowDocked = ImGui::IsWindowDocked();
     }
     
-    renderMenuBar(appData);
-    renderLayersTabBar(appData);
+    renderMenuBar(appState);
+    renderLayersTabBar(appState);
 
     ImGui::End();
     
@@ -65,7 +65,7 @@ void renderControlPanel(AppData& appData)
 
 //----------------------------------------------------------------------------//
 
-void renderMenuBar(AppData& appData)
+void renderMenuBar(AppState& appState)
 {
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
@@ -82,27 +82,27 @@ void renderMenuBar(AppData& appData)
                 {}//setProjectAction(Project::Action::Save, project_, fileDialog_);
             if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
             {
-                appData.fileDialog.runSaveFileDialog
+                appState.fileDialog.runSaveFileDialog
                 (
                     "Save project",
                     {"ShaderThing file (*.stf)", "*.stf"},
-                    appData.project.filepath.size() == 0 ? 
-                    appData.project.filename.c_str() :
-                    appData.project.filepath.c_str()
+                    appState.project.filepath.size() == 0 ? 
+                    appState.project.filename.c_str() :
+                    appState.project.filepath.c_str()
                 );
-                appData.deferredActionBuffer.add
+                appState.deferredActionBuffer.add
                 (
-                    [&appData]()
+                    [&appState]()
                     {
                         saveToDisk
                         (
-                            appData, 
-                            appData.fileDialog.selection().front()
+                            appState, 
+                            appState.fileDialog.selection().front()
                         );
                     },
-                    [&appData]()
+                    [&appState]()
                     {
-                        return appData.fileDialog.validSelection();
+                        return appState.fileDialog.validSelection();
                     }
                 );
             }//setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
@@ -118,7 +118,7 @@ void renderMenuBar(AppData& appData)
         {
             if (ImGui::BeginMenu("Window", !vir::Window::instance()->iconified()))
             {
-                auto& su = *(appData.sharedUniforms);
+                auto& su = *(appState.sharedUniforms);
                 ImGui::Text("Resolution         ");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.0*ImGui::GetFontSize());
@@ -133,7 +133,7 @@ void renderMenuBar(AppData& appData)
                 )
                     setWindowResolution
                     (
-                        appData,
+                        appState,
                         resolution,
                         false
                     );
@@ -148,10 +148,10 @@ void renderMenuBar(AppData& appData)
                     ImGui::Checkbox
                     (
                         "##windowVSync", 
-                        &appData.rendering.isVSyncEnabled
+                        &appState.renderState.isVSyncEnabled
                     )
                 )
-                    window->setVSync(appData.rendering.isVSyncEnabled);
+                    window->setVSync(appState.renderState.isVSyncEnabled);
 
                 ImGui::Text("GUI fps multiplier ");
                 if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -167,14 +167,14 @@ further reduction of the shader rendering frame rate)");
                 }
                 ImGui::SameLine();
                 ImGui::PushItemWidth(8.f*ImGui::GetFontSize());
-                int nRenderingTiles = appData.rendering.nTiles;
-                if (appData.rendering.isPaused)
+                int nRenderingTiles = appState.renderState.nTiles;
+                if (appState.renderState.isPaused)
                     ImGui::BeginDisabled();
                 if (ImGui::InputInt("##nRenderingTiles", &nRenderingTiles))
                 {
-                    setRenderingTiles(appData, nRenderingTiles);
+                    setRenderingTiles(appState, nRenderingTiles);
                 }
-                if (appData.rendering.isPaused)
+                if (appState.renderState.isPaused)
                     ImGui::EndDisabled();
                 
                 ImGui::Text("Pause render below ");
@@ -194,14 +194,14 @@ project exports)");
                     ImGui::InputFloat
                     (
                         "##maxLowFps", 
-                        &appData.rendering.lowerFpsLimit, 
+                        &appState.renderState.lowerFpsLimit, 
                         0.f, 
                         0.f, 
                         "%.1f"
                     )
                 )
-                    appData.rendering.lowerFpsLimit = 
-                        std::max(appData.rendering.lowerFpsLimit, 0.f);
+                    appState.renderState.lowerFpsLimit = 
+                        std::max(appState.renderState.lowerFpsLimit, 0.f);
                 ImGui::SameLine();
                 ImGui::PopItemWidth();
                 ImGui::Text("fps");
@@ -210,21 +210,21 @@ project exports)");
                 (
                     ImGui::Button
                     (
-                        !appData.rendering.isPaused ? 
+                        !appState.renderState.isPaused ? 
                         "Pause rendering" : "Resume rendering", 
                         ImVec2(-1, 0)
                     )
                 )
-                    toggleRenderingPaused(appData, false);
+                    toggleRenderingPaused(appState, false);
 
                 if (ImGui::Button("Capture mouse cursor", ImVec2(-1, 0)))
-                    setMouseCaptured(appData, true);
+                    setMouseCaptured(appState, true);
 
                 ImGui::EndMenu();
             }
 
-            for (auto& layer : appData.layers)
-                renderLayerMenuItem(layer, appData);
+            for (auto& layer : appState.layers)
+                layer->renderMenuItemGui();
             /* TODO
             ImGui::Separator();
             Layer::renderShaderLanguangeExtensionsMenuGui
@@ -238,9 +238,9 @@ project exports)");
         if (ImGui::BeginMenu("Resources"))
         {
             // TODO
-            renderResourcesMenuItem(appData);
+            renderResourcesMenuItem(appState);
             shadersRequireRecompilation = 
-                appData.sharedStorage->renderMenuItemGui();
+                appState.sharedStorage->renderMenuItemGui();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Find"))
@@ -298,10 +298,10 @@ project exports)");
 
     // TODO
     if (Resource::gui.isDetachedFromControlPanel)
-        renderResourcesTable(appData);
-    if (appData.sharedStorage->isGuiDetachedFromMenu())
+        renderResourcesTable(appState);
+    if (appState.sharedStorage->isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
-            appData.sharedStorage->renderGui();
+            appState.sharedStorage->renderGui();
     /* TODO
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
@@ -324,9 +324,9 @@ project exports)");
 
     if (shadersRequireRecompilation)
     {
-        for (auto& layer : appData.layers)
+        for (auto& layer : appState.layers)
         {
-            compileShader(layer, appData);
+            layer->compileShader();
         }
     }
 
@@ -347,11 +347,11 @@ project exports)");
         if (ImGui::Button("Confirm"))
         {
             //setProjectAction(Project::Action::New, project_, fileDialog_);
-            appData.deferredActionBuffer.add
+            appState.deferredActionBuffer.add
             (
-                [&appData]()
+                [&appState]()
                 {
-                    initialize(appData);
+                    initialize(appState);
                 }
             );
             ImGui::CloseCurrentPopup();
@@ -365,498 +365,35 @@ project exports)");
 
 //----------------------------------------------------------------------------//
 
-void renderLayerMenuItem(UPtr<Layer>& layer, AppData& appData)
+void renderLayersTabBar(AppState& appState)
 {
-    if
-    (
-        ImGui::BeginMenu
-        (
-            ("Layer ["+layer->name+"]###"+layer->imGuiMenuId).c_str()
-        )
-    )
-    {
-        auto& rendering = layer->rendering;
-        const float fontSize(ImGui::GetFontSize());
-        const float entryWidth(14*fontSize);
-        ImGui::Text("Name                 ");
-        ImGui::SameLine();
-        static std::unique_ptr<char[]> label(new char[24]);
-        std::sprintf(label.get(), "##layer%dInputText", layer->id);
-        ImGui::PushItemWidth(entryWidth);
-        if (ImGui::InputText(label.get(), &layer->name))
-        {
-            Helpers::enforceUniqueName
-            (
-                layer->name,
-                appData.layers,
-                layer.get()
-            );
-        }
-        ImGui::PopItemWidth();
-        
-        static std::map<Layer::Rendering::Target, const char*> 
-        renderTargetToName
-        {
-            {
-                Layer::Rendering::Target::InternalFramebufferAndWindow, 
-                "Framebuffer & window"
-            },
-            {Layer::Rendering::Target::InternalFramebuffer, "Framebuffer"},
-            {Layer::Rendering::Target::Window, "Window"}
-        };
-        ImGui::Text("Render target        ");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(entryWidth);
-        if 
-        (
-            ImGui::BeginCombo
-            (
-                "##renderingTarget", 
-                renderTargetToName.at(rendering.target)
-            )
-        )
-        {
-            for(auto entry : renderTargetToName)
-            {
-                if (!ImGui::Selectable(entry.second))
-                    continue;
-                auto target = entry.first;
-                if (target != rendering.target)
-                {
-                    rendering.target = target;
-                    if (rendering.target != Layer::Rendering::Target::Window)
-                        addLayerToResources
-                        (
-                            layer,
-                            appData.resources
-                        );
-                    else
-                        removeLayerFromResources
-                        (
-                            layer,
-                            appData.resources
-                        );
-                }
-            }
-            ImGui::EndCombo();
-        }
-        ImGui::PopItemWidth();
-
-        if 
-        (
-            rendering.target == Layer::Rendering::Target::Window || 
-            vir::Window::instance()->iconified()
-        )
-            ImGui::BeginDisabled();
-        ImGui::Text("Resolution           ");
-        ImGui::SameLine();
-        auto x0 = ImGui::GetCursorPos().x;
-        if 
-        (
-            ImGui::Button
-            (
-                layer->isAspectRatioBoundToWindow ? 
-                " " ICON_FA_LOCK " " : 
-                " " ICON_FA_LOCK_OPEN " "
-            )
-        )
-        {
-            layer->isAspectRatioBoundToWindow = 
-                !layer->isAspectRatioBoundToWindow;
-            if (layer->isAspectRatioBoundToWindow)
-            {
-                auto window = vir::Window::instance();
-                glm::ivec2 resolution = {window->width(), window->height()};
-                setLayerResolution
-                (
-                    layer, 
-                    resolution, 
-                    appData.rendering.isTiledRenderingEnabled, 
-                    false
-                );
-            }
-        }
-        if 
-        (
-            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
-            ImGui::BeginTooltip()
-        )
-        {
-            ImGui::Text(
-                layer->isAspectRatioBoundToWindow ?
-ICON_FA_LOCK " - The aspect ratio is locked\n"
-"to that of the main window" :
-ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
-"to that of the main window"
-            );
-            ImGui::EndTooltip();
-        }
-        ImGui::SameLine();
-        auto aspectRatioLockSize = ImGui::GetCursorPos().x-x0;
-        ImGui::PushItemWidth(entryWidth-aspectRatioLockSize);
-        glm::ivec2 resolution = layer->resolution;
-        std::sprintf(label.get(), "##layer%dResolution", layer->id);
-        if (ImGui::InputInt2(label.get(), glm::value_ptr(resolution)))
-            setLayerResolution
-            (
-                layer, 
-                resolution, 
-                appData.rendering.isTiledRenderingEnabled, 
-                false,
-                true
-            );
-        ImGui::PopItemWidth();
-        ImGui::Text("Auto-resize mode     ");
-        ImGui::SameLine();
-        if
-        (
-            ImGui::Button
-            (
-                layer->rescaleWithWindow ?
-                "Rescale on window resize" :
-                "Do not auto-resize",
-                {-1, 0}
-            )
-        )
-            layer->rescaleWithWindow = !layer->rescaleWithWindow;
-        if 
-        (
-            rendering.target == Layer::Rendering::Target::Window || 
-            vir::Window::instance()->iconified()
-        )
-            ImGui::EndDisabled();
-    
-        if (rendering.target != Layer::Rendering::Target::Window)
-        {
-            ImGui::SeparatorText("Framebuffer settings");
-            renderLayerFramebufferSettings(layer, appData);
-
-            // TODO
-            /*
-            ImGui::SeparatorText("Post-processing effects");
-            int iDelete = -1;
-            int iSrc = -1; 
-            int iTrg = -1;
-            int nPostProcesses = rendering.postProcesses.size();
-            for (int i = 0; i < nPostProcesses; i++)
-            {
-                auto& postProcess = rendering.postProcesses[i];
-                ImGui::PushID(i);
-                if (ImGui::SmallButton(ICON_FA_TRASH))
-                    iDelete = i;
-                ImGui::SameLine();
-                if (i == 0)
-                    ImGui::BeginDisabled();
-                if (ImGui::SmallButton(ICON_FA_ARROW_UP))
-                {
-                    iSrc = i;
-                    iTrg = std::max(i-1, 0);
-                }
-                if (i == 0)
-                    ImGui::EndDisabled();
-                ImGui::SameLine();
-                if (i == nPostProcesses-1)
-                    ImGui::BeginDisabled();
-                if (ImGui::SmallButton(ICON_FA_ARROW_DOWN))
-                {
-                    iSrc = i;
-                    iTrg = std::min(i+1, nPostProcesses-1);
-                }
-                if (i == nPostProcesses-1)
-                    ImGui::EndDisabled();
-                ImGui::SameLine();
-                if 
-                (
-                    ImGui::BeginMenu
-                    (
-                        std::string
-                        (
-                            std::to_string(i+1)+" - "+postProcess->name()
-                        ).c_str()
-                    )
-                )
-                {
-                    // Render post-processing effect GUI
-                    if (postProcess->canRunOnDeviceInUse())
-                        postProcess->renderGui();
-                    else
-                    {
-                        ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
-                        ImGui::Text(postProcess->errorMessage().c_str());
-                        ImGui::PopTextWrapPos();
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::PopID();
-            }
-            if (iDelete != -1)
-                rendering.postProcesses.erase
-                (
-                    rendering.postProcesses.begin() + iDelete
-                );
-            else if (iSrc != iTrg)
-                std::swap
-                (
-                    rendering.postProcesses[iSrc], 
-                    rendering.postProcesses[iTrg]
-                );
-            
-            // Selector for adding a new post-processing effect with the 
-            // constraint that each layer may have at most one 
-            // tpost-processing effect of each ype
-            ImGui::PushItemWidth(-1);
-            if 
-            (
-                ImGui::BeginCombo
-                (
-                    "##postProcessingCombo", 
-                    "Add a post-processing effect"
-                )
-            )
-            {
-                static std::vector<vir::PostProcess::Type> allAvailableTypes(0);
-                if (allAvailableTypes.size() == 0)
-                {
-                    allAvailableTypes.reserve
-                    (
-                        vir::PostProcess::typeToName.size()
-                    );
-                    for (auto kv : vir::PostProcess::typeToName)
-                    {
-                        if (kv.first != vir::PostProcess::Type::Undefined)
-                            allAvailableTypes.push_back(kv.first);
-                    }
-                }
-                std::vector<vir::PostProcess::Type> 
-                    availableTypes(allAvailableTypes);
-                for (auto& postProcess : rendering.postProcesses)
-                {
-                    auto it = std::find
-                    (
-                        availableTypes.begin(), 
-                        availableTypes.end(), 
-                        postProcess->type()
-                    );
-                    if (it != availableTypes.end())
-                        availableTypes.erase(it);
-                }
-                for (auto type : availableTypes)
-                {
-                    if 
-                    (
-                        ImGui::Selectable
-                        (
-                            vir::PostProcess::typeToName.at(type).c_str()
-                        )
-                    )
-                    {
-                        auto postProcess = 
-                            PostProcess::create(this, type);
-                        if (postProcess != nullptr)
-                            rendering.postProcesses.emplace_back
-                            (
-                                std::move(postProcess)
-                            );
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::PopItemWidth();
-            */
-        }
-        ImGui::EndMenu();
-    }
-    //ImGui::PopID();
-}
-
-//----------------------------------------------------------------------------//
-
-void renderLayerFramebufferSettings
-(
-    Layer* layer,
-    AppData& appData
-)
-{
-    const float entryWidth(14*ImGui::GetFontSize());
-    ImGui::Text("Internal data format ");
-    ImGui::SameLine();
-    ImGui::PushItemWidth(entryWidth);
-    Layer::Rendering& rendering = layer->rendering;
-    if 
-    (
-        ImGui::BeginCombo
-        (
-            "##layerInternalFormatCombo",
-            vir::TextureBuffer::internalFormatToName.at
-            (
-                rendering.backFramebuffer->
-                    colorBufferInternalFormat()
-            ).c_str()
-        )
-    )
-    {
-        static vir::TextureBuffer::InternalFormat 
-        supportedInternalFormats[2]
-        {
-            vir::TextureBuffer::InternalFormat::RGBA_UNI_8, 
-            vir::TextureBuffer::InternalFormat::RGBA_SF_32
-        };
-        for (auto internalFormat : supportedInternalFormats)
-        {
-            if 
-            (
-                ImGui::Selectable
-                (
-                    vir::TextureBuffer::internalFormatToName.at
-                    (
-                        internalFormat
-                    ).c_str()
-                )
-            )
-                rebuildLayerFramebuffers
-                (
-                    layer,
-                    internalFormat,
-                    layer->resolution,
-                    appData.rendering.isTiledRenderingEnabled
-                );
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::PopItemWidth();
-
-    //
-    std::string selectedWrapModeX = "";
-    std::string selectedWrapModeY = "";
-    std::string selectedMagFilterMode = "";
-    std::string selectedMinFilterMode = "";
-    if (rendering.backFramebuffer != nullptr)
-    {
-        selectedWrapModeX = vir::TextureBuffer::wrapModeToName.at
-        (
-            rendering.backFramebuffer->colorBufferWrapMode(0)
-        );
-        selectedWrapModeY = vir::TextureBuffer::wrapModeToName.at
-        (
-            rendering.backFramebuffer->colorBufferWrapMode(1)
-        );
-        selectedMagFilterMode = 
-            vir::TextureBuffer::filterModeToName.at
-            (
-                rendering.backFramebuffer->colorBufferMagFilterMode()
-            );
-        selectedMinFilterMode = 
-            vir::TextureBuffer::filterModeToName.at
-            (
-                rendering.backFramebuffer->colorBufferMinFilterMode()
-            );
-    }
-    ImGui::Text("Horizontal wrap mode ");
-    ImGui::SameLine();
-    ImGui::PushItemWidth(entryWidth);
-    if 
-    (
-        ImGui::BeginCombo
-        (
-            "##layerWrapModeXCombo",
-            selectedWrapModeX.c_str()
-        ) && rendering.backFramebuffer != nullptr
-    )
-    {
-        for (auto entry : vir::TextureBuffer::wrapModeToName)
-        {
-            if (ImGui::Selectable(entry.second.c_str()))
-                setLayerFramebufferWrapMode(layer, 0, entry.first);
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::PopItemWidth();
-    ImGui::Text("Vertical   wrap mode ");
-    ImGui::SameLine();
-    ImGui::PushItemWidth(entryWidth);
-    if 
-    (
-        ImGui::BeginCombo
-        (
-            "##layerWrapModeYCombo",
-            selectedWrapModeY.c_str()
-        ) && rendering.backFramebuffer != nullptr
-    )
-    {
-        for (auto entry : vir::TextureBuffer::wrapModeToName)
-        {
-            if (ImGui::Selectable(entry.second.c_str()))
-                setLayerFramebufferWrapMode(layer, 1, entry.first);
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::PopItemWidth();
-
-    ImGui::Text("Magnification filter ");
-    ImGui::SameLine();
-    ImGui::PushItemWidth(entryWidth);
-    if 
-    (
-        ImGui::BeginCombo
-        (
-            "##layerMagModeCombo",
-            selectedMagFilterMode.c_str()
-        ) && rendering.backFramebuffer != nullptr
-    )
-    {
-        for (auto entry : vir::TextureBuffer::filterModeToName)
-        {
-            if 
-            (
-                entry.first != FilterMode::Nearest&&
-                entry.first != FilterMode::Linear
-            )
-                continue;
-            if (ImGui::Selectable(entry.second.c_str()))
-                setLayerFramebufferMagFilterMode(layer, entry.first);
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::PopItemWidth();
-
-    ImGui::Text("Minimization  filter ");
-    ImGui::SameLine();
-    ImGui::PushItemWidth(entryWidth);
-    if 
-    (
-        ImGui::BeginCombo
-        (
-            "##layerMinModeCombo",
-            selectedMinFilterMode.c_str()
-        ) && rendering.backFramebuffer != nullptr
-    )
-    {
-        for (auto entry : vir::TextureBuffer::filterModeToName)
-        {
-            if (ImGui::Selectable(entry.second.c_str()))
-                setLayerFramebufferMinFilterMode(layer, entry.first);
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::PopItemWidth();
-}
-
-//----------------------------------------------------------------------------//
-
-void renderLayersTabBar(AppData& appData)
-{
-    auto& layers = appData.layers;
-    static bool compilationErrors(false);
-    static bool anyUncompiledEdits(false);
-    if (appData.rendering.toggles.requestFullRecompilation)
+    auto& layers = appState.layers;
+    /*
+    if (appState.renderState.toggles.requestFullRecompilation)
     {
         for (auto& layer : layers)
         {
             layer->hasUncompiledEdits = true;
         }
-        appData.rendering.toggles.requestFullRecompilation = false;
+        appState.renderState.toggles.requestFullRecompilation = false;
     }
-    if (anyUncompiledEdits || compilationErrors) // Render compilation button 
+    */
+    appState.layersHaveUncompiledEdits = false;
+    appState.layersHaveCompilationErrors = false;
+    for (auto& layer : layers)
+    {
+        appState.layersHaveUncompiledEdits = 
+            appState.layersHaveUncompiledEdits ||
+            layer->hasUncompiledEdits;
+        appState.layersHaveCompilationErrors = 
+            appState.layersHaveCompilationErrors ||
+            layer->hasCompilationErrors();
+    }
+    if 
+    (
+        appState.layersHaveUncompiledEdits || 
+        appState.layersHaveCompilationErrors
+    ) // Render compilation button 
     {
         float time = vir::Window::instance()->time()->outerTime();
         ImVec4 compileButtonColor = 
@@ -876,7 +413,7 @@ void renderLayersTabBar(AppData& appData)
             ImGui::SetTooltip("Compiling project shaders...");
             for (auto& layer : layers)
             {
-                compileShader(layer, appData);
+                layer->compileShader();
             }
         }
         ImGui::PopStyleColor();
@@ -892,71 +429,19 @@ void renderLayersTabBar(AppData& appData)
 
     // Render list of compilation errors with formatting -----------------------
     bool errorColorPushed = false;
-    if (compilationErrors)
+    if (appState.layersHaveCompilationErrors)
     {
         ImGui::Separator();
         ImGui::PushStyleColor(ImGuiCol_Text, {1,0,0,1});
         errorColorPushed = true;
         ImGui::Text("Compilation errors in:");
     }
-    compilationErrors = false;
-    anyUncompiledEdits = false;
-    const auto& sharedErrors // First render errors in shared source -----------
-    (
-        appData.sharedSourceEditor.getErrorMarkers()
-    );
-    if (sharedErrors.size() > 0)
+    Layer::renderSharedCompilationErrorsGui();
+    for (auto& layer : layers) 
     {
-        compilationErrors = true;
-        ImGui::Bullet(); ImGui::Text("Shared source");
-        if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-        {
-            for (auto& error : sharedErrors)
-            {
-                // First is line no., second is actual error text
-                std::string errorText = 
-                    "Line "+std::to_string(error.first)+": "+error.second;
-                ImGui::Text(errorText.c_str());
-            }
-            ImGui::EndTooltip();
-        }
+        layer->renderCompilationErrorsGui();
     }
-    for (auto& layer : layers) // Second, render layer-specific errors in either
-                               // source header or editable source -------------
-    {
-        const auto& sourceErrors(layer->sourceEditor.getErrorMarkers());
-        if (sourceErrors.size() > 0 || layer->headerErrors.size() > 0)
-        {
-            compilationErrors = true;
-            ImGui::Bullet(); ImGui::Text(layer->name.c_str());
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-            {
-                if (layer->headerErrors.size() > 0)
-                    ImGui::Text(layer->headerErrors.c_str());
-                for (auto& error : sourceErrors)
-                {
-                    // First is line no., second is actual error text
-                    std::string errorText = 
-                        "Line "+std::to_string(error.first)+": "+error.second;
-                    ImGui::Text(errorText.c_str());
-                }
-                ImGui::EndTooltip();
-            }
-        }
-        if
-        (
-            layer->sourceEditor.isTextChanged() || 
-            appData.sharedSourceEditor.isTextChanged()
-        )
-            layer->hasUncompiledEdits = true;
-        if 
-        (
-            appData.sharedSourceEditor.isTextChanged() ||
-            layer->hasUncompiledEdits
-        )
-            anyUncompiledEdits = true;
-    }
-    if (compilationErrors)
+    if (appState.layersHaveCompilationErrors)
         ImGui::Separator();
     if (errorColorPushed)
         ImGui::PopStyleColor();
@@ -976,14 +461,14 @@ void renderLayersTabBar(AppData& appData)
     {
         reorderable = true;
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
-            createNewLayer(appData);
+            createNewLayer(appState);
         auto tabBar = ImGui::GetCurrentTabBar();
         std::pair<unsigned int, unsigned int> swap {0,0};
         for (int i = 0; i < (int)layers.size(); i++)
         {
             bool open = true;
             auto& layer = layers[i];
-            std::string tabLabel = layer->name+"###"+layer->imGuiTabId;
+            std::string tabLabel = layer->name()+"###"+layer->imGuiTabId;
             if
             (
                 ImGui::BeginTabItem
@@ -994,7 +479,7 @@ void renderLayersTabBar(AppData& appData)
                 )
             )
             {
-                renderLayerTab(layer, appData);
+                layer->renderTabGui();
                 ImGui::EndTabItem();
             }
             if (!open) // I.e., if 'x' is pressed to delete the tab
@@ -1019,12 +504,12 @@ void renderLayersTabBar(AppData& appData)
                 ImGui::Text
                 (
                     "Are you sure you want to delete '%s'?", 
-                    layer->name.c_str()
+                    layer->name().c_str()
                 );
                 ImGui::Text("This action cannot be undone!");
                 if (ImGui::Button("Delete"))
                 {
-                    appData.deferredActionBuffer.add
+                    appState.deferredActionBuffer.add
                     (
                         [&layer, &layers]()
                         {
@@ -1066,15 +551,15 @@ void renderLayersTabBar(AppData& appData)
         }
         if (swap.first != swap.second)
         {
-            const auto d1 = layers[swap.first]->depth;
-            const auto d2 = layers[swap.second]->depth;
+            const auto d1 = layers[swap.first]->depth();
+            const auto d2 = layers[swap.second]->depth();
             std::swap
             (
                 layers[swap.first], 
                 layers[swap.second]
             );
-            setLayerDepth(layers[swap.first], d1);
-            setLayerDepth(layers[swap.second], d2);
+            layers[swap.first]->setDepth(d1);
+            layers[swap.second]->setDepth(d2);
             swap = {0, 0};
         }
         ImGui::EndTabBar();
@@ -1084,113 +569,17 @@ void renderLayersTabBar(AppData& appData)
     // a rendering restart. This flag is set in the lambda
     // Uniform::renderUniformsTab::renderSharedUniformsGui eventually called by
     // renderTabBarGui
-    if (appData.rendering.toggles.restartRendering)
+    if (appState.renderState.toggles.restartRendering)
     {
         for (auto& layer : layers)
         {
-            layer->rendering.framebufferA->clearColorBuffer();
-            layer->rendering.framebufferB->clearColorBuffer();
+            layer->clearFramebuffers();
         }
-        appData.rendering.toggles.restartRendering = false;
+        appState.renderState.toggles.restartRendering = false;
     }
 }
 
 //----------------------------------------------------------------------------//
-
-void renderLayerTab(UPtr<Layer>& layer,AppData& appData)
-{
-    static unsigned int gActiveTabId = 0;
-    static unsigned int gActiveLayerId = 0;
-    bool layerChanged = (gActiveLayerId != layer->id);
-    if (layerChanged)
-        gActiveLayerId = layer->id;
-    if (ImGui::BeginTabBar("##layerTabBar"))
-    {
-        if (layerChanged && layer->activeGuiTabId != gActiveTabId)
-        {
-            switch (gActiveTabId)
-            {
-                case 0 :
-                    ImGui::SetTabItemClosed("Shared source");
-                    ImGui::SetTabItemClosed("Uniforms");
-                    break;
-                case 1 :
-                    ImGui::SetTabItemClosed("Fragment source");
-                    ImGui::SetTabItemClosed("Uniforms");
-                    break;
-                case 2 :
-                    ImGui::SetTabItemClosed("Fragment source");
-                    ImGui::SetTabItemClosed("Shared source");
-                    break;
-            }
-        }
-        if (ImGui::BeginTabItem("Fragment source"))
-        {
-            bool headerErrors(layer->headerErrors.size() > 0);
-            bool madeReplacements = 
-                layer->sourceEditor.renderFindReplaceToolGui();
-            layer->hasUncompiledEdits = 
-                layer->hasUncompiledEdits || madeReplacements;
-            if (ImGui::TreeNode("Header"))
-            {
-                float indent(layer->sourceEditor.getLineIndexColumnWidth());
-                ImGui::Unindent(); // Remove indent from Header TreeNode
-                ImGui::Indent(indent);
-                ImGui::PushStyleColor
-                (
-                    ImGuiCol_Text, 
-                    ImGui::GetStyle().Colors[ImGuiCol_TextDisabled] // Gray
-                );
-                ImGui::Text(layer->sourceHeader.c_str());
-                ImGui::PopStyleColor(); 
-                if 
-                (
-                    headerErrors && 
-                    ImGui::IsItemHovered() && 
-                    ImGui::BeginTooltip()
-                )
-                {
-                    ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
-                    ImGui::PushStyleColor(ImGuiCol_Text, {1,0,0,1}); // Red
-                    ImGui::Text(layer->headerErrors.c_str());
-                    ImGui::PopStyleColor();
-                    ImGui::PopTextWrapPos();
-                    ImGui::EndTooltip();
-                }
-                ImGui::TreePop();
-                ImGui::Separator();
-                ImGui::Dummy(ImVec2(-1, ImGui::GetTextLineHeight()));
-                ImGui::Unindent(indent);
-                ImGui::Indent(); // Re-add indent from Header TreeNode
-            }
-            layer->sourceEditor.renderGui("##sourceEditor");
-            gActiveTabId = 0;
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Shared source"))
-        {
-            bool madeReplacements = 
-                appData.sharedSourceEditor.renderFindReplaceToolGui();
-            layer->hasUncompiledEdits = 
-                layer->hasUncompiledEdits || madeReplacements;
-            appData.sharedSourceEditor.renderGui("##sharedSourceEditor");
-            gActiveTabId = 1;
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Uniforms"))
-        {
-            renderUniformsTab
-            (
-                layer,
-                appData
-            );
-            gActiveTabId = 2;
-            ImGui::EndTabItem();
-        }
-        layer->activeGuiTabId = gActiveTabId;
-        ImGui::EndTabBar();
-    }
-}
 
 #define START_ROW(row, column)                                          \
     ImGui::PushID(row);                                                 \
@@ -1212,10 +601,10 @@ void renderLayerTab(UPtr<Layer>& layer,AppData& appData)
 // Uniforms ------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
+void renderUniformsTab(Layer* layer, AppState& appState)
 {
     //--------------------------------------------------------------------------
-    auto& su = *(appData.sharedUniforms);
+    auto& su = *(appState.sharedUniforms);
     float fontSize = ImGui::GetFontSize();
     bool atLeastOneUniformMarkedForDeletion = false;
     bool atLeastOneUniformTypeChanged = false;
@@ -1266,7 +655,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
 
         // First, render the built-in shared uniforms
         if (showSharedAndDefaultUniforms)
-            row = renderBuiltInSharedUniforms(appData);
+            row = renderBuiltInSharedUniforms(appState);
 
         // Then, render the user-created shared uniforms
         int nSharedUniforms = 
@@ -1284,7 +673,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
                 (
                     uniform,
                     layer,
-                    appData,
+                    appState,
                     row++,
                     i == nSharedUniforms-1
                 );
@@ -1304,7 +693,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
                 (
                     uniform,
                     layer,
-                    appData,
+                    appState,
                     row++,
                     false,
                     showSharedAndDefaultUniforms
@@ -1320,7 +709,8 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         START_COLUMN(column)
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
         {
-            auto& u = Uniform::create(layer);
+            auto pLayer = layer->weakFromThis();
+            auto& u = Uniform::create(pLayer);
             layer->cache.uncompiledUniforms.emplace_back(u.getWeak());
         }
         if 
@@ -1378,7 +768,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         atLeastOneUniformTypeChanged ||
         atLeastOneUniformMarkedForDeletion
     )
-        compileShader(layer, appData);
+        layer->compileShader();
 
     if (!atLeastOneSharedUniformStateChanged)
         return;
@@ -1390,7 +780,7 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
         if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
             continue;
         uniform->hasSharedByUserChanged = false;
-        uniform->setOwner(su.fragment);
+        uniform->setOwner(&su.fragment);
         i--;
     }
 
@@ -1408,17 +798,17 @@ void renderUniformsTab(UPtr<Layer>& layer, AppData& appData)
     // Alternative strategy to cope with uniform block alignment changes after
     // uniform type changes or deletions (both of which can alter block layout:
     // compile right away automatically without asking the user
-    for (auto& l : appData.layers)
-        compileShader(l, appData);
+    for (auto& l : appState.layers)
+        l->compileShader();
 }
 
 //----------------------------------------------------------------------------//
 
 // Render the default/built-in shared uniforms as a table and return the row
 // count
-int renderBuiltInSharedUniforms(AppData& appData)
+int renderBuiltInSharedUniforms(AppState& appState)
 {
-    auto& su = *(appData.sharedUniforms);
+    auto& su = *(appState.sharedUniforms);
     int row = 0;
     int column;
     float fontSize = ImGui::GetFontSize();
@@ -1429,8 +819,8 @@ int renderBuiltInSharedUniforms(AppData& appData)
     NEXT_COLUMN(column)
     if (ImGui::Button(ICON_FA_UNDO, ImVec2(halfButtonSize, 0)))
     {
-        appData.rendering.toggles.resetFrameCounter = true;
-        appData.rendering.toggles.restartRendering = true;
+        appState.renderState.toggles.resetFrameCounter = true;
+        appState.renderState.toggles.restartRendering = true;
     }
     if 
     (
@@ -1454,28 +844,28 @@ int renderBuiltInSharedUniforms(AppData& appData)
     (
         ImGui::Button
         (
-            appData.rendering.isPaused ? 
+            appState.renderState.isPaused ? 
             ICON_FA_PLAY : 
             ICON_FA_PAUSE, 
             ImVec2(-1, 0)
         )
     )
     {
-        toggleRenderingPaused(appData, false);
+        toggleRenderingPaused(appState, false);
         // When stopping rendering while tile rendering is enabled,
         // make sure to render all the tiles to reach the end of the
         // shader frame
         if
         (
-            appData.rendering.isPaused && 
-            appData.rendering.isTiledRenderingEnabled
+            appState.renderState.isPaused && 
+            appState.renderState.isTiledRenderingEnabled
         )
-            appData.rendering.toggles.stepToNextFrame = true;
+            appState.renderState.toggles.stepToNextFrame = true;
     }
-    if (appData.rendering.isPaused)
+    if (appState.renderState.isPaused)
     {
         if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
-            appData.rendering.toggles.stepToNextFrame = true;
+            appState.renderState.toggles.stepToNextFrame = true;
         else
         {
             // If tiled rendering is enabled, stepping by one shader frame
@@ -1483,13 +873,13 @@ int renderBuiltInSharedUniforms(AppData& appData)
             // only renders a single shader tile), so the frame step is over
             // only once all tiles have been rendered (i.e., when tileIndex
             // is reset to 0)
-            if (appData.rendering.isTiledRenderingEnabled)
+            if (appState.renderState.isTiledRenderingEnabled)
             {
-                if (appData.rendering.tileIndex == 0)
-                    appData.rendering.toggles.stepToNextFrame = false;
+                if (appState.renderState.tileIndex == 0)
+                    appState.renderState.toggles.stepToNextFrame = false;
             }
             else
-                appData.rendering.toggles.stepToNextFrame = false;
+                appState.renderState.toggles.stepToNextFrame = false;
         }
     }
     if 
@@ -1508,7 +898,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     NEXT_COLUMN(column)
     // No bounds
     NEXT_COLUMN(column)
-    ImGui::Text("%d", appData.rendering.frameIndex);
+    ImGui::Text("%d", appState.renderState.frameIndex);
     END_ROW(row)
 
     // iTime --------------------------------------------------------------
@@ -1549,16 +939,16 @@ int renderBuiltInSharedUniforms(AppData& appData)
             ICON_FA_PLAY : 
             ICON_FA_PAUSE, 
             ImVec2(-1, 0)
-        ) && !appData.rendering.isPaused
+        ) && !appState.renderState.isPaused
     )
         su.isTimePaused = 
             !su.isTimePaused;
     if (su.isTimePaused)
     {
         if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
-            appData.rendering.toggles.stepToNextFrame = true;
+            appState.renderState.toggles.stepToNextFrame = true;
         else 
-            appData.rendering.toggles.stepToNextFrame = false;
+            appState.renderState.toggles.stepToNextFrame = false;
     }
     if 
     (
@@ -1675,7 +1065,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
     NEXT_COLUMN(column)
     if 
     (
-        appData.rendering.isPaused || 
+        appState.renderState.isPaused || 
         su.isTimePaused
     )
     {
@@ -1772,7 +1162,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
             ImVec2(-1, 0)
         )
     )
-        toggleKeyboardInputs(appData);
+        toggleKeyboardInputs(appState);
     NEXT_COLUMN(column)
     ImGui::Text("iKeyboard");
     NEXT_COLUMN(column)
@@ -1814,7 +1204,7 @@ int renderBuiltInSharedUniforms(AppData& appData)
             ImVec2(-1, 0)
         )
     )
-        toggleMouseInputs(appData);
+        toggleMouseInputs(appState);
     if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
         ImGui::OpenPopup("##iMouseSettings");
     if (ImGui::BeginPopup("##iMouseSettings"))
@@ -1822,13 +1212,13 @@ int renderBuiltInSharedUniforms(AppData& appData)
         bool enabled = su.isMouseInputEnabled;
         std::string text = enabled ? "Disable inputs" : "Enable inputs";
         if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
-            toggleMouseInputs(appData);
+            toggleMouseInputs(appState);
         ImGui::Text("Clamp value to window resolution ");
         ImGui::SameLine();
         bool status = su.isMouseInputClampedToWindow;
         ImGui::Checkbox("##iMouseSettings_ClampValue", &status);
         if (status != su.isMouseInputClampedToWindow)
-            setMouseInputsClamped(appData, status);
+            setMouseInputsClamped(appState, status);
         ImGui::Text("Input requires holding LMB       ");
         if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
         {
@@ -1887,7 +1277,7 @@ is currently being held down)");
         bool enabled = su.isCameraMouseInputEnabled;
         std::string text = enabled ? "Disable inputs" : "Enable inputs";
         if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
-            toggleCameraMouseInputs(appData);
+            toggleCameraMouseInputs(appState);
         ImGui::Text("Input requires holding LMB       ");
         if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
         {
@@ -1959,7 +1349,7 @@ motion only if the left mouse button (LMB) is held)");
         bool enabled = su.isCameraKeyboardInputEnabled;
         std::string text = enabled ? "Disable inputs" : "Enable inputs";
         if (ImGui::Button(text.c_str(), ImVec2(20*fontSize, 0)))
-            toggleCameraKeyboardInputs(appData);
+            toggleCameraKeyboardInputs(appState);
         ImGui::Text("Keyboard sensitivity ");
         ImGui::SameLine();
         ImGui::PushItemWidth(-1);
@@ -2171,8 +1561,8 @@ set by adjusting the slider)");
 bool renderUniformTableRow
 (
     const UPtr<Uniform>& uniform,
-    const UPtr<Layer>& layer,
-    AppData& appData,
+    Layer* layer,
+    AppState& appState,
     int row,
     const bool showSeparator,
     const bool showSharedAndDefaultUniforms
@@ -2193,8 +1583,8 @@ bool renderUniformTableRow
     bool isSharedByUser0 = uniform->isSharedByUser;
     bool nameChanged = false;
     bool typeChanged = false;
-    auto& su = *(appData.sharedUniforms);
-    auto& resources = appData.resources;
+    auto& su = *(appState.sharedUniforms);
+    auto& resources = appState.resources;
     
     START_ROW(row, column)
 
@@ -2211,7 +1601,7 @@ bool renderUniformTableRow
             // will have to be recompiled
             if (uniform->isSharedByUser)
             {
-                for (auto& l : appData.layers)
+                for (auto& l : appState.layers)
                     l->hasUncompiledEdits = true;
             }
             else
@@ -2908,18 +2298,18 @@ bool renderUniformTableRow
         {                                                                      \
             if (resource != nullptr)                                           \
             {                                                                  \
-                appData.rendering.toggles.requestFullRecompilation =           \
-                    appData.rendering.toggles.requestFullRecompilation ||      \
+                appState.renderState.toggles.requestFullRecompilation =        \
+                    appState.renderState.toggles.requestFullRecompilation ||   \
                     (resource->isInternalFormatUnsigned() !=                   \
                     r->isInternalFormatUnsigned() && named);                   \
                 if (resource->isUsedByUniform(uniform.get()))                  \
                     resource->removeClientUniform(uniform.get());              \
             }                                                                  \
             else if (named)                                                    \
-                appData.rendering.toggles.requestFullRecompilation = true;     \
+                appState.renderState.toggles.requestFullRecompilation = true;  \
             if (!r->isUsedByUniform(uniform.get()))                            \
                 r->addClientUniform(uniform.get());                            \
-            appData.deferredActionBuffer.add                                   \
+            appState.deferredActionBuffer.add                                  \
             (                                                                  \
                 [&uniform, &r]()                                               \
                 {uniform->setResourcePtr(r);}                                  \
@@ -3016,7 +2406,7 @@ bool renderUniformTableRow
     // still unnamed are simply ignored)
     if (isSharedByUser0)
     {
-        for (auto& l : appData.layers)
+        for (auto& l : appState.layers)
         {
             if 
             (
@@ -3072,7 +2462,7 @@ bool renderUniformTableRow
 // Resources -----------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void renderResourcesMenuItem(AppData& appData)
+void renderResourcesMenuItem(AppState& appState)
 {
     if 
     (
@@ -3091,7 +2481,7 @@ void renderResourcesMenuItem(AppData& appData)
         if (ImGui::BeginMenu("Resource manager"))
         {
             Resource::gui.isOpen = true;
-            renderResourcesTable(appData);
+            renderResourcesTable(appState);
             ImGui::EndMenu();
         }
         else
@@ -3103,7 +2493,7 @@ void renderResourcesMenuItem(AppData& appData)
 
 //----------------------------------------------------------------------------//
 
-void renderResourcesTable(AppData& appData)
+void renderResourcesTable(AppState& appState)
 {
     if (!Resource::gui.isOpen)
         return;
@@ -3154,12 +2544,12 @@ void renderResourcesTable(AppData& appData)
         );
         ImGui::TableHeadersRow();
 
-        const int nRows = appData.resources.size();
+        const int nRows = appState.resources.size();
         for (int row=0; row<nRows; row++)
         {
-            renderResourcesTableRow(appData, row);
+            renderResourcesTableRow(appState, row);
         }
-        renderAddResourceButton(appData, nRows);
+        renderAddResourceButton(appState, nRows);
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
         ImGui::EndTable();
     }
@@ -3170,14 +2560,14 @@ void renderResourcesTable(AppData& appData)
 
 //----------------------------------------------------------------------------//
 
-void renderResourcesTableRow(AppData& appData, int row)
+void renderResourcesTableRow(AppState& appState, int row)
 {
-    UPtr<Resource>& resource = appData.resources[row];
+    UPtr<Resource>& resource = appState.resources[row];
     float fontSize = ImGui::GetFontSize();
     int column = 0;
     START_ROW(row, column)
     START_COLUMN(column) // Actions column -------------------------------------
-    renderResourceActionsButton(appData, row);
+    renderResourceActionsButton(appState, row);
     END_COLUMN(column)
     START_COLUMN(column) // Type column ----------------------------------------
     std::string typeName = Resource::typeToName.at(resource->type());
@@ -3273,7 +2663,7 @@ ImGui::Image                                                            \
             Helpers::enforceUniqueName
             (
                 *(resource->namePtr()),
-                appData.resources,
+                appState.resources,
                 resource.get()
             );
         }
@@ -3295,7 +2685,7 @@ ImGui::Image                                                            \
 
 //----------------------------------------------------------------------------//
 
-void renderAddResourceButton(AppData& appData, int row)
+void renderAddResourceButton(AppState& appState, int row)
 {
     int column = 0;
     START_ROW(row, column)
@@ -3323,12 +2713,12 @@ void renderAddResourceButton(AppData& appData, int row)
                 },
                 "."
             );
-            appData.deferredActionBuffer.add
+            appState.deferredActionBuffer.add
             (
-                [&appData]()
+                [&appState]()
                 {
                     auto filepath = Resource::fileDialog.selection().front();
-                    auto& r = appData.resources.emplace_back
+                    auto& r = appState.resources.emplace_back
                     (
                         Texture2DResource::create(filepath)
                     );
@@ -3336,7 +2726,7 @@ void renderAddResourceButton(AppData& appData, int row)
                     Helpers::enforceUniqueName
                     (
                         name, 
-                        appData.resources, 
+                        appState.resources, 
                         r.get()
                     );
                     r->setName(name);
@@ -3354,11 +2744,11 @@ void renderAddResourceButton(AppData& appData, int row)
 
 //----------------------------------------------------------------------------//
 
-void renderResourceActionsButton(AppData& appData, int row)
+void renderResourceActionsButton(AppState& appState, int row)
 {
-    if (row >= appData.resources.size())
+    if (row >= appState.resources.size())
         return;
-    UPtr<Resource>& resource = appData.resources[row];
+    UPtr<Resource>& resource = appState.resources[row];
     if (!resource.valid())
         return;
     if (resource->type() == Resource::Type::Framebuffer)
@@ -3375,8 +2765,8 @@ void renderResourceActionsButton(AppData& appData, int row)
     if (ImGui::BeginPopup("##framebufferResourceSettings"))
     {
         auto& resource = 
-            appData.resources[row].dynamicDowncastTo<LayerResource>();
-        renderLayerFramebufferSettings(resource->layer(), appData);
+            appState.resources[row].dynamicDowncastTo<LayerResource>();
+        resource->layer()->renderFramebufferSettingsGui();
         ImGui::EndPopup();
     }
     if (ImGui::BeginPopup("##resourceActions"))
@@ -3384,14 +2774,14 @@ void renderResourceActionsButton(AppData& appData, int row)
         auto size = ImVec2(12*ImGui::GetFontSize(), 0);
         if (ImGui::Button(ICON_FA_TRASH, size))
         {
-            appData.deferredActionBuffer.add
+            appState.deferredActionBuffer.add
             (
-                [&appData, row]()
+                [&appState, row]()
                 {
-                    // UPtr<Resource>& resource = appData.resources[row];
+                    // UPtr<Resource>& resource = appState.resources[row];
                     // Used to call legacy 'removeResourceFromUniforms' on all
                     // layers, tentatively removed
-                    appData.resources.erase(appData.resources.begin()+row);
+                    appState.resources.erase(appState.resources.begin()+row);
                 }
             );
         }

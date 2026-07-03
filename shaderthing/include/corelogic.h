@@ -7,184 +7,77 @@
 namespace ShaderThing
 {
 
-struct AppData;
+struct AppState;
 struct Layer;
 struct RenderResult;
 struct SharedUniforms;
 
-void initialize(AppData& appData);
+// logic_initialization.cpp
+void initialize(AppState& appState);
 
-void initializeSharedUniforms(AppData& appData);
+void preRenderUpdate(AppState& appState);
 
-void setupNewProject(AppData& appData);
-
-void preRenderUpdate(AppData& appData);
-
+// logic_rendering.cpp
 RenderResult renderShaders
 (
-    AppData& appData, 
+    AppState& appState, 
     vir::Framebuffer* target, 
     const unsigned int nRenderPasses
 );
 
-void postRenderUpdate(AppData& appData);
+void postRenderUpdate(AppState& appState);
 
 void setWindowResolution
 (
-    AppData& appData, 
+    AppState& appState, 
     glm::ivec2 resolution, 
     const bool windowFrameManuallyDragged,
     const bool prepareForExport = false
 );
 
-void createNewLayer(AppData& appData, bool compileShader = true);
+// logic_layer.cpp
+void createNewLayer(AppState& appState, bool compileShader = true);
 
-void setLayerResolution
-(
-    UPtr<Layer>& layer,
-    glm::ivec2 resolution,
-    const bool isTiledRenderingEnabled,
-    const bool windowFrameManuallyDragged,
-    const bool tryEnfoceWindowAspectRatio = false,
-    const bool setExportResolution = true
-);
+// logic_rendering.cpp
+void setRenderingTiles(AppState& appState, int nTiles);
 
-void setLayerDepth(UPtr<Layer>& layer, const float depth);
+// logic_misc.cpp
+void addLayerToResources(WPtr<Layer> layer, UPtrVector<Resource>& resources);
 
-void setLayerFramebufferWrapMode(Layer* layer, int i, WrapMode mode);
-
-void setLayerFramebufferMagFilterMode(Layer* layer, FilterMode mode);
-
-void setLayerFramebufferMinFilterMode(Layer* layer, FilterMode mode);
-
-void rebuildLayerFramebuffers
-(
-    Layer* layer,
-    const vir::TextureBuffer::InternalFormat& internalFormat, 
-    const glm::ivec2& resolution,
-    const bool isTiledRenderingEnabled
-);
-
-void clearLayerFramebuffers(UPtr<Layer>& layer);
-
-std::string assembleFragmentShaderHeader
-(
-    const UPtr<Layer>& layer, 
-    const AppData& appData
-);
-
-std::string assembleVertexShaderSource(const AppData& appData);
-
-bool compileShader
-(
-    UPtr<Layer>& layer, 
-    AppData& appData, 
-    bool setBlankShaderOnError = false
-);
-
-void setRenderingTiles(AppData& appData, int nTiles);
-
-void renderLayerShader
-(
-    UPtr<Layer>& layer,
-    vir::Framebuffer* target,
-    const bool clearTarget,
-    AppData& appData
-);
-
-void addLayerToResources(UPtr<Layer>& layer, UPtrVector<Resource>& resources);
-
+// logic_misc.cpp
 void removeLayerFromResources
 (
-    UPtr<Layer>& layer, 
+    WPtr<Layer> layer, 
     UPtrVector<Resource>& resources
 );
 
-void toggleRenderingPaused(AppData& appData, bool dueToFlowFps);
+// logic_misc.cpp
+void toggleRenderingPaused(AppState& appState, bool dueToFlowFps);
 
-void toggleKeyboardInputs(AppData& appData);
+// logic_misc.cpp
+void toggleKeyboardInputs(AppState& appState);
 
-void toggleMouseInputs(AppData& appData);
+// logic_misc.cpp
+void toggleMouseInputs(AppState& appState);
 
-void toggleCameraMouseInputs(AppData& appData);
+// logic_misc.cpp
+void toggleCameraMouseInputs(AppState& appState);
 
-void toggleCameraKeyboardInputs(AppData& appData);
+// logic_misc.cpp
+void toggleCameraKeyboardInputs(AppState& appState);
 
-void setMouseInputsClamped(AppData& appData, bool flag);
+// logic_misc.cpp
+void setMouseInputsClamped(AppState& appState, bool flag);
 
-void setMouseCaptured(AppData& appData, bool flag);
+// logic_misc.cpp
+void setMouseCaptured(AppState& appState, bool flag);
 
-// Save project to disk
+// logic_saveload.cpp
 void saveToDisk
 (
-    AppData& appData, 
+    AppState& appState, 
     const std::string& filepath, 
     bool triggeredByAutosave = false
 );
-
-// Save layer data to disk
-void saveToDisk(UPtr<Layer>& layer, ObjectIO& io);
-
-// Overloads for convenience ---------------------------------------------------
-
-inline void setLayerFramebufferWrapMode(WPtr<Layer>& layer, int i, WrapMode mode)
-{
-    setLayerFramebufferWrapMode(layer.get(), i, mode);
-}
-inline void setLayerFramebufferWrapMode(UPtr<Layer>& layer, int i, WrapMode mode)
-{
-    setLayerFramebufferWrapMode(layer.get(), i, mode);
-}
-
-inline void setLayerFramebufferMagFilterMode(WPtr<Layer>& layer, FilterMode mode)
-{
-    setLayerFramebufferMagFilterMode(layer.get(), mode);
-}
-inline void setLayerFramebufferMagFilterMode(UPtr<Layer>& layer, FilterMode mode)
-{
-    setLayerFramebufferMagFilterMode(layer.get(), mode);
-}
-
-inline void setLayerFramebufferMinFilterMode(WPtr<Layer>& layer, FilterMode mode)
-{
-    setLayerFramebufferMinFilterMode(layer.get(), mode);
-}
-inline void setLayerFramebufferMinFilterMode(UPtr<Layer>& layer, FilterMode mode)
-{
-    setLayerFramebufferMinFilterMode(layer.get(), mode);
-}
-
-inline void rebuildLayerFramebuffers
-(
-    WPtr<Layer>& layer,
-    const vir::TextureBuffer::InternalFormat& internalFormat, 
-    const glm::ivec2& resolution,
-    const bool isTiledRenderingEnabled
-)
-{
-    rebuildLayerFramebuffers
-    (
-        layer.get(), 
-        internalFormat, 
-        resolution, 
-        isTiledRenderingEnabled
-    );
-}
-inline void rebuildLayerFramebuffers
-(
-    UPtr<Layer>& layer,
-    const vir::TextureBuffer::InternalFormat& internalFormat, 
-    const glm::ivec2& resolution,
-    const bool isTiledRenderingEnabled
-)
-{
-    rebuildLayerFramebuffers
-    (
-        layer.get(), 
-        internalFormat, 
-        resolution, 
-        isTiledRenderingEnabled
-    );
-}
 
 }

@@ -30,10 +30,10 @@ std::string Uniform::supportedTypeNames[15] =
 
 //----------------------------------------------------------------------------//
 
-const UPtr<Uniform>& Uniform::create(UniformContainer& owner)
+const UPtr<Uniform>& Uniform::create(UniformContainer* owner)
 {
-    auto& u = owner.uniforms.emplace_back(UPtr<Uniform>(new Uniform(owner)));
-    owner.uniformBuffer->addUniform(u);
+    auto& u = owner->uniforms.emplace_back(UPtr<Uniform>(new Uniform(owner)));
+    owner->uniformBuffer->addUniform(u);
     return u;
 }
 
@@ -338,7 +338,7 @@ void Uniform::setResourcePtr(const UPtr<Resource>& resource)
     // Also set resolution uniform
     if (!resourceResolutionUniform_.valid())
     {
-        create(*owner_);
+        create(owner_);
         resourceResolutionUniform_ = owner_->uniforms.back().getWeak();
         resourceResolutionUniform_->managedType = 
             ManagedType::ResourceResolution;
@@ -389,9 +389,9 @@ bool Uniform::isResource() const
 
 //----------------------------------------------------------------------------//
 
-void Uniform::setOwner(UniformContainer& owner)
+void Uniform::setOwner(UniformContainer* owner)
 {   
-    if (&owner == owner_)
+    if (owner == owner_)
         return;
     // Find UPtr of this Uniform in current owner
     auto it = std::find_if
@@ -405,19 +405,19 @@ void Uniform::setOwner(UniformContainer& owner)
     );
     std::size_t index = std::distance(owner_->uniforms.begin(), it);
     // Move to new owner's uniforms list and remove from old owner's
-    auto& thisUPtr = owner.uniforms.emplace_back
+    auto& thisUPtr = owner->uniforms.emplace_back
     (
         std::move(owner_->uniforms[index])
     );
     owner_->uniforms.erase(owner_->uniforms.begin()+index);
     // Add to new owner's uniform buffer and remove from old owner's
-    owner.uniformBuffer->addUniform(thisUPtr);
+    owner->uniformBuffer->addUniform(thisUPtr);
     owner_->uniformBuffer->removeUniform(thisUPtr);
     // Repeat for managed resourceResolution if applicable
     if (thisUPtr->isResource() && thisUPtr->resourceResolutionUniform_.valid())
         resourceResolutionUniform_->setOwner(owner);
     // Update owner ptr
-    owner_ = &owner;
+    owner_ = owner;
 }
 
 //----------------------------------------------------------------------------//
