@@ -23,44 +23,47 @@ FileDialog Resource::fileDialog = FileDialog();
 
 //----------------------------------------------------------------------------//
 
+ResourceName::ResourceName()
+{
+    namePtr_ = new std::string(Helpers::randomString(6));
+}
+
+ResourceName::~ResourceName()
+{
+    if (namePtr_)
+        delete namePtr_;
+}
+
+std::string ResourceName::name() const
+{
+    return 
+        namePtr_ == nullptr ? 
+        (cNamePtr_ == nullptr ? "" : *cNamePtr_) : 
+        *namePtr_;
+}
+
+void ResourceName::set(const std::string& name)
+{
+    if (namePtr_)
+        delete namePtr_;
+    namePtr_ = new std::string(name);
+    cNamePtr_ = nullptr;
+}
+
+void ResourceName::set(const std::string* namePtr)
+{
+    if (namePtr_ != nullptr)
+        delete namePtr_;
+    namePtr_ = nullptr;
+    cNamePtr_ = namePtr;
+}
+
 //----------------------------------------------------------------------------//
 
 Resource::~Resource()
 {
     for (auto& u : clientUniforms_)
         u->deleteValue(true);
-    if (namePtr_ != nullptr && isNameManaged_)
-        delete namePtr_;
-}
-
-std::string Resource::name() const
-{
-    return namePtr_ == nullptr ? (cNamePtr_ == nullptr ? "" : *cNamePtr_) : *namePtr_;
-}
-
-void Resource::setName(const std::string& name)
-{
-    if (namePtr_ != nullptr && isNameManaged_)
-        delete namePtr_;
-    namePtr_ = new std::string(name);
-    isNameManaged_ = true;
-}
-
-void Resource::setName(std::string* namePtr)
-{
-    if (namePtr_ != nullptr && isNameManaged_)
-        delete namePtr_;
-    namePtr_ = namePtr;
-    isNameManaged_ = false;
-}
-
-void Resource::setName(const std::string* namePtr)
-{
-    if (namePtr_ != nullptr && isNameManaged_)
-        delete namePtr_;
-    // cNamePtr never managed, so just reset it
-    cNamePtr_ = namePtr;
-    isNameManaged_ = false;
 }
 
 void Resource::addClientUniform(Uniform* u) 
@@ -145,7 +148,7 @@ Texture2DResource::~Texture2DResource()
 
 void Texture2DResource::saveToDisk(ObjectIO& io)
 {
-    io.writeObjectStart(namePtr_->c_str());
+    io.writeObjectStart(name().c_str());
     io.write("type", Resource::typeToName.at(type_));
     io.write("magFilterMode", (int)magFilterMode());
     io.write("minFilterMode", (int)minFilterMode());
@@ -409,7 +412,7 @@ bool AnimatedTexture2DResource::set
 
 void AnimatedTexture2DResource::saveToDisk(ObjectIO& io)
 {
-    io.writeObjectStart(namePtr_->c_str());
+    io.writeObjectStart(name().c_str());
     io.write("type", Resource::typeToName.at(type_));
     io.write("magFilterMode", (int)magFilterMode());
     io.write("minFilterMode", (int)minFilterMode());
@@ -566,7 +569,7 @@ void CubemapResource::saveToDisk(ObjectIO& io)
         if (!unmanagedFaces_[i].valid())
             return;
     }
-    io.writeObjectStart(namePtr_->c_str());
+    io.writeObjectStart(name().c_str());
     io.write("type", Resource::typeToName.at(type_));
     io.write("magFilterMode", (int)magFilterMode());
     io.write("minFilterMode", (int)minFilterMode());
@@ -652,7 +655,7 @@ bool Texture3DResource::set
 
 void Texture3DResource::saveToDisk(ObjectIO& io)
 {
-    io.writeObjectStart(namePtr_->c_str());
+    io.writeObjectStart(name().c_str());
     io.write("type", Resource::typeToName.at(type_));
     io.write("magFilterMode", (int)magFilterMode());
     io.write("minFilterMode", (int)minFilterMode());

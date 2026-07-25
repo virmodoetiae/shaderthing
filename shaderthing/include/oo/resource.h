@@ -39,6 +39,22 @@ class AnimatedTexture2DResource;
 class CubemapResource;
 class LayerResource;
 
+class ResourceName
+{
+protected:
+    // 
+    std::string*       namePtr_  = nullptr;
+    const std::string* cNamePtr_ = nullptr;
+public:
+    ResourceName();
+    ~ResourceName();
+    DELETE_COPY(ResourceName)
+    std::string* const& namePtr() const {return namePtr_;}
+    std::string         name() const;
+    void                set(const std::string& name);
+    void                set(const std::string* namePtr);  
+};
+
 class Resource
 {
 public:
@@ -60,22 +76,13 @@ public:
 protected:
 
     const Type            type_;
-    std::string*          namePtr_       = nullptr;
-    const std::string*    cNamePtr_      = nullptr;
-    // Ture if namePtr_ is owned by this resource (false e.g. if this resource
-    // references a Layer, and thus namePtr_ points to the layer name and is
-    // thus not owned)
-    bool                  isNameManaged_ = true;
+    ResourceName          name_;
     int                   textureUnit_   = -1;
     int                   imageUnit_     = -1;
     // List of uniforms using this resource as value
     std::vector<Uniform*> clientUniforms_ = {};
     
-    Resource(Type type) : type_(type) 
-    {
-        namePtr_ = new std::string(Helpers::randomString(6));
-        //*namePtr_ = ;
-    };
+    Resource(Type type) : type_(type) {};
     DELETE_COPY(Resource)
 
 public:
@@ -88,11 +95,10 @@ public:
     unsigned int           textureUnit() const {return textureUnit_;}
     unsigned int           imageUnit() const {return imageUnit_;}
     
-    std::string            name() const;
-    std::string* const&    namePtr() const {return namePtr_;}
-    void                   setName(const std::string& name);
-    void                   setName(std::string* namePtr);
-    void                   setName(const std::string* namePtr);
+    std::string            name() const {return name_.name();}
+    std::string* const&    namePtr() const {return name_.namePtr();}
+    void                   setName(const std::string& name) {name_.set(name);}
+    void                   setName(const std::string* pName) {name_.set(pName);}
     void                   addClientUniform(Uniform* u);
     void                   removeClientUniform(Uniform* u);
     bool                   isUsedByUniform(const Uniform *u) const;
@@ -433,7 +439,7 @@ class LayerResource : public Resource
 {
     WPtr<Layer>        layer_;
     vir::Framebuffer** native_ = nullptr;
-    LayerResource() : Resource(Type::Framebuffer) {isNameManaged_=false;}
+    LayerResource() : Resource(Type::Framebuffer) {}
 
 public:
 
