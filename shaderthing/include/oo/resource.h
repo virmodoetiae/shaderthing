@@ -504,7 +504,7 @@ public:
     {
         return (*native_)->colorBufferMagFilterMode();
     }
-    FilterMode   minFilterMode() const override 
+    FilterMode minFilterMode() const override 
     {
         return (*native_)->colorBufferMinFilterMode();
     }
@@ -512,11 +512,11 @@ public:
     {
         return (*native_)->colorBufferInternalFormat();
     }
-    DataType     dataType() const override 
+    DataType dataType() const override 
     {
         return (*native_)->colorBufferDataType();
     }
-    std::string  internalFormatName() const override 
+    std::string internalFormatName() const override 
     {
         return vir::TextureBuffer::internalFormatToShortName.at
         (

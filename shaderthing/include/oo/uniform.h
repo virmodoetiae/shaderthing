@@ -96,6 +96,10 @@ public:
 
     void setResourcePtr(const UPtr<Resource>& value);
 
+    void setOwner(UniformContainer* owner);
+
+    void setOwner(const WPtr<UniformContainer>& owner) {setOwner(owner.get());}
+
     bool isResource() const;
 
     // If a uniform wraps a resource (which can consists of some form of
@@ -104,9 +108,9 @@ public:
     // (W x H or W x H x D) of the wrapped resource
     WPtr<Uniform> resourceResolutionUniform() const {return resourceResolutionUniform_;};
 
-    void setOwner(UniformContainer* owner);
-
-    void setOwner(const WPtr<UniformContainer>& owner) {setOwner(owner.get());}
+    // To enable compatibility with Helpers::enforceUniqueName
+    std::string& name() { return vir::Uniform::name; }
+    const std::string& name() const { return vir::Uniform::name; }
 
     struct GUI
     {

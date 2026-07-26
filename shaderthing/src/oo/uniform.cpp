@@ -117,14 +117,14 @@ void Uniform::saveToDisk(ObjectIO& io)
 {
     if 
     (
-        name.size() == 0 || 
+        name().size() == 0 || 
         managedType != Uniform::ManagedType::None
     )
         return;
 
     float& min(gui.bounds.x);
     float& max(gui.bounds.y);
-    io.writeObjectStart(name.c_str());
+    io.writeObjectStart(name().c_str());
     io.write("type", vir::Shader::uniformTypeToName[type()].c_str());
     io.write("shared", isSharedByUser);
 
@@ -343,7 +343,7 @@ void Uniform::setResourcePtr(const UPtr<Resource>& resource)
         resourceResolutionUniform_->managedType = 
             ManagedType::ResourceResolution;
     }
-    resourceResolutionUniform_->name = name+"Resolution";
+    resourceResolutionUniform_->name() = name()+"Resolution";
     if (is3D)
         resourceResolutionUniform_->setValue
         (

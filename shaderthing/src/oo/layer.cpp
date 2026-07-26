@@ -67,7 +67,7 @@ Layer::Layer(unsigned int aId, AppState& appState) :
     {
         auto& u = Uniform::create(this);
         u->managedType = Uniform::ManagedType::LayerAspectRatio;
-        u->name = "iAspectRatio";
+        u->name() = "iAspectRatio";
         u->setValuePtr(&aspectRatio_, Uniform::Type::Float);
         u->gui.showBounds = false;
         renderState_.iAspectRatioUniform = u.getWeak();
@@ -75,7 +75,7 @@ Layer::Layer(unsigned int aId, AppState& appState) :
     {
         auto& u = Uniform::create(this);
         u->managedType = Uniform::ManagedType::LayerResolution;
-        u->name = "iResolution";
+        u->name() = "iResolution";
         u->setValuePtr(&resolution_, Uniform::Type::Float2);
         u->gui.bounds = glm::vec2(1.0f, 4096.0f);
         u->gui.showBounds = false;
@@ -406,7 +406,7 @@ std::string Layer::fragmentShaderSourceHeader() const
         for (auto& u : uniformContainer.uniforms)
         {
             // If the uniform has no name, I can't add it to the source
-            if (u->name.size() == 0)
+            if (u->name().size() == 0)
                 continue;
             std::string uniformTypeName = 
                 vir::Shader::uniformTypeToName[u->type()];
@@ -426,11 +426,11 @@ std::string Layer::fragmentShaderSourceHeader() const
                     // level and exposed via Resource::, not here
                     if (resource->isInternalFormatUnsigned())
                         uniformTypeName = "u"+uniformTypeName;
-                    header += "uniform "+uniformTypeName+" "+u->name+";\n";
+                    header += "uniform "+uniformTypeName+" "+u->name()+";\n";
                     ++nLines;
                     // Also update name of linked resolution uniform
                     if (u->resourceResolutionUniform().valid())
-                        u->resourceResolutionUniform()->name = u->name +
+                        u->resourceResolutionUniform()->name() = u->name() +
                             "Resolution";
                     break;
                 }
@@ -445,11 +445,11 @@ std::string Layer::fragmentShaderSourceHeader() const
                     // level and exposed via Resource::, not here
                     if (resource->isInternalFormatUnsigned())
                         uniformTypeName = "u"+uniformTypeName;
-                    header += "uniform "+uniformTypeName+" "+u->name+";\n";
+                    header += "uniform "+uniformTypeName+" "+u->name()+";\n";
                     ++nLines;
                     // Also update name of linked resolution uniform
                     if (u->resourceResolutionUniform().valid())
-                        u->resourceResolutionUniform()->name = u->name +
+                        u->resourceResolutionUniform()->name() = u->name() +
                             "Resolution";
                     break;
                 }
@@ -538,7 +538,7 @@ bool Layer::compileShader(bool setBlankShaderOnError)
                 [](WPtr<Uniform>& u)
                 {
                     if (u.valid())
-                        return u->name.size()>0;
+                        return u->name().size()>0;
                     else
                         return true;
                 }
@@ -811,7 +811,7 @@ void Layer::renderShader
             (
                 // TODO Check what this first condition was for
                 // u->specialType != Uniform::SpecialType::None || 
-                u->name.size() == 0 || !(isSampler || isImage)
+                u->name().size() == 0 || !(isSampler || isImage)
             )
                 continue;
             
@@ -880,7 +880,7 @@ void Layer::renderShader
                 if (isSampler)
                 {
                     sourceFramebuffer->bindColorBuffer(textureUnit);
-                    renderState_.shader->setUniformInt(u->name, textureUnit++);
+                    renderState_.shader->setUniformInt(u->name(), textureUnit++);
                 }
                 else if (isImage)
                 {
@@ -890,7 +890,7 @@ void Layer::renderShader
                         0, 
                         vir::TextureBuffer::ImageBindMode::ReadWrite
                     );
-                    renderState_.shader->setUniformInt(u->name, imageUnit++);
+                    renderState_.shader->setUniformInt(u->name(), imageUnit++);
                 }
             }
             else
@@ -898,7 +898,7 @@ void Layer::renderShader
                 if (isSampler)
                 {
                     resource->bind(textureUnit);
-                    renderState_.shader->setUniformInt(u->name, textureUnit++);
+                    renderState_.shader->setUniformInt(u->name(), textureUnit++);
                 }
                 else if (isImage)
                 {
@@ -908,7 +908,7 @@ void Layer::renderShader
                         0, 
                         vir::TextureBuffer::ImageBindMode::ReadWrite
                     );
-                    renderState_.shader->setUniformInt(u->name, imageUnit++);
+                    renderState_.shader->setUniformInt(u->name(), imageUnit++);
                 }
             }
             // Set the (automatically managed) sampler2D/image2D resolution
@@ -922,12 +922,12 @@ void Layer::renderShader
             {
                 renderState_.shader->setUniformFloat
                 (
-                    u->name+"AspectRatio", 
+                    u->name()+"AspectRatio", 
                     float(resource->width())/resource->height()
                 );
                 renderState_.shader->setUniformFloat2
                 (
-                    u->name+"Resolution", 
+                    u->name()+"Resolution", 
                     {resource->width(), resource->height()}
                 );
             }
@@ -939,7 +939,7 @@ void Layer::renderShader
             {
                 renderState_.shader->setUniformFloat3
                 (
-                    u->name+"Resolution", 
+                    u->name()+"Resolution", 
                     {resource->width(), resource->height(), resource->depth()}
                 );
             }

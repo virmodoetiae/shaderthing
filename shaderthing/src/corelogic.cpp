@@ -179,7 +179,7 @@ void initialize(AppState& appState)
     );
 
     su.iMVPUniform = Uniform::create(&su.vertex).getWeak();
-    su.iMVPUniform->name = "iMVP";
+    su.iMVPUniform->name() = "iMVP";
     su.iMVPUniform->setValuePtr
     (
         &(su.screenCamera->projectionViewMatrix()), 
@@ -198,7 +198,7 @@ void initialize(AppState& appState)
 
     // Init uniform wrappers
     su.iFrameUniform = Uniform::create(&su.fragment).getWeak();
-    su.iFrameUniform->name = "iFrame";
+    su.iFrameUniform->name() = "iFrame";
     su.iFrameUniform->setValuePtr
     (
         &appState.renderState.frameIndex, 
@@ -207,7 +207,7 @@ void initialize(AppState& appState)
     su.iFrameUniform->gui.showBounds = false;
 
     su.iRenderPassUniform = Uniform::create(&su.fragment).getWeak();
-    su.iRenderPassUniform->name = "iRenderPass";
+    su.iRenderPassUniform->name() = "iRenderPass";
     su.iRenderPassUniform->setValuePtr
     (
         &appState.renderState.passIndex, 
@@ -216,26 +216,26 @@ void initialize(AppState& appState)
     su.iRenderPassUniform->gui.showBounds = false;
     
     su.iTimeUniform = Uniform::create(&su.fragment).getWeak();
-    su.iTimeUniform->name = "iTime";
+    su.iTimeUniform->name() = "iTime";
     su.iTimeUniform->setValuePtr(&su.iTime, Uniform::Type::Float);
     
     su.iTimeDeltaUniform = Uniform::create(&su.fragment).getWeak();
-    su.iTimeDeltaUniform->name = "iTimeDelta";
+    su.iTimeDeltaUniform->name() = "iTimeDelta";
     su.iTimeDeltaUniform->setValuePtr(&su.iTimeDelta, Uniform::Type::Float);
     su.iTimeDeltaUniform->gui.showBounds = false;
 
     su.iRandomUniform = Uniform::create(&su.fragment).getWeak();
-    su.iRandomUniform->name = "iRandom";
+    su.iRandomUniform->name() = "iRandom";
     su.iRandomUniform->setValuePtr(&su.iRandom, Uniform::Type::Float);
     su.iRandomUniform->gui.showBounds = false;
 
     su.iUserActionUniform = Uniform::create(&su.fragment).getWeak();
-    su.iUserActionUniform->name = "iUserAction";
+    su.iUserActionUniform->name() = "iUserAction";
     su.iUserActionUniform->setValuePtr(&su.iUserAction, Uniform::Type::Bool);
     su.iUserActionUniform->gui.showBounds = false;
 
     su.iExportUniform = Uniform::create(&su.fragment).getWeak();
-    su.iExportUniform->name = "iExport";
+    su.iExportUniform->name() = "iExport";
     su.iExportUniform->setValuePtr
     (
         &appState.exporter->isActive, 
@@ -244,31 +244,31 @@ void initialize(AppState& appState)
     su.iExportUniform->gui.showBounds = false;
 
     su.iWASDUniform = Uniform::create(&su.fragment).getWeak();
-    su.iWASDUniform->name = "iWASD";
+    su.iWASDUniform->name() = "iWASD";
     su.iWASDUniform->setValuePtr(&su.iWASD, Uniform::Type::Float3);
 
     su.iLookUniform = Uniform::create(&su.fragment).getWeak();
-    su.iLookUniform->name = "iLook";
+    su.iLookUniform->name() = "iLook";
     su.iLookUniform->setValuePtr(&su.iLook, Uniform::Type::Float3);
     su.iLookUniform->gui.showBounds = false;
 
     su.iMouseUniform = Uniform::create(&su.fragment).getWeak();
-    su.iMouseUniform->name = "iMouse";
+    su.iMouseUniform->name() = "iMouse";
     su.iMouseUniform->setValuePtr(&su.iMouse, Uniform::Type::Float4);
     su.iMouseUniform->gui.showBounds = false;
 
     su.iAspectRatioUniform = Uniform::create(&su.fragment).getWeak();
-    su.iAspectRatioUniform->name = "iWindowAspectRatio";
+    su.iAspectRatioUniform->name() = "iWindowAspectRatio";
     su.iAspectRatioUniform->setValuePtr(&su.iAspectRatio, Uniform::Type::Float);
     su.iAspectRatioUniform->gui.showBounds = false;
 
     su.iResolutionUniform = Uniform::create(&su.fragment).getWeak();
-    su.iResolutionUniform->name = "iWindowResolution";
+    su.iResolutionUniform->name() = "iWindowResolution";
     su.iResolutionUniform->setValuePtr(&su.iResolution, Uniform::Type::Float2);
     su.iResolutionUniform->gui.showBounds = false;
 
     su.iKeyboardUniform = Uniform::create(&su.fragment).getWeak();
-    su.iKeyboardUniform->name = "iKeyboard";
+    su.iKeyboardUniform->name() = "iKeyboard";
     su.iKeyboardUniform->setValuePtr(&su.iKeyboard, Uniform::Type::Int3, 256);
     su.iKeyboardUniform->gui.showBounds = false;
 
@@ -289,6 +289,25 @@ void initialize(AppState& appState)
 void preRenderUpdate(AppState& appState)
 {
     appState.deferredActionBuffer.process();
+    // To the best of my own knowledge, this flag is only used to request
+    // shader recompilation after changing the resource used by an image/sampler
+    // uniform when the resource is of different signed-ness compared to the
+    // pre-existing resource (i.e., chaning from usampler to sampler, or vice-
+    // versa, which needs to be automatically managed). Ideally, this whole
+    // things should be handled more elegantly in the CHECK_RESOURCE_SELECTED
+    // macro in gui.cpp by appending this layer->compileShader() command
+    // ONLY to layers that actually use the uniform that references said
+    // changed resource. The main issue is that I cannot currently invoke
+    // the recompilation of all layers from within in there anyway. So,
+    // this whole requestFullRecompilation flag is just a work-around
+    if (appState.renderState.toggles.requestFullRecompilation)
+    {
+        for (auto& layer : appState.layers)
+        {
+            layer->compileShader();
+        }
+        appState.renderState.toggles.requestFullRecompilation = false;
+    }
 }
 
 //----------------------------------------------------------------------------//

@@ -1654,23 +1654,23 @@ bool renderUniformTableRow
     
     START_COLUMN(column) // Name column ----------------------------------------
     if (managed)
-        ImGui::Text(uniform->name.c_str());
+        ImGui::Text(uniform->name().c_str());
     else
     {
-        if (ImGui::InputText("##uniformName", &uniform->name))
+        if (ImGui::InputText("##uniformName", &uniform->name()))
         {
             uniform->markForSubmissionToAllClientBuffers();
             nameChanged = true;
             Helpers::enforceUniqueName
             (
-                uniform->name,
+                uniform->name(),
                 layer->uniforms,
                 uniform.get(),
                 true
             );
         }
     }
-    bool named(uniform->name.size() > 0);
+    bool named(uniform->name().size() > 0);
     if (showSeparator)
         ImGui::Separator();
     END_COLUMN(column)
@@ -2421,7 +2421,7 @@ bool renderUniformTableRow
             bool atLeastOneUniformNamed = false;
             for (auto& u : l->cache.uncompiledUniforms)
             {
-                if (u->name.size() == 0)
+                if (u->name().size() == 0)
                     continue;
                 atLeastOneUniformNamed = true;
                 break;
@@ -2445,7 +2445,7 @@ bool renderUniformTableRow
         bool atLeastOneUniformNamed = false;
         for (auto& u : layer->cache.uncompiledUniforms)
         {
-            if (u->name.size() == 0)
+            if (u->name().size() == 0)
                 continue;
             atLeastOneUniformNamed = true;
             break;
