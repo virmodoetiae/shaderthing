@@ -606,9 +606,6 @@ void renderUniformsTab(Layer* layer, AppState& appState)
     //--------------------------------------------------------------------------
     auto& su = *(appState.sharedUniforms);
     float fontSize = ImGui::GetFontSize();
-    bool atLeastOneUniformMarkedForDeletion = false;
-    bool atLeastOneUniformTypeChanged = false;
-    bool atLeastOneSharedUniformStateChanged = false;
     static bool showSharedAndDefaultUniforms = true;
     if 
     (
@@ -667,41 +664,29 @@ void renderUniformsTab(Layer* layer, AppState& appState)
             [
                 i + su.userUniformsStartIndex
             ];
-            atLeastOneSharedUniformStateChanged = 
-                atLeastOneSharedUniformStateChanged ||
-                renderUniformTableRow
-                (
-                    uniform,
-                    layer,
-                    appState,
-                    row++,
-                    i == nSharedUniforms-1
-                );
-            if (uniform->isMarkedForDeletion)
-                atLeastOneUniformMarkedForDeletion = true;
-            if (uniform->hasSharedByUserChanged)
-                atLeastOneSharedUniformStateChanged = true;
+            renderUniformTableRow
+            (
+                uniform,
+                layer,
+                appState,
+                row++,
+                i == nSharedUniforms-1
+            );
         }
 
         // Finally, render the user-created layer-specific uniforms
         for(unsigned int i=0; i<layer->uniforms.size(); i++)
         {
             auto& uniform = layer->uniforms[i];
-            atLeastOneUniformTypeChanged = 
-                atLeastOneUniformTypeChanged ||
-                renderUniformTableRow
-                (
-                    uniform,
-                    layer,
-                    appState,
-                    row++,
-                    false,
-                    showSharedAndDefaultUniforms
-                );
-            if (uniform->isMarkedForDeletion)
-                atLeastOneUniformMarkedForDeletion = true;
-            if (uniform->hasSharedByUserChanged)
-                atLeastOneSharedUniformStateChanged = true;
+            renderUniformTableRow
+            (
+                uniform,
+                layer,
+                appState,
+                row++,
+                false,
+                showSharedAndDefaultUniforms
+            );
         }
 
         // Render the "Create new uniform" button
@@ -737,69 +722,6 @@ void renderUniformsTab(Layer* layer, AppState& appState)
         ImGui::GetTextLineHeightWithSpacing()
     );
     StatusBar::renderGui();
-
-    // Remove uniforms marked for deletion
-    if (atLeastOneUniformMarkedForDeletion)
-    {
-        for (unsigned int i=0; i<layer->uniforms.size(); i++)
-        {
-            UPtr<Uniform>& u = layer->uniforms[i];
-            if (!u->isMarkedForDeletion)
-                continue;
-            u->deleteSelf();
-            i--;
-        }
-        for (unsigned int i=0; i<su.fragment.uniforms.size(); i++)
-        {
-            UPtr<Uniform>& u = su.fragment.uniforms[i];
-            if (!u->isMarkedForDeletion)
-                continue;
-            u->deleteSelf();
-            i--;
-            atLeastOneSharedUniformStateChanged = true;
-        }
-    }
-
-    // Alternative strategy to cope with uniform block alignment changes after
-    // uniform type changes or deletions (both of which can alter block layout:
-    // compile right away automatically without asking the user)
-    if 
-    (
-        atLeastOneUniformTypeChanged ||
-        atLeastOneUniformMarkedForDeletion
-    )
-        layer->compileShader();
-
-    if (!atLeastOneSharedUniformStateChanged)
-        return;
-
-    // Check if the uniform state was changed from non-shared to shared
-    for (unsigned int i=0; i<layer->uniforms.size(); i++)
-    {
-        UPtr<Uniform>& uniform = layer->uniforms[i];
-        if (!(uniform->hasSharedByUserChanged && uniform->isSharedByUser))
-            continue;
-        uniform->hasSharedByUserChanged = false;
-        uniform->setOwner(&su.fragment);
-        i--;
-    }
-
-    // Check if the uniform state was changed from shared to non-shared
-    for (unsigned int i=0; i<su.fragment.uniforms.size(); i++)
-    {
-        auto& uniform = su.fragment.uniforms[i];
-        if (!(uniform->hasSharedByUserChanged && !uniform->isSharedByUser))
-            continue;
-        uniform->hasSharedByUserChanged = false;
-        uniform->setOwner(layer);
-        i--;
-    }
-
-    // Alternative strategy to cope with uniform block alignment changes after
-    // uniform type changes or deletions (both of which can alter block layout:
-    // compile right away automatically without asking the user
-    for (auto& l : appState.layers)
-        l->compileShader();
 }
 
 //----------------------------------------------------------------------------//
@@ -852,7 +774,7 @@ int renderBuiltInSharedUniforms(AppState& appState)
     )
     {
         toggleRenderingPaused(appState, false);
-        // When stopping rendering while tile rendering is enabled,
+        // When stopping rendering while tiled rendering is enabled,
         // make sure to render all the tiles to reach the end of the
         // shader frame
         if
@@ -1560,7 +1482,7 @@ set by adjusting the slider)");
 
 bool renderUniformTableRow
 (
-    const UPtr<Uniform>& uniform,
+    UPtr<Uniform>& uniform,
     Layer* layer,
     AppState& appState,
     int row,
@@ -1580,8 +1502,6 @@ bool renderUniformTableRow
         uniform->managedType == ManagedType::ResourceResolution
     )
         return false;
-    bool isSharedByUser0 = uniform->isSharedByUser;
-    bool nameChanged = false;
     bool typeChanged = false;
     auto& su = *(appState.sharedUniforms);
     auto& resources = appState.resources;
@@ -1595,17 +1515,7 @@ bool renderUniformTableRow
         float halfButtonSize(1.7*fontSize);
         if (ImGui::Button(ICON_FA_TRASH, ImVec2(halfButtonSize, 0)))
         {
-            uniform->isMarkedForDeletion = true;
-            // layer->uniformBuffer_->removeUniform(uniform.get()); // TODO - CHECK
-            // The uniform is gonna get deleted, so the layer(s) using it
-            // will have to be recompiled
-            if (uniform->isSharedByUser)
-            {
-                for (auto& l : appState.layers)
-                    l->hasUncompiledEdits = true;
-            }
-            else
-                layer->hasUncompiledEdits = true;
+            updateLayersDueToUniformDeletion(uniform, appState);
         }
         if 
         (
@@ -1628,9 +1538,22 @@ bool renderUniformTableRow
             )
         )
         {
-            uniform->hasSharedByUserChanged = true;
-            uniform->isSharedByUser = 
-                !uniform->isSharedByUser;
+            // TODO Test this approach of updating sharedness status
+            uniform->isSharedByUser = !uniform->isSharedByUser;
+            appState.deferredActionBuffer.add
+            (
+                [&uniform, layer, &appState]()
+                {
+                    if (uniform->isSharedByUser)
+                        uniform->setOwner(&appState.sharedUniforms->fragment);
+                    else 
+                        uniform->setOwner(layer);
+                    for (auto& l : appState.layers)
+                    {
+                        l->compileShader();
+                    }
+                }
+            );
         }
         if 
         (
@@ -1660,13 +1583,18 @@ bool renderUniformTableRow
         if (ImGui::InputText("##uniformName", &uniform->name()))
         {
             uniform->markForSubmissionToAllClientBuffers();
-            nameChanged = true;
             Helpers::enforceUniqueName
             (
                 uniform->name(),
                 layer->uniforms,
                 uniform.get(),
                 true
+            );
+            updateLayersDueToUniformTypeOrNameChanged
+            (
+                uniform, 
+                appState,
+                false // Do NOT recompile shaders automatically on rename
             );
         }
     }
@@ -1697,6 +1625,12 @@ bool renderUniformTableRow
                 continue;
             typeChanged = true;
             uniform->setType(selectedType);
+            updateLayersDueToUniformTypeOrNameChanged
+            (
+                uniform, 
+                appState,
+                true // Recompile shaders automatically on type change
+            );
         }
         ImGui::EndCombo();
     }
@@ -2314,8 +2248,8 @@ bool renderUniformTableRow
                 [&uniform, &r]()                                               \
                 {uniform->setResourcePtr(r);}                                  \
             );                                                                 \
-            su.iUserAction = true;                                 \
-            su.toggles.updateDataRangeII = true;                   \
+            su.iUserAction = true;                                             \
+            su.toggles.updateDataRangeII = true;                               \
         }
 
         case vir::Uniform::Type::Sampler2D :
@@ -2394,65 +2328,6 @@ bool renderUniformTableRow
     END_COLUMN(column)
     
     END_ROW(row)
-
-    if (!nameChanged && !typeChanged)
-        return false;
-
-    // If the uniform name or type have changed, it should be added to the
-    // list of uncompiled uniforms of the layer using this uniform (if this
-    // uniform is not SharedByUser) or of all the layers (if this uniform
-    // is SharedByUser). Also, if at least one uniform has been named,
-    // said layer should be recompiled (all other layer uniforms which are
-    // still unnamed are simply ignored)
-    if (isSharedByUser0)
-    {
-        for (auto& l : appState.layers)
-        {
-            if 
-            (
-                std::find // I.e., if not already in uncompiledUniforms
-                (
-                    l->cache.uncompiledUniforms.begin(), 
-                    l->cache.uncompiledUniforms.end(), 
-                    uniform.get()
-                ) == l->cache.uncompiledUniforms.end()
-            )
-                l->cache.uncompiledUniforms.emplace_back(uniform.getWeak());
-            bool atLeastOneUniformNamed = false;
-            for (auto& u : l->cache.uncompiledUniforms)
-            {
-                if (u->name().size() == 0)
-                    continue;
-                atLeastOneUniformNamed = true;
-                break;
-            }
-            if (atLeastOneUniformNamed)
-                l->hasUncompiledEdits = true;
-        }
-    }
-    else
-    {
-        if 
-        (
-            std::find
-            (
-                layer->cache.uncompiledUniforms.begin(), 
-                layer->cache.uncompiledUniforms.end(), 
-                uniform.get()
-            ) == layer->cache.uncompiledUniforms.end()
-        )
-            layer->cache.uncompiledUniforms.emplace_back(uniform.getWeak());
-        bool atLeastOneUniformNamed = false;
-        for (auto& u : layer->cache.uncompiledUniforms)
-        {
-            if (u->name().size() == 0)
-                continue;
-            atLeastOneUniformNamed = true;
-            break;
-        }
-        if (atLeastOneUniformNamed)
-            layer->hasUncompiledEdits = true;
-    }
 
     return typeChanged;
     
@@ -2746,7 +2621,7 @@ void renderAddResourceButton(AppState& appState, int row)
 
 void renderResourceActionsButton(AppState& appState, int row)
 {
-    if (row >= appState.resources.size())
+    if (row >= (int)appState.resources.size())
         return;
     UPtr<Resource>& resource = appState.resources[row];
     if (!resource.valid())

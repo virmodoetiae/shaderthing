@@ -17,7 +17,7 @@ friend Uniform;
 private:
     bool isBeingDestroyed_ = false;
 public:
-    ~UniformContainer(){isBeingDestroyed_ = true;}
+    virtual ~UniformContainer(){isBeingDestroyed_ = true;}
     UPtrVector<Uniform>             uniforms;
     UPtr<vir::DynamicUniformBuffer> uniformBuffer;
     unsigned int                    uniformBufferBindingPoint;
@@ -76,9 +76,7 @@ public:
     // resource)
     ManagedType   managedType            = ManagedType::None;
     bool          isSharedByUser         = false;
-    bool          hasSharedByUserChanged = false;
     bool          isLogarithmic          = false; // For floats only
-    bool          isMarkedForDeletion    = false;
 
     ~Uniform();
 
@@ -99,6 +97,8 @@ public:
     void setOwner(UniformContainer* owner);
 
     void setOwner(const WPtr<UniformContainer>& owner) {setOwner(owner.get());}
+
+    UniformContainer* owner() const {return owner_;}
 
     bool isResource() const;
 

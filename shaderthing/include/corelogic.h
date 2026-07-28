@@ -80,4 +80,17 @@ void saveToDisk
     bool triggeredByAutosave = false
 );
 
+void updateLayersDueToUniformTypeOrNameChanged
+(
+    UPtr<Uniform>& uniform, 
+    AppState& appState,
+    bool recompileShaders = false
+);
+
+void updateLayersDueToUniformDeletion
+(
+    UPtr<Uniform>& uniform, 
+    AppState& appState
+);
+
 }

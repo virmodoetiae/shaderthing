@@ -59,7 +59,7 @@ bool renderEditUniformBoundsButton
 // gui_uniform.cpp
 bool renderUniformTableRow
 (
-    const UPtr<Uniform>& uniform,
+    UPtr<Uniform>& uniform,
     Layer* layer,
     AppState& appState,
     int row,

@@ -1093,4 +1093,90 @@ void saveToDisk
     );
 }
 
+void updateLayersDueToUniformTypeOrNameChanged
+(
+    UPtr<Uniform>& uniform, 
+    AppState& appState,
+    bool recompileShaders
+)
+{
+    auto updateLayer = [&uniform, &appState, &recompileShaders]
+    (
+        Layer* layer
+    )
+    {
+        if 
+        (
+            std::find // I.e., if not already in uncompiledUniforms
+            (
+                layer->cache.uncompiledUniforms.begin(), 
+                layer->cache.uncompiledUniforms.end(), 
+                uniform.get()
+            ) == layer->cache.uncompiledUniforms.end()
+        )
+            layer->cache.uncompiledUniforms.emplace_back(uniform.getWeak());
+        for (auto& u : layer->cache.uncompiledUniforms)
+        {
+            if (u->name().size() == 0)
+                continue;
+            layer->hasUncompiledEdits = true;
+            if (recompileShaders)
+                layer->compileShader();
+            break;
+        }
+    };
+    if (uniform->isSharedByUser)
+    {
+        for (auto& layer : appState.layers)
+        {
+            updateLayer(layer.get());
+        }
+    }
+    else
+    {
+        updateLayer(dynamic_cast<Layer*>(uniform->owner()));
+    }
+}
+
+void updateLayersDueToUniformDeletion
+(
+    UPtr<Uniform>& uniform, 
+    AppState& appState
+)
+{
+    // TODO Check if setting hasUncompiledEdits within the deferred action does
+    // not change anything, and if so, make the code more compact
+    if (uniform->isSharedByUser)
+    {
+        for (auto& layer : appState.layers)
+        {
+            layer->hasUncompiledEdits = true;
+        }
+        appState.deferredActionBuffer.add
+        (
+            [&uniform, &appState]()
+            {
+                uniform->deleteSelf();
+                for (auto& layer : appState.layers)
+                {
+                    layer->compileShader();
+                }
+            }
+        );
+    }
+    else
+    {
+        auto layer = dynamic_cast<Layer*>(uniform->owner());
+        layer->hasUncompiledEdits = true;
+        appState.deferredActionBuffer.add
+        (
+            [&uniform, layer]()
+            {
+                uniform->deleteSelf();
+                layer->compileShader();
+            }
+        );
+    }
+}
+
 }
