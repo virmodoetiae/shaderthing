@@ -465,13 +465,6 @@ void postRenderUpdate(AppState& appState)
         appState.renderState.frameIndex = 0;
         appState.renderState.toggles.resetFrameCounterPreOrPostExport = false;
     }
-    if (appState.renderState.toggles.resetFrameCounter)
-    {
-        appState.renderState.frameIndex = 0;
-        if (su.isTimeResetOnFrameCounterReset)
-            su.iTime = 0;
-        appState.renderState.toggles.resetFrameCounter = false;
-    }
 
     // The shaderCamera has its own event listeners, but all of its updates are
     // deferred (just like here, nothing is processed/sent to the GPU in the

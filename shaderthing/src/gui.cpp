@@ -564,19 +564,6 @@ void renderLayersTabBar(AppState& appState)
         }
         ImGui::EndTabBar();
     }
-
-    // Check if layers framebuffers should be cleared as a consequence of
-    // a rendering restart. This flag is set in the lambda
-    // Uniform::renderUniformsTab::renderSharedUniformsGui eventually called by
-    // renderTabBarGui
-    if (appState.renderState.toggles.restartRendering)
-    {
-        for (auto& layer : layers)
-        {
-            layer->clearFramebuffers();
-        }
-        appState.renderState.toggles.restartRendering = false;
-    }
 }
 
 //----------------------------------------------------------------------------//
@@ -741,8 +728,20 @@ int renderBuiltInSharedUniforms(AppState& appState)
     NEXT_COLUMN(column)
     if (ImGui::Button(ICON_FA_UNDO, ImVec2(halfButtonSize, 0)))
     {
-        appState.renderState.toggles.resetFrameCounter = true;
-        appState.renderState.toggles.restartRendering = true;
+        // Restart rendering
+        appState.deferredActionBuffer.add
+        (
+            [&appState]()
+            {
+                appState.renderState.frameIndex = 0;
+                if (appState.sharedUniforms->isTimeResetOnFrameCounterReset)
+                    appState.sharedUniforms->iTime = 0;
+                for (auto& layer : appState.layers)
+                {
+                    layer->clearFramebuffers();
+                }
+            }
+        );
     }
     if 
     (

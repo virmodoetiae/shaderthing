@@ -278,9 +278,7 @@ struct RenderState
     struct Toggles
     {
         bool stepToNextFrame                  = false;
-        bool resetFrameCounter                = true;
         bool resetFrameCounterPreOrPostExport = true;
-        bool restartRendering                 = false;
         bool requestFullRecompilation         = false;
         bool tiledRenderingPauseRequested     = false;
     };
