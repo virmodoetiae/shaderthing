@@ -77,7 +77,40 @@ void renderMenuBar(AppState& appState)
             if (ImGui::MenuItem("New", "Ctrl+N", nullptr, !windowIconified))
                 newProjectConfirmation = true;
             if (ImGui::MenuItem("Load", "Ctrl+O", nullptr, !windowIconified))
-                {}//setProjectAction(Project::Action::Load, project_, fileDialog_);
+            {
+                appState.fileDialog.runOpenFileDialog
+                (
+                    "Open project",
+                    {"ShaderThingOld file (*.stf)", "*.stf *.stf.bak"},
+                    ".",
+                    false
+                );
+                appState.deferredActionBuffer.add
+                (
+                    [&appState]()
+                    {
+                        auto filepath = appState.fileDialog.selection().front();
+                        appState.project.forceSaveAs = true;
+                        loadFrom(appState,filepath,false);
+                        appState.project.filepath = // Trim .bak if applicable
+                            (
+                                filepath.size() >= 4 && 
+                                filepath.substr(filepath.size() - 4) == ".bak"
+                            ) ? 
+                            filepath.substr(0, filepath.size() - 4) : 
+                            filepath;
+                        appState.project.filename = Helpers::filename
+                        (
+                            appState.project.filepath
+                        );
+                        appState.fileDialog.clearSelection();
+                    },
+                    [&appState]()
+                    {
+                        return appState.fileDialog.validSelection();
+                    }
+                );
+            }//setProjectAction(Project::Action::Load, project_, fileDialog_);
             if (ImGui::MenuItem("Save", "Ctrl+S"))
                 {}//setProjectAction(Project::Action::Save, project_, fileDialog_);
             if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
@@ -94,7 +127,7 @@ void renderMenuBar(AppState& appState)
                 (
                     [&appState]()
                     {
-                        saveToDisk
+                        saveTo
                         (
                             appState, 
                             appState.fileDialog.selection().front()

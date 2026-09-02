@@ -287,10 +287,16 @@ class SharedStorage
     const unsigned int        bindingPoint_  = 2;
     bool                      newInstance_   = true;
 
+    // Private ctor, use the ::create() method
+    SharedStorage();
+    
+    DELETE_COPY_MOVE(SharedStorage);
+
 public:
     
-    SharedStorage();
-    DELETE_COPY_MOVE(SharedStorage);
+    static UPtr<SharedStorage> create();
+    static UPtr<SharedStorage> loadFrom(const ObjectIO& io);
+    
     ~SharedStorage();
     
     void resetBlockAndSSBO
@@ -302,8 +308,7 @@ public:
         const unsigned int floatDataSize = 256
     );
 
-    void save(ObjectIO& io) const;
-    static SharedStorage* load(const ObjectIO& io);
+    void saveTo(ObjectIO& io) const;
     
     // Reset block contents to 0s
     void clear();

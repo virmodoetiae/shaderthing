@@ -61,6 +61,26 @@ public:
         return create(po);
     }
 
+    static void loadAllFrom
+    (
+        ObjectIO& io, 
+        UniformContainer* owner, 
+        UPtrVector<Resource>& resource,
+        std::map<Uniform*, std::string>& cache
+    );
+
+    static void loadAllFrom
+    (
+        ObjectIO& io, 
+        WPtr<UniformContainer> owner,
+        UPtrVector<Resource>& resources,
+        std::map<Uniform*, std::string>& cache
+    )
+    {
+        auto* po = owner.get();
+        loadAllFrom(io, po, resources, cache);
+    }
+
     typedef vir::Uniform::Type Type;
 
     enum class ManagedType
@@ -84,7 +104,7 @@ public:
 
     void deleteValue(bool deleteCache) override;
 
-    void saveToDisk(ObjectIO& io);
+    void saveTo(ObjectIO& io);
 
     void setType
     (

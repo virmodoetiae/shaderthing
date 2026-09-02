@@ -32,7 +32,108 @@ namespace ShaderThing
 {
 
 UPtr<vir::Shader> Layer::RenderState::textureMapperShader;
+
 TextEditor        Layer::sharedSourceEditor_;
+
+const std::string Layer::defaultSharedSource_ = 
+R"(// Common source code is shared by all fragment shaders across all layers and
+// has access to all shared in/out/uniform declarations
+
+#define IF_FRAG_X(X) if (int(gl_FragCoord.x)==X)
+#define IF_FRAG_Y(Y) if (int(gl_FragCoord.y)==Y)
+#define IF_FRAG_XY(X,Y) if (int(gl_FragCoord.x)==X && int(gl_FragCoord.y)==Y)
+
+// Keyboard defs for convenience. To access the state of a key, use the ivec3
+// iKeboard[KEY_XXX] uniform, where KEY_XXX is replaced by one of the defs here
+// below. The three components .x, .y, .z are 1 if the key is pressed (but not
+// held), held, toggled respectively, 0 otherwise
+#define KEY_TAB 9
+#define KEY_LEFT 37
+#define KEY_RIGHT 39
+#define KEY_UP 38
+#define KEY_DOWN 40
+#define KEY_DELETE 46
+#define KEY_BACKSPACE 8
+#define KEY_SPACE 32
+#define KEY_ENTER 13
+#define KEY_ESCAPE 27
+#define KEY_APOSTROPHE 222
+#define KEY_COMMA 188
+#define KEY_MINUS 189
+#define KEY_PERIOD 190
+#define KEY_SLASH 191
+#define KEY_SEMICOLON 186
+#define KEY_EQUAL 187
+#define KEY_LEFT_BRACKET 219
+#define KEY_BACKSLASH 220
+#define KEY_RIGHT_BRACKET 221
+#define KEY_GRAVE_ACCENT 192
+#define KEY_CAPS_LOCK 20
+#define KEY_LEFT_SHIFT 16
+#define KEY_LEFT_CONTROL 17
+#define KEY_LEFT_ALT 18
+#define KEY_LEFT_SUPER 91
+#define KEY_RIGHT_SHIFT 16
+#define KEY_RIGHT_CONTROL 17
+#define KEY_RIGHT_ALT 18
+#define KEY_0 48
+#define KEY_1 49
+#define KEY_2 50
+#define KEY_3 51
+#define KEY_4 52
+#define KEY_5 53
+#define KEY_6 54
+#define KEY_7 55
+#define KEY_8 56
+#define KEY_9 57
+#define KEY_A 65
+#define KEY_B 66
+#define KEY_C 67
+#define KEY_D 68
+#define KEY_E 69
+#define KEY_F 70
+#define KEY_G 71
+#define KEY_H 72
+#define KEY_I 73
+#define KEY_J 74
+#define KEY_K 75
+#define KEY_L 76
+#define KEY_M 77
+#define KEY_N 78
+#define KEY_O 79
+#define KEY_P 80
+#define KEY_Q 81
+#define KEY_R 82
+#define KEY_S 83
+#define KEY_T 84
+#define KEY_U 85
+#define KEY_V 86
+#define KEY_W 87
+#define KEY_X 88
+#define KEY_Y 89
+#define KEY_Z 90
+#define KEY_F1 112
+#define KEY_F2 113
+#define KEY_F3 114
+#define KEY_F4 115
+#define KEY_F5 116
+#define KEY_F6 117
+#define KEY_F7 118
+#define KEY_F8 119
+#define KEY_F9 120
+#define KEY_F10 121
+#define KEY_F11 122
+#define KEY_F12 123
+
+// For convenience when importing ShaderToy shaders
+#define SHADERTOY_MAIN void main(){mainImage(fragColor, fragCoord);}
+vec2 fragCoord = gl_FragCoord.xy;
+
+#define CROSSHAIR(color)                           \
+    if(int(gl_FragCoord.x)==int(iResolution.x/2)|| \
+       int(gl_FragCoord.y)==int(iResolution.y/2))  \
+       fragColor.rgb=color;
+)";
 
 //----------------------------------------------------------------------------//
 
@@ -118,11 +219,11 @@ R"(void main()
     sourceEditor_.resetTextChanged();
 
     // TODO compileShaders flag
-    if (true)
-        compileShader();
+    //if (true)
+    //    compileShader();
 
-    if (appState.renderState.isTiledRenderingEnabled)  
-        setRenderingTiles(appState, appState.renderState.nTiles);
+    //if (appState.renderState.isTiledRenderingEnabled)  
+    //    setRenderingTiles(appState, appState.renderState.nTiles);
 }
 
 //----------------------------------------------------------------------------//
@@ -157,6 +258,109 @@ void main(){fragColor = texture(tx, tc);})";
     }
 
     auto layer = UPtr<Layer>(new Layer(id, appState));
+    return layer;
+}
+
+//----------------------------------------------------------------------------//
+
+UPtr<Layer> Layer::loadFrom
+(
+    ObjectIO& io, 
+    unsigned int id, 
+    AppState& appState
+)
+{
+    auto layer = Layer::create(id, appState);
+
+    layer->name_ = io.name();
+    /*
+    layer->flags_.rename = true; // <- hack to prevent layer tab bar re-ordering
+                                 // on first renderGui after loading
+    */
+    layer->renderState_.target = 
+        (RenderState::Target)io.read<int>("renderTarget");
+    layer->resolution_ = (glm::vec2)io.read<glm::ivec2>("resolution");
+    layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
+    layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
+    // Ensure iAspectRatio and iResolution values are actually updated
+    layer->uniformBuffer->markUniformForSubmission(layer->uniforms[0].get());
+    layer->uniformBuffer->markUniformForSubmission(layer->uniforms[1].get()); 
+    
+    layer->rescaleWithWindow_ = 
+        io.readOrDefault<bool>("rescaleWithWindow", true);
+    
+    layer->setDepth(io.read<float>("depth"));
+
+    auto exportData = io.readObject("exportData");
+    layer->exportSettings.resolutionScale = 
+        exportData.read<float>("resolutionScale");
+    layer->exportSettings.rescaleWithOutput = 
+        exportData.read<bool>("rescaleWithOutput");
+    layer->exportSettings.windowResolutionScale = 
+        exportData.read<float>("windowResolutionScale");
+    layer->exportSettings.resolution =
+        layer->resolution_ * 
+        layer->exportSettings.resolutionScale *
+        layer->exportSettings.windowResolutionScale +.5f;
+
+    layer->isAspectRatioBoundToWindow_ = 
+        io.read<bool>("isAspectRatioBoundToWindow");
+
+    auto shaderData = io.readObject("shader");
+    auto fragmentSource = shaderData.read("fragmentSource", false);
+
+    Uniform::loadAllFrom
+    (
+        shaderData,
+        layer.getWeak(),
+        appState.resources,
+        layer->cache.uninitializedResourceLayers
+    );
+    
+    layer->sourceEditor_.setText(fragmentSource);
+    layer->sourceEditor_.resetTextChanged();
+
+    // Layer shaders not compiled here, but in loadAll, after the 
+    // re-establishment of possible layer resource dependencies
+
+    auto framebufferData = io.readObject("internalFramebuffer");
+    auto internalFormat = 
+        (vir::TextureBuffer::InternalFormat)framebufferData.read<int>("format");
+    
+    layer->rebuildFramebuffers(internalFormat, layer->resolution_);
+
+    // Set framebuffer color attachment wrapping and filtering settings
+    auto magFilter = framebufferData.read<int>("magFilterMode");
+    auto minFilter = framebufferData.read<int>("minFilterMode");
+    auto wrapModes = framebufferData.read<glm::ivec2>("wrapModes");
+    layer->setFramebufferMagFilterMode((FilterMode)magFilter);
+    layer->setFramebufferMinFilterMode((FilterMode)minFilter);
+    layer->setFramebufferWrapMode(0, (WrapMode)wrapModes[0]);
+    layer->setFramebufferWrapMode(1, (WrapMode)wrapModes[1]);
+
+    layer->exportSettings.clearPolicy = 
+        (ExportSettings::FramebufferClearPolicy)
+        framebufferData.read<int>("exportClearPolicy");
+
+    // Initialize post-processing effects, if any were saved 
+    /* TODO
+    if (io.hasMember("postProcesses"))
+    {
+        auto postProcessData = io.readObject("postProcesses");
+        for (auto name : postProcessData.members())
+        {
+            ObjectIO data(postProcessData.readObject(name));
+            layer->rendering_.postProcesses.emplace_back
+            (
+                PostProcess::load(data, layer)
+            );
+        }
+    }*/
+
+    //
+    if (layer->renderState_.target != RenderState::Target::Window)
+        addLayerToResources(layer.getWeak(), appState.resources);
+    
     return layer;
 }
 
@@ -644,7 +848,7 @@ void Layer::setRenderingTilesNumber(unsigned int nTiles)
 
 //----------------------------------------------------------------------------//
 
-void Layer::saveToDisk(ObjectIO& io)
+void Layer::saveTo(ObjectIO& io)
 {
     io.writeObjectStart(name_.c_str());
     io.write("renderTarget", (int)renderState_.target);
@@ -698,7 +902,7 @@ void Layer::saveToDisk(ObjectIO& io)
     io.writeObjectStart("uniforms");
     for(auto& u : this->uniforms)
     {
-        u->saveToDisk(io);
+        u->saveTo(io);
     }
     io.writeObjectEnd(); // End of uniforms
     io.writeObjectEnd(); // End of shaders
@@ -715,6 +919,22 @@ void Layer::saveToDisk(ObjectIO& io)
     }
     */
     io.writeObjectEnd(); // End of 'gui_.name'
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::resetSharedSourceEditor()
+{
+    Layer::sharedSourceEditor_.setText(Layer::defaultSharedSource_);
+    Layer::sharedSourceEditor_.resetTextChanged();
+}
+
+//----------------------------------------------------------------------------//
+
+void Layer::resetSharedSourceEditor(const std::string& content)
+{
+    Layer::sharedSourceEditor_.setText(content);
+    Layer::sharedSourceEditor_.resetTextChanged();
 }
 
 //----------------------------------------------------------------------------//
@@ -1023,7 +1243,7 @@ void Layer::renderShader
 
 void Layer::renderMenuItemGui()
 {
-    if
+    if 
     (
         ImGui::BeginMenu
         (

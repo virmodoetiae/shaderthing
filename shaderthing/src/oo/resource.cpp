@@ -146,7 +146,7 @@ Texture2DResource::~Texture2DResource()
         delete[] rawData_;
 }
 
-void Texture2DResource::saveToDisk(ObjectIO& io)
+void Texture2DResource::saveTo(ObjectIO& io)
 {
     io.writeObjectStart(name().c_str());
     io.write("type", Resource::typeToName.at(type_));
@@ -165,7 +165,7 @@ void Texture2DResource::saveToDisk(ObjectIO& io)
     io.writeObjectEnd();
 }
 
-UPtr<Texture2DResource> Texture2DResource::load(const ObjectIO& io)
+UPtr<Texture2DResource> Texture2DResource::loadFrom(const ObjectIO& io)
 {
     auto resource = UPtr<Texture2DResource>(new Texture2DResource());
     unsigned int rawDataSize;
@@ -410,7 +410,7 @@ bool AnimatedTexture2DResource::set
     return true;
 }
 
-void AnimatedTexture2DResource::saveToDisk(ObjectIO& io)
+void AnimatedTexture2DResource::saveTo(ObjectIO& io)
 {
     io.writeObjectStart(name().c_str());
     io.write("type", Resource::typeToName.at(type_));
@@ -442,7 +442,7 @@ void AnimatedTexture2DResource::saveToDisk(ObjectIO& io)
     io.writeObjectEnd();
 }
 
-UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::load
+UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::loadFrom
 (
     const ObjectIO& io,
     const std::vector<UPtr<Resource>>& resources
@@ -562,7 +562,7 @@ bool CubemapResource::set
     return true;
 }
 
-void CubemapResource::saveToDisk(ObjectIO& io)
+void CubemapResource::saveTo(ObjectIO& io)
 {
     for (int i=0; i<6; i++)
     {
@@ -580,7 +580,7 @@ void CubemapResource::saveToDisk(ObjectIO& io)
     io.writeObjectEnd();
 }
 
-UPtr<CubemapResource> CubemapResource::load
+UPtr<CubemapResource> CubemapResource::loadFrom
 (
     const ObjectIO& io,
     const std::vector<UPtr<Resource>>& resources
@@ -653,7 +653,7 @@ bool Texture3DResource::set
     return true;
 }
 
-void Texture3DResource::saveToDisk(ObjectIO& io)
+void Texture3DResource::saveTo(ObjectIO& io)
 {
     io.writeObjectStart(name().c_str());
     io.write("type", Resource::typeToName.at(type_));
@@ -668,7 +668,7 @@ void Texture3DResource::saveToDisk(ObjectIO& io)
     io.writeObjectEnd();
 }
 
-UPtr<Texture3DResource> Texture3DResource::load(const ObjectIO& io)
+UPtr<Texture3DResource> Texture3DResource::loadFrom(const ObjectIO& io)
 {
     auto resource = UPtr<Texture3DResource>(new Texture3DResource());
     

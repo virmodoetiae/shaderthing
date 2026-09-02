@@ -96,6 +96,8 @@ default :                                                                   \
     block_->clear();
 }
 
+//----------------------------------------------------------------------------//
+
 SharedStorage::SharedStorage()
 {
     isSupported_ = vir::ShaderStorageBuffer::create(1)->canRunOnDeviceInUse();
@@ -113,6 +115,13 @@ SharedStorage::SharedStorage()
 
 //----------------------------------------------------------------------------//
 
+UPtr<SharedStorage> SharedStorage::create()
+{
+    return UPtr<SharedStorage>(new SharedStorage());
+}
+
+//----------------------------------------------------------------------------//
+
 SharedStorage::~SharedStorage()
 {
     if (buffer_.valid())
@@ -125,7 +134,7 @@ SharedStorage::~SharedStorage()
 
 //----------------------------------------------------------------------------//
 
-void SharedStorage::save(ObjectIO& io) const
+void SharedStorage::saveTo(ObjectIO& io) const
 {
     if (!isSupported_)
         return;
@@ -163,9 +172,9 @@ void SharedStorage::save(ObjectIO& io) const
 
 //----------------------------------------------------------------------------//
 
-SharedStorage* SharedStorage::load(const ObjectIO& io)
+UPtr<SharedStorage> SharedStorage::loadFrom(const ObjectIO& io)
 {
-    auto sharedStorage = new SharedStorage();
+    auto sharedStorage = SharedStorage::create();
     if (!io.hasMember("sharedStorage") || !sharedStorage->isSupported_)
         return sharedStorage;
 

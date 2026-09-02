@@ -22,15 +22,19 @@ void initialize(AppState& appState)
     // General appState reset
     appState.project = {};
     appState.renderState = {};
-    // TODO appState.sharedSourceEditor. ... reset
+    Layer::resetSharedSourceEditor();
     appState.exporter.reset();
     appState.exporter = vir::makeUnique<Exporter>();
     appState.sharedStorage.reset();
-    appState.sharedStorage = vir::makeUnique<SharedStorage>();
+    appState.sharedStorage = SharedStorage::create();
     appState.sharedUniforms.reset();
     appState.sharedUniforms = vir::makeUnique<SharedUniforms>();
+    //appState.resources.clear();
+    for (auto& layer : appState.layers)
+    {
+        removeLayerFromResources(layer->weakFromThis(), appState.resources);
+    }
     appState.layers.clear();
-    appState.resources.clear();
 
     // Reset event manager
     if (GPtr<EventManager>::valid())
@@ -134,11 +138,27 @@ void initialize(AppState& appState)
     font.imFont->Scale = 0.6;
     font.scale = &font.imFont->Scale;
 
-    // Initialize shared uniforms ----------------------------------------------
+    // Initialize shared uniforms
+    initializeSharedUniforms(appState);
 
+    // Create default layer
+    createNewLayer(appState);
+
+    // Initialize event manager
+    GPtr<EventManager>(new EventManager(appState));
+
+    if (firstTime)
+        firstTime = false;
+};
+
+//----------------------------------------------------------------------------//
+
+void initializeSharedUniforms(AppState& appState)
+{
     SharedUniforms& su = *(appState.sharedUniforms);
 
     // Init CPU block data
+    auto window = vir::Window::instance();
     if (!window->iconified())
        su.iResolution = {window->width(), window->height()};
     su.iAspectRatio = su.iResolution.x/su.iResolution.y;
@@ -271,18 +291,7 @@ void initialize(AppState& appState)
     su.iKeyboardUniform->name() = "iKeyboard";
     su.iKeyboardUniform->setValuePtr(&su.iKeyboard, Uniform::Type::Int3, 256);
     su.iKeyboardUniform->gui.showBounds = false;
-
-    // End of sharedUniforms initialization ------------------------------------
-
-    // Create default layer
-    createNewLayer(appState);
-
-    // Initialize event manager
-    GPtr<EventManager>(new EventManager(appState));
-
-    if (firstTime)
-        firstTime = false;
-};
+}
 
 //----------------------------------------------------------------------------//
 
@@ -638,7 +647,11 @@ void toggleRenderingPaused(AppState& appState, bool dueToLowFps)
 void createNewLayer(AppState& appState, bool compileShader)
 {
     unsigned int id = Helpers::findSmallestFreeLayerId(appState.layers);
-    appState.layers.emplace_back(Layer::create(id, appState));
+    auto& layer = appState.layers.emplace_back(Layer::create(id, appState));
+    if (compileShader)
+        layer->compileShader();
+    if (appState.renderState.isTiledRenderingEnabled)  
+        setRenderingTiles(appState, appState.renderState.nTiles);
 }
 
 //------------------------------------------------------------------------------
@@ -995,7 +1008,7 @@ void setMouseCaptured(AppState& appState, bool flag)
 
 //----------------------------------------------------------------------------//
 
-void saveToDisk
+void saveTo
 (
     AppState& appState, 
     const std::string& filepath, 
@@ -1014,7 +1027,7 @@ void saveToDisk
     //
     io.writeObjectStart("resources");
     for (auto& resource : appState.resources)
-        resource->saveToDisk(io);
+        resource->saveTo(io);
     io.writeObjectEnd();
     //
     auto& su = *(appState.sharedUniforms);
@@ -1053,7 +1066,7 @@ void saveToDisk
                      i<su.fragment.uniforms.size(); 
                      i++)
     {
-        su.fragment.uniforms[i]->saveToDisk(io);
+        su.fragment.uniforms[i]->saveTo(io);
     }
     io.writeObjectEnd(); // End of uniforms
     io.writeObjectEnd(); // End of sharedUniforms
@@ -1061,7 +1074,7 @@ void saveToDisk
     io.writeObjectStart("layers");
     for (auto& layer : appState.layers)
     {
-        layer->saveToDisk(io);
+        layer->saveTo(io);
     }
     io.writeObjectEnd(); // End of layers
 
@@ -1085,6 +1098,334 @@ void saveToDisk
         0xff25ff50
     );
 }
+
+//----------------------------------------------------------------------------//
+
+void loadFrom
+(
+    AppState& appState,
+    const std::string& filepathOrData,
+    bool fromMemory
+)
+{
+    /*
+    auto project = 
+        fromMemory ? 
+        ObjectIO(filepathOrData) : 
+        ObjectIO(filepathOrData.c_str(), ObjectIO::Mode::Read);
+    if (!project.isValid())
+        return; // TODO Could display an error via ImGui
+    
+    *font_.fontScale = project.read<float>("UIScale");
+    project_.isAutoSaveEnabled = project.readOrDefault<bool>
+    (
+        "autoSaveEnabled", 
+        Project{}.isAutoSaveEnabled
+    );
+    project_.autoSaveInterval = project.readOrDefault<float>
+    (
+        "autoSaveInterval", 
+        Project{}.autoSaveInterval
+    );
+    windowSettings_.isVSyncEnabled = 
+        project.readOrDefault<bool>("vSyncEnabled", true);
+    vir::Window::instance()->setVSync(windowSettings_.isVSyncEnabled);
+    
+    Resource::      loadAll(project,                            resources_);
+    SharedUniforms::load   (project,           sharedUniforms_, resources_);
+    Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
+    Exporter::      load   (project, exporter_                            );
+    PostProcess::   loadStaticData(project);
+    */
+
+    auto project = 
+        fromMemory ? 
+        ObjectIO(filepathOrData) : 
+        ObjectIO(filepathOrData.c_str(), ObjectIO::Mode::Read);
+    if (!project.isValid())
+        return; // TODO Could display an error via ImGui
+
+    *appState.font.scale = project.read<float>("UIScale");
+    appState.project.isAutoSaveEnabled = project.readOrDefault<bool>
+    (
+        "autoSaveEnabled", 
+        Project{}.isAutoSaveEnabled
+    );
+    appState.project.autoSaveInterval = project.readOrDefault<float>
+    (
+        "autoSaveInterval", 
+        Project{}.autoSaveInterval
+    );
+    appState.renderState.isVSyncEnabled = 
+        project.readOrDefault<bool>("vSyncEnabled", true);
+    vir::Window::instance()->setVSync(appState.renderState.isVSyncEnabled);
+
+    // Load Resources ----------------------------------------------------------
+    
+    appState.resources.clear();
+    auto ioType = [](const ObjectIO& io)
+    {
+        auto typeName = io.read("type", false);
+        for (auto entry : Resource::typeToName)
+        {
+            if (std::string(typeName) != std::string(entry.second))
+                continue;
+            return entry.first;
+        }
+        return Resource::Type();
+    };
+    auto ioResources = project.readObject("resources");
+
+    // First, load all resources of type Texture2D as these might be referenced
+    // by AnimatedTexture2D or Cubemap resources
+    for (auto ioResourceName : ioResources.members())
+    {
+        auto ioResource = ioResources.readObject(ioResourceName);
+        auto type = ioType(ioResource);
+        if (type != Resource::Type::Texture2D)
+            continue;
+        appState.resources.emplace_back
+        (
+            Texture2DResource::loadFrom(ioResource)
+        );
+    }
+    // Then load all the remaining resources
+    for (auto ioResourceName : ioResources.members())
+    {
+        auto ioResource = ioResources.readObject(ioResourceName);
+        auto type = ioType(ioResource);
+        switch (type)
+        {
+            default :
+                continue;
+            case Resource::Type::Texture3D :
+                appState.resources.emplace_back
+                (
+                    Texture3DResource::loadFrom(ioResource)
+                );
+                break;
+            case Resource::Type::AnimatedTexture2D :
+                appState.resources.emplace_back
+                (
+                    AnimatedTexture2DResource::loadFrom
+                    (
+                        ioResource, 
+                        appState.resources
+                    )
+                );
+                break;
+            case Resource::Type::Cubemap :
+                appState.resources.emplace_back
+                (
+                    CubemapResource::loadFrom(ioResource, appState.resources)
+                );
+                break;
+        }
+    }
+
+    // Load SharedUniforms -----------------------------------------------------
+
+    appState.sharedUniforms.reset();
+    appState.sharedUniforms = vir::makeUnique<SharedUniforms>();
+    initializeSharedUniforms(appState);
+    auto su = appState.sharedUniforms.get();
+    auto ioSu = project.readObject("sharedUniforms");
+    auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
+    setWindowResolution(appState, resolution, false);
+    su->iTime = ioSu.read<float>("time");
+    //su->resetFrameCounter = false;
+    su->iTimeUniform->gui.bounds = ioSu.read<glm::vec2>("timeBounds");
+    su->iWASD = ioSu.read<glm::vec3>("iWASD");
+    su->iLook = ioSu.read<glm::vec3>("iLook");
+    su->isTimePaused = ioSu.read<bool>("timePaused");
+    su->isTimeLooped = ioSu.read<bool>("timeLooped");
+    su->isTimeDeltaSmooth = 
+        ioSu.readOrDefault<bool>("smoothTimeDelta", false);
+    su->isTimeResetOnFrameCounterReset = 
+        ioSu.read<bool>("resetTimeOnFrameCounterReset");
+    su->isRandomNumberGeneratorPaused = 
+        ioSu.readOrDefault<bool>("randomGeneratorPaused", false);
+    su->shaderCamera->setDirection(su->iLook);
+    su->shaderCamera->setPosition(su->iWASD);
+    su->shaderCamera->setKeySensitivity(ioSu.read<float>("iWASDSensitivity"));
+    su->shaderCamera->setMouseSensitivity(ioSu.read<float>("iLookSensitivity"));
+    su->shaderCamera->update();
+    if (!ioSu.read<bool>("iWASDInputEnabled"))
+        toggleCameraKeyboardInputs(appState);
+    if (!ioSu.read<bool>("iLookInputEnabled"))
+        toggleCameraMouseInputs(appState);
+    su->cameraMouseInputRequiresLMBHold = 
+        ioSu.readOrDefault<bool>("iLookInputRequiresLMBHold", true);
+    if (!ioSu.read<bool>("iMouseInputEnabled"))
+        toggleMouseInputs(appState);
+    setMouseInputsClamped
+    (
+        appState,
+        ioSu.readOrDefault<bool>("iMouseInputClampedToWindow", false)
+    );
+    su->mouseInputRequiresLMBHold = 
+        ioSu.readOrDefault<bool>("mouseInputRequiresLMBHold", true);
+    if (!ioSu.read<bool>("iKeyboardInputEnabled"))
+        toggleKeyboardInputs(appState);
+    
+    // TODO Reimplement
+    /*
+    su->exportData_.resolutionScale = 
+        ioSu.read<float>("exportWindowResolutionScale");
+    su->exportData_.resolution = 
+        (glm::vec2)su->iResolution_*
+        su->exportData_.resolutionScale + .5f;
+    */
+    if (ioSu.readOrDefault<bool>("cursorStatus", false))
+        setMouseCaptured(appState, true);
+    std::map<Uniform*, std::string> uninitializedSharedResourceLayers = {};
+    Uniform::loadAllFrom
+    (
+        ioSu,
+        &su->fragment,
+        appState.resources,
+        uninitializedSharedResourceLayers
+    );
+    su->toggles.updateDataRangeII = true;
+
+    // Load Layers -------------------------------------------------------------
+
+    // Clear state
+    appState.layers.clear();
+
+    if (project.hasMember("graphicsExtensions"))
+    {
+        std::vector<std::string> enabledExtensions = 
+            project.read<std::vector<std::string>>("graphicsExtensions");
+        for (auto& extension : enabledExtensions)
+            vir::Shader::
+            setExtensionStatusInCurrentContextShadingLanguageDirectives
+            (
+                extension, 
+                true
+            );
+    }
+
+    if (project.hasMember("sharedFragmentSource"))
+        Layer::resetSharedSourceEditor
+        (
+            project.read("sharedFragmentSource", false)
+        );
+    else
+        Layer::resetSharedSourceEditor();
+
+    appState.sharedStorage = SharedStorage::loadFrom(project);
+    
+    auto ioLayers = project.readObject("layers");
+    unsigned int layerId = 0;
+    for (auto ioLayerName : ioLayers.members())
+    {   
+        auto ioLayer = ioLayers.readObject(ioLayerName);
+        appState.layers.emplace_back
+        (
+            Layer::loadFrom(ioLayer, layerId++, appState)
+        );
+    };
+
+    // Some layers might use other layers as resource uniforms. However, if
+    // layer I using layer J as a resource uniform is created before layer J,
+    // the uniform value (i.e., the ptr to the resource-type layer) cannot be
+    // initialized because J has not been created yet. This bookkeping is
+    // done within Layer::loadFrom(), and it populates 
+    // layer->cache.uninitializedResourceLayers. After all layers have been
+    // loaded, the proceed with re-establishing dependencies for resource
+    // uniforms that consist of layers.
+    for (auto& layer : appState.layers)
+    {
+        for (auto& entry : layer->cache.uninitializedResourceLayers)
+        {
+            auto* uniform = entry.first;
+            auto& layerName = entry.second;
+            for (auto& resource : appState.resources)
+            {
+                if (resource->name() != layerName)
+                    continue;
+                uniform->setResourcePtr(resource);
+            }
+        }
+        layer->cache.uninitializedResourceLayers.clear();
+    }
+
+    // Repeat for shared resource layers
+    for (auto& entry : uninitializedSharedResourceLayers)
+    {
+        auto* uniform = entry.first;
+        auto& layerName = entry.second;
+        for (auto& resource : appState.resources)
+        {
+            if (resource->name() != layerName)
+                continue;
+            uniform->setResourcePtr(resource);
+        }
+    }
+    uninitializedSharedResourceLayers.clear();
+
+    // Reset the lists of layers using each image- or sampler-type resource
+    // within each resource
+    for (auto& layer : appState.layers)
+    {
+        for (auto& uniform : layer->uniforms)
+        {
+            if 
+            (
+                uniform->type() == Uniform::Type::Sampler2D ||
+                uniform->type() == Uniform::Type::Sampler3D ||
+                uniform->type() == Uniform::Type::SamplerCube ||
+                uniform->type() == Uniform::Type::Image2D ||
+                uniform->type() == Uniform::Type::Image3D ||
+                uniform->type() == Uniform::Type::ImageCube
+            )
+            {
+                auto resource = uniform->getValuePtr<Resource>();
+                if (resource != nullptr)
+                {
+                    if (!resource->isUsedByUniform(uniform.get()))
+                        resource->addClientUniform(uniform.get());
+                }
+            }
+        }
+    }
+
+    // Compile all layer shaders after dependencies have been re-established
+    for (auto& layer : appState.layers)
+    {
+        // If the project was saved in a state such that the shader has 
+        // compilation errors, then initialize the shader with the blank shader 
+        // source (back-end-only, the user will still see the source of the 
+        // saved shader with the  usual list of compilation errors and markers).
+        // This is what the last flag is for
+        layer->compileShader(true);
+    }
+
+    for (auto& u : appState.sharedUniforms->fragment.uniforms)
+    {
+        u->markForSubmissionToAllClientBuffers();
+    }
+    for (auto& layer : appState.layers)
+    {
+        for (auto& u : layer->uniforms)
+        {
+            u->markForSubmissionToAllClientBuffers();
+        }
+    }
+
+    // Finally, reset tiled rendering
+    unsigned int nTiles = 
+        project.readOrDefault<unsigned int>("nRenderingTiles", 1);
+    setRenderingTiles(appState, nTiles);
+
+    /* TODO Reimplement
+    Exporter::      load   (project, exporter_                            );
+    PostProcess::   loadStaticData(project);
+    */
+}
+
+//----------------------------------------------------------------------------//
 
 void updateLayersDueToUniformTypeOrNameChanged
 (

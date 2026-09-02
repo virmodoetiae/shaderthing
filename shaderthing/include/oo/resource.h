@@ -103,7 +103,7 @@ public:
     void                   removeClientUniform(Uniform* u);
     bool                   isUsedByUniform(const Uniform *u) const;
 
-    virtual void           saveToDisk(ObjectIO& io) = 0;
+    virtual void           saveTo(ObjectIO& io) = 0;
     virtual void           update(const UpdateArgs& args) {};
     
     virtual void           bind(unsigned int unit) = 0;
@@ -290,8 +290,8 @@ public:
 
     ~Texture2DResource();
 
-    virtual void saveToDisk(ObjectIO& io) override;
-    static UPtr<Texture2DResource> load(const ObjectIO& io);
+    virtual void saveTo(ObjectIO& io) override;
+    static UPtr<Texture2DResource> loadFrom(const ObjectIO& io);
     
     bool set(const std::string& filepath);
     bool set(const unsigned char* rawData, unsigned int size);
@@ -339,8 +339,8 @@ public:
 
     ~AnimatedTexture2DResource();
 
-    virtual void saveToDisk(ObjectIO& io) override;
-    static UPtr<AnimatedTexture2DResource> load
+    virtual void saveTo(ObjectIO& io) override;
+    static UPtr<AnimatedTexture2DResource> loadFrom
     (
         const ObjectIO& io,
         const std::vector<UPtr<Resource>>& resources
@@ -375,8 +375,8 @@ public:
         const std::array<WPtr<Texture2DResource>, 6>& faces
     );
 
-    virtual void saveToDisk(ObjectIO& io) override;
-    static UPtr<CubemapResource> load
+    virtual void saveTo(ObjectIO& io) override;
+    static UPtr<CubemapResource> loadFrom
     (
         const ObjectIO& io,
         const std::vector<UPtr<Resource>>& resources
@@ -411,8 +411,8 @@ public:
 
     ~Texture3DResource() {}
 
-    virtual void saveToDisk(ObjectIO& io) override;
-    static UPtr<Texture3DResource> load(const ObjectIO& io);
+    virtual void saveTo(ObjectIO& io) override;
+    static UPtr<Texture3DResource> loadFrom(const ObjectIO& io);
 
     bool set
     (
@@ -450,7 +450,7 @@ public:
 
     ~LayerResource();
 
-    virtual void saveToDisk(ObjectIO& io) override {(void)io;}
+    virtual void saveTo(ObjectIO& io) override {(void)io;}
     
     bool set(WPtr<Layer> layer);
     

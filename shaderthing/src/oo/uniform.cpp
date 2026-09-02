@@ -39,6 +39,151 @@ const UPtr<Uniform>& Uniform::create(UniformContainer* owner)
 
 //----------------------------------------------------------------------------//
 
+void Uniform::loadAllFrom
+(
+    ObjectIO& io, 
+    UniformContainer* owner, 
+    UPtrVector<Resource>& resources,
+    std::map<Uniform*, std::string>& cache
+)
+{
+    if (!io.hasMember("uniforms"))
+        return;
+    auto uniformsData = io.readObject("uniforms");
+    for(auto uniformName : uniformsData.members())
+    {
+        auto uniformData = uniformsData.readObject(uniformName);
+        auto& uniform = Uniform::create(owner);
+        // Mapping for compatibility with previous version .stf files
+        std::string typeName = uniformData.read<std::string>("type");
+        if (typeName == "texture2D")
+            typeName = "sampler2D";
+        else if (typeName == "cubemap")
+            typeName = "samplerCube";
+        auto type = vir::Shader::uniformNameToType[typeName];
+        uniform->isSharedByUser = 
+            uniformData.readOrDefault<bool>("shared", false);
+        float min = 0., max = 0.;
+
+#define SET_UNIFORM(T, U)                                                      \
+    uniform->setValue<T>(uniformData.read<T>("value"), Uniform::Type::U);
+#define READ_MIN_MAX                                                           \
+    min = uniformData.read<float>("min");                                      \
+    max = uniformData.read<float>("max");
+
+        bool setInUniformBuffer = true;
+        switch (type)
+        {
+            case vir::Uniform::Type::Bool :
+            {
+                SET_UNIFORM(bool, Bool)
+                uniform->gui.showBounds = false;
+                break;
+            }
+            case vir::Uniform::Type::UInt :
+            {
+                SET_UNIFORM(unsigned int, UInt)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Uniform::Type::Int :
+            {
+                SET_UNIFORM(int, Int)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Uniform::Type::Int2 :
+            {
+                SET_UNIFORM(glm::ivec2, Int2)
+                READ_MIN_MAX
+                uniform->gui.dragStep = 
+                    uniformData.readOrDefault<float>("dragStep", 1.f);
+                break;
+            }
+            case vir::Uniform::Type::Int3 :
+            {
+                SET_UNIFORM(glm::ivec3, Int3)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Uniform::Type::Int4 :
+            {
+                SET_UNIFORM(glm::ivec4, Int4)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Uniform::Type::Float :
+            {
+                SET_UNIFORM(float, Float)
+                READ_MIN_MAX
+                break;
+            }
+            case vir::Uniform::Type::Float2 :
+            {
+                SET_UNIFORM(glm::vec2, Float2)
+                READ_MIN_MAX
+                uniform->gui.dragStep = 
+                    uniformData.readOrDefault<float>("dragStep", 1.f);
+                break;
+            }
+            case vir::Uniform::Type::Float3 :
+            {
+                SET_UNIFORM(glm::vec3, Float3)
+                READ_MIN_MAX
+                uniform->gui.usesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
+                break;
+            }
+            case vir::Uniform::Type::Float4 :
+            {
+                SET_UNIFORM(glm::vec4, Float4)
+                READ_MIN_MAX
+                uniform->gui.usesColorPicker = uniformData.read<bool>(
+                    "usesColorPicker");
+                uniform->gui.showBounds = !uniform->gui.usesColorPicker;
+                break;
+            }
+            case vir::Uniform::Type::Sampler2D :
+            case vir::Uniform::Type::Sampler3D :
+            case vir::Uniform::Type::SamplerCube :
+            case vir::Uniform::Type::Image2D :
+            case vir::Uniform::Type::Image3D :
+            case vir::Uniform::Type::ImageCube :
+            {
+                uniform->setType(type);
+                uniform->gui.showBounds = false;
+                std::string resourceName = uniformData.read("value", false);
+                bool found = false;
+                for (auto& resource : resources)
+                {
+                    if (resource->name() == resourceName)
+                    {
+                        uniform->setResourcePtr(resource);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    cache.insert
+                    (
+                        {uniform.get(), resourceName}
+                    );
+                setInUniformBuffer = false;
+                break;
+            }
+            default:
+                break;
+        }
+        uniform->gui.bounds = {min, max};
+        uniform->name() = uniformName;
+        if (setInUniformBuffer)
+            owner->uniformBuffer->addUniform(uniform);
+    }
+}
+
+//----------------------------------------------------------------------------//
+
 Uniform::~Uniform()
 {
     if (!isResource())
@@ -113,7 +258,7 @@ void Uniform::deleteValue(bool deleteCache)
 
 //----------------------------------------------------------------------------//
 
-void Uniform::saveToDisk(ObjectIO& io)
+void Uniform::saveTo(ObjectIO& io)
 {
     if 
     (

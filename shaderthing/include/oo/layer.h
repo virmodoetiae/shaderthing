@@ -96,6 +96,7 @@ public :
     struct Cache
     {
         WPtrVector<Uniform> uncompiledUniforms;
+        std::map<Uniform*, std::string> uninitializedResourceLayers;
     };
 
     static const unsigned int nMaxLayers = 32;
@@ -116,6 +117,7 @@ protected:
           float          depth_;
           RenderState    renderState_;
           TextEditor     sourceEditor_;
+static const std::string defaultSharedSource_;
    static TextEditor     sharedSourceEditor_;
           std::string    sourceHeader_;
           std::string    headerErrors_;
@@ -134,6 +136,13 @@ protected:
 public:
 
     static UPtr<Layer> create(unsigned int id, AppState& appState);
+
+    static UPtr<Layer> loadFrom
+    (
+        ObjectIO& io, 
+        unsigned int id, 
+        AppState& appState
+    );
 
     virtual ~Layer();
 
@@ -191,7 +200,11 @@ public:
 
     void renderShader(vir::Framebuffer* target, const bool clearTarget);
 
-    void saveToDisk(ObjectIO& io);
+    void saveTo(ObjectIO& io);
+
+    static void resetSharedSourceEditor();
+
+    static void resetSharedSourceEditor(const std::string& content);
     
     // GUI ---------------------------------------------------------------------
 
