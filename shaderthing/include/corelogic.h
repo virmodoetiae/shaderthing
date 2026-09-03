@@ -1,8 +1,9 @@
 #pragma once
 
 #include <string>
+#include "shaderthing/include/structs.h"
 #include "shaderthing/include/typedefs.h"
-#include "shaderthing/include/oo/uniform.h"
+#include "shaderthing/include/uniform.h"
 
 namespace ShaderThing
 {

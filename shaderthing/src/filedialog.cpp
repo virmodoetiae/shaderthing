@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <chrono>
 
-#include "shaderthing/include/oo/filedialog.h"
+#include "shaderthing/include/filedialog.h"
 
 #include "shaderthing/include/helpers.h"
 

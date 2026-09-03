@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <vector>
 
-#include "shaderthing/include/oo/uniform.h"
-#include "shaderthing/include/oo/objectio.h"
-#include "shaderthing/include/oo/resource.h"
+#include "shaderthing/include/uniform.h"
+#include "shaderthing/include/objectio.h"
+#include "shaderthing/include/resource.h"
 #include "shaderthing/include/structs.h"
 
 namespace ShaderThing

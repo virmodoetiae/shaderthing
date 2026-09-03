@@ -1,6 +1,6 @@
 #include "shaderthing/include/corelogic.h"
 #include "shaderthing/include/gui.h"
-#include "shaderthing/include/oo/eventmanager.h"
+#include "shaderthing/include/eventmanager.h"
 #include "shaderthing/include/shaderthing.h"
 #include "shaderthing/include/structs.h"
 #include "shaderthing/include/typedefs.h"

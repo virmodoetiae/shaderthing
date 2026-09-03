@@ -1,7 +1,7 @@
 #include "vir/include/vpch.h"
-#include "shaderthing/include/oo/resource.h"
-#include "shaderthing/include/oo/objectio.h"
-#include "shaderthing/include/oo/filedialog.h"
+#include "shaderthing/include/resource.h"
+#include "shaderthing/include/objectio.h"
+#include "shaderthing/include/filedialog.h"
 #include "shaderthing/include/structs.h"
 #include "shaderthing/include/helpers.h"
 

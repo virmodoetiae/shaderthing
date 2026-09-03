@@ -15,7 +15,7 @@
 
 #include <algorithm>
 
-#include "shaderthing/include/oo/statusbar.h"
+#include "shaderthing/include/statusbar.h"
 
 #include "vir/include/vir.h"
 

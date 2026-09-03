@@ -20,7 +20,7 @@
 #include <regex>
 #include <string>
 
-#include "shaderthing/include/oo/texteditor.h"
+#include "shaderthing/include/texteditor.h"
 
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 

@@ -16,9 +16,9 @@
 #include "shaderthing/include/corelogic.h"
 #include "shaderthing/include/structs.h"
 #include "shaderthing/include/gui.h"
-#include "shaderthing/include/oo/layer.h"
-#include "shaderthing/include/oo/objectio.h"
-#include "shaderthing/include/oo/uniform.h"
+#include "shaderthing/include/layer.h"
+#include "shaderthing/include/objectio.h"
+#include "shaderthing/include/uniform.h"
 
 #include "vir/include/vir.h"
 

@@ -20,7 +20,6 @@
 
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/structs.h"
-#include "shaderthing/include/oo/resource.h"
 
 #include "vir/include/vir.h"
 

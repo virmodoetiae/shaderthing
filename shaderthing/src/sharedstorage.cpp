@@ -14,8 +14,8 @@
 */
 
 #include "shaderthing/include/bytedata.h"
-#include "shaderthing/include/oo/sharedstorage.h"
-#include "shaderthing/include/oo/objectio.h"
+#include "shaderthing/include/sharedstorage.h"
+#include "shaderthing/include/objectio.h"
 #include "vir/include/vir.h"
 
 namespace ShaderThing

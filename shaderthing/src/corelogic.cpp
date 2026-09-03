@@ -2,12 +2,12 @@
 #include "shaderthing/include/corelogic.h"
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/structs.h"
-#include "shaderthing/include/oo/eventmanager.h"
-#include "shaderthing/include/oo/layer.h"
-#include "shaderthing/include/oo/objectio.h"
-#include "shaderthing/include/oo/texteditor.h"
-#include "shaderthing/include/oo/statusbar.h"
-#include "shaderthing/include/oo/uniform.h"
+#include "shaderthing/include/eventmanager.h"
+#include "shaderthing/include/layer.h"
+#include "shaderthing/include/objectio.h"
+#include "shaderthing/include/texteditor.h"
+#include "shaderthing/include/statusbar.h"
+#include "shaderthing/include/uniform.h"
 #include "vir/include/vir.h"
 
 namespace ShaderThing

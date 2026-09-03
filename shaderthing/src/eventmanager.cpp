@@ -1,4 +1,4 @@
-#include "shaderthing/include/oo/eventmanager.h"
+#include "shaderthing/include/eventmanager.h"
 #include "shaderthing/include/structs.h"
 #include "shaderthing/include/corelogic.h"
 #include "vir/include/vir.h"

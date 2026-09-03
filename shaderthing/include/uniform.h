@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include "vir/include/vmacros.h"
 #include "vir/include/vgraphics/vcore/vuniform.h"
-#include "shaderthing/include/oo/resource.h"
+#include "shaderthing/include/resource.h"
 #include "shaderthing/include/typedefs.h"
 
 namespace ShaderThing
