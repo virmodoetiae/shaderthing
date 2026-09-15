@@ -156,17 +156,17 @@ Layer::Layer(unsigned int aId, AppState& appState) :
     setDepth((float)appState.layers.size()/Layer::nMaxLayers);
 
     // Init unfiorm buffer storage
-    this->uniformBuffer = 
+    fragment.uniformBuffer = 
         vir::DynamicUniformBuffer::create(1024, "privateUniformBlock");
     // First two points taken by shared vertex shader uniform block and shared
     // fragment uniform block
     unsigned int bindingPoint = 2+id;
-    this->uniformBufferBindingPoint = bindingPoint;
-    this->uniformBuffer->setBindingPoint(bindingPoint);
+    fragment.uniformBufferBindingPoint = bindingPoint;
+    fragment.uniformBuffer->setBindingPoint(bindingPoint);
 
     // Add default uniforms
     {
-        auto& u = Uniform::create(this);
+        auto& u = Uniform::create(&fragment);
         u->managedType = Uniform::ManagedType::LayerAspectRatio;
         u->name() = "iAspectRatio";
         u->setValuePtr(&aspectRatio_, Uniform::Type::Float);
@@ -174,7 +174,7 @@ Layer::Layer(unsigned int aId, AppState& appState) :
         renderState_.iAspectRatioUniform = u.getWeak();
     }
     {
-        auto& u = Uniform::create(this);
+        auto& u = Uniform::create(&fragment);
         u->managedType = Uniform::ManagedType::LayerResolution;
         u->name() = "iResolution";
         u->setValuePtr(&resolution_, Uniform::Type::Float2);
@@ -283,8 +283,14 @@ UPtr<Layer> Layer::loadFrom
     layer->aspectRatio_ = float(layer->resolution_.x)/layer->resolution_.y;
     layer->resolutionRatio_ = io.read<glm::vec2>("resolutionRatio");
     // Ensure iAspectRatio and iResolution values are actually updated
-    layer->uniformBuffer->markUniformForSubmission(layer->uniforms[0].get());
-    layer->uniformBuffer->markUniformForSubmission(layer->uniforms[1].get()); 
+    layer->fragment.uniformBuffer->markUniformForSubmission
+    (
+        layer->fragment.uniforms[0].get()
+    );
+    layer->fragment.uniformBuffer->markUniformForSubmission
+    (
+        layer->fragment.uniforms[1].get()
+    ); 
     
     layer->rescaleWithWindow_ = 
         io.readOrDefault<bool>("rescaleWithWindow", true);
@@ -312,7 +318,7 @@ UPtr<Layer> Layer::loadFrom
     Uniform::loadAllFrom
     (
         shaderData,
-        layer.getWeak(),
+        &layer->fragment,
         appState.resources,
         layer->cache.uninitializedResourceLayers
     );
@@ -671,12 +677,12 @@ std::string Layer::fragmentShaderSourceHeader() const
     );
     writeResourceUniformsToHeader
     (
-        *this,
+        fragment,
         header,
         nLines,
         imageBindingPoint
     );
-    header += this->uniformBuffer->shaderSource();
+    header += fragment.uniformBuffer->shaderSource();
     return header;
 }
 
@@ -752,8 +758,8 @@ bool Layer::compileShader(bool setBlankShaderOnError)
         hasUncompiledEdits = false;
         shader->bindUniformBlock
         (
-            this->uniformBuffer->name(), 
-            this->uniformBufferBindingPoint
+            fragment.uniformBuffer->name(), 
+            fragment.uniformBufferBindingPoint
         );
         shader->bindUniformBlock
         (
@@ -900,7 +906,7 @@ void Layer::saveTo(ObjectIO& io)
     );
     //
     io.writeObjectStart("uniforms");
-    for(auto& u : this->uniforms)
+    for(auto& u : fragment.uniforms)
     {
         u->saveTo(io);
     }
@@ -1174,13 +1180,13 @@ void Layer::renderShader
     );
     setSamplerUniforms
     (
-        *this,
+        fragment,
         *(appState_.sharedUniforms), 
         textureUnit, 
         imageUnit
     );
 
-    this->uniformBuffer->submitUniforms();
+    fragment.uniformBuffer->submitUniforms();
     
     // Re-direct renderState & disable blending if not renderState to the window
     static auto globalRendering = vir::Renderer::instance();

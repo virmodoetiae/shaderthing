@@ -32,7 +32,7 @@ void initialize(AppState& appState)
     //appState.resources.clear();
     for (auto& layer : appState.layers)
     {
-        removeLayerFromResources(layer->weakFromThis(), appState.resources);
+        removeLayerFromResources(layer.getWeak(), appState.resources);
     }
     appState.layers.clear();
 
@@ -1369,7 +1369,7 @@ void loadFrom
     // within each resource
     for (auto& layer : appState.layers)
     {
-        for (auto& uniform : layer->uniforms)
+        for (auto& uniform : layer->fragment.uniforms)
         {
             if 
             (
@@ -1408,7 +1408,7 @@ void loadFrom
     }
     for (auto& layer : appState.layers)
     {
-        for (auto& u : layer->uniforms)
+        for (auto& u : layer->fragment.uniforms)
         {
             u->markForSubmissionToAllClientBuffers();
         }
@@ -1468,7 +1468,12 @@ void updateLayersDueToUniformTypeOrNameChanged
     }
     else
     {
-        updateLayer(dynamic_cast<Layer*>(uniform->owner()));
+        for (auto& layer : appState.layers)
+        {
+            if (&layer->fragment == uniform->owner())
+                updateLayer(layer.get());
+            break;
+        }
     }
 }
 

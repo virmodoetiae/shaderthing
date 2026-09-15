@@ -55,12 +55,6 @@ public:
 
     static const UPtr<Uniform>& create(UniformContainer* owner);
 
-    static const UPtr<Uniform>& create(WPtr<UniformContainer> owner)
-    {
-        auto* po = owner.get();
-        return create(po);
-    }
-
     static void loadAllFrom
     (
         ObjectIO& io, 
@@ -68,18 +62,6 @@ public:
         UPtrVector<Resource>& resource,
         std::map<Uniform*, std::string>& cache
     );
-
-    static void loadAllFrom
-    (
-        ObjectIO& io, 
-        WPtr<UniformContainer> owner,
-        UPtrVector<Resource>& resources,
-        std::map<Uniform*, std::string>& cache
-    )
-    {
-        auto* po = owner.get();
-        loadAllFrom(io, po, resources, cache);
-    }
 
     typedef vir::Uniform::Type Type;
 
@@ -115,8 +97,6 @@ public:
     void setResourcePtr(const UPtr<Resource>& value);
 
     void setOwner(UniformContainer* owner);
-
-    void setOwner(const WPtr<UniformContainer>& owner) {setOwner(owner.get());}
 
     UniformContainer* owner() const {return owner_;}
 

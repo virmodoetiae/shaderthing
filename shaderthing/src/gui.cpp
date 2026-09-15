@@ -695,9 +695,9 @@ void renderUniformsTab(Layer* layer, AppState& appState)
         }
 
         // Finally, render the user-created layer-specific uniforms
-        for(unsigned int i=0; i<layer->uniforms.size(); i++)
+        for(unsigned int i=0; i<layer->fragment.uniforms.size(); i++)
         {
-            auto& uniform = layer->uniforms[i];
+            auto& uniform = layer->fragment.uniforms[i];
             renderUniformTableRow
             (
                 uniform,
@@ -714,8 +714,7 @@ void renderUniformsTab(Layer* layer, AppState& appState)
         START_COLUMN(column)
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(-1, 0)))
         {
-            auto pLayer = layer->weakFromThis();
-            auto& u = Uniform::create(pLayer);
+            auto& u = Uniform::create(&layer->fragment);
             layer->cache.uncompiledUniforms.emplace_back(u.getWeak());
         }
         if 
@@ -1579,7 +1578,7 @@ bool renderUniformTableRow
                     if (uniform->isSharedByUser)
                         uniform->setOwner(&appState.sharedUniforms->fragment);
                     else 
-                        uniform->setOwner(layer);
+                        uniform->setOwner(&layer->fragment);
                     for (auto& l : appState.layers)
                     {
                         l->compileShader();
@@ -1618,7 +1617,7 @@ bool renderUniformTableRow
             Helpers::enforceUniqueName
             (
                 uniform->name(),
-                layer->uniforms,
+                layer->fragment.uniforms,
                 uniform.get(),
                 true
             );

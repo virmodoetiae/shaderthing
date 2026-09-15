@@ -36,7 +36,7 @@ namespace ShaderThing
 struct AppState;
 struct SharedUniforms;
 
-class Layer : public UniformContainer, public vir::EnableWeakFromThis<Layer>
+class Layer : public vir::EnableWeakFromThis<Layer> // : public UniformContainer, 
 {
 friend LayerResource;
 public :
@@ -102,25 +102,26 @@ public :
     static const unsigned int nMaxLayers = 32;
 
 public:
-    const unsigned int   id;
-    const std::string    imGuiMenuId;
-    const std::string    imGuiTabId;
+    const unsigned int     id;
+    const std::string      imGuiMenuId;
+    const std::string      imGuiTabId;
+          UniformContainer fragment;
 protected:
-          AppState&      appState_;
-          unsigned int   activeGuiTabId_                = 0;
-          std::string    name_;
-          bool           isAspectRatioBoundToWindow_    = true;
-          bool           rescaleWithWindow_             = true;
-          glm::vec2      resolution_;
-          glm::vec2      resolutionRatio_               = {1.f, 1.f};
-          float          aspectRatio_;
-          float          depth_;
-          RenderState    renderState_;
-          TextEditor     sourceEditor_;
-static const std::string defaultSharedSource_;
-   static TextEditor     sharedSourceEditor_;
-          std::string    sourceHeader_;
-          std::string    headerErrors_;
+          AppState&        appState_;
+          unsigned int     activeGuiTabId_                = 0;
+          std::string      name_;
+          bool             isAspectRatioBoundToWindow_    = true;
+          bool             rescaleWithWindow_             = true;
+          glm::vec2        resolution_;
+          glm::vec2        resolutionRatio_               = {1.f, 1.f};
+          float            aspectRatio_;
+          float            depth_;
+          RenderState      renderState_;
+          TextEditor       sourceEditor_;
+static const std::string   defaultSharedSource_;
+   static TextEditor       sharedSourceEditor_;
+          std::string      sourceHeader_;
+          std::string      headerErrors_;
 public:
           bool           hasUncompiledEdits            = false;
           bool           isDeletionConfirmationPending = false;
