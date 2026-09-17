@@ -1,40 +1,89 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
+#include "vir/include/vir.h"
+
+#include "shaderthing/include/app.h"
 #include "shaderthing/include/bytedata.h"
-#include "shaderthing/include/corelogic.h"
-#include "shaderthing/include/helpers.h"
-#include "shaderthing/include/structs.h"
 #include "shaderthing/include/eventmanager.h"
+#include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
-#include "shaderthing/include/texteditor.h"
 #include "shaderthing/include/statusbar.h"
+#include "shaderthing/include/texteditor.h"
 #include "shaderthing/include/uniform.h"
-#include "vir/include/vir.h"
 
 namespace ShaderThing
 {
 
 //----------------------------------------------------------------------------//
 
-void initialize(AppState& appState)
+App::App()
+{
+    initialize();
+
+    auto window = vir::Window::instance();
+    
+    while(window->isOpen())
+    {   
+        // Render GUI and record actions that should only be applied after
+        // GUI rendering (deferred actions, e.g., deleting layers, uniforms, 
+        // etc.)
+        renderControlPanel();
+        preRenderUpdate();
+        auto renderResult = renderShaders(nullptr, 1u);
+        postRenderUpdate();
+        /*
+        processProjectActions();
+        renderGui();
+        update();
+        auto result = Layer::renderShaders
+        (
+            layers_, 
+            exporter_->isRunning() ? exporter_->framebuffer().get() : nullptr, 
+            *sharedUniforms_,
+            exporter_->isRunning() ? exporter_->nRenderPasses() : 1
+        );
+        if (exporter_->isRunning() && result.renderPassesComplete)
+            exporter_->writeOutput();
+        */
+        window->update(renderResult.flipWindowBuffer);
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::initialize()
 {
     static bool firstTime = true;
 
     // General appState reset
-    appState.project = {};
-    appState.renderState = {};
+    project_ = {};
+    renderState = {};
     Layer::resetSharedSourceEditor();
-    appState.exporter.reset();
-    appState.exporter = vir::makeUnique<Exporter>();
-    appState.sharedStorage.reset();
-    appState.sharedStorage = SharedStorage::create();
-    appState.sharedUniforms.reset();
-    appState.sharedUniforms = vir::makeUnique<SharedUniforms>();
-    //appState.resources.clear();
-    for (auto& layer : appState.layers)
+    exportState = {};
+    sharedStorage.reset();
+    sharedStorage = SharedStorage::create();
+    sharedUniforms.reset();
+    sharedUniforms = vir::makeUnique<SharedUniforms>();
+    //resources.clear();
+    for (auto& layer : layers)
     {
-        removeLayerFromResources(layer.getWeak(), appState.resources);
+        removeLayerFromResources(layer.getWeak());
     }
-    appState.layers.clear();
+    layers.clear();
 
     // Reset event manager
     if (GPtr<EventManager>::valid())
@@ -55,6 +104,8 @@ void initialize(AppState& appState)
             false
         );
     }
+    std::string windowTitle = "ShaderThing - " + project_.filename;
+    window->setTitle(windowTitle);
 
     // ImGui setup
     ImGuiIO& io = ImGui::GetIO();
@@ -79,7 +130,7 @@ void initialize(AppState& appState)
     scaleColor(ImGuiCol_TabHovered, 1.05);
     
     // Font setup
-    auto& font = appState.font;
+    auto& font = font_;
     float baseFontSize = 26.f;
     font.imFontConfig.PixelSnapH = true;
     font.imFontConfig.OversampleV = 3.0;
@@ -139,13 +190,13 @@ void initialize(AppState& appState)
     font.scale = &font.imFont->Scale;
 
     // Initialize shared uniforms
-    initializeSharedUniforms(appState);
+    sharedUniforms->initialize(renderState, exportState);
 
     // Create default layer
-    createNewLayer(appState);
+    createNewLayer();
 
     // Initialize event manager
-    GPtr<EventManager>(new EventManager(appState));
+    GPtr<EventManager>(new EventManager(*this));
 
     if (firstTime)
         firstTime = false;
@@ -153,151 +204,153 @@ void initialize(AppState& appState)
 
 //----------------------------------------------------------------------------//
 
-void initializeSharedUniforms(AppState& appState)
+void SharedUniforms::initialize
+(
+    RenderState& renderState, 
+    ExportState& exportState
+)
 {
-    SharedUniforms& su = *(appState.sharedUniforms);
-
     // Init CPU block data
     auto window = vir::Window::instance();
     if (!window->iconified())
-       su.iResolution = {window->width(), window->height()};
-    su.iAspectRatio = su.iResolution.x/su.iResolution.y;
+       iResolution = {window->width(), window->height()};
+    iAspectRatio = iResolution.x/iResolution.y;
     for (int i=0; i<256; i++)
-        su.iKeyboard[i] = glm::ivec3({0,0,0});
+        iKeyboard[i] = glm::ivec3({0,0,0});
 
     // Init cameras
-    su.screenCamera = vir::makeUnique<vir::Camera>();
-    su.shaderCamera = vir::makeUnique<vir::InputCamera>();
-    su.screenCamera->setProjectionType
+    screenCamera = vir::makeUnique<vir::Camera>();
+    shaderCamera = vir::makeUnique<vir::InputCamera>();
+    screenCamera->setProjectionType
     (
         vir::Camera::ProjectionType::Orthographic
     );
-    su.screenCamera->setViewportHeight
+    screenCamera->setViewportHeight
     (
-        std::min(1.0f, 1.0f/su.iAspectRatio)
+        std::min(1.0f, 1.0f/iAspectRatio)
     );
-    su.screenCamera->setPosition({0, 0, 1});
-    su.screenCamera->setPlanes(.01f, 100.f);
-    su.shaderCamera->setZPlusIsLookDirection(true);
-    su.shaderCamera->setDirection(su.iLook);
-    su.shaderCamera->setPosition(su.iWASD);
-    su.screenCamera->update();
-    su.shaderCamera->update();
+    screenCamera->setPosition({0, 0, 1});
+    screenCamera->setPlanes(.01f, 100.f);
+    shaderCamera->setZPlusIsLookDirection(true);
+    shaderCamera->setDirection(iLook);
+    shaderCamera->setPosition(iWASD);
+    screenCamera->update();
+    shaderCamera->update();
 
     // Init random random number
-    su.iRandom = std::uniform_real_distribution<float>(0, 1)(su.rndGenerator);
+    iRandom = std::uniform_real_distribution<float>(0, 1)(rndGenerator);
 
     // Init uniform buffers, bind to designated binding points and set
     // initial data
-    su.vertex.uniformBuffer = 
+    vertex.uniformBuffer = 
             vir::DynamicUniformBuffer::create(64, "vertexSharedUniformBlock");
-    su.vertex.uniformBuffer->bind();
-    su.vertex.uniformBufferBindingPoint = 1;
-    su.vertex.uniformBuffer->setBindingPoint
+    vertex.uniformBuffer->bind();
+    vertex.uniformBufferBindingPoint = 1;
+    vertex.uniformBuffer->setBindingPoint
     (
-        su.vertex.uniformBufferBindingPoint
+        vertex.uniformBufferBindingPoint
     );
 
-    su.iMVPUniform = Uniform::create(&su.vertex).getWeak();
-    su.iMVPUniform->name() = "iMVP";
-    su.iMVPUniform->setValuePtr
+    iMVPUniform = Uniform::create(&vertex).getWeak();
+    iMVPUniform->name() = "iMVP";
+    iMVPUniform->setValuePtr
     (
-        &(su.screenCamera->projectionViewMatrix()), 
+        &(screenCamera->projectionViewMatrix()), 
         Uniform::Type::Mat4
     );
-    su.iMVPUniform->gui.showBounds = false;
+    iMVPUniform->gui.showBounds = false;
 
-    su.fragment.uniformBuffer = 
+    fragment.uniformBuffer = 
             vir::DynamicUniformBuffer::create(8196, "sharedUniformBlock");
-    su.fragment.uniformBuffer->bind();
-    su.fragment.uniformBufferBindingPoint = 0;
-    su.fragment.uniformBuffer->setBindingPoint
+    fragment.uniformBuffer->bind();
+    fragment.uniformBufferBindingPoint = 0;
+    fragment.uniformBuffer->setBindingPoint
     (
-        su.fragment.uniformBufferBindingPoint
+        fragment.uniformBufferBindingPoint
     );
 
     // Init uniform wrappers
-    su.iFrameUniform = Uniform::create(&su.fragment).getWeak();
-    su.iFrameUniform->name() = "iFrame";
-    su.iFrameUniform->setValuePtr
+    iFrameUniform = Uniform::create(&fragment).getWeak();
+    iFrameUniform->name() = "iFrame";
+    iFrameUniform->setValuePtr
     (
-        &appState.renderState.frameIndex, 
+        &renderState.frameIndex, 
         Uniform::Type::Int
     );
-    su.iFrameUniform->gui.showBounds = false;
+    iFrameUniform->gui.showBounds = false;
 
-    su.iRenderPassUniform = Uniform::create(&su.fragment).getWeak();
-    su.iRenderPassUniform->name() = "iRenderPass";
-    su.iRenderPassUniform->setValuePtr
+    iRenderPassUniform = Uniform::create(&fragment).getWeak();
+    iRenderPassUniform->name() = "iRenderPass";
+    iRenderPassUniform->setValuePtr
     (
-        &appState.renderState.passIndex, 
+        &renderState.passIndex, 
         Uniform::Type::Int
     );
-    su.iRenderPassUniform->gui.showBounds = false;
+    iRenderPassUniform->gui.showBounds = false;
     
-    su.iTimeUniform = Uniform::create(&su.fragment).getWeak();
-    su.iTimeUniform->name() = "iTime";
-    su.iTimeUniform->setValuePtr(&su.iTime, Uniform::Type::Float);
+    iTimeUniform = Uniform::create(&fragment).getWeak();
+    iTimeUniform->name() = "iTime";
+    iTimeUniform->setValuePtr(&iTime, Uniform::Type::Float);
     
-    su.iTimeDeltaUniform = Uniform::create(&su.fragment).getWeak();
-    su.iTimeDeltaUniform->name() = "iTimeDelta";
-    su.iTimeDeltaUniform->setValuePtr(&su.iTimeDelta, Uniform::Type::Float);
-    su.iTimeDeltaUniform->gui.showBounds = false;
+    iTimeDeltaUniform = Uniform::create(&fragment).getWeak();
+    iTimeDeltaUniform->name() = "iTimeDelta";
+    iTimeDeltaUniform->setValuePtr(&iTimeDelta, Uniform::Type::Float);
+    iTimeDeltaUniform->gui.showBounds = false;
 
-    su.iRandomUniform = Uniform::create(&su.fragment).getWeak();
-    su.iRandomUniform->name() = "iRandom";
-    su.iRandomUniform->setValuePtr(&su.iRandom, Uniform::Type::Float);
-    su.iRandomUniform->gui.showBounds = false;
+    iRandomUniform = Uniform::create(&fragment).getWeak();
+    iRandomUniform->name() = "iRandom";
+    iRandomUniform->setValuePtr(&iRandom, Uniform::Type::Float);
+    iRandomUniform->gui.showBounds = false;
 
-    su.iUserActionUniform = Uniform::create(&su.fragment).getWeak();
-    su.iUserActionUniform->name() = "iUserAction";
-    su.iUserActionUniform->setValuePtr(&su.iUserAction, Uniform::Type::Bool);
-    su.iUserActionUniform->gui.showBounds = false;
+    iUserActionUniform = Uniform::create(&fragment).getWeak();
+    iUserActionUniform->name() = "iUserAction";
+    iUserActionUniform->setValuePtr(&iUserAction, Uniform::Type::Bool);
+    iUserActionUniform->gui.showBounds = false;
 
-    su.iExportUniform = Uniform::create(&su.fragment).getWeak();
-    su.iExportUniform->name() = "iExport";
-    su.iExportUniform->setValuePtr
+    iExportUniform = Uniform::create(&fragment).getWeak();
+    iExportUniform->name() = "iExport";
+    iExportUniform->setValuePtr
     (
-        &appState.exporter->isActive, 
+        &exportState.isActive, 
         Uniform::Type::Bool
     );
-    su.iExportUniform->gui.showBounds = false;
+    iExportUniform->gui.showBounds = false;
 
-    su.iWASDUniform = Uniform::create(&su.fragment).getWeak();
-    su.iWASDUniform->name() = "iWASD";
-    su.iWASDUniform->setValuePtr(&su.iWASD, Uniform::Type::Float3);
+    iWASDUniform = Uniform::create(&fragment).getWeak();
+    iWASDUniform->name() = "iWASD";
+    iWASDUniform->setValuePtr(&iWASD, Uniform::Type::Float3);
 
-    su.iLookUniform = Uniform::create(&su.fragment).getWeak();
-    su.iLookUniform->name() = "iLook";
-    su.iLookUniform->setValuePtr(&su.iLook, Uniform::Type::Float3);
-    su.iLookUniform->gui.showBounds = false;
+    iLookUniform = Uniform::create(&fragment).getWeak();
+    iLookUniform->name() = "iLook";
+    iLookUniform->setValuePtr(&iLook, Uniform::Type::Float3);
+    iLookUniform->gui.showBounds = false;
 
-    su.iMouseUniform = Uniform::create(&su.fragment).getWeak();
-    su.iMouseUniform->name() = "iMouse";
-    su.iMouseUniform->setValuePtr(&su.iMouse, Uniform::Type::Float4);
-    su.iMouseUniform->gui.showBounds = false;
+    iMouseUniform = Uniform::create(&fragment).getWeak();
+    iMouseUniform->name() = "iMouse";
+    iMouseUniform->setValuePtr(&iMouse, Uniform::Type::Float4);
+    iMouseUniform->gui.showBounds = false;
 
-    su.iAspectRatioUniform = Uniform::create(&su.fragment).getWeak();
-    su.iAspectRatioUniform->name() = "iWindowAspectRatio";
-    su.iAspectRatioUniform->setValuePtr(&su.iAspectRatio, Uniform::Type::Float);
-    su.iAspectRatioUniform->gui.showBounds = false;
+    iAspectRatioUniform = Uniform::create(&fragment).getWeak();
+    iAspectRatioUniform->name() = "iWindowAspectRatio";
+    iAspectRatioUniform->setValuePtr(&iAspectRatio, Uniform::Type::Float);
+    iAspectRatioUniform->gui.showBounds = false;
 
-    su.iResolutionUniform = Uniform::create(&su.fragment).getWeak();
-    su.iResolutionUniform->name() = "iWindowResolution";
-    su.iResolutionUniform->setValuePtr(&su.iResolution, Uniform::Type::Float2);
-    su.iResolutionUniform->gui.showBounds = false;
+    iResolutionUniform = Uniform::create(&fragment).getWeak();
+    iResolutionUniform->name() = "iWindowResolution";
+    iResolutionUniform->setValuePtr(&iResolution, Uniform::Type::Float2);
+    iResolutionUniform->gui.showBounds = false;
 
-    su.iKeyboardUniform = Uniform::create(&su.fragment).getWeak();
-    su.iKeyboardUniform->name() = "iKeyboard";
-    su.iKeyboardUniform->setValuePtr(&su.iKeyboard, Uniform::Type::Int3, 256);
-    su.iKeyboardUniform->gui.showBounds = false;
+    iKeyboardUniform = Uniform::create(&fragment).getWeak();
+    iKeyboardUniform->name() = "iKeyboard";
+    iKeyboardUniform->setValuePtr(&iKeyboard, Uniform::Type::Int3, 256);
+    iKeyboardUniform->gui.showBounds = false;
 }
 
 //----------------------------------------------------------------------------//
 
-void preRenderUpdate(AppState& appState)
+void App::preRenderUpdate()
 {
-    appState.deferredActionBuffer.process();
+    deferredActionBuffer.process();
     // To the best of my own knowledge, this flag is only used to request
     // shader recompilation after changing the resource used by an image/sampler
     // uniform when the resource is of different signed-ness compared to the
@@ -309,21 +362,20 @@ void preRenderUpdate(AppState& appState)
     // changed resource. The main issue is that I cannot currently invoke
     // the recompilation of all layers from within in there anyway. So,
     // this whole requestFullRecompilation flag is just a work-around
-    if (appState.renderState.toggles.requestFullRecompilation)
+    if (renderState.toggles.requestFullRecompilation)
     {
-        for (auto& layer : appState.layers)
+        for (auto& layer : layers)
         {
             layer->compileShader();
         }
-        appState.renderState.toggles.requestFullRecompilation = false;
+        renderState.toggles.requestFullRecompilation = false;
     }
 }
 
 //----------------------------------------------------------------------------//
 
-void setWindowResolution
+void App::setWindowResolution
 (
-    AppState& appState, 
     glm::ivec2 resolution, 
     const bool windowFrameManuallyDragged,
     const bool prepareForExport
@@ -342,7 +394,7 @@ void setWindowResolution
             std::max(std::min(resolution.y, maxResolution.y), minResolution.y);
     }
 
-    auto& su = *(appState.sharedUniforms);
+    auto& su = *(sharedUniforms);
 
     // Store in iResolution & update aspectRatio
     su.iResolution = resolution;
@@ -353,8 +405,8 @@ void setWindowResolution
     // necessary but I like this behavior better
     if (!prepareForExport)
     {
-        appState.exporter->outputResolution = resolution;
-        appState.exporter->outputResolutionScale = 1.f;
+        exportState.outputResolution = resolution;
+        exportState.outputResolutionScale = 1.f;
     }
 
     // Update screen camera
@@ -381,9 +433,9 @@ void setWindowResolution
 
 //----------------------------------------------------------------------------//
 
-void postRenderUpdate(AppState& appState)
+void App::postRenderUpdate()
 {
-    auto& su = *(appState.sharedUniforms);
+    auto& su = *(sharedUniforms);
     
     // TODO
     //exporter_->update(*sharedUniforms_, layers_, resources_);
@@ -394,12 +446,12 @@ void postRenderUpdate(AppState& appState)
     {
         if 
         (
-            appState.renderState.passIndex == 
-            appState.exporter->nRenderPasses-1
+            renderState.passIndex == 
+            exportState.nRenderPasses-1
         )
         {
             advanceFrame = true;
-            timeStep = appState.exporter->timeStep;
+            timeStep = exportState.timeStep;
         }
         else
         {
@@ -412,12 +464,12 @@ void postRenderUpdate(AppState& appState)
         timeStep = (su.isTimeDeltaSmooth ?
             vir::Window::instance()->time()->smoothOuterTimestep() : 
             vir::Window::instance()->time()->outerTimestep());
-        if (appState.renderState.isTiledRenderingEnabled)
+        if (renderState.isTiledRenderingEnabled)
         {
             static float cumulatedTimeStep = 0;
-            if (!appState.renderState.isPaused)
+            if (!renderState.isPaused)
                 cumulatedTimeStep += timeStep;
-            if (appState.renderState.tileIndex == 0)
+            if (renderState.tileIndex == 0)
             {
                 timeStep = cumulatedTimeStep;
                 cumulatedTimeStep = 0;
@@ -443,7 +495,7 @@ void postRenderUpdate(AppState& appState)
     (
         advanceFrame && 
         (
-            appState.renderState.toggles.stepToNextFrame || 
+            renderState.toggles.stepToNextFrame || 
             su.toggles.stepToNextTimeStep
         )
     )
@@ -463,16 +515,16 @@ void postRenderUpdate(AppState& appState)
     (
         advanceFrame && 
         !(
-            appState.renderState.isPaused && 
-            !appState.renderState.toggles.stepToNextFrame
+            renderState.isPaused && 
+            !renderState.toggles.stepToNextFrame
         )
     )
-        ++appState.renderState.frameIndex;
+        ++renderState.frameIndex;
 
-    if (appState.renderState.toggles.resetFrameCounterPreOrPostExport)
+    if (renderState.toggles.resetFrameCounterPreOrPostExport)
     {
-        appState.renderState.frameIndex = 0;
-        appState.renderState.toggles.resetFrameCounterPreOrPostExport = false;
+        renderState.frameIndex = 0;
+        renderState.toggles.resetFrameCounterPreOrPostExport = false;
     }
 
     // The shaderCamera has its own event listeners, but all of its updates are
@@ -562,29 +614,29 @@ void postRenderUpdate(AppState& appState)
     if (elapsedTime >= fpsUpdatePeriod)
     {
         double fps = elapsedFrames/elapsedTime;
-        if (appState.renderState.isTiledRenderingEnabled)
+        if (renderState.isTiledRenderingEnabled)
         {
-            double wFps = fps/appState.renderState.nTiles;
-            appState.controlPanelTitle = 
-                "Control panel - "+appState.project.filename+" (window: "+
+            double wFps = fps/renderState.nTiles;
+            controlPanelTitle_ = 
+                "Control panel - "+project_.filename+" (window: "+
                 Helpers::format(wFps,1)+" fps | GUI: "+
                 Helpers::format(fps,1)+" fps)"+"###CP";
         }
         else
-            appState.controlPanelTitle = 
-                "Control panel - "+appState.project.filename+" ("+
+            controlPanelTitle_ = 
+                "Control panel - "+project_.filename+" ("+
                 Helpers::format(fps,1)+" fps)"+"###CP";
         elapsedFrames = 0;
         elapsedTime = 0;
-        if (!appState.exporter->isActive)
+        if (!exportState.isActive)
         {
             fpsUpdateCounter++;
             shouldStopRendering = 
-                shouldStopRendering && fps < appState.renderState.lowerFpsLimit;
+                shouldStopRendering && fps < renderState.lowerFpsLimit;
             if (fpsUpdateCounter >= int(maxLowFpsPeriod/fpsUpdatePeriod))
             {
-                if (shouldStopRendering && !appState.renderState.isPaused)
-                    toggleRenderingPaused(appState, true); 
+                if (shouldStopRendering && !renderState.isPaused)
+                    toggleRenderingPaused(true); 
                 fpsUpdateCounter = 0;
                 shouldStopRendering = true;
             }
@@ -594,26 +646,26 @@ void postRenderUpdate(AppState& appState)
 
 //----------------------------------------------------------------------------//
 
-void toggleRenderingPaused(AppState& appState, bool dueToLowFps)
+void App::toggleRenderingPaused(bool dueToLowFps)
 {
-    appState.renderState.isPaused = 
-        !appState.renderState.isPaused;
+    renderState.isPaused = 
+        !renderState.isPaused;
     
-    if (appState.renderState.isPaused)
+    if (renderState.isPaused)
     {
-        appState.sharedUniforms->isTimePausedBecauseRenderingPaused = 
-            !appState.sharedUniforms->isTimePaused;
-        appState.sharedUniforms->isTimePaused = true;
+        sharedUniforms->isTimePausedBecauseRenderingPaused = 
+            !sharedUniforms->isTimePaused;
+        sharedUniforms->isTimePaused = true;
     }
     else if 
     (
-        appState.sharedUniforms->isTimePausedBecauseRenderingPaused
+        sharedUniforms->isTimePausedBecauseRenderingPaused
     )
-        appState.sharedUniforms->isTimePaused = false;
+        sharedUniforms->isTimePaused = false;
 
     // It would be better to update the StatusBar messages elsewhere, but
     // whatever
-    if (appState.renderState.isPaused)
+    if (renderState.isPaused)
     {
         StatusBar::removeMessageFromQueue("Rendering resumed");
         StatusBar::queueMessage
@@ -644,33 +696,29 @@ void toggleRenderingPaused(AppState& appState, bool dueToLowFps)
 
 //----------------------------------------------------------------------------//
 
-void createNewLayer(AppState& appState, bool compileShader)
+void App::createNewLayer(bool compileShader)
 {
-    unsigned int id = Helpers::findSmallestFreeLayerId(appState.layers);
-    auto& layer = appState.layers.emplace_back(Layer::create(id, appState));
+    unsigned int id = Helpers::findSmallestFreeLayerId(layers);
+    auto& layer = layers.emplace_back(Layer::create(id, *this));
     if (compileShader)
         layer->compileShader();
-    if (appState.renderState.isTiledRenderingEnabled)  
-        setRenderingTiles(appState, appState.renderState.nTiles);
+    if (renderState.isTiledRenderingEnabled)  
+        setRenderingTiles(renderState.nTiles);
 }
 
 //------------------------------------------------------------------------------
 
-void setRenderingTiles
-(
-    AppState& appState, 
-    int nTiles
-)
+void App::setRenderingTiles(int nTiles)
 {
-    if (appState.layers.size() == 0)
+    if (layers.size() == 0)
         return;
     nTiles = std::max(nTiles, 1);
-    appState.renderState.isTiledRenderingEnabled = nTiles > 1;
-    appState.renderState.nTilesCache = appState.renderState.nTiles;
-    appState.renderState.nTiles = nTiles;
-    appState.renderState.tileIndex = 0;
+    renderState.isTiledRenderingEnabled = nTiles > 1;
+    renderState.nTilesCache = renderState.nTiles;
+    renderState.nTiles = nTiles;
+    renderState.tileIndex = 0;
     double largestLayerSize = 0.0; // Mpx
-    for (auto& layer : appState.layers)
+    for (auto& layer : layers)
     {
         double layerSize = 
             ((double)layer->resolution().x/1024.0)*
@@ -678,7 +726,7 @@ void setRenderingTiles
         if (layerSize > largestLayerSize)
             largestLayerSize = layerSize;
     }
-    for (auto& layer : appState.layers)
+    for (auto& layer : layers)
     {
         double layerSize = 
             ((double)layer->resolution().x/1024.0)*
@@ -696,28 +744,26 @@ void setRenderingTiles
 
 //----------------------------------------------------------------------------//
 
-RenderResult renderShaders
+RenderResult App::renderShaders
 (
-    AppState& appState,
     vir::Framebuffer* target, 
     const unsigned int nRenderPasses
 )
 {
-    auto& sharedUniforms = *(appState.sharedUniforms);
     static bool clearTarget = true;
     // TODO Fix behavior of stepping to next frame when tiled renderState is
     // enabled
     bool renderFrame = 
-        !appState.renderState.isPaused || 
-        appState.renderState.toggles.stepToNextFrame;
+        !renderState.isPaused || 
+        renderState.toggles.stepToNextFrame;
     bool frameRendered = true;
-    unsigned int iRenderPass = appState.renderState.passIndex;
+    unsigned int iRenderPass = renderState.passIndex;
 
     if (renderFrame)
     {
         if (target != nullptr && iRenderPass == 0) // I.e., if exporting
         {
-            for (auto& layer : appState.layers) // Apply clear policy
+            for (auto& layer : layers) // Apply clear policy
             {
                 switch (layer->exportSettings.clearPolicy)
                 {
@@ -726,7 +772,7 @@ RenderResult renderShaders
                     continue;
                 case Layer::ExportSettings::FramebufferClearPolicy::
                     ClearOnFirstFrameExport:
-                    if (appState.renderState.passIndex == 0)
+                    if (renderState.passIndex == 0)
                         layer->clearFramebuffers();
                     break;
                 case Layer::ExportSettings::FramebufferClearPolicy::
@@ -739,7 +785,7 @@ RenderResult renderShaders
         }
 
         clearTarget = true;
-        for (auto& layer : appState.layers)
+        for (auto& layer : layers)
         {
             layer->renderShader(target, clearTarget);
             // At the end of this loop, the status of clearTarget will 
@@ -762,15 +808,15 @@ RenderResult renderShaders
         // advanced. The frame is considered fully rendered only if all tiles
         // have been rendered. During exports, tiled renderState is automatically
         // disabled in the exporter setup phase
-        if (appState.renderState.isTiledRenderingEnabled)
+        if (renderState.isTiledRenderingEnabled)
         {
             if 
             (
-                ++appState.renderState.tileIndex == 
-                appState.renderState.nTiles
+                ++renderState.tileIndex == 
+                renderState.nTiles
             )
             {
-                appState.renderState.tileIndex = 0;
+                renderState.tileIndex = 0;
                 nextRenderPass = true;
             }
             else
@@ -781,13 +827,13 @@ RenderResult renderShaders
         
         if (nextRenderPass)
         {
-            if (appState.renderState.passIndex < nRenderPasses-1)
-                ++appState.renderState.passIndex;
+            if (renderState.passIndex < nRenderPasses-1)
+                ++renderState.passIndex;
             else
-                appState.renderState.passIndex = 0;
-            sharedUniforms.fragment.uniformBuffer->markUniformForSubmission
+                renderState.passIndex = 0;
+            sharedUniforms->fragment.uniformBuffer->markUniformForSubmission
             (
-                sharedUniforms.iRenderPassUniform.get()
+                sharedUniforms->iRenderPassUniform.get()
             );
         }
     }
@@ -805,12 +851,12 @@ RenderResult renderShaders
         static std::unique_ptr<vir::Quad> blankQuad(new vir::Quad(1, 1, 0));
         auto viewport = Helpers::normalizedWindowResolution();
         blankQuad->update(viewport.x, viewport.y, 0);
-        auto constructBlankShader = [&appState]()
+        auto constructBlankShader = [this]()
         {
             auto shader = 
                 vir::Shader::create
                 (
-                    Layer::vertexShaderSource(*appState.sharedUniforms),
+                    Layer::vertexShaderSource(*sharedUniforms),
                     vir::Shader::currentContextShadingLanguageDirectives() +
 R"(out vec4 fragColor;
 in     vec2 qc;
@@ -820,13 +866,13 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
                 );
             shader->bindUniformBlock
             (
-                appState.sharedUniforms->fragment.uniformBuffer->name(),
-                appState.sharedUniforms->fragment.uniformBufferBindingPoint
+                sharedUniforms->fragment.uniformBuffer->name(),
+                sharedUniforms->fragment.uniformBufferBindingPoint
             );
             shader->bindUniformBlock
             (
-                appState.sharedUniforms->vertex.uniformBuffer->name(),
-                appState.sharedUniforms->vertex.uniformBufferBindingPoint
+                sharedUniforms->vertex.uniformBuffer->name(),
+                sharedUniforms->vertex.uniformBufferBindingPoint
             );
             return shader;
         };
@@ -846,7 +892,7 @@ void main(){fragColor = vec4(0, 0, 0, .5);})",
 
 //----------------------------------------------------------------------------//
 
-void addLayerToResources(WPtr<Layer> layer, UPtrVector<Resource>& resources)
+void App::addLayerToResources(WPtr<Layer> layer)
 {
     for (int i=0; i<(int)resources.size(); i++)
     {
@@ -863,11 +909,7 @@ void addLayerToResources(WPtr<Layer> layer, UPtrVector<Resource>& resources)
 
 //----------------------------------------------------------------------------//
 
-void removeLayerFromResources
-(
-    WPtr<Layer> layer, 
-    UPtrVector<Resource>& resources
-)
+void App::removeLayerFromResources(WPtr<Layer> layer)
 {
     for (int i=0; i<(int)resources.size(); i++)
     {
@@ -884,12 +926,12 @@ void removeLayerFromResources
 
 //----------------------------------------------------------------------------//
 
-void toggleKeyboardInputs(AppState& appState)
+void App::toggleKeyboardInputs()
 {
-    appState.sharedUniforms->isKeyboardInputEnabled = 
-        !appState.sharedUniforms->isKeyboardInputEnabled;
+    sharedUniforms->isKeyboardInputEnabled = 
+        !sharedUniforms->isKeyboardInputEnabled;
     auto eventManager = GPtr<EventManager>::get();
-    if (appState.sharedUniforms->isKeyboardInputEnabled)
+    if (sharedUniforms->isKeyboardInputEnabled)
     {
         eventManager->resumeEventReception(vir::Event::Type::KeyPress);
         eventManager->resumeEventReception(vir::Event::Type::KeyRelease);
@@ -903,20 +945,20 @@ void toggleKeyboardInputs(AppState& appState)
 
 //----------------------------------------------------------------------------//
 
-void toggleMouseInputs(AppState& appState)
+void App::toggleMouseInputs()
 {
     // Mouse-related event-reception not 'really' paused as it does some 
     // important pre-processing required to possibly block input propagation 
     // to the input camera
-    appState.sharedUniforms->isMouseInputEnabled = 
-        !appState.sharedUniforms->isMouseInputEnabled;
+    sharedUniforms->isMouseInputEnabled = 
+        !sharedUniforms->isMouseInputEnabled;
 }
 
 //----------------------------------------------------------------------------//
 
-void toggleCameraMouseInputs(AppState& appState)
+void App::toggleCameraMouseInputs()
 {
-    auto& su = *(appState.sharedUniforms);
+    auto& su = *(sharedUniforms);
     auto& camera = su.shaderCamera.dynamicDowncastTo<vir::InputCamera>();
     su.isCameraMouseInputEnabled = !su.isCameraMouseInputEnabled;
     if (su.isCameraMouseInputEnabled)
@@ -927,9 +969,9 @@ void toggleCameraMouseInputs(AppState& appState)
 
 //----------------------------------------------------------------------------//
 
-void toggleCameraKeyboardInputs(AppState& appState)
+void App::toggleCameraKeyboardInputs()
 {
-    auto& su = *(appState.sharedUniforms);
+    auto& su = *(sharedUniforms);
     auto& camera = su.shaderCamera.dynamicDowncastTo<vir::InputCamera>();
     su.isCameraKeyboardInputEnabled = !su.isCameraKeyboardInputEnabled;
     if (su.isCameraKeyboardInputEnabled)
@@ -940,9 +982,9 @@ void toggleCameraKeyboardInputs(AppState& appState)
 
 //----------------------------------------------------------------------------//
 
-void setMouseInputsClamped(AppState& appState, bool flag)
+void App::setMouseInputsClamped(bool flag)
 {
-    auto& su = *(appState.sharedUniforms);
+    auto& su = *(sharedUniforms);
     su.isMouseInputClampedToWindow = flag;
     if (flag)
     {
@@ -956,7 +998,7 @@ void setMouseInputsClamped(AppState& appState, bool flag)
 
 //----------------------------------------------------------------------------//
 
-void setMouseCaptured(AppState& appState, bool flag)
+void App::setMouseCaptured(bool flag)
 {
     auto window = vir::Window::instance();
     auto eventManager = vir::GlobalPtr<EventManager>::get();
@@ -989,7 +1031,7 @@ void setMouseCaptured(AppState& appState, bool flag)
         pauseForOneBroadcast(eventManager, vir::Event::Type::MouseButtonRelease);
         pauseForOneBroadcast
         (
-            (vir::InputCamera*)appState.sharedUniforms->shaderCamera.get(), 
+            (vir::InputCamera*)sharedUniforms->shaderCamera.get(), 
             vir::Event::Type::MouseMotion
         );
         window->setCursorStatus(vir::Window::CursorStatus::Hidden);
@@ -1008,9 +1050,8 @@ void setMouseCaptured(AppState& appState, bool flag)
 
 //----------------------------------------------------------------------------//
 
-void saveTo
+void App::saveTo
 (
-    AppState& appState, 
     const std::string& filepath, 
     bool triggeredByAutosave
 )
@@ -1020,17 +1061,17 @@ void saveTo
     // Objects are written maintaining the same save file structure as the old
     // (i.e., v.0/1.x.x) ShaderThing to maintain compatibility
 
-    io.write("UIScale", *appState.font.scale);
-    io.write("autoSaveEnabled", appState.project.isAutoSaveEnabled);
-    io.write("autoSaveInterval", appState.project.autoSaveInterval);
-    io.write("vSyncEnabled", appState.renderState.isVSyncEnabled);
+    io.write("UIScale", *font_.scale);
+    io.write("autoSaveEnabled", project_.isAutoSaveEnabled);
+    io.write("autoSaveInterval", project_.autoSaveInterval);
+    io.write("vSyncEnabled", renderState.isVSyncEnabled);
     //
     io.writeObjectStart("resources");
-    for (auto& resource : appState.resources)
+    for (auto& resource : resources)
         resource->saveTo(io);
     io.writeObjectEnd();
     //
-    auto& su = *(appState.sharedUniforms);
+    auto& su = *(sharedUniforms);
     io.writeObjectStart("sharedUniforms");
     io.write("windowResolution", su.iResolution);
     // TODO
@@ -1072,7 +1113,7 @@ void saveTo
     io.writeObjectEnd(); // End of sharedUniforms
     //
     io.writeObjectStart("layers");
-    for (auto& layer : appState.layers)
+    for (auto& layer : layers)
     {
         layer->saveTo(io);
     }
@@ -1089,7 +1130,7 @@ void saveTo
     // TODO Could display an error via ImGui on failure
     io.writeContentsToDisk();
 
-    appState.project.timeSinceLastSave = 0;
+    project_.timeSinceLastSave = 0;
 
     StatusBar::queueTemporaryMessage
     (
@@ -1101,9 +1142,8 @@ void saveTo
 
 //----------------------------------------------------------------------------//
 
-void loadFrom
+void App::loadFrom
 (
-    AppState& appState,
     const std::string& filepathOrData,
     bool fromMemory
 )
@@ -1145,24 +1185,27 @@ void loadFrom
     if (!project.isValid())
         return; // TODO Could display an error via ImGui
 
-    *appState.font.scale = project.read<float>("UIScale");
-    appState.project.isAutoSaveEnabled = project.readOrDefault<bool>
+    *font_.scale = project.read<float>("UIScale");
+    project_.isAutoSaveEnabled = project.readOrDefault<bool>
     (
         "autoSaveEnabled", 
         Project{}.isAutoSaveEnabled
     );
-    appState.project.autoSaveInterval = project.readOrDefault<float>
+    project_.autoSaveInterval = project.readOrDefault<float>
     (
         "autoSaveInterval", 
         Project{}.autoSaveInterval
     );
-    appState.renderState.isVSyncEnabled = 
+    renderState.isVSyncEnabled = 
         project.readOrDefault<bool>("vSyncEnabled", true);
-    vir::Window::instance()->setVSync(appState.renderState.isVSyncEnabled);
+    auto window = vir::Window::instance();
+    window->setVSync(renderState.isVSyncEnabled);
+    std::string windowTitle = "ShaderThing - " + project_.filename;
+    window->setTitle(windowTitle);
 
     // Load Resources ----------------------------------------------------------
     
-    appState.resources.clear();
+    resources.clear();
     auto ioType = [](const ObjectIO& io)
     {
         auto typeName = io.read("type", false);
@@ -1184,7 +1227,7 @@ void loadFrom
         auto type = ioType(ioResource);
         if (type != Resource::Type::Texture2D)
             continue;
-        appState.resources.emplace_back
+        resources.emplace_back
         (
             Texture2DResource::loadFrom(ioResource)
         );
@@ -1199,25 +1242,25 @@ void loadFrom
             default :
                 continue;
             case Resource::Type::Texture3D :
-                appState.resources.emplace_back
+                resources.emplace_back
                 (
                     Texture3DResource::loadFrom(ioResource)
                 );
                 break;
             case Resource::Type::AnimatedTexture2D :
-                appState.resources.emplace_back
+                resources.emplace_back
                 (
                     AnimatedTexture2DResource::loadFrom
                     (
                         ioResource, 
-                        appState.resources
+                        resources
                     )
                 );
                 break;
             case Resource::Type::Cubemap :
-                appState.resources.emplace_back
+                resources.emplace_back
                 (
-                    CubemapResource::loadFrom(ioResource, appState.resources)
+                    CubemapResource::loadFrom(ioResource, resources)
                 );
                 break;
         }
@@ -1225,13 +1268,13 @@ void loadFrom
 
     // Load SharedUniforms -----------------------------------------------------
 
-    appState.sharedUniforms.reset();
-    appState.sharedUniforms = vir::makeUnique<SharedUniforms>();
-    initializeSharedUniforms(appState);
-    auto su = appState.sharedUniforms.get();
+    sharedUniforms.reset();
+    sharedUniforms = vir::makeUnique<SharedUniforms>();
+    sharedUniforms->initialize(renderState, exportState);
+    auto su = sharedUniforms.get();
     auto ioSu = project.readObject("sharedUniforms");
     auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
-    setWindowResolution(appState, resolution, false);
+    setWindowResolution(resolution, false);
     su->iTime = ioSu.read<float>("time");
     //su->resetFrameCounter = false;
     su->iTimeUniform->gui.bounds = ioSu.read<glm::vec2>("timeBounds");
@@ -1251,22 +1294,21 @@ void loadFrom
     su->shaderCamera->setMouseSensitivity(ioSu.read<float>("iLookSensitivity"));
     su->shaderCamera->update();
     if (!ioSu.read<bool>("iWASDInputEnabled"))
-        toggleCameraKeyboardInputs(appState);
+        toggleCameraKeyboardInputs();
     if (!ioSu.read<bool>("iLookInputEnabled"))
-        toggleCameraMouseInputs(appState);
+        toggleCameraMouseInputs();
     su->cameraMouseInputRequiresLMBHold = 
         ioSu.readOrDefault<bool>("iLookInputRequiresLMBHold", true);
     if (!ioSu.read<bool>("iMouseInputEnabled"))
-        toggleMouseInputs(appState);
+        toggleMouseInputs();
     setMouseInputsClamped
     (
-        appState,
         ioSu.readOrDefault<bool>("iMouseInputClampedToWindow", false)
     );
     su->mouseInputRequiresLMBHold = 
         ioSu.readOrDefault<bool>("mouseInputRequiresLMBHold", true);
     if (!ioSu.read<bool>("iKeyboardInputEnabled"))
-        toggleKeyboardInputs(appState);
+        toggleKeyboardInputs();
     
     // TODO Reimplement
     /*
@@ -1277,13 +1319,13 @@ void loadFrom
         su->exportData_.resolutionScale + .5f;
     */
     if (ioSu.readOrDefault<bool>("cursorStatus", false))
-        setMouseCaptured(appState, true);
+        setMouseCaptured(true);
     std::map<Uniform*, std::string> uninitializedSharedResourceLayers = {};
     Uniform::loadAllFrom
     (
         ioSu,
         &su->fragment,
-        appState.resources,
+        resources,
         uninitializedSharedResourceLayers
     );
     su->toggles.updateDataRangeII = true;
@@ -1291,7 +1333,7 @@ void loadFrom
     // Load Layers -------------------------------------------------------------
 
     // Clear state
-    appState.layers.clear();
+    layers.clear();
 
     if (project.hasMember("graphicsExtensions"))
     {
@@ -1314,16 +1356,16 @@ void loadFrom
     else
         Layer::resetSharedSourceEditor();
 
-    appState.sharedStorage = SharedStorage::loadFrom(project);
+    sharedStorage = SharedStorage::loadFrom(project);
     
     auto ioLayers = project.readObject("layers");
     unsigned int layerId = 0;
     for (auto ioLayerName : ioLayers.members())
     {   
         auto ioLayer = ioLayers.readObject(ioLayerName);
-        appState.layers.emplace_back
+        layers.emplace_back
         (
-            Layer::loadFrom(ioLayer, layerId++, appState)
+            Layer::loadFrom(ioLayer, layerId++, *this)
         );
     };
 
@@ -1335,13 +1377,13 @@ void loadFrom
     // layer->cache.uninitializedResourceLayers. After all layers have been
     // loaded, the proceed with re-establishing dependencies for resource
     // uniforms that consist of layers.
-    for (auto& layer : appState.layers)
+    for (auto& layer : layers)
     {
         for (auto& entry : layer->cache.uninitializedResourceLayers)
         {
             auto* uniform = entry.first;
             auto& layerName = entry.second;
-            for (auto& resource : appState.resources)
+            for (auto& resource : resources)
             {
                 if (resource->name() != layerName)
                     continue;
@@ -1356,7 +1398,7 @@ void loadFrom
     {
         auto* uniform = entry.first;
         auto& layerName = entry.second;
-        for (auto& resource : appState.resources)
+        for (auto& resource : resources)
         {
             if (resource->name() != layerName)
                 continue;
@@ -1367,7 +1409,7 @@ void loadFrom
 
     // Reset the lists of layers using each image- or sampler-type resource
     // within each resource
-    for (auto& layer : appState.layers)
+    for (auto& layer : layers)
     {
         for (auto& uniform : layer->fragment.uniforms)
         {
@@ -1392,7 +1434,7 @@ void loadFrom
     }
 
     // Compile all layer shaders after dependencies have been re-established
-    for (auto& layer : appState.layers)
+    for (auto& layer : layers)
     {
         // If the project was saved in a state such that the shader has 
         // compilation errors, then initialize the shader with the blank shader 
@@ -1402,11 +1444,11 @@ void loadFrom
         layer->compileShader(true);
     }
 
-    for (auto& u : appState.sharedUniforms->fragment.uniforms)
+    for (auto& u : sharedUniforms->fragment.uniforms)
     {
         u->markForSubmissionToAllClientBuffers();
     }
-    for (auto& layer : appState.layers)
+    for (auto& layer : layers)
     {
         for (auto& u : layer->fragment.uniforms)
         {
@@ -1417,7 +1459,7 @@ void loadFrom
     // Finally, reset tiled rendering
     unsigned int nTiles = 
         project.readOrDefault<unsigned int>("nRenderingTiles", 1);
-    setRenderingTiles(appState, nTiles);
+    setRenderingTiles(nTiles);
 
     /* TODO Reimplement
     Exporter::      load   (project, exporter_                            );
@@ -1427,14 +1469,13 @@ void loadFrom
 
 //----------------------------------------------------------------------------//
 
-void updateLayersDueToUniformTypeOrNameChanged
+void App::updateLayersDueToUniformTypeOrNameChanged
 (
     UPtr<Uniform>& uniform, 
-    AppState& appState,
     bool recompileShaders
 )
 {
-    auto updateLayer = [&uniform, &appState, &recompileShaders]
+    auto updateLayer = [this, &uniform, &recompileShaders]
     (
         Layer* layer
     )
@@ -1461,14 +1502,14 @@ void updateLayersDueToUniformTypeOrNameChanged
     };
     if (uniform->isSharedByUser)
     {
-        for (auto& layer : appState.layers)
+        for (auto& layer : layers)
         {
             updateLayer(layer.get());
         }
     }
     else
     {
-        for (auto& layer : appState.layers)
+        for (auto& layer : layers)
         {
             if (&layer->fragment == uniform->owner())
                 updateLayer(layer.get());
@@ -1477,26 +1518,22 @@ void updateLayersDueToUniformTypeOrNameChanged
     }
 }
 
-void updateLayersDueToUniformDeletion
-(
-    UPtr<Uniform>& uniform, 
-    AppState& appState
-)
+void App::updateLayersDueToUniformDeletion(UPtr<Uniform>& uniform)
 {
     // TODO Check if setting hasUncompiledEdits within the deferred action does
     // not change anything, and if so, make the code more compact
     if (uniform->isSharedByUser)
     {
-        for (auto& layer : appState.layers)
+        for (auto& layer : layers)
         {
             layer->hasUncompiledEdits = true;
         }
-        appState.deferredActionBuffer.add
+        deferredActionBuffer.add
         (
-            [&uniform, &appState]()
+            [&uniform, this]()
             {
                 uniform->deleteSelf();
-                for (auto& layer : appState.layers)
+                for (auto& layer : layers)
                 {
                     layer->compileShader();
                 }
@@ -1507,7 +1544,7 @@ void updateLayersDueToUniformDeletion
     {
         auto layer = dynamic_cast<Layer*>(uniform->owner());
         layer->hasUncompiledEdits = true;
-        appState.deferredActionBuffer.add
+        deferredActionBuffer.add
         (
             [&uniform, layer]()
             {

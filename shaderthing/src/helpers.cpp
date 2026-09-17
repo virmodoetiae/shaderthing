@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -18,19 +18,21 @@
 #include <charconv>
 #include <ctime>
 
-#include "shaderthing/include/helpers.h"
-#include "shaderthing/include/structs.h"
+#include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/imgui_internal.h"
 
 #include "vir/include/vir.h"
 
-#include "thirdparty/imgui/imgui.h"
-#include "thirdparty/imgui/imgui_internal.h"
+#include "shaderthing/include/app.h"
+#include "shaderthing/include/helpers.h"
 
 namespace ShaderThing
 {
 
 namespace Helpers
 {
+
+//----------------------------------------------------------------------------//
 
 bool isCtrlKeyPressed(ImGuiKey key)
 {
@@ -41,6 +43,8 @@ bool isCtrlKeyPressed(ImGuiKey key)
     );
 }
 
+//----------------------------------------------------------------------------//
+
 bool isCtrlShiftKeyPressed(ImGuiKey key)
 {
     return
@@ -50,6 +54,8 @@ bool isCtrlShiftKeyPressed(ImGuiKey key)
         ImGui::IsKeyPressed(key, false)
     );
 }
+
+//----------------------------------------------------------------------------//
 
 glm::vec2 normalizedWindowResolution()
 {
@@ -62,6 +68,8 @@ glm::vec2 normalizedWindowResolution()
     };
 }
 
+//----------------------------------------------------------------------------//
+
 unsigned int countNewLines(const std::string& text)
 {
     unsigned int result(0);
@@ -69,6 +77,8 @@ unsigned int countNewLines(const std::string& text)
         result += (unsigned int)(c == '\n');
     return result;
 }
+
+//----------------------------------------------------------------------------//
 
 unsigned int findSmallestFreeLayerId(const UPtrVector<Layer>& layers)
 {
@@ -86,6 +96,8 @@ unsigned int findSmallestFreeLayerId(const UPtrVector<Layer>& layers)
     }
     return id;
 }
+
+//----------------------------------------------------------------------------//
 
 std::string fileExtension(const std::string& filepath, bool toLowerCase)
 {
@@ -114,6 +126,8 @@ std::string fileExtension(const std::string& filepath, bool toLowerCase)
     return foundDot ? fileExtension : "";
 }
 
+//----------------------------------------------------------------------------//
+
 std::string filename(const std::string& filepath)
 {
     std::string filename = "";
@@ -128,6 +142,8 @@ std::string filename(const std::string& filepath)
     }
     return foundSlash ? filename : "";
 }
+
+//----------------------------------------------------------------------------//
 
 void splitFilepath
 (
@@ -158,6 +174,8 @@ void splitFilepath
         filepathNoExtension = filepath;
 }
 
+//----------------------------------------------------------------------------//
+
 std::string appendToFilename(const std::string& filepath, const std::string& s)
 {
     std::string filepathNoExtension;
@@ -165,6 +183,8 @@ std::string appendToFilename(const std::string& filepath, const std::string& s)
     splitFilepath(filepath, filepathNoExtension, fileExtension);
     return filepathNoExtension+s+fileExtension;
 }
+
+//----------------------------------------------------------------------------//
 
 std::string randomString(const unsigned int size)
 {
@@ -179,6 +199,8 @@ std::string randomString(const unsigned int size)
         tmp += alphanum[rand() % (sizeof(alphanum) - 1)];
     return tmp;
 }
+
+//----------------------------------------------------------------------------//
 
 unsigned char* readFileContents
 (
@@ -195,6 +217,8 @@ unsigned char* readFileContents
     dataStream.close();
     return data;
 }
+
+//----------------------------------------------------------------------------//
 
 const char* autoRescaleMemoryValue(double& value)
 {
@@ -217,6 +241,8 @@ const char* autoRescaleMemoryValue(double& value)
     };
     return uom.at(k);
 }
+
+//----------------------------------------------------------------------------//
 
 std::string format(float value, unsigned int precision) 
 {
@@ -343,6 +369,8 @@ void oneLineColorfulText
         unsigned int floatDigits,                                       \
         unsigned int expDigits                                          \
     )
+
+//----------------------------------------------------------------------------//
 
 TYPED_GET_FORMAT_FUNC(unsigned int){return "%.0f";}
 

@@ -1,10 +1,24 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include <algorithm>
 #include <vector>
 
 #include "shaderthing/include/uniform.h"
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/resource.h"
-#include "shaderthing/include/structs.h"
 
 namespace ShaderThing
 {
@@ -564,7 +578,5 @@ void Uniform::setOwner(UniformContainer* owner)
     // Update owner ptr
     owner_ = owner;
 }
-
-//----------------------------------------------------------------------------//
 
 }

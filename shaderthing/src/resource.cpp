@@ -1,9 +1,25 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #include "vir/include/vpch.h"
-#include "shaderthing/include/resource.h"
-#include "shaderthing/include/objectio.h"
+
+#include "shaderthing/include/app.h"
 #include "shaderthing/include/filedialog.h"
-#include "shaderthing/include/structs.h"
 #include "shaderthing/include/helpers.h"
+#include "shaderthing/include/objectio.h"
+#include "shaderthing/include/resource.h"
 
 namespace ShaderThing
 {
@@ -28,11 +44,15 @@ ResourceName::ResourceName()
     namePtr_ = new std::string(Helpers::randomString(6));
 }
 
+//----------------------------------------------------------------------------//
+
 ResourceName::~ResourceName()
 {
     if (namePtr_)
         delete namePtr_;
 }
+
+//----------------------------------------------------------------------------//
 
 std::string ResourceName::name() const
 {
@@ -42,6 +62,8 @@ std::string ResourceName::name() const
         *namePtr_;
 }
 
+//----------------------------------------------------------------------------//
+
 void ResourceName::set(const std::string& name)
 {
     if (namePtr_)
@@ -49,6 +71,8 @@ void ResourceName::set(const std::string& name)
     namePtr_ = new std::string(name);
     cNamePtr_ = nullptr;
 }
+
+//----------------------------------------------------------------------------//
 
 void ResourceName::set(const std::string* namePtr)
 {
@@ -71,6 +95,8 @@ void Resource::addClientUniform(Uniform* u)
     clientUniforms_.emplace_back(u);
 }
 
+//----------------------------------------------------------------------------//
+
 void Resource::removeClientUniform(Uniform* u) 
 {
     clientUniforms_.erase
@@ -80,14 +106,14 @@ void Resource::removeClientUniform(Uniform* u)
     );
 }
 
+//----------------------------------------------------------------------------//
+
 bool Resource::isUsedByUniform(const Uniform* u) const 
 {
     return 
         std::find(clientUniforms_.begin(), clientUniforms_.end(), u) != 
         clientUniforms_.end();
 }
-
-//----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
 
@@ -105,8 +131,6 @@ ManagedResource<NativeType>::~ManagedResource()
 
 //----------------------------------------------------------------------------//
 
-//----------------------------------------------------------------------------//
-
 UPtr<Texture2DResource> Texture2DResource::create(const std::string& filepath)
 {
     auto resource = UPtr<Texture2DResource>(new Texture2DResource());
@@ -114,6 +138,8 @@ UPtr<Texture2DResource> Texture2DResource::create(const std::string& filepath)
         return resource;
     return vir::nullUniquePtr<Texture2DResource>();
 }
+
+//----------------------------------------------------------------------------//
 
 UPtr<Texture2DResource> Texture2DResource::create
 (
@@ -127,6 +153,8 @@ UPtr<Texture2DResource> Texture2DResource::create
     return vir::nullUniquePtr<Texture2DResource>();
 }
 
+//----------------------------------------------------------------------------//
+
 UPtr<Texture2DResource> Texture2DResource::create
 (
     unsigned int width, 
@@ -139,6 +167,8 @@ UPtr<Texture2DResource> Texture2DResource::create
         return resource;
     return vir::nullUniquePtr<Texture2DResource>();
 }
+
+//----------------------------------------------------------------------------//
 
 Texture2DResource::~Texture2DResource()
 {
@@ -164,6 +194,8 @@ void Texture2DResource::saveTo(ObjectIO& io)
     }
     io.writeObjectEnd();
 }
+
+//----------------------------------------------------------------------------//
 
 UPtr<Texture2DResource> Texture2DResource::loadFrom(const ObjectIO& io)
 {
@@ -196,6 +228,8 @@ UPtr<Texture2DResource> Texture2DResource::loadFrom(const ObjectIO& io)
     return resource;
 }
 
+//----------------------------------------------------------------------------//
+
 bool Texture2DResource::set(const std::string& filepath)
 {
     auto native = vir::TextureBuffer2D::create
@@ -216,6 +250,8 @@ bool Texture2DResource::set(const std::string& filepath)
     return true;
 }
 
+//----------------------------------------------------------------------------//
+
 bool Texture2DResource::set(const unsigned char* rawData, unsigned int size)
 {
     auto native = vir::TextureBuffer2D::create
@@ -233,6 +269,8 @@ bool Texture2DResource::set(const unsigned char* rawData, unsigned int size)
     rawDataSize_ = size;
     return true;
 }
+
+//----------------------------------------------------------------------------//
 
 bool Texture2DResource::set
 (
@@ -258,29 +296,37 @@ bool Texture2DResource::set
     return true;
 }
 
+//----------------------------------------------------------------------------//
+
 void Texture2DResource::update(const UpdateArgs& args)
 {
     if (autoUpdateMipmap)
         native_->updateMipmap(true);
 }
 
+//----------------------------------------------------------------------------//
+
 void Texture2DResource::readData(unsigned char*& data, bool allocate) const
-{
-    if (native_.valid())
-        native_->readData(data, allocate);
-}
-void Texture2DResource::readData(unsigned int*& data, bool allocate) const
-{
-    if (native_.valid())
-        native_->readData(data, allocate);
-}
-void Texture2DResource::readData(float*& data, bool allocate) const 
 {
     if (native_.valid())
         native_->readData(data, allocate);
 }
 
 //----------------------------------------------------------------------------//
+
+void Texture2DResource::readData(unsigned int*& data, bool allocate) const
+{
+    if (native_.valid())
+        native_->readData(data, allocate);
+}
+
+//----------------------------------------------------------------------------//
+
+void Texture2DResource::readData(float*& data, bool allocate) const 
+{
+    if (native_.valid())
+        native_->readData(data, allocate);
+}
 
 //----------------------------------------------------------------------------//
 
@@ -298,6 +344,8 @@ UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
     return vir::nullUniquePtr<AnimatedTexture2DResource>();
 }
 
+//----------------------------------------------------------------------------//
+
 UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
 (
     const unsigned char* rawData, 
@@ -313,6 +361,8 @@ UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
     return vir::nullUniquePtr<AnimatedTexture2DResource>();
 }
 
+//----------------------------------------------------------------------------//
+
 UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
 (
     const std::vector<WPtr<Texture2DResource>>& frames
@@ -327,11 +377,15 @@ UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::create
     return vir::nullUniquePtr<AnimatedTexture2DResource>();
 }
 
+//----------------------------------------------------------------------------//
+
 AnimatedTexture2DResource::~AnimatedTexture2DResource()
 {
     if (rawData_ != nullptr)
         delete[] rawData_;
 }
+
+//----------------------------------------------------------------------------//
 
 bool AnimatedTexture2DResource::set(const std::string& filepath)
 {
@@ -355,6 +409,8 @@ bool AnimatedTexture2DResource::set(const std::string& filepath)
     return true;
 }
 
+//----------------------------------------------------------------------------//
+
 bool AnimatedTexture2DResource::set
 (
     const unsigned char* rawData, 
@@ -376,6 +432,8 @@ bool AnimatedTexture2DResource::set
     rawDataSize_ = size;
     return true;
 }
+
+//----------------------------------------------------------------------------//
 
 bool AnimatedTexture2DResource::set
 (
@@ -410,6 +468,8 @@ bool AnimatedTexture2DResource::set
     return true;
 }
 
+//----------------------------------------------------------------------------//
+
 void AnimatedTexture2DResource::saveTo(ObjectIO& io)
 {
     io.writeObjectStart(name().c_str());
@@ -441,6 +501,8 @@ void AnimatedTexture2DResource::saveTo(ObjectIO& io)
     }
     io.writeObjectEnd();
 }
+
+//----------------------------------------------------------------------------//
 
 UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::loadFrom
 (
@@ -510,8 +572,6 @@ void AnimatedTexture2DResource::update(const UpdateArgs& args)
 
 //----------------------------------------------------------------------------//
 
-//----------------------------------------------------------------------------//
-
 UPtr<CubemapResource> CubemapResource::create
 (
     const std::array<WPtr<Texture2DResource>, 6>& faces
@@ -522,6 +582,8 @@ UPtr<CubemapResource> CubemapResource::create
         return resource;
     return vir::nullUniquePtr<CubemapResource>();
 }
+
+//----------------------------------------------------------------------------//
 
 bool CubemapResource::set
 (
@@ -562,6 +624,8 @@ bool CubemapResource::set
     return true;
 }
 
+//----------------------------------------------------------------------------//
+
 void CubemapResource::saveTo(ObjectIO& io)
 {
     for (int i=0; i<6; i++)
@@ -579,6 +643,8 @@ void CubemapResource::saveTo(ObjectIO& io)
     io.write("faces", faceNames);
     io.writeObjectEnd();
 }
+
+//----------------------------------------------------------------------------//
 
 UPtr<CubemapResource> CubemapResource::loadFrom
 (
@@ -615,8 +681,6 @@ UPtr<CubemapResource> CubemapResource::loadFrom
 
 //----------------------------------------------------------------------------//
 
-//----------------------------------------------------------------------------//
-
 UPtr<Texture3DResource> Texture3DResource::create
 (
     unsigned int width, 
@@ -630,6 +694,8 @@ UPtr<Texture3DResource> Texture3DResource::create
         return resource;
     return vir::nullUniquePtr<Texture3DResource>();
 }
+
+//----------------------------------------------------------------------------//
 
 bool Texture3DResource::set
 (
@@ -653,6 +719,8 @@ bool Texture3DResource::set
     return true;
 }
 
+//----------------------------------------------------------------------------//
+
 void Texture3DResource::saveTo(ObjectIO& io)
 {
     io.writeObjectStart(name().c_str());
@@ -667,6 +735,8 @@ void Texture3DResource::saveTo(ObjectIO& io)
     io.write("internalFormat", (int)native_->internalFormat());
     io.writeObjectEnd();
 }
+
+//----------------------------------------------------------------------------//
 
 UPtr<Texture3DResource> Texture3DResource::loadFrom(const ObjectIO& io)
 {
@@ -692,28 +762,34 @@ UPtr<Texture3DResource> Texture3DResource::loadFrom(const ObjectIO& io)
     return resource;
 }
 
+//----------------------------------------------------------------------------//
+
 void Texture3DResource::update(const UpdateArgs& args)
 {
     if (autoUpdateMipmap)
         native_->updateMipmap(true);
 }
 
+//----------------------------------------------------------------------------//
+
 void Texture3DResource::readData(unsigned char*& data, bool allocate) const
 {
     native_->readData(data, allocate);
 }
+
+//----------------------------------------------------------------------------//
 
 void Texture3DResource::readData(unsigned int*& data, bool allocate) const
 {
     native_->readData(data, allocate);
 }
 
+//----------------------------------------------------------------------------//
+
 void Texture3DResource::readData(float*& data, bool allocate) const 
 {
     native_->readData(data, allocate);
 }
-
-//---------------------------------------------------------------------------s-//
 
 //----------------------------------------------------------------------------//
 
@@ -728,6 +804,8 @@ UPtr<LayerResource> LayerResource::create
     return vir::nullUniquePtr<LayerResource>();
 }
 
+//----------------------------------------------------------------------------//
+
 LayerResource::~LayerResource()
 {
     if (native_ != nullptr)
@@ -738,6 +816,8 @@ LayerResource::~LayerResource()
             unbindImage();
     }
 }
+
+//----------------------------------------------------------------------------//
 
 bool LayerResource::set(WPtr<Layer> layer)
 {

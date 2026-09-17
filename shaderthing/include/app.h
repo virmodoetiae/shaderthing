@@ -1,20 +1,37 @@
+/*
+ _____________________
+|                     |  This file is part of ShaderThing - A GUI-based live
+|   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
+|  /\  \/\__    __\   |  For more information, visit:
+|  \ \  \/__/\  \_/   |
+|   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
+|    \/__/\  \ \  \   |
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
+|  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
+|  Ↄ|C                |  SPDX-License-Identifier:   Zlib
+|_____________________|
+
+*/
+
 #pragma once
 
 #include <random>
 #include <string>
 #include <vector>
 #include <unordered_map>
+
+#include "vir/include/vmacros.h"
+#include "vir/include/vgraphics/vcore/vuniform.h"
+#include "thirdparty/imgui/imgui.h"
+
 #include "shaderthing/include/deferredactionbuffer.h"
 #include "shaderthing/include/filedialog.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/texteditor.h"
-#include "shaderthing/include/uniform.h"
 #include "shaderthing/include/typedefs.h"
-#include "vir/include/vmacros.h"
-#include "vir/include/vgraphics/vcore/vuniform.h"
-#include "thirdparty/imgui/imgui.h"
+#include "shaderthing/include/uniform.h"
 
 // Forwards
 
@@ -30,7 +47,30 @@ namespace ShaderThing
 
 //----------------------------------------------------------------------------//
 
-struct Exporter
+struct RenderState
+{
+    bool              isPaused                = false;
+    bool              isTiledRenderingEnabled = false;
+    bool              isVSyncEnabled          = true;
+    unsigned int      frameIndex              = 0;
+    unsigned int      passIndex               = 0;
+    unsigned int      tileIndex               = 0;
+    unsigned int      nTiles                  = 1;
+    unsigned int      nTilesCache;
+    float             lowerFpsLimit           = 5.0;
+    struct Toggles
+    {
+        bool stepToNextFrame                  = false;
+        bool resetFrameCounterPreOrPostExport = true;
+        bool requestFullRecompilation         = false;
+        bool tiledRenderingPauseRequested     = false;
+    };
+    Toggles           toggles                 = {};
+};
+
+//----------------------------------------------------------------------------//
+
+struct ExportState
 {
     enum class ExportType
     {
@@ -43,7 +83,6 @@ struct Exporter
     UPtr<vir::Framebuffer> framebuffer;
     unsigned char*         framebufferData = nullptr;
     vir::GifEncoder*       gifEncoder      = nullptr;
-    FileDialog             fileDialog;
 
     bool         isActive                        = false;
     bool         isAveragedPaletteReady          = false;
@@ -70,7 +109,7 @@ struct Exporter
     };
     struct Toggles
     {
-        bool         outputResolutionChanged         = false;
+        bool        outputResolutionChanged         = false;
     };
     Cache        cache                           = {};
     Toggles      toggles                         = {};
@@ -152,102 +191,9 @@ public :
         bool stepToNextTimeStep                 = false;
     };
     Toggles toggles = {};
+
+    void initialize(RenderState& renderState, ExportState& exportState);
 };
-
-//----------------------------------------------------------------------------//
-
-/*
-
-struct Layer : public UniformContainer
-{
-public :
-    struct Rendering
-    {
-        enum class Target
-        {
-            Window,
-            InternalFramebuffer,
-            InternalFramebufferAndWindow
-        };
-        Target                          target              = Target::Window;
-        UPtr<vir::TiledQuad>            quad;
-        UPtr<vir::Framebuffer>          framebufferA;
-        UPtr<vir::Framebuffer>          framebufferB;
-        vir::Framebuffer*               frontFramebuffer    = nullptr;
-        vir::Framebuffer*               backFramebuffer     = nullptr;
-        vir::Framebuffer*               resourceFramebuffer = nullptr;
-        UPtr<vir::Shader>               shader;
-        WPtr<Uniform>                   iAspectRatioUniform;
-        WPtr<Uniform>                   iResolutionUniform;
-        static UPtr<vir::Shader>        textureMapperShader;
-
-        struct Tiles
-        {
-            enum class Direction
-            {
-                Horizontal,
-                Vertical
-            };
-            Direction    direction = Direction::Horizontal;
-            unsigned int size      = 1;
-        };
-        Tiles tiles;
-    };
-    struct ExportData
-    {
-        enum class FramebufferClearPolicy
-        {
-            // The framebuffers are never cleared
-            None, 
-            // The framebuffers are cleared only once, when the export starts
-            ClearOnFirstFrameExport,
-            // The framebuffers are cleared at the beginning of every frame, but
-            // not on sub-frame render passes (i.e., the framebuffers are 
-            // cleared at the beginning of the first sub-frame render pass of
-            // each frame)
-            ClearOnEveryFrameExport
-        };
-        FramebufferClearPolicy clearPolicy = FramebufferClearPolicy::None;
-        glm::ivec2             originalResolution;
-        glm::ivec2             resolution;
-        float                  resolutionScale       = 1.f;
-        float                  windowResolutionScale = 1.f;
-        bool                   rescaleWithOutput     = true;
-    };
-    struct Cache
-    {
-        WPtrVector<Uniform> uncompiledUniforms;
-    };
-
-    static const unsigned int nMaxLayers = 32;
-    const unsigned int        id;
-    const std::string         imGuiMenuId;
-    const std::string         imGuiTabId;
-          std::string         name;
-          bool                isAspectRatioBoundToWindow    = true;
-          bool                isDeletionConfirmationPending = false;
-          bool                rescaleWithWindow             = true;
-          bool                hasUncompiledEdits            = false;
-          glm::vec2           resolution;
-          glm::vec2           resolutionRatio = {1.f, 1.f};
-          float               aspectRatio;
-          float               depth;
-          Rendering           rendering;
-          TextEditor          sourceEditor;
-          std::string         sourceHeader;
-          std::string         headerErrors;
-          unsigned int        activeGuiTabId = 0;
-          ExportData          exportData;
-          Cache               cache;
-    
-    Layer(unsigned int aId) : 
-        id(aId), 
-        imGuiMenuId("menuLayer"+std::to_string(id)),
-        imGuiTabId("tabLayer"+std::to_string(id)) {}
-    DELETE_COPY(Layer)
-};
-
-*/
 
 //----------------------------------------------------------------------------//
 
@@ -264,29 +210,6 @@ struct Project
 
 //----------------------------------------------------------------------------//
 
-struct RenderState
-{
-    bool              isPaused                = false;
-    bool              isTiledRenderingEnabled = false;
-    bool              isVSyncEnabled          = true;
-    unsigned int      frameIndex              = 0;
-    unsigned int      passIndex               = 0;
-    unsigned int      tileIndex               = 0;
-    unsigned int      nTiles                  = 1;
-    unsigned int      nTilesCache;
-    float             lowerFpsLimit           = 5.0;
-    struct Toggles
-    {
-        bool stepToNextFrame                  = false;
-        bool resetFrameCounterPreOrPostExport = true;
-        bool requestFullRecompilation         = false;
-        bool tiledRenderingPauseRequested     = false;
-    };
-    Toggles           toggles                 = {};
-};
-
-//----------------------------------------------------------------------------//
-
 struct RenderResult
 {
     bool renderPassesComplete;
@@ -295,22 +218,135 @@ struct RenderResult
 
 //----------------------------------------------------------------------------//
 
-struct AppState
+class App
 {
-    std::string          controlPanelTitle           = "Control panel###CP";
+private:
+    std::string          controlPanelTitle_           = "Control panel###CP";
+    Font                 font_;
+    Project              project_;
+public:
     DeferredActionBuffer deferredActionBuffer;
     FileDialog           fileDialog;
-    Font                 font;
-    Project              project;
     RenderState          renderState;
-    UPtr<Exporter>       exporter;
+    ExportState          exportState;
     UPtr<SharedStorage>  sharedStorage;
     UPtr<SharedUniforms> sharedUniforms;
     UPtrVector<Layer>    layers;
     bool                 layersHaveUncompiledEdits   = false;
     bool                 layersHaveCompilationErrors = false;
     UPtrVector<Resource> resources;
+public:
+
+    App();
+
+    // Logic -------------------------------------------------------------------
+
+    void initialize();
+
+    void createNewLayer(bool compileShader=true);
+
+    void preRenderUpdate();
+
+    RenderResult renderShaders
+    (
+        vir::Framebuffer* target, 
+        const unsigned int nRenderPasses
+    );
+    void postRenderUpdate();
     
+    void setWindowResolution
+    (
+        glm::ivec2 resolution, 
+        const bool windowFrameManuallyDragged,
+        const bool prepareForExport = false
+    );
+
+    void setRenderingTiles(int nTiles);
+
+    void addLayerToResources(WPtr<Layer> layer);
+
+    void removeLayerFromResources(WPtr<Layer> layer);
+
+    void toggleRenderingPaused(bool dueToFlowFps);
+
+    void toggleKeyboardInputs();
+
+    void toggleMouseInputs();
+
+    void toggleCameraMouseInputs();
+
+    void toggleCameraKeyboardInputs();
+
+    void setMouseInputsClamped(bool flag);
+
+    void setMouseCaptured(bool flag);
+
+    void saveTo
+    (
+        const std::string& filepath, 
+        bool triggeredByAutosave = false
+    );
+
+    void loadFrom
+    (
+        const std::string& filepathOrData,
+        bool fromMemory
+    );
+
+    void updateLayersDueToUniformTypeOrNameChanged
+    (
+        UPtr<Uniform>& uniform, 
+        bool recompileShaders = false
+    );
+
+    void updateLayersDueToUniformDeletion
+    (
+        UPtr<Uniform>& uniform
+    );
+
+    // GUI ---------------------------------------------------------------------
+
+    void renderControlPanel();
+
+    void renderMenuBar();
+
+    void renderLayersTabBar();
+
+    void renderUniformsTab(Layer* layer);
+
+    // Render the default/built-in shared uniforms only as a table and return the
+    // row count
+    int renderBuiltInSharedUniforms();
+
+    // Render the button for editing uniform bounds, returns a flag indicating 
+    // whether the bounds have been changed during this frame
+    bool renderEditUniformBoundsButton
+    (
+        const vir::Ptr<Uniform>& uniform,
+        bool renderDragStepSlider = false
+    );
+
+    // Render the GUI of the provided uniform at the provided table row and return
+    // true if the uniform type is changed by user interation with this GUI, else
+    // false
+    bool renderUniformTableRow
+    (
+        UPtr<Uniform>& uniform,
+        Layer* layer,
+        int row,
+        const bool showSeparator = false,
+        const bool showSharedAndDefaultUniforms = true
+    );
+
+    void renderResourcesMenuItem();
+
+    void renderResourcesTable();
+
+    void renderResourcesTableRow(int row);
+
+    void renderAddResourceButton(int row);
+
+    void renderResourceActionsButton(int row);
 };
 
 //----------------------------------------------------------------------------//

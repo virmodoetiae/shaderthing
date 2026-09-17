@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -16,11 +16,10 @@
 #include <algorithm>
 #include <chrono>
 
-#include "shaderthing/include/filedialog.h"
-
-#include "shaderthing/include/helpers.h"
-
 #include "thirdparty/portable-file-dialogs/pfd.h"
+
+#include "shaderthing/include/filedialog.h"
+#include "shaderthing/include/helpers.h"
 
 namespace ShaderThing
 {
@@ -28,11 +27,15 @@ namespace ShaderThing
 // Static instance for ease of usage
 FileDialog FileDialog::instance;
 
+//----------------------------------------------------------------------------//
+
 FileDialog::~FileDialog()
 {
     if (thread_.joinable())
         thread_.join();
 }
+
+//----------------------------------------------------------------------------//
 
 auto FileDialog::dialogTask
 (
@@ -98,6 +101,8 @@ auto FileDialog::dialogTask
     );
 }
 
+//----------------------------------------------------------------------------//
+
 void FileDialog::runOpenFileDialog
 (
     const std::string& title,
@@ -125,6 +130,8 @@ void FileDialog::runOpenFileDialog
         isOpen_ = false;
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void FileDialog::runSaveFileDialog
 (
@@ -164,6 +171,8 @@ void FileDialog::runSaveFileDialog
         isOpen_ = false;
     }
 }
+
+//----------------------------------------------------------------------------//
 
 bool FileDialog::validSelection()
 {

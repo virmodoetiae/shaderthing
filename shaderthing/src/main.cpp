@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -18,7 +18,9 @@
 #include <windows.h>
 #endif
 
-#include "shaderthing/include/shaderthing.h"
+#include "vir/include/vir.h"
+
+#include "shaderthing/include/app.h"
 
 int main()
 {
@@ -26,6 +28,14 @@ int main()
     #if (defined(WIN32) || defined(_WIN32)) && NDEBUG
         FreeConsole();
     #endif
-    ShaderThing::run();
+    
+    // Initialize vir library
+    vir::Settings settings = {};
+    settings.enableFaceCulling = false;
+    vir::initialize(settings);
+
+    // Start application
+    ShaderThing::App app;
+
     return 0;
 }

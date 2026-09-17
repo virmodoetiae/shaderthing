@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -17,7 +17,9 @@
 
 #include <string>
 #include <vector>
+
 #include "shaderthing/include/typedefs.h"
+
 #include "thirdparty/glm/glm.hpp"
 #include "thirdparty/imgui/imgui.h"
 

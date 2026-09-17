@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -19,21 +19,23 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+
+#include "vir/include/vmacros.h"
+#include "vir/include/vgraphics/vcore/vuniform.h"
+#include "thirdparty/imgui/imgui.h"
+
 #include "shaderthing/include/deferredactionbuffer.h"
 #include "shaderthing/include/filedialog.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/texteditor.h"
-#include "shaderthing/include/uniform.h"
 #include "shaderthing/include/typedefs.h"
-#include "vir/include/vmacros.h"
-#include "vir/include/vgraphics/vcore/vuniform.h"
-#include "thirdparty/imgui/imgui.h"
+#include "shaderthing/include/uniform.h"
 
 namespace ShaderThing
 {
 
-struct AppState;
+struct App;
 struct SharedUniforms;
 
 class Layer : public vir::EnableWeakFromThis<Layer> // : public UniformContainer, 
@@ -107,7 +109,7 @@ public:
     const std::string      imGuiTabId;
           UniformContainer fragment;
 protected:
-          AppState&        appState_;
+          App&             app_;
           unsigned int     activeGuiTabId_                = 0;
           std::string      name_;
           bool             isAspectRatioBoundToWindow_    = true;
@@ -132,17 +134,17 @@ protected:
 
     // Ctor/creator/dtor -------------------------------------------------------
 
-    Layer(unsigned int id, AppState& appState);
+    Layer(unsigned int id, App& app);
 
 public:
 
-    static UPtr<Layer> create(unsigned int id, AppState& appState);
+    static UPtr<Layer> create(unsigned int id, App& app);
 
     static UPtr<Layer> loadFrom
     (
         ObjectIO& io, 
         unsigned int id, 
-        AppState& appState
+        App& app
     );
 
     virtual ~Layer();

@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -20,9 +20,11 @@
 #include <regex>
 #include <string>
 
-#include "shaderthing/include/texteditor.h"
-
+#include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/imgui_internal.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
+
+#include "shaderthing/include/texteditor.h"
 
 template<class InputIt1, class InputIt2, class BinaryPredicate>
 bool equals(InputIt1 first1, InputIt1 last1,
@@ -39,6 +41,8 @@ bool equals(InputIt1 first1, InputIt1 last1,
 namespace ShaderThing
 {
 
+//----------------------------------------------------------------------------//
+
 TextEditor::TextEditor() :
     startTime_
     (
@@ -52,6 +56,8 @@ TextEditor::TextEditor() :
     setLanguageDefinition(LanguageDefinition::GLSL());
     lines_.push_back(Line());
 }
+
+//----------------------------------------------------------------------------//
 
 TextEditor::TextEditor(const std::string& initialText) : 
     startTime_
@@ -67,6 +73,8 @@ TextEditor::TextEditor(const std::string& initialText) :
     setText(initialText);
     resetTextChanged();
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::setLanguageDefinition(const LanguageDefinition & aLanguageDef)
 {
@@ -84,10 +92,14 @@ void TextEditor::setLanguageDefinition(const LanguageDefinition & aLanguageDef)
     colorize();
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::setPalette(const Palette & aValue)
 {
     paletteBase_ = aValue;
 }
+
+//----------------------------------------------------------------------------//
 
 std::string TextEditor::getText
 (
@@ -133,10 +145,14 @@ std::string TextEditor::getText
     return result;
 }
 
+//----------------------------------------------------------------------------//
+
 TextEditor::Coordinates TextEditor::getActualCursorCoordinates() const
 {
     return sanitizeCoordinates(state_.cursorPosition);
 }
+
+//----------------------------------------------------------------------------//
 
 TextEditor::Coordinates TextEditor::sanitizeCoordinates
 (
@@ -166,6 +182,8 @@ TextEditor::Coordinates TextEditor::sanitizeCoordinates
     }
 }
 
+//----------------------------------------------------------------------------//
+
 // https://en.wikipedia.org/wiki/UTF-8
 // We assume that the char is a standalone character (<128) or a leading byte of
 // an UTF-8 code sequence (non-10xxxxxx code)
@@ -183,6 +201,8 @@ static int UTF8CharLength(TextEditor::Char c)
         return 2;
     return 1;
 }
+
+//----------------------------------------------------------------------------//
 
 // "Borrowed" from ImGui source
 static inline int ImTextCharToUtf8(char* buf, int buf_size, unsigned int c)
@@ -218,6 +238,8 @@ static inline int ImTextCharToUtf8(char* buf, int buf_size, unsigned int c)
     return 3;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::advance(Coordinates & aCoordinates) const
 {
     if (aCoordinates.line < (int)lines_.size())
@@ -237,6 +259,8 @@ void TextEditor::advance(Coordinates & aCoordinates) const
         aCoordinates.column = getCharacterColumn(aCoordinates.line, cindex);
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::deleteRange
 (
@@ -279,6 +303,8 @@ void TextEditor::deleteRange
 
     textChanged_ = true;
 }
+
+//----------------------------------------------------------------------------//
 
 int TextEditor::insertTextAt
 (
@@ -345,6 +371,8 @@ int TextEditor::insertTextAt
     return totalLines;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::addUndo(UndoRecord& aValue)
 {
     assert(!readOnly_);
@@ -356,6 +384,8 @@ void TextEditor::addUndo(UndoRecord& aValue)
     // results
     findReplaceTool_.forceSearch = true;
 }
+
+//----------------------------------------------------------------------------//
 
 TextEditor::Coordinates TextEditor::screenPosToCoordinates
 (
@@ -424,6 +454,8 @@ TextEditor::Coordinates TextEditor::screenPosToCoordinates
     return sanitizeCoordinates(Coordinates(lineNo, columnCoord));
 }
 
+//----------------------------------------------------------------------------//
+
 TextEditor::Coordinates TextEditor::findWordStartPos
 (
     const Coordinates & aFrom
@@ -461,6 +493,8 @@ TextEditor::Coordinates TextEditor::findWordStartPos
     return Coordinates(at.line, getCharacterColumn(at.line, cindex));
 }
 
+//----------------------------------------------------------------------------//
+
 TextEditor::Coordinates TextEditor::findWordEndPos
 (
     const Coordinates & aFrom
@@ -496,6 +530,8 @@ TextEditor::Coordinates TextEditor::findWordEndPos
     }
     return Coordinates(aFrom.line, getCharacterColumn(aFrom.line, cindex));
 }
+
+//----------------------------------------------------------------------------//
 
 TextEditor::Coordinates TextEditor::findNextWordPos
 (
@@ -551,6 +587,8 @@ TextEditor::Coordinates TextEditor::findNextWordPos
     return at;
 }
 
+//----------------------------------------------------------------------------//
+
 int TextEditor::getCharacterIndex(const Coordinates& aCoordinates) const
 {
     if (aCoordinates.line >= (int)lines_.size())
@@ -568,6 +606,8 @@ int TextEditor::getCharacterIndex(const Coordinates& aCoordinates) const
     }
     return i;
 }
+
+//----------------------------------------------------------------------------//
 
 int TextEditor::getCharacterColumn(int aLine, int aIndex) const
 {
@@ -588,6 +628,8 @@ int TextEditor::getCharacterColumn(int aLine, int aIndex) const
     return col;
 }
 
+//----------------------------------------------------------------------------//
+
 int TextEditor::getLineCharacterCount(int aLine) const
 {
     if (aLine >= (int)lines_.size())
@@ -598,6 +640,8 @@ int TextEditor::getLineCharacterCount(int aLine) const
         i += UTF8CharLength(line[i].character);
     return c;
 }
+
+//----------------------------------------------------------------------------//
 
 int TextEditor::getLineMaxColumn(int aLine) const
 {
@@ -617,6 +661,8 @@ int TextEditor::getLineMaxColumn(int aLine) const
     return col;
 }
 
+//----------------------------------------------------------------------------//
+
 bool TextEditor::isOnWordBoundary(const Coordinates & aAt) const
 {
     if (aAt.line >= (int)lines_.size() || aAt.column == 0)
@@ -632,6 +678,8 @@ bool TextEditor::isOnWordBoundary(const Coordinates & aAt) const
 
     return isspace(line[cindex].character) != isspace(line[cindex - 1].character);
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::removeLine(int aStart, int aEnd)
 {
@@ -667,6 +715,8 @@ void TextEditor::removeLine(int aStart, int aEnd)
     textChanged_ = true;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::removeLine(int aIndex)
 {
     assert(!readOnly_);
@@ -700,6 +750,8 @@ void TextEditor::removeLine(int aIndex)
     textChanged_ = true;
 }
 
+//----------------------------------------------------------------------------//
+
 TextEditor::Line& TextEditor::insertLine(int aIndex)
 {
     assert(!readOnly_);
@@ -725,11 +777,15 @@ TextEditor::Line& TextEditor::insertLine(int aIndex)
     return result;
 }
 
+//----------------------------------------------------------------------------//
+
 std::string TextEditor::getWordUnderCursor() const
 {
     auto c = getCursorPosition();
     return getWordAt(c);
 }
+
+//----------------------------------------------------------------------------//
 
 std::string TextEditor::getWordAt(const Coordinates & aCoords) const
 {
@@ -746,6 +802,8 @@ std::string TextEditor::getWordAt(const Coordinates & aCoords) const
 
     return r;
 }
+
+//----------------------------------------------------------------------------//
 
 ImU32 TextEditor::getGlyphColor(const Glyph & aGlyph) const
 {
@@ -767,6 +825,8 @@ ImU32 TextEditor::getGlyphColor(const Glyph & aGlyph) const
     }
     return color;
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::handleKeyboardInputs()
 {
@@ -847,6 +907,8 @@ void TextEditor::handleKeyboardInputs()
         }
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::handleMouseInputs()
 {
@@ -943,6 +1005,8 @@ void TextEditor::handleMouseInputs()
         }
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::renderGui()
 {
@@ -1401,6 +1465,8 @@ void TextEditor::renderGui()
     useSetTextStart_ = false;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::renderGui
 (
     const char* aTitle, 
@@ -1504,6 +1570,8 @@ void TextEditor::renderGui
     withinRender_ = false;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::setText(const std::string & aText)
 {
     lines_.clear();
@@ -1534,6 +1602,8 @@ void TextEditor::setText(const std::string & aText)
 
     colorize();
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::setTextLines(const std::vector<std::string> & aLines)
 {
@@ -1576,6 +1646,8 @@ void TextEditor::setTextLines(const std::vector<std::string> & aLines)
     undoIndex_ = 0;
     colorize();
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
 {
@@ -1812,15 +1884,21 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
     ensureCursorVisible();
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::setReadOnly(bool aValue)
 {
     readOnly_ = aValue;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::setColorizerEnable(bool aValue)
 {
     colorizerEnabled_ = aValue;
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::setCursorPosition(const Coordinates & aPosition)
 {
@@ -1832,6 +1910,8 @@ void TextEditor::setCursorPosition(const Coordinates & aPosition)
     }
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::setSelectionStart(const Coordinates & aPosition)
 {
     state_.selectionStart = sanitizeCoordinates(aPosition);
@@ -1839,12 +1919,16 @@ void TextEditor::setSelectionStart(const Coordinates & aPosition)
         std::swap(state_.selectionStart, state_.selectionEnd);
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::setSelectionEnd(const Coordinates & aPosition)
 {
     state_.selectionEnd = sanitizeCoordinates(aPosition);
     if (state_.selectionStart > state_.selectionEnd)
         std::swap(state_.selectionStart, state_.selectionEnd);
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::setSelection
 (
@@ -1889,10 +1973,14 @@ void TextEditor::setSelection
         cursorPositionChanged_ = true;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::setTabSize(int aValue)
 {
     tabSize_ = std::max(0, std::min(32, aValue));
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::insertText
 (
@@ -1903,6 +1991,8 @@ void TextEditor::insertText
 {
     insertText(aValue.c_str(), aRegisterUndo, aPropagateUndo);
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::insertText
 (
@@ -1952,6 +2042,8 @@ void TextEditor::insertText
     }
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::deleteSelection()
 {
     assert(state_.selectionEnd >= state_.selectionStart);
@@ -1965,6 +2057,8 @@ void TextEditor::deleteSelection()
     setCursorPosition(state_.selectionStart);
     colorize(state_.selectionStart.line, 1);
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::moveUp(int aAmount, bool aSelect)
 {
@@ -1992,6 +2086,8 @@ void TextEditor::moveUp(int aAmount, bool aSelect)
         ensureCursorVisible();
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::moveDown(int aAmount, bool aSelect)
 {
@@ -2030,10 +2126,14 @@ void TextEditor::moveDown(int aAmount, bool aSelect)
     }
 }
 
+//----------------------------------------------------------------------------//
+
 static bool IsUTFSequence(char c)
 {
     return (c & 0xC0) == 0x80;
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::moveLeft(int aAmount, bool aSelect, bool aWordMode)
 {
@@ -2112,6 +2212,8 @@ void TextEditor::moveLeft(int aAmount, bool aSelect, bool aWordMode)
     ensureCursorVisible();
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::moveRight(int aAmount, bool aSelect, bool aWordMode)
 {
     auto oldPos = state_.cursorPosition;
@@ -2177,6 +2279,8 @@ void TextEditor::moveRight(int aAmount, bool aSelect, bool aWordMode)
     ensureCursorVisible();
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::moveTop(bool aSelect)
 {
     auto oldPos = state_.cursorPosition;
@@ -2195,6 +2299,8 @@ void TextEditor::moveTop(bool aSelect)
     }
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::TextEditor::moveBottom(bool aSelect)
 {
     auto oldPos = getCursorPosition();
@@ -2209,6 +2315,8 @@ void TextEditor::TextEditor::moveBottom(bool aSelect)
         interactiveStart_ = interactiveEnd_ = newPos;
     setSelection(interactiveStart_, interactiveEnd_);
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::moveHome(bool aSelect)
 {
@@ -2234,6 +2342,8 @@ void TextEditor::moveHome(bool aSelect)
         setSelection(interactiveStart_, interactiveEnd_);
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::moveEnd(bool aSelect)
 {
@@ -2266,6 +2376,8 @@ void TextEditor::moveEnd(bool aSelect)
         setSelection(interactiveStart_, interactiveEnd_);
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::remove(bool aPropagateUndo)
 {
@@ -2325,6 +2437,8 @@ void TextEditor::remove(bool aPropagateUndo)
     u.after = state_;
     addUndo(u);
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::backspace()
 {
@@ -2416,21 +2530,29 @@ void TextEditor::backspace()
     addUndo(u);
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::selectWordUnderCursor()
 {
     auto c = getCursorPosition();
     setSelection(findWordStartPos(c), findWordEndPos(c));
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::selectAll()
 {
     setSelection(Coordinates(0, 0), Coordinates((int)lines_.size(), 0));
 }
 
+//----------------------------------------------------------------------------//
+
 bool TextEditor::hasSelection() const
 {
     return state_.selectionEnd > state_.selectionStart;
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::copy()
 {
@@ -2450,6 +2572,8 @@ void TextEditor::copy()
         }
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::cut()
 {
@@ -2476,6 +2600,8 @@ void TextEditor::cut()
         }
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::paste()
 {
@@ -2508,15 +2634,21 @@ void TextEditor::paste()
     }
 }
 
+//----------------------------------------------------------------------------//
+
 bool TextEditor::canUndo() const
 {
     return !readOnly_ && undoIndex_ > 0;
 }
 
+//----------------------------------------------------------------------------//
+
 bool TextEditor::canRedo() const
 {
     return !readOnly_ && undoIndex_ < (int)undoBuffer_.size();
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::undo(int aSteps)
 {
@@ -2528,6 +2660,8 @@ void TextEditor::undo(int aSteps)
     }
     findReplaceTool_.forceSearch = true;
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::redo(int aSteps)
 {
@@ -2542,6 +2676,8 @@ void TextEditor::redo(int aSteps)
     }
     findReplaceTool_.forceSearch = true;
 }
+
+//----------------------------------------------------------------------------//
 
 const TextEditor::Palette & TextEditor::getDarkPalette()
 {
@@ -2571,6 +2707,8 @@ const TextEditor::Palette & TextEditor::getDarkPalette()
     return p;
 }
 
+//----------------------------------------------------------------------------//
+
 const TextEditor::Palette & TextEditor::getLightPalette()
 {
     const static Palette p = { {
@@ -2598,6 +2736,8 @@ const TextEditor::Palette & TextEditor::getLightPalette()
         } };
     return p;
 }
+
+//----------------------------------------------------------------------------//
 
 const TextEditor::Palette & TextEditor::getRetroBluePalette()
 {
@@ -2627,11 +2767,14 @@ const TextEditor::Palette & TextEditor::getRetroBluePalette()
     return p;
 }
 
+//----------------------------------------------------------------------------//
 
 std::string TextEditor::getText() const
 {
     return getText(Coordinates(), Coordinates((int)lines_.size(), 0));
 }
+
+//----------------------------------------------------------------------------//
 
 std::vector<std::string> TextEditor::getTextLines() const
 {
@@ -2651,10 +2794,14 @@ std::vector<std::string> TextEditor::getTextLines() const
     return result;
 }
 
+//----------------------------------------------------------------------------//
+
 std::string TextEditor::getSelectedText() const
 {
     return getText(state_.selectionStart, state_.selectionEnd);
 }
+
+//----------------------------------------------------------------------------//
 
 std::string TextEditor::getCurrentLineText()const
 {
@@ -2664,9 +2811,7 @@ std::string TextEditor::getCurrentLineText()const
         Coordinates(state_.cursorPosition.line, lineLength));
 }
 
-void TextEditor::processInputs()
-{
-}
+//----------------------------------------------------------------------------//
 
 void TextEditor::colorize(int aFroline, int aLines)
 {
@@ -2680,6 +2825,8 @@ void TextEditor::colorize(int aFroline, int aLines)
     colorRangeMax_ = std::max(colorRangeMin_, colorRangeMax_);
     checkComments_ = true;
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::colorizeRange(int aFroline, int aToLine)
 {
@@ -2813,6 +2960,8 @@ void TextEditor::colorizeRange(int aFroline, int aToLine)
         }
     }
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::colorizeInternal()
 {
@@ -3013,6 +3162,8 @@ void TextEditor::colorizeInternal()
     }
 }
 
+//----------------------------------------------------------------------------//
+
 float TextEditor::textDistanceToLineStart(const Coordinates& aFrom) const
 {
     auto& line = lines_[aFrom.line];
@@ -3061,6 +3212,8 @@ float TextEditor::textDistanceToLineStart(const Coordinates& aFrom) const
     return distance;
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::ensureCursorVisible()
 {
     if (!withinRender_)
@@ -3094,11 +3247,15 @@ void TextEditor::ensureCursorVisible()
         ImGui::SetScrollX(std::max(0.0f, (pos.column+8)*charAdvance_.x-width));
 }
 
+//----------------------------------------------------------------------------//
+
 int TextEditor::getPageSize() const
 {
     auto height = ImGui::GetWindowHeight()-20.0f;
     return (int)floor(height / charAdvance_.y);
 }
+
+//----------------------------------------------------------------------------//
 
 TextEditor::UndoRecord::UndoRecord
 (
@@ -3110,19 +3267,21 @@ TextEditor::UndoRecord::UndoRecord
     const TextEditor::Coordinates aRemovedEnd,
     TextEditor::EditorState& aBefore,
     TextEditor::EditorState& aAfter
-)
-    : added(aAdded)
-    , addedStart(aAddedStart)
-    , addedEnd(aAddedEnd)
-    , removed(aRemoved)
-    , removedStart(aRemovedStart)
-    , removedEnd(aRemovedEnd)
-    , before(aBefore)
-    , after(aAfter)
+) :
+added(aAdded),
+addedStart(aAddedStart),
+addedEnd(aAddedEnd),
+removed(aRemoved),
+removedStart(aRemovedStart),
+removedEnd(aRemovedEnd),
+before(aBefore),
+after(aAfter)
 {
     assert(addedStart <= addedEnd);
     assert(removedStart <= removedEnd);
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::UndoRecord::undo(TextEditor * aEditor)
 {
@@ -3152,6 +3311,8 @@ void TextEditor::UndoRecord::undo(TextEditor * aEditor)
 
 }
 
+//----------------------------------------------------------------------------//
+
 void TextEditor::UndoRecord::redo(TextEditor * aEditor)
 {
     if (!removed.empty())
@@ -3178,6 +3339,8 @@ void TextEditor::UndoRecord::redo(TextEditor * aEditor)
     aEditor->state_ = after;
     aEditor->ensureCursorVisible();
 }
+
+//----------------------------------------------------------------------------//
 
 const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
 {
@@ -3276,6 +3439,8 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
     return langDef;
 }
 
+//----------------------------------------------------------------------------//
+
 float TextEditor::getLineIndexColumnWidth() const
 {
     static char buf[16];
@@ -3291,6 +3456,8 @@ float TextEditor::getLineIndexColumnWidth() const
             nullptr
         ).x + leftMargin_;
 }
+
+//----------------------------------------------------------------------------//
 
 void TextEditor::renderFindReplaceToolMenuGui()
 {

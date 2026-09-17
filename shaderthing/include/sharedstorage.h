@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -17,9 +17,12 @@
 
 #include <string>
 #include <type_traits>
-#include "shaderthing/include/typedefs.h"
-#include "vir/include/vmacros.h"
+
 #include "thirdparty/glm/glm.hpp"
+
+#include "vir/include/vmacros.h"
+
+#include "shaderthing/include/typedefs.h"
 
 namespace vir
 {
@@ -298,6 +301,8 @@ public:
     static UPtr<SharedStorage> loadFrom(const ObjectIO& io);
     
     ~SharedStorage();
+
+    // Logic -------------------------------------------------------------------
     
     void resetBlockAndSSBO
     (
@@ -323,14 +328,18 @@ public:
     // Call before every read/write operation of mapped Block data to ensure that
     // the latest changes by the shaders to the SSBO buffer_ data are visibile
     // on the CPU side
-    void cpuMemoryBarrier() const ;
+    void cpuMemoryBarrier() const;
 
     std::string shaderSource() const;
 
+    // GUI ---------------------------------------------------------------------
+
     bool renderGui();
+
     bool renderMenuItemGui();
 
     bool isGuiOpen() const {return gui_.isOpen;};
+    
     bool isGuiDetachedFromMenu() const {return gui_.isDetachedFromMenu;};
 };
 

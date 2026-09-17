@@ -6,15 +6,14 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
 
 */
 
-#ifndef ST_OBJECT_IO_H
-#define ST_OBJECT_IO_H
+#pragma once
 
 #include <fstream>
 #include <vector>
@@ -181,5 +180,3 @@ public:
 };
 
 }
-
-#endif

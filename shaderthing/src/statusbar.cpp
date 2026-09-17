@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -15,18 +15,20 @@
 
 #include <algorithm>
 
-#include "shaderthing/include/statusbar.h"
+#include "thirdparty/imgui/imgui.h"
+#include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 
 #include "vir/include/vir.h"
 
-#include "thirdparty/imgui/imgui.h"
-#include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
+#include "shaderthing/include/statusbar.h"
 
 namespace ShaderThing
 {
 
 std::vector<StatusBar::Message> StatusBar::messageQueue_ = {};
 float                           StatusBar::defaultMessageDuration = 3.0f; // s
+
+//----------------------------------------------------------------------------//
 
 void StatusBar::renderGui(bool withSeparator)
 {
@@ -76,6 +78,8 @@ void StatusBar::renderGui(bool withSeparator)
     );
 }
 
+//----------------------------------------------------------------------------//
+
 void StatusBar::queueMessage
 (
     const std::string& text,
@@ -118,6 +122,8 @@ void StatusBar::queueMessage
     }
 }
 
+//----------------------------------------------------------------------------//
+
 void StatusBar::queueMessage
 (
     const std::string& text,
@@ -126,6 +132,8 @@ void StatusBar::queueMessage
 {
     queueMessage(text, true, defaultMessageDuration, textColorABGR);
 }
+
+//----------------------------------------------------------------------------//
 
 void StatusBar::queueTemporaryMessage
 (
@@ -136,6 +144,8 @@ void StatusBar::queueTemporaryMessage
 {
     queueMessage(text, false, duration, textColorABGR);
 }
+
+//----------------------------------------------------------------------------//
 
 void StatusBar::removeMessageFromQueue
 (
@@ -154,6 +164,8 @@ void StatusBar::removeMessageFromQueue
     if(it != messageQueue_.end())
         messageQueue_.erase(it);
 }
+
+//----------------------------------------------------------------------------//
 
 void StatusBar::clearMessageQueue()
 {

@@ -6,7 +6,7 @@
 |  \ \  \/__/\  \_/   |
 |   \ \__   \ \  \    |  https://github.com/virmodoetiae/shaderthing
 |    \/__/\  \ \  \   |
-|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2025 Stefan Radman
+|        \ \__\ \__\  |  SPDX-FileCopyrightText:    2026 Stefan Radman
 |  Ↄ|C    \/__/\/__/  |                             sradman@protonmail.com
 |  Ↄ|C                |  SPDX-License-Identifier:   Zlib
 |_____________________|
@@ -44,6 +44,7 @@
 #include <unordered_map>
 #include <map>
 #include <regex>
+
 #include "thirdparty/imgui/imgui.h"
 
 namespace ShaderThing
@@ -429,7 +430,6 @@ private:
 
     typedef std::vector<UndoRecord> UndoBuffer;
 
-    void processInputs();
     void colorize(int aFroline = 0, int aCount = -1);
     void colorizeRange(int aFroline = 0, int aToLine = 0);
     void colorizeInternal();
