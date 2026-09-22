@@ -141,10 +141,6 @@ public:
     {
         return WeakPtr<T>(static_cast<T*>(this), valid_.lock());
     }
-    WeakPtr<T> weakFromThis() const
-    {
-        return WeakPtr<T>(static_cast<T*>(this), valid_.lock());
-    }
 };
 
 
@@ -315,10 +311,11 @@ public:
         if (ptr_ != ptr) 
         {
             valid_.reset();  // Invalidate all existing WeakPtrs to this
+            if (ptr_) delete ptr_;
             ptr_ = ptr;
             valid_ = ptr ? std::make_shared<bool>(true) : nullptr;
-            if constexpr (weakFromThisEnabled_) 
-                ptr_->setValid(valid_);
+            if constexpr (weakFromThisEnabled_)
+                if (ptr_) ptr_->setValid(valid_);
         }
     }
 
@@ -331,10 +328,11 @@ public:
         if (ptr_ != static_cast<T*>(ptr)) 
         {
             valid_.reset();  // Invalidate all existing WeakPtrs to this
+            if (ptr_) delete ptr_;
             ptr_ = static_cast<T*>(ptr);
             valid_ = ptr ? std::make_shared<bool>(true) : nullptr;
             if constexpr (weakFromThisEnabled_) 
-                ptr_->setValid(valid_);
+                if (ptr_) ptr_->setValid(valid_);
         }
     }
 
