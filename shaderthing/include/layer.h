@@ -15,19 +15,11 @@
 
 #pragma once
 
-#include <random>
 #include <string>
-#include <vector>
 #include <unordered_map>
 
 #include "vir/include/vmacros.h"
-#include "vir/include/vgraphics/vcore/vuniform.h"
-#include "thirdparty/imgui/imgui.h"
 
-#include "shaderthing/include/deferredactionbuffer.h"
-#include "shaderthing/include/filedialog.h"
-#include "shaderthing/include/resource.h"
-#include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/texteditor.h"
 #include "shaderthing/include/typedefs.h"
 #include "shaderthing/include/uniform.h"

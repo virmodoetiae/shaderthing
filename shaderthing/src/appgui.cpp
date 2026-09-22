@@ -24,6 +24,10 @@
 #include "shaderthing/include/app.h"
 #include "shaderthing/include/bytedata.h"
 #include "shaderthing/include/helpers.h"
+#include "shaderthing/include/layer.h"
+#include "shaderthing/include/resource.h"
+#include "shaderthing/include/sharedstorage.h"
+#include "shaderthing/include/shareduniforms.h"
 #include "shaderthing/include/statusbar.h"
 #include "shaderthing/include/texteditor.h"
 #include "shaderthing/include/uniform.h"
@@ -2516,7 +2520,7 @@ ImGui::Image                                                            \
     (                                                                   \
         resource->type() != Resource::Type::AnimatedTexture2D ?         \
         resource->id() :                                                \
-        ((AnimatedTexture2DResource*)(resource))->frameId()             \
+        dynamic_cast<const AnimatedTexture2DResource*>(resource)->frameId()\
     ),                                                                  \
     size,                                                               \
     {0,1},                                                              \
@@ -2529,6 +2533,7 @@ ImGui::Image                                                            \
             ImGui::EndTooltip();
         }
     };
+
     if (resource->isInternalFormatUnsigned())
         ImGui::Text("N/A");
     else if 
@@ -2595,14 +2600,7 @@ void App::renderAddResourceButton(int row)
     if (ImGui::BeginPopup("##addResourcePopup"))
     {
         float buttonWidth = 12*ImGui::GetFontSize();
-        if 
-        (
-            ImGui::Button
-            (
-                "Load texture-2D",
-                ImVec2(buttonWidth, 0)
-            )
-        )
+        if (ImGui::Button("Load texture-2D", ImVec2(buttonWidth, 0)))
         {
             Resource::fileDialog.runOpenFileDialog
             (
@@ -2618,7 +2616,7 @@ void App::renderAddResourceButton(int row)
                 [this]()
                 {
                     auto filepath = Resource::fileDialog.selection().front();
-                    auto& r = resources.emplace_back
+                    auto& resource = resources.emplace_back
                     (
                         Texture2DResource::create(filepath)
                     );
@@ -2627,9 +2625,44 @@ void App::renderAddResourceButton(int row)
                     (
                         name, 
                         resources, 
-                        r.get()
+                        resource.get()
                     );
-                    r->setName(name);
+                    resource->setName(name);
+                },
+                []() -> bool
+                {
+                    return Resource::fileDialog.validSelection();
+                }
+            );
+        }
+        if (ImGui::Button("Load animation-2D (.gif)", ImVec2(buttonWidth, 0)))
+        {
+            Resource::fileDialog.runOpenFileDialog
+            (
+                "Select a .gif",
+                {
+                    "Image files (.gif)", 
+                    "*.gif"
+                },
+                "."
+            );
+            deferredActionBuffer.add
+            (
+                [this]()
+                {
+                    auto filepath = Resource::fileDialog.selection().front();
+                    auto& resource = resources.emplace_back
+                    (
+                        AnimatedTexture2DResource::create(filepath)
+                    );
+                    std::string name = Helpers::filename(filepath);
+                    Helpers::enforceUniqueName
+                    (
+                        name, 
+                        resources, 
+                        resource.get()
+                    );
+                    resource->setName(name);
                 },
                 []() -> bool
                 {
@@ -2648,9 +2681,7 @@ void App::renderResourceActionsButton(int row)
 {
     if (row >= (int)resources.size())
         return;
-    UPtr<Resource>& resource = resources[row];
-    if (!resource.valid())
-        return;
+    Resource* resource = resources[row].get();
     if (resource->type() == Resource::Type::Framebuffer)
     {
         if (ImGui::Button(ICON_FA_COG, ImVec2(-1,0)))
@@ -2664,9 +2695,8 @@ void App::renderResourceActionsButton(int row)
 
     if (ImGui::BeginPopup("##framebufferResourceSettings"))
     {
-        auto& resource = 
-            resources[row].dynamicDowncastTo<LayerResource>();
-        resource->layer()->renderFramebufferSettingsGui();
+        auto layerResource = dynamic_cast<LayerResource*>(resource);
+        layerResource->layer()->renderFramebufferSettingsGui();
         ImGui::EndPopup();
     }
     if (ImGui::BeginPopup("##resourceActions"))
@@ -2684,6 +2714,41 @@ void App::renderResourceActionsButton(int row)
                     resources.erase(resources.begin()+row);
                 }
             );
+        }
+        if (ImGui::Button("Replace", size))
+        {
+            if (resource->type() == Resource::Type::Texture2D)
+            {
+                Resource::fileDialog.runOpenFileDialog
+                (
+                    "Select an image",
+                    {
+                        "Image files (.png,.jpg,.jpeg,.bmp)", 
+                        "*.png *.jpg *.jpeg *.bmp"
+                    },
+                    "."
+                );
+                deferredActionBuffer.add
+                (
+                    [this, resource]()
+                    {
+                        auto filepath = Resource::fileDialog.selection().front();
+                        dynamic_cast<Texture2DResource*>(resource)->set(filepath);
+                        std::string name = Helpers::filename(filepath);
+                        Helpers::enforceUniqueName
+                        (
+                            name, 
+                            resources, 
+                            resource
+                        );
+                        resource->setName(name);
+                    },
+                    []() -> bool
+                    {
+                        return Resource::fileDialog.validSelection();
+                    }
+                );
+            }
         }
         ImGui::EndPopup();
     }

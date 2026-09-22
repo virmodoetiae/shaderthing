@@ -13,16 +13,13 @@
 
 */
 
-#include <algorithm>
-#include <sstream>
-#include <string>
-#include <vector>
-
 #include "thirdparty/glm/glm.hpp"
 #include "thirdparty/rapidjson/include/rapidjson/document.h"
 #include "thirdparty/rapidjson/include/rapidjson/reader.h"
 #include "thirdparty/rapidjson/include/rapidjson/writer.h"
 #include "thirdparty/rapidjson/include/rapidjson/prettywriter.h"
+
+#include "vir/include/vir.h"
 
 #include "shaderthing/include/objectio.h"
 

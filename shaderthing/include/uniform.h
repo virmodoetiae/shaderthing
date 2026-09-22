@@ -16,7 +16,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <unordered_map>
 
 #include "vir/include/vmacros.h"
@@ -111,7 +110,12 @@ public:
         bool doNotReinitializeIfImageOrSampler = false 
     );
 
-    void setResourcePtr(const UPtr<Resource>& value);
+    void setResourcePtr(Resource* value);
+
+    void setResourcePtr(const UPtr<Resource>& value) 
+    {
+        setResourcePtr(value.get());
+    }
 
     void setOwner(UniformContainer* owner);
 

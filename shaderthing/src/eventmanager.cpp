@@ -17,6 +17,8 @@
 
 #include "shaderthing/include/app.h"
 #include "shaderthing/include/eventmanager.h"
+#include "shaderthing/include/layer.h"
+#include "shaderthing/include/shareduniforms.h"
 
 namespace ShaderThing
 {

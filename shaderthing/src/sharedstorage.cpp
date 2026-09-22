@@ -13,11 +13,11 @@
 
 */
 
+#include "vir/include/vir.h"
+
 #include "shaderthing/include/bytedata.h"
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/sharedstorage.h"
-
-#include "vir/include/vir.h"
 
 namespace ShaderThing
 {

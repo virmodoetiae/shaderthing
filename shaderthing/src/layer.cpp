@@ -18,6 +18,8 @@
 #include "shaderthing/include/app.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/sharedstorage.h"
+#include "shaderthing/include/shareduniforms.h"
 #include "shaderthing/include/uniform.h"
 
 namespace ShaderThing

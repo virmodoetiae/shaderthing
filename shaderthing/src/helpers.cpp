@@ -13,7 +13,6 @@
 
 */
 
-#include <algorithm>
 #include <cctype>
 #include <charconv>
 #include <ctime>
@@ -25,6 +24,7 @@
 
 #include "shaderthing/include/app.h"
 #include "shaderthing/include/helpers.h"
+#include "shaderthing/include/layer.h"
 
 namespace ShaderThing
 {

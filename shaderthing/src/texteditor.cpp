@@ -13,16 +13,14 @@
 
 */
 
-#include <algorithm>
 #include <chrono>
-#include <cmath>
-#include <iostream>
 #include <regex>
-#include <string>
 
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/imgui_internal.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
+
+#include "vir/include/vir.h"
 
 #include "shaderthing/include/texteditor.h"
 

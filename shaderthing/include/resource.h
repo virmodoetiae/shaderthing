@@ -87,6 +87,8 @@ protected:
     Resource(Type type) : type_(type) {};
     DELETE_COPY(Resource)
 
+    void setThisInClientUniforms();
+
 public:
     
     virtual ~Resource();
@@ -320,7 +322,9 @@ class AnimatedTexture2DResource :
     float                                cachedTime_ = 0.f;
     
     AnimatedTexture2DResource() : ManagedResource(Type::AnimatedTexture2D) {}
-    DELETE_COPY(AnimatedTexture2DResource)
+    AnimatedTexture2DResource(const AnimatedTexture2DResource&)=delete;                                             \
+    AnimatedTexture2DResource& 
+        operator=(const AnimatedTexture2DResource&)=delete;
 
 public:
 

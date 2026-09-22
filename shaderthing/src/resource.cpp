@@ -13,13 +13,15 @@
 
 */
 
-#include "vir/include/vpch.h"
+#include "vir/include/vir.h"
 
 #include "shaderthing/include/app.h"
 #include "shaderthing/include/filedialog.h"
 #include "shaderthing/include/helpers.h"
+#include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
 #include "shaderthing/include/resource.h"
+#include "shaderthing/include/uniform.h"
 
 namespace ShaderThing
 {
@@ -89,6 +91,19 @@ Resource::~Resource()
     for (auto& u : clientUniforms_)
         u->deleteValue(true);
 }
+
+//----------------------------------------------------------------------------//
+
+void Resource::setThisInClientUniforms() 
+{
+    for (auto& u : clientUniforms_)
+    {
+        u->setResourcePtr(this);
+        u->markForSubmissionToAllClientBuffers();
+    }
+}
+
+//----------------------------------------------------------------------------//
 
 void Resource::addClientUniform(Uniform* u) 
 {
@@ -241,7 +256,8 @@ bool Texture2DResource::set(const std::string& filepath)
         return false;
     unsigned int size;
     unsigned char* rawData = Helpers::readFileContents(filepath, size);
-    originalFileExtension_ = Helpers::fileExtension(filepath);
+    std::string fileExtension = Helpers::fileExtension(filepath);
+    originalFileExtension_ = fileExtension;
     native_ = std::move(native);
     if (rawData_ != nullptr) 
         delete[] rawData_;
@@ -267,6 +283,7 @@ bool Texture2DResource::set(const unsigned char* rawData, unsigned int size)
         delete[] rawData_;
     rawData_ = rawData;
     rawDataSize_ = size;
+    setThisInClientUniforms();
     return true;
 }
 
@@ -293,6 +310,7 @@ bool Texture2DResource::set
         delete[] rawData_;
     rawData_ = nullptr;
     rawDataSize_ = 0;
+    setThisInClientUniforms();
     return true;
 }
 
@@ -406,6 +424,7 @@ bool AnimatedTexture2DResource::set(const std::string& filepath)
         delete[] rawData_;
     rawData_ = rawData;
     rawDataSize_ = size;
+    setThisInClientUniforms();
     return true;
 }
 
@@ -430,6 +449,7 @@ bool AnimatedTexture2DResource::set
         delete[] rawData_;
     rawData_ = rawData;
     rawDataSize_ = size;
+    setThisInClientUniforms();
     return true;
 }
 
@@ -465,6 +485,7 @@ bool AnimatedTexture2DResource::set
         unmanagedFrames_[i] = frames[i];
     native_ = std::move(native);
     rawDataSize_ = 0;
+    setThisInClientUniforms();
     return true;
 }
 
@@ -621,6 +642,7 @@ bool CubemapResource::set
     native_ = std::move(native);
     for (int i=0; i<6; i++)
         unmanagedFaces_[i] = faces[i];
+    setThisInClientUniforms();
     return true;
 }
 
@@ -716,6 +738,7 @@ bool Texture3DResource::set
     if (native == nullptr)
         return false;
     native_ = std::move(native);
+    setThisInClientUniforms();
     return true;
 }
 
@@ -825,6 +848,7 @@ bool LayerResource::set(WPtr<Layer> layer)
         return false;
     layer_ = layer;
     native_ = &layer->renderState_.resourceFramebuffer;
+    setThisInClientUniforms();
     return true;
 }
 

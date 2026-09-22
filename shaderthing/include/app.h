@@ -15,35 +15,41 @@
 
 #pragma once
 
-#include <random>
 #include <string>
-#include <vector>
-#include <unordered_map>
 
 #include "vir/include/vmacros.h"
-#include "vir/include/vgraphics/vcore/vuniform.h"
 #include "thirdparty/imgui/imgui.h"
 
 #include "shaderthing/include/deferredactionbuffer.h"
 #include "shaderthing/include/filedialog.h"
-#include "shaderthing/include/layer.h"
-#include "shaderthing/include/resource.h"
-#include "shaderthing/include/sharedstorage.h"
-#include "shaderthing/include/texteditor.h"
 #include "shaderthing/include/typedefs.h"
-#include "shaderthing/include/uniform.h"
-
-// Forwards
-
-namespace vir
-{
-class TiledQuad;
-class Shader;
-class Camera;
-}
 
 namespace ShaderThing
 {
+
+//----------------------------------------------------------------------------//
+
+struct Font
+{
+    ImFont*      imFont                    = nullptr;
+    float*       scale                     = nullptr;
+    ImFontConfig imFontConfig              = {}; 
+    bool         isJapaneseLoaded          = false;
+    bool         isSimplifiedChineseLoaded = false;
+};
+
+//----------------------------------------------------------------------------//
+
+struct Project
+{
+    std::string        filepath          = "";
+    std::string        filename          = "untitled.stf";
+    const std::string* exampleToBeLoaded = nullptr;
+    bool               forceSaveAs       = true;
+    bool               isAutoSaveEnabled = true;
+    float              timeSinceLastSave = 0.f;
+    float              autoSaveInterval  = 60.f;
+};
 
 //----------------------------------------------------------------------------//
 
@@ -66,6 +72,14 @@ struct RenderState
         bool tiledRenderingPauseRequested     = false;
     };
     Toggles           toggles                 = {};
+};
+
+//----------------------------------------------------------------------------//
+
+struct RenderResult
+{
+    bool renderPassesComplete;
+    bool flipWindowBuffer;
 };
 
 //----------------------------------------------------------------------------//
@@ -117,106 +131,12 @@ struct ExportState
 
 //----------------------------------------------------------------------------//
 
-struct Font
-{
-    ImFont*      imFont                    = nullptr;
-    float*       scale                     = nullptr;
-    ImFontConfig imFontConfig              = {}; 
-    bool         isJapaneseLoaded          = false;
-    bool         isSimplifiedChineseLoaded = false;
-};
-
-//----------------------------------------------------------------------------//
-
-struct SharedUniforms
-{
-public :
-    // Fixed camera used to retrieve the value of the projection view 
-    // matrix iMVP
-    UPtr<vir::Camera>        screenCamera;
-    // Movable camera which responds to keyboard and mouse controls and is
-    // used to provide values to iWASD, iLook uniforms
-    UPtr<vir::Camera>        shaderCamera;
-    // Random number generator
-    std::mt19937_64          rndGenerator;
-    
-    float      iTime          = 0.f;
-    float      iTimeDelta     = 0.f;
-    float      iRandom        = 0.f;
-    bool       iUserAction    = false;
-    glm::vec3  iWASD          = {0,0,-1};
-    glm::vec3  iLook          = {0,0,1};
-    glm::vec4  iMouse         = {0,0,0,0};
-    float      iAspectRatio   = 1.f;
-    glm::vec2  iResolution    = {512,512};
-    glm::ivec3 iKeyboard[256] = {};
-
-    UniformContainer fragment;
-    WPtr<Uniform> iFrameUniform;
-    WPtr<Uniform> iRenderPassUniform;
-    WPtr<Uniform> iTimeUniform;
-    WPtr<Uniform> iTimeDeltaUniform;
-    WPtr<Uniform> iRandomUniform;
-    WPtr<Uniform> iUserActionUniform;
-    WPtr<Uniform> iExportUniform;
-    WPtr<Uniform> iWASDUniform;
-    WPtr<Uniform> iLookUniform;
-    WPtr<Uniform> iMouseUniform;
-    WPtr<Uniform> iAspectRatioUniform;
-    WPtr<Uniform> iResolutionUniform;
-    WPtr<Uniform> iKeyboardUniform;
-
-    UniformContainer vertex;
-    WPtr<Uniform> iMVPUniform;
-
-    const unsigned int userUniformsStartIndex = 13;
-
-    bool isTimePaused                       = false;
-    bool isTimePausedBecauseRenderingPaused = false;
-    bool isTimeLooped                       = false;
-    bool isTimeResetOnFrameCounterReset     = true;
-    bool isTimeDeltaSmooth                  = false;
-    bool isRandomNumberGeneratorPaused      = false;
-    bool isKeyboardInputEnabled             = true; // iKeyboard
-    bool isMouseInputEnabled                = true; // iMouse
-    bool isMouseInputClampedToWindow        = false;
-    bool mouseInputRequiresLMBHold          = true;
-    bool isCameraKeyboardInputEnabled       = true; // iWASD
-    bool isCameraMouseInputEnabled          = true; // iLook
-    bool cameraMouseInputRequiresLMBHold    = true;
-
-    struct Toggles
-    {
-        bool updateDataRangeII                  = false;
-        bool stepToNextTimeStep                 = false;
-    };
-    Toggles toggles = {};
-
-    void initialize(RenderState& renderState, ExportState& exportState);
-};
-
-//----------------------------------------------------------------------------//
-
-struct Project
-{
-    std::string        filepath          = "";
-    std::string        filename          = "untitled.stf";
-    const std::string* exampleToBeLoaded = nullptr;
-    bool               forceSaveAs       = true;
-    bool               isAutoSaveEnabled = true;
-    float              timeSinceLastSave = 0.f;
-    float              autoSaveInterval  = 60.f;
-};
-
-//----------------------------------------------------------------------------//
-
-struct RenderResult
-{
-    bool renderPassesComplete;
-    bool flipWindowBuffer;
-};
-
-//----------------------------------------------------------------------------//
+// Forwards
+class Layer;
+class Resource;
+class SharedStorage;
+class SharedUniforms;
+class Uniform;
 
 class App
 {

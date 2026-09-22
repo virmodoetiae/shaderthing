@@ -13,10 +13,11 @@
 
 */
 
-#include <algorithm>
 #include <chrono>
 
 #include "thirdparty/portable-file-dialogs/pfd.h"
+
+#include "vir/include/vir.h"
 
 #include "shaderthing/include/filedialog.h"
 #include "shaderthing/include/helpers.h"

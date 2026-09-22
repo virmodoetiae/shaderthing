@@ -13,8 +13,7 @@
 
 */
 
-#include <algorithm>
-#include <vector>
+#include "vir/include/vir.h"
 
 #include "shaderthing/include/uniform.h"
 #include "shaderthing/include/objectio.h"
@@ -471,7 +470,7 @@ void Uniform::setType(Type type, bool doNotReinitializeIfImageOrSampler)
 
 //----------------------------------------------------------------------------//
 
-void Uniform::setResourcePtr(const UPtr<Resource>& resource)
+void Uniform::setResourcePtr(Resource* resource)
 {
     bool is3D;
     switch(type())
@@ -490,7 +489,7 @@ void Uniform::setResourcePtr(const UPtr<Resource>& resource)
             return;
     }
 
-    vir::Uniform::setValuePtr(resource.get(), type(), false);
+    vir::Uniform::setValuePtr(resource, type(), false);
     if (resource == nullptr)
         return;
 

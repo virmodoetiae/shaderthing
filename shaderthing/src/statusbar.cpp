@@ -13,8 +13,6 @@
 
 */
 
-#include <algorithm>
-
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/imgui/misc/cpp/imgui_stdlib.h"
 
