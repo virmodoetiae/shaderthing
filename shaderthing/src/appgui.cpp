@@ -40,7 +40,7 @@ typedef Uniform::ManagedType ManagedType;
 
 //----------------------------------------------------------------------------//
 
-void App::renderControlPanel()
+void App::renderControlPanelGui()
 {
     // Move to deferred update
     //font_.checkLoadJapaneseAndOrSimplifiedChinese();
@@ -69,8 +69,8 @@ void App::renderControlPanel()
         isWindowDocked = ImGui::IsWindowDocked();
     }
     
-    renderMenuBar();
-    renderLayersTabBar();
+    renderMenuBarGui();
+    renderLayersTabBarGui();
 
     ImGui::End();
     
@@ -79,7 +79,7 @@ void App::renderControlPanel()
 
 //----------------------------------------------------------------------------//
 
-void App::renderMenuBar()
+void App::renderMenuBarGui()
 {
     bool windowIconified = vir::Window::instance()->iconified();
     bool newProjectConfirmation = false;
@@ -276,7 +276,7 @@ project exports)");
         if (ImGui::BeginMenu("Resources"))
         {
             // TODO
-            renderResourcesMenuItem();
+            renderResourcesMenuItemGui();
             shadersRequireRecompilation = 
                 sharedStorage->renderMenuItemGui();
             ImGui::EndMenu();
@@ -336,7 +336,7 @@ project exports)");
 
     // TODO
     if (Resource::gui.isDetachedFromControlPanel)
-        renderResourcesTable();
+        renderResourcesTableGui();
     if (sharedStorage->isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
             sharedStorage->renderGui();
@@ -403,7 +403,7 @@ project exports)");
 
 //----------------------------------------------------------------------------//
 
-void App::renderLayersTabBar()
+void App::renderLayersTabBarGui()
 {
     /*
     if (renderState.toggles.requestFullRecompilation)
@@ -625,7 +625,7 @@ void App::renderLayersTabBar()
 // Uniforms ------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void App::renderUniformsTab(Layer* layer)
+void App::renderUniformsTabGui(Layer* layer)
 {
     //--------------------------------------------------------------------------
     auto& su = *(sharedUniforms);
@@ -676,7 +676,7 @@ void App::renderUniformsTab(Layer* layer)
 
         // First, render the built-in shared uniforms
         if (showSharedAndDefaultUniforms)
-            row = renderBuiltInSharedUniforms();
+            row = renderBuiltInSharedUniformsGui();
 
         // Then, render the user-created shared uniforms
         int nSharedUniforms = 
@@ -688,7 +688,7 @@ void App::renderUniformsTab(Layer* layer)
             [
                 i + su.userUniformsStartIndex
             ];
-            renderUniformTableRow
+            renderUniformTableRowGui
             (
                 uniform,
                 layer,
@@ -701,7 +701,7 @@ void App::renderUniformsTab(Layer* layer)
         for(unsigned int i=0; i<layer->fragment.uniforms.size(); i++)
         {
             auto& uniform = layer->fragment.uniforms[i];
-            renderUniformTableRow
+            renderUniformTableRowGui
             (
                 uniform,
                 layer,
@@ -749,7 +749,7 @@ void App::renderUniformsTab(Layer* layer)
 
 // Render the default/built-in shared uniforms as a table and return the row
 // count
-int App::renderBuiltInSharedUniforms()
+int App::renderBuiltInSharedUniformsGui()
 {
     auto& su = *(sharedUniforms);
     int row = 0;
@@ -920,7 +920,7 @@ int App::renderBuiltInSharedUniforms()
     ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
     NEXT_COLUMN(column)
     glm::vec2* bounds = &su.iTimeUniform->gui.bounds;
-    bool boundsChanged = renderEditUniformBoundsButton
+    bool boundsChanged = renderEditUniformBoundsButtonGui
     (
         su.iTimeUniform
     );
@@ -1345,7 +1345,7 @@ motion only if the left mouse button (LMB) is held)");
     }
     NEXT_COLUMN(column)
     bounds = &su.iWASDUniform->gui.bounds;
-    boundsChanged = renderEditUniformBoundsButton
+    boundsChanged = renderEditUniformBoundsButtonGui
     (
         su.iWASDUniform
     );
@@ -1401,7 +1401,7 @@ motion only if the left mouse button (LMB) is held)");
 
 //----------------------------------------------------------------------------//
 
-bool App::renderEditUniformBoundsButton
+bool App::renderEditUniformBoundsButtonGui
 (
     const vir::Ptr<Uniform>& uniform,
     bool renderDragStepSlider
@@ -1513,7 +1513,7 @@ set by adjusting the slider)");
 
 //----------------------------------------------------------------------------//
 
-bool App::renderUniformTableRow
+bool App::renderUniformTableRowGui
 (
     UPtr<Uniform>& uniform,
     Layer* layer,
@@ -1671,7 +1671,7 @@ bool App::renderUniformTableRow
     bool boundsChanged(false);
     glm::vec2& bounds = uniform->gui.bounds;
     if (uniform->gui.showBounds)
-        boundsChanged = renderEditUniformBoundsButton(uniform, true);
+        boundsChanged = renderEditUniformBoundsButtonGui(uniform, true);
     if (showSeparator)
     {
         if (y0 > 0)
@@ -2261,21 +2261,20 @@ bool App::renderUniformTableRow
         {                                                                      \
             if (resource != nullptr)                                           \
             {                                                                  \
-                renderState.toggles.requestFullRecompilation =        \
-                    renderState.toggles.requestFullRecompilation ||   \
+                renderState.toggles.requestFullRecompilation =                 \
+                    renderState.toggles.requestFullRecompilation ||            \
                     (resource->isInternalFormatUnsigned() !=                   \
                     r->isInternalFormatUnsigned() && named);                   \
                 if (resource->isUsedByUniform(uniform.get()))                  \
                     resource->removeClientUniform(uniform.get());              \
             }                                                                  \
             else if (named)                                                    \
-                renderState.toggles.requestFullRecompilation = true;  \
+                renderState.toggles.requestFullRecompilation = true;           \
             if (!r->isUsedByUniform(uniform.get()))                            \
                 r->addClientUniform(uniform.get());                            \
-            deferredActionBuffer.add                                  \
+            deferredActionBuffer.add                                           \
             (                                                                  \
-                [&uniform, &r]()                                               \
-                {uniform->setResourcePtr(r);}                                  \
+                [&uniform, &r](){uniform->setResourcePtr(r);}                  \
             );                                                                 \
             su.iUserAction = true;                                             \
             su.toggles.updateDataRangeII = true;                               \
@@ -2366,7 +2365,7 @@ bool App::renderUniformTableRow
 // Resources -----------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-void App::renderResourcesMenuItem()
+void App::renderResourcesMenuItemGui()
 {
     if 
     (
@@ -2385,7 +2384,7 @@ void App::renderResourcesMenuItem()
         if (ImGui::BeginMenu("Resource manager"))
         {
             Resource::gui.isOpen = true;
-            renderResourcesTable();
+            renderResourcesTableGui();
             ImGui::EndMenu();
         }
         else
@@ -2397,7 +2396,7 @@ void App::renderResourcesMenuItem()
 
 //----------------------------------------------------------------------------//
 
-void App::renderResourcesTable()
+void App::renderResourcesTableGui()
 {
     if (!Resource::gui.isOpen)
         return;
@@ -2451,9 +2450,9 @@ void App::renderResourcesTable()
         const int nRows = resources.size();
         for (int row=0; row<nRows; row++)
         {
-            renderResourcesTableRow(row);
+            renderResourcesTableRowGui(row);
         }
-        renderAddResourceButton(nRows);
+        renderAddResourceButtonGui(nRows);
         tableHeight = (ImGui::GetCursorPosY()-cursorPosY0);
         ImGui::EndTable();
     }
@@ -2464,14 +2463,14 @@ void App::renderResourcesTable()
 
 //----------------------------------------------------------------------------//
 
-void App::renderResourcesTableRow(int row)
+void App::renderResourcesTableRowGui(int row)
 {
     UPtr<Resource>& resource = resources[row];
     float fontSize = ImGui::GetFontSize();
     int column = 0;
     START_ROW(row, column)
     START_COLUMN(column) // Actions column -------------------------------------
-    renderResourceActionsButton(row);
+    resource->renderActionsButtonGui(resources, deferredActionBuffer);
     END_COLUMN(column)
     START_COLUMN(column) // Type column ----------------------------------------
     std::string typeName = Resource::typeToName.at(resource->type());
@@ -2590,7 +2589,7 @@ ImGui::Image                                                            \
 
 //----------------------------------------------------------------------------//
 
-void App::renderAddResourceButton(int row)
+void App::renderAddResourceButtonGui(int row)
 {
     int column = 0;
     START_ROW(row, column)
@@ -2600,14 +2599,14 @@ void App::renderAddResourceButton(int row)
     if (ImGui::BeginPopup("##addResourcePopup"))
     {
         float buttonWidth = 12*ImGui::GetFontSize();
-        if (ImGui::Button("Load texture-2D", ImVec2(buttonWidth, 0)))
+        if (ImGui::Button("Load from file", ImVec2(buttonWidth, 0)))
         {
             Resource::fileDialog.runOpenFileDialog
             (
-                "Select an image",
+                "Select an image or GIF",
                 {
-                    "Image files (.png,.jpg,.jpeg,.bmp)", 
-                    "*.png *.jpg *.jpeg *.bmp"
+                    "Image files (.png,.jpg,.jpeg,.bmp,.gif)", 
+                    "*.png *.jpg *.jpeg *.bmp *.gif"
                 },
                 "."
             );
@@ -2616,46 +2615,19 @@ void App::renderAddResourceButton(int row)
                 [this]()
                 {
                     auto filepath = Resource::fileDialog.selection().front();
-                    auto& resource = resources.emplace_back
-                    (
-                        Texture2DResource::create(filepath)
-                    );
+                    bool isGif = Helpers::fileExtension(filepath) == ".gif";
+                    if (isGif)
+                        resources.emplace_back
+                        (
+                            AnimatedTexture2DResource::create(filepath)
+                        );
+                    else 
+                        resources.emplace_back
+                        (
+                            Texture2DResource::create(filepath)
+                        );
                     std::string name = Helpers::filename(filepath);
-                    Helpers::enforceUniqueName
-                    (
-                        name, 
-                        resources, 
-                        resource.get()
-                    );
-                    resource->setName(name);
-                },
-                []() -> bool
-                {
-                    return Resource::fileDialog.validSelection();
-                }
-            );
-        }
-        if (ImGui::Button("Load animation-2D (.gif)", ImVec2(buttonWidth, 0)))
-        {
-            Resource::fileDialog.runOpenFileDialog
-            (
-                "Select a .gif",
-                {
-                    "Image files (.gif)", 
-                    "*.gif"
-                },
-                "."
-            );
-            deferredActionBuffer.add
-            (
-                [this]()
-                {
-                    auto filepath = Resource::fileDialog.selection().front();
-                    auto& resource = resources.emplace_back
-                    (
-                        AnimatedTexture2DResource::create(filepath)
-                    );
-                    std::string name = Helpers::filename(filepath);
+                    auto& resource = resources.back();
                     Helpers::enforceUniqueName
                     (
                         name, 
@@ -2673,85 +2645,6 @@ void App::renderAddResourceButton(int row)
         ImGui::EndPopup();
     }
     END_ROW(row)
-}
-
-//----------------------------------------------------------------------------//
-
-void App::renderResourceActionsButton(int row)
-{
-    if (row >= (int)resources.size())
-        return;
-    Resource* resource = resources[row].get();
-    if (resource->type() == Resource::Type::Framebuffer)
-    {
-        if (ImGui::Button(ICON_FA_COG, ImVec2(-1,0)))
-            ImGui::OpenPopup("##framebufferResourceSettings");
-    }
-    else
-    {
-        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1,0)))
-            ImGui::OpenPopup("##resourceActions");
-    }
-
-    if (ImGui::BeginPopup("##framebufferResourceSettings"))
-    {
-        auto layerResource = dynamic_cast<LayerResource*>(resource);
-        layerResource->layer()->renderFramebufferSettingsGui();
-        ImGui::EndPopup();
-    }
-    if (ImGui::BeginPopup("##resourceActions"))
-    {
-        auto size = ImVec2(12*ImGui::GetFontSize(), 0);
-        if (ImGui::Button(ICON_FA_TRASH, size))
-        {
-            deferredActionBuffer.add
-            (
-                [this, row]()
-                {
-                    // UPtr<Resource>& resource = resources[row];
-                    // Used to call legacy 'removeResourceFromUniforms' on all
-                    // layers, tentatively removed
-                    resources.erase(resources.begin()+row);
-                }
-            );
-        }
-        if (ImGui::Button("Replace", size))
-        {
-            if (resource->type() == Resource::Type::Texture2D)
-            {
-                Resource::fileDialog.runOpenFileDialog
-                (
-                    "Select an image",
-                    {
-                        "Image files (.png,.jpg,.jpeg,.bmp)", 
-                        "*.png *.jpg *.jpeg *.bmp"
-                    },
-                    "."
-                );
-                deferredActionBuffer.add
-                (
-                    [this, resource]()
-                    {
-                        auto filepath = Resource::fileDialog.selection().front();
-                        dynamic_cast<Texture2DResource*>(resource)->set(filepath);
-                        std::string name = Helpers::filename(filepath);
-                        Helpers::enforceUniqueName
-                        (
-                            name, 
-                            resources, 
-                            resource
-                        );
-                        resource->setName(name);
-                    },
-                    []() -> bool
-                    {
-                        return Resource::fileDialog.validSelection();
-                    }
-                );
-            }
-        }
-        ImGui::EndPopup();
-    }
 }
 
 //----------------------------------------------------------------------------//

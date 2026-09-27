@@ -44,7 +44,7 @@ App::App()
         // Render GUI and record actions that should only be applied after
         // GUI rendering (deferred actions, e.g., deleting layers, uniforms, 
         // etc.)
-        renderControlPanel();
+        renderControlPanelGui();
         preRenderUpdate();
         auto renderResult = renderShaders(nullptr, 1u);
         postRenderUpdate();
@@ -1404,7 +1404,14 @@ void App::updateLayersDueToUniformDeletion(UPtr<Uniform>& uniform)
     }
     else
     {
-        auto layer = dynamic_cast<Layer*>(uniform->owner());
+        Layer* layer;
+        for (auto& l : layers)
+        {
+            if (&l->fragment != uniform->owner())
+                continue;
+            layer = l.get();
+            break;
+        }
         layer->hasUncompiledEdits = true;
         deferredActionBuffer.add
         (

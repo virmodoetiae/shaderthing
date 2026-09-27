@@ -563,7 +563,7 @@ void Layer::renderTabGui()
         }
         if (ImGui::BeginTabItem("Uniforms"))
         {
-            app_.renderUniformsTab(this);
+            app_.renderUniformsTabGui(this);
             gActiveTabId = 2;
             ImGui::EndTabItem();
         }

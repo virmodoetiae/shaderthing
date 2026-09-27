@@ -31,10 +31,11 @@ typedef vir::TextureBuffer::InternalFormat InternalFormat;
 typedef vir::TextureBuffer::ImageBindMode  ImageBindMode;
 typedef vir::TextureBuffer::DataType       DataType;
 
-class Layer;
-class Uniform;
-class ObjectIO;
+class DeferredActionBuffer;
 class FileDialog;
+class Layer;
+class ObjectIO;
+class Uniform;
 
 class Texture2DResource;
 class AnimatedTexture2DResource;
@@ -139,6 +140,10 @@ public:
 
     static const std::map<Resource::Type, const char*> typeToName;
 
+    static FileDialog fileDialog;
+
+    // GUI ---------------------------------------------------------------------
+
     struct GUI
     {
         bool isOpen = false;
@@ -146,7 +151,18 @@ public:
     };
     static GUI gui;
 
-    static FileDialog fileDialog;
+    void                   renderActionsButtonGui
+    (
+        UPtrVector<Resource>& resources, 
+        DeferredActionBuffer& dab
+    );
+    virtual void           renderSettingsGui();
+    virtual void           renderReplaceButtonGui
+    (
+        UPtrVector<Resource>& resources, 
+        DeferredActionBuffer& dab
+    ){}
+    
 };
 
 //----------------------------------------------------------------------------//
@@ -167,7 +183,7 @@ public:
 
     virtual ~ManagedResource();
 
-    const NativeType* native() const {return native_.get();}
+    NativeType* native() {return native_.get();}
 
     void bind(unsigned int unit) override 
     {
@@ -308,6 +324,12 @@ public:
     const unsigned char* rawData() const {return rawData_;}
     unsigned int rawDataSize() const {return rawDataSize_;}
     bool hasRawData() const {return rawData_ != nullptr;}
+
+    void renderReplaceButtonGui
+    (
+        UPtrVector<Resource>& resources, 
+        DeferredActionBuffer& dab
+    ) override;
 };
 
 //----------------------------------------------------------------------------//
@@ -322,7 +344,7 @@ class AnimatedTexture2DResource :
     float                                cachedTime_ = 0.f;
     
     AnimatedTexture2DResource() : ManagedResource(Type::AnimatedTexture2D) {}
-    AnimatedTexture2DResource(const AnimatedTexture2DResource&)=delete;                                             \
+    AnimatedTexture2DResource(const AnimatedTexture2DResource&)=delete;
     AnimatedTexture2DResource& 
         operator=(const AnimatedTexture2DResource&)=delete;
 
@@ -361,6 +383,12 @@ public:
     {
         return native_->frameId();
     }
+
+    void renderReplaceButtonGui
+    (
+        UPtrVector<Resource>& resources, 
+        DeferredActionBuffer& dab
+    ) override;
 };
 
 //----------------------------------------------------------------------------//
@@ -553,6 +581,7 @@ public:
     {
         (*native_)->updateColorBufferMipmap(true);
     }
+    void renderSettingsGui() override;
 };
 
 }
