@@ -920,10 +920,7 @@ int App::renderBuiltInSharedUniformsGui()
     ImGui::Text(vir::Shader::uniformTypeToName[Type::Float].c_str());
     NEXT_COLUMN(column)
     glm::vec2* bounds = &su.iTimeUniform->gui.bounds;
-    bool boundsChanged = renderEditUniformBoundsButtonGui
-    (
-        su.iTimeUniform
-    );
+    bool boundsChanged = su.iTimeUniform->renderEditBoundsButtonGui();
     NEXT_COLUMN(column)
     auto iTimePtr = &su.iTime;
     if (!boundsChanged)
@@ -1345,10 +1342,7 @@ motion only if the left mouse button (LMB) is held)");
     }
     NEXT_COLUMN(column)
     bounds = &su.iWASDUniform->gui.bounds;
-    boundsChanged = renderEditUniformBoundsButtonGui
-    (
-        su.iWASDUniform
-    );
+    boundsChanged = su.iWASDUniform->renderEditBoundsButtonGui();
     if (showSeparator)
         ImGui::Separator();
     NEXT_COLUMN(column)
@@ -1397,118 +1391,6 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::Separator();
     END_ROW(row)
     return row;
-}
-
-//----------------------------------------------------------------------------//
-
-bool App::renderEditUniformBoundsButtonGui
-(
-    const vir::Ptr<Uniform>& uniform,
-    bool renderDragStepSlider
-)
-{
-    glm::vec2& bounds = uniform->gui.bounds;
-    float* dragStep = &uniform->gui.dragStep;
-    float* logarithmicZero = &uniform->gui.logarithmicZero;
-    auto type = uniform->type();
-    if (ImGui::Button(ICON_FA_RULER_COMBINED, ImVec2(-1, 0)))
-        ImGui::OpenPopup("##uniformBounds");
-    if (ImGui::BeginPopup("##uniformBounds"))
-    {
-        
-        glm::vec2 bounds0(bounds);
-        if (type == vir::Uniform::Type::UInt)
-            bounds.x = std::max(bounds.x, 0.0f);
-        ImGui::Text("Minimum value    ");
-        ImGui::SameLine();
-        float inputWidth = 6*ImGui::GetFontSize();
-        auto minf = Helpers::getFormat(bounds0.x);
-        auto maxf = Helpers::getFormat(bounds0.y);
-        ImGui::PushItemWidth(inputWidth);
-        ImGui::InputFloat
-        (
-            "##minValueInput", 
-            &(bounds.x), 0.f, 0.f,
-            minf.c_str()
-        );
-        ImGui::PopItemWidth();
-        ImGui::Text("Maximum value    ");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(inputWidth);
-        ImGui::InputFloat
-        (
-            "##maxValueInput", 
-            &(bounds.y), 0.f, 0.f,
-            maxf.c_str()
-        );
-        ImGui::PopItemWidth();
-        if 
-        (
-            (type == Type::Int2 || type == Type::Float2) && 
-            renderDragStepSlider
-        )
-        {
-            auto format = Helpers::getFormat(*dragStep);
-            ImGui::Text("Mouse drag step  ");
-            ImGui::SameLine();
-            ImGui::PushItemWidth(inputWidth);
-            if (type == Type::Int2)
-            {
-                int iDragStep = (int)(*dragStep);
-                ImGui::InputInt
-                (
-                    "##dragStepSize", 
-                    &iDragStep, 0.f, 0.f
-                );
-                *dragStep = (float)iDragStep;
-            }
-            else
-                ImGui::InputFloat
-                (
-                    "##dragStepSize", 
-                    dragStep, 0.f, 0.f,
-                    format.c_str()
-                );
-            ImGui::PopItemWidth();
-        }
-        else if 
-        (
-            uniform->isLogarithmic &&
-            bounds.x * bounds.y <= 0
-        )
-        {
-            auto format = Helpers::getFormat(*logarithmicZero);
-            ImGui::Text("Logarithmic zero ");
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-            {
-                ImGui::Text(
-R"(When a log-scale slider is used and the uniform bounds contain or cross 0, 
-this value determines the closest value to 0 (that differs from 0) that can be
-set by adjusting the slider)");
-                ImGui::EndTooltip();
-            }
-            ImGui::SameLine();
-            ImGui::PushItemWidth(inputWidth);
-            float logarithmicZero0(*logarithmicZero);
-            if 
-            (
-                ImGui::InputFloat
-                (
-                    "##logarithmicZero", 
-                    logarithmicZero, 0.f, 0.f,
-                    format.c_str()
-                )
-            )
-            {
-                if (*logarithmicZero <= 0)
-                    *logarithmicZero = logarithmicZero0;
-            }
-            ImGui::PopItemWidth();
-        }
-        ImGui::EndPopup();
-        return (bounds != bounds0); 
-    }
-    return false;
 }
 
 //----------------------------------------------------------------------------//
@@ -1671,7 +1553,7 @@ bool App::renderUniformTableRowGui
     bool boundsChanged(false);
     glm::vec2& bounds = uniform->gui.bounds;
     if (uniform->gui.showBounds)
-        boundsChanged = renderEditUniformBoundsButtonGui(uniform, true);
+        boundsChanged = uniform->renderEditBoundsButtonGui(true);
     if (showSeparator)
     {
         if (y0 > 0)
@@ -2470,7 +2352,8 @@ void App::renderResourcesTableRowGui(int row)
     int column = 0;
     START_ROW(row, column)
     START_COLUMN(column) // Actions column -------------------------------------
-    resource->renderActionsButtonGui(resources, deferredActionBuffer);
+    renderState.toggles.requestFullRecompilation = 
+        resource->renderActionsButtonGui(resources, deferredActionBuffer);
     END_COLUMN(column)
     START_COLUMN(column) // Type column ----------------------------------------
     std::string typeName = Resource::typeToName.at(resource->type());
@@ -2599,52 +2482,160 @@ void App::renderAddResourceButtonGui(int row)
     if (ImGui::BeginPopup("##addResourcePopup"))
     {
         float buttonWidth = 12*ImGui::GetFontSize();
-        if (ImGui::Button("Load from file", ImVec2(buttonWidth, 0)))
-        {
-            Resource::fileDialog.runOpenFileDialog
-            (
-                "Select an image or GIF",
-                {
-                    "Image files (.png,.jpg,.jpeg,.bmp,.gif)", 
-                    "*.png *.jpg *.jpeg *.bmp *.gif"
-                },
-                "."
-            );
-            deferredActionBuffer.add
-            (
-                [this]()
-                {
-                    auto filepath = Resource::fileDialog.selection().front();
-                    bool isGif = Helpers::fileExtension(filepath) == ".gif";
-                    if (isGif)
-                        resources.emplace_back
-                        (
-                            AnimatedTexture2DResource::create(filepath)
-                        );
-                    else 
-                        resources.emplace_back
-                        (
-                            Texture2DResource::create(filepath)
-                        );
-                    std::string name = Helpers::filename(filepath);
-                    auto& resource = resources.back();
-                    Helpers::enforceUniqueName
-                    (
-                        name, 
-                        resources, 
-                        resource.get()
-                    );
-                    resource->setName(name);
-                },
-                []() -> bool
-                {
-                    return Resource::fileDialog.validSelection();
-                }
-            );
-        }
+        renderLoadResourceFromFileButtonGui(buttonWidth);
+        renderCreateTexture2DButtonGui(buttonWidth);
+        renderCreateTexture3DButtonGui(buttonWidth);
         ImGui::EndPopup();
     }
     END_ROW(row)
+}
+
+//----------------------------------------------------------------------------//
+
+void App::renderLoadResourceFromFileButtonGui(float width)
+{
+    if (ImGui::Button("Load from file", ImVec2(width, 0)))
+    {
+        Resource::fileDialog.runOpenFileDialog
+        (
+            "Select an image or GIF",
+            {
+                "Image files (.png,.jpg,.jpeg,.bmp,.gif)", 
+                "*.png *.jpg *.jpeg *.bmp *.gif"
+            },
+            "."
+        );
+        deferredActionBuffer.add
+        (
+            [this]()
+            {
+                auto filepath = Resource::fileDialog.selection().front();
+                bool isGif = Helpers::fileExtension(filepath) == ".gif";
+                if (isGif)
+                    resources.emplace_back
+                    (
+                        AnimatedTexture2DResource::create(filepath)
+                    );
+                else 
+                    resources.emplace_back
+                    (
+                        Texture2DResource::create(filepath)
+                    );
+                std::string name = Helpers::filename(filepath);
+                auto& resource = resources.back();
+                Helpers::enforceUniqueName
+                (
+                    name, 
+                    resources, 
+                    resource.get()
+                );
+                resource->setName(name);
+            },
+            []() -> bool
+            {
+                return Resource::fileDialog.validSelection();
+            }
+        );
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::renderCreateTexture2DButtonGui(float width)
+{
+    static Texture2DResource::EditorGuiData editorGuiData = {};
+    if (ImGui::Button("Create texture-2D", ImVec2(width, 0)))
+    {
+        ImGui::OpenPopup("##createTexture2DPopup");
+        editorGuiData = {};
+    }
+    if (ImGui::BeginPopup("##createTexture2DPopup"))
+    {
+        ImGui::Text(
+R"(Create a blank texture, useful for e.g., 
+shader data storage via imageLoad and
+imageStore operations. Data written to 
+these textures will not be saved within 
+the project)");
+        ImGui::Separator();
+        Texture2DResource::renderEditorGui(editorGuiData, 11);
+        if (ImGui::Button("Create texture-2D", ImVec2(-1, 0)))
+        {
+            auto egd = editorGuiData;
+            deferredActionBuffer.add
+            (
+                [this, egd]()
+                {
+                    resources.emplace_back
+                    (
+                        Texture2DResource::create
+                        (
+                            egd.resolution.x,
+                            egd.resolution.y,
+                            egd.internalFormat
+                        )
+                    );
+                }
+            );
+        }
+        Helpers::renderTextureMemoryEstimateGui
+        (
+            editorGuiData.nPixels(),
+            editorGuiData.internalFormat,
+            true
+        );
+        ImGui::EndPopup();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::renderCreateTexture3DButtonGui(float width)
+{
+    static Texture3DResource::EditorGuiData editorGuiData = {};
+    if (ImGui::Button("Create texture-3D", ImVec2(width, 0)))
+    {
+        ImGui::OpenPopup("##createTexture3DPopup");
+        editorGuiData = {};
+    }
+    if (ImGui::BeginPopup("##createTexture3DPopup"))
+    {
+        ImGui::Text(
+R"(Create a blank texture, useful for e.g., 
+shader data storage via imageLoad and
+imageStore operations. Data written to 
+these textures will not be saved within 
+the project)");
+        ImGui::Separator();
+        Texture3DResource::renderEditorGui(editorGuiData, 11);
+        if (ImGui::Button("Create texture-3D", ImVec2(-1, 0)))
+        {
+            auto egd = editorGuiData;
+            deferredActionBuffer.add
+            (
+                [this, egd]()
+                {
+                    resources.emplace_back
+                    (
+                        Texture3DResource::create
+                        (
+                            egd.resolution.x,
+                            egd.resolution.y,
+                            egd.resolution.z,
+                            egd.internalFormat
+                        )
+                    );
+                }
+            );
+        }
+        Helpers::renderTextureMemoryEstimateGui
+        (
+            editorGuiData.nPixels(),
+            editorGuiData.internalFormat,
+            true
+        );
+        ImGui::EndPopup();
+    }
 }
 
 //----------------------------------------------------------------------------//

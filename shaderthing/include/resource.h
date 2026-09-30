@@ -151,12 +151,15 @@ public:
     };
     static GUI gui;
 
-    void                   renderActionsButtonGui
+    bool                   renderActionsButtonGui
     (
         UPtrVector<Resource>& resources, 
         DeferredActionBuffer& dab
     );
-    virtual void           renderSettingsGui();
+    virtual bool           renderSettingsGui
+    (
+        const UPtrVector<Resource>& resources
+    );
     virtual void           renderReplaceButtonGui
     (
         UPtrVector<Resource>& resources, 
@@ -282,18 +285,55 @@ public:
 
 //----------------------------------------------------------------------------//
 
-class Texture2DResource : public ManagedResource<vir::TextureBuffer2D>
+template <typename NativeType>
+class TextureNDResource : public ManagedResource<NativeType>
+{
+public:
+
+    struct EditorGuiData
+    {
+        InternalFormat internalFormat = InternalFormat::RGBA_SF_32;
+        virtual uint64_t nPixels() const = 0;
+        virtual void reset(TextureNDResource<NativeType>& ref) = 0;
+        virtual bool isUnedited(TextureNDResource<NativeType>& ref) = 0;
+        virtual bool renderResolutionEditorGui(int maxSize=4096) = 0;
+        bool renderInternalFormatSelectorGui();
+    };
+
+protected:
+
+    EditorGuiData& edg_;
+
+    TextureNDResource(Resource::Type type, EditorGuiData& edg) :
+        ManagedResource<NativeType>(type), edg_(edg) {}
+
+    DELETE_COPY(TextureNDResource)
+
+public:
+
+    bool autoUpdateMipmap = false;
+
+    ~TextureNDResource();
+
+    virtual bool set(EditorGuiData& edg) = 0;
+
+    static bool renderEditorGui(EditorGuiData& egd, int labelWidth);
+
+    bool renderResizeOrReformatGui();
+};
+
+//----------------------------------------------------------------------------//
+
+class Texture2DResource : public TextureNDResource<vir::TextureBuffer2D>
 {
     const unsigned char*  rawData_     = nullptr;
     unsigned int          rawDataSize_ = 0;
     std::string           originalFileExtension_;
     
-    Texture2DResource() : ManagedResource(Type::Texture2D) {}
+    Texture2DResource() : TextureNDResource(Type::Texture2D, editorGuiData_) {}
     DELETE_COPY(Texture2DResource)
 
 public:
-
-    bool autoUpdateMipmap = false;
     
     static UPtr<Texture2DResource> create(const std::string& filepath);
     static UPtr<Texture2DResource> create
@@ -324,6 +364,38 @@ public:
     const unsigned char* rawData() const {return rawData_;}
     unsigned int rawDataSize() const {return rawDataSize_;}
     bool hasRawData() const {return rawData_ != nullptr;}
+    
+    // TODO Disgusting, find another way
+    bool isUsedByOtherResources
+    (
+        const UPtrVector<Resource>& resources
+    ) const;
+
+    std::vector<const std::string*> clientResourceNames
+    (
+        const UPtrVector<Resource>& resources
+    ) const;
+
+    // GUI ---------------------------------------------------------------------
+
+    struct EditorGuiData : TextureNDResource::EditorGuiData
+    {
+        glm::ivec2 resolution = {1, 1};
+        uint64_t nPixels() const 
+        {
+            return uint64_t(resolution.x)*uint64_t(resolution.y);
+        }
+        void reset(TextureNDResource<vir::TextureBuffer2D>& ref);
+        bool isUnedited(TextureNDResource<vir::TextureBuffer2D>& ref);
+        bool renderResolutionEditorGui(int maxSize=4096);
+    };
+
+protected:
+
+    EditorGuiData editorGuiData_;
+    bool set(TextureNDResource<vir::TextureBuffer2D>::EditorGuiData& edg);
+
+public:
 
     void renderReplaceButtonGui
     (
@@ -383,6 +455,10 @@ public:
     {
         return native_->frameId();
     }
+    const std::vector<WPtr<Texture2DResource>>& unmanagedFrames() const 
+    {
+        return unmanagedFrames_;
+    }
 
     void renderReplaceButtonGui
     (
@@ -402,7 +478,7 @@ class CubemapResource : public ManagedResource<vir::CubeMapBuffer>
     
 public:
 
-    ~CubemapResource() {}
+    ~CubemapResource();
 
     static UPtr<CubemapResource> create
     (
@@ -426,14 +502,12 @@ public:
 
 //----------------------------------------------------------------------------//
 
-class Texture3DResource : public ManagedResource<vir::TextureBuffer3D>
+class Texture3DResource : public TextureNDResource<vir::TextureBuffer3D>
 {
-    Texture3DResource() : ManagedResource(Type::Texture3D) {}
+    Texture3DResource() : TextureNDResource(Type::Texture3D, editorGuiData_) {}
     DELETE_COPY(Texture3DResource)
 
 public:
-
-    bool autoUpdateMipmap = false;
 
     static UPtr<Texture3DResource> create
     (
@@ -443,7 +517,7 @@ public:
         InternalFormat internalFormat
     );
 
-    ~Texture3DResource() {}
+    ~Texture3DResource();
 
     virtual void saveTo(ObjectIO& io) override;
     static UPtr<Texture3DResource> loadFrom(const ObjectIO& io);
@@ -461,6 +535,26 @@ public:
     void readData(unsigned int*& data, bool allocate=false) const;
     void readData(float*& data, bool allocate=false) const;
     unsigned int depth() const override {return native_->depth();}
+
+    // GUI ---------------------------------------------------------------------
+
+    struct EditorGuiData : TextureNDResource::EditorGuiData
+    {
+        glm::ivec3 resolution = {1, 1, 1};
+        uint64_t nPixels() const 
+        {
+            return uint64_t(resolution.x)*uint64_t(resolution.y);
+        }
+        void reset(TextureNDResource<vir::TextureBuffer3D>& ref);
+        bool isUnedited(TextureNDResource<vir::TextureBuffer3D>& ref);
+        bool renderResolutionEditorGui(int maxSize=4096);
+    };
+
+protected:
+
+    EditorGuiData editorGuiData_;
+    bool set(TextureNDResource<vir::TextureBuffer3D>::EditorGuiData& edg);
+
 };
 
 //----------------------------------------------------------------------------//
@@ -581,7 +675,10 @@ public:
     {
         (*native_)->updateColorBufferMipmap(true);
     }
-    void renderSettingsGui() override;
+    bool renderSettingsGui(const UPtrVector<Resource>& resources) override;
 };
 
 }
+
+extern template class ShaderThing::TextureNDResource<vir::TextureBuffer2D>;
+extern template class ShaderThing::TextureNDResource<vir::TextureBuffer3D>;

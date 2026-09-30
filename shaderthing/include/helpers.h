@@ -72,6 +72,13 @@ std::string format(float value, unsigned int precision);
 
 const char* autoRescaleMemoryValue(double& value);
 
+void renderTextureMemoryEstimateGui
+(
+    uint64_t textureSize,
+    InternalFormat internalFormat,
+    bool is2D
+);
+
 void oneLineColorfulText
 (
     const std::string& text, 

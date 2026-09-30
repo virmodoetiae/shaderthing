@@ -226,11 +226,15 @@ public:
 
     // GUI ---------------------------------------------------------------------
 
+    // General
+
     void renderControlPanelGui();
 
     void renderMenuBarGui();
 
     void renderLayersTabBarGui();
+
+    // Uniforms
 
     void renderUniformsTabGui(Layer* layer);
 
@@ -238,17 +242,9 @@ public:
     // row count
     int renderBuiltInSharedUniformsGui();
 
-    // Render the button for editing uniform bounds, returns a flag indicating 
-    // whether the bounds have been changed during this frame
-    bool renderEditUniformBoundsButtonGui
-    (
-        const vir::Ptr<Uniform>& uniform,
-        bool renderDragStepSlider = false
-    );
-
     // Render the GUI of the provided uniform at the provided table row and return
     // true if the uniform type is changed by user interation with this GUI, else
-    // false
+    // falsethis->
     bool renderUniformTableRowGui
     (
         UPtr<Uniform>& uniform,
@@ -258,6 +254,8 @@ public:
         const bool showSharedAndDefaultUniforms = true
     );
 
+    // Resources
+
     void renderResourcesMenuItemGui();
 
     void renderResourcesTableGui();
@@ -266,7 +264,11 @@ public:
 
     void renderAddResourceButtonGui(int row);
 
-    void renderResourceActionsButtonGui(int row);
+    void renderLoadResourceFromFileButtonGui(float width);
+
+    void renderCreateTexture2DButtonGui(float width);
+
+    void renderCreateTexture3DButtonGui(float width);
 };
 
 //----------------------------------------------------------------------------//

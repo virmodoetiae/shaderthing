@@ -146,6 +146,13 @@ ManagedResource<NativeType>::~ManagedResource()
 
 //----------------------------------------------------------------------------//
 
+template <typename NativeType>
+TextureNDResource<NativeType>::~TextureNDResource()
+{
+}
+
+//----------------------------------------------------------------------------//
+
 UPtr<Texture2DResource> Texture2DResource::create(const std::string& filepath)
 {
     auto resource = UPtr<Texture2DResource>(new Texture2DResource());
@@ -190,6 +197,8 @@ Texture2DResource::~Texture2DResource()
     if (rawData_ != nullptr) 
         delete[] rawData_;
 }
+
+//----------------------------------------------------------------------------//
 
 void Texture2DResource::saveTo(ObjectIO& io)
 {
@@ -344,6 +353,89 @@ void Texture2DResource::readData(float*& data, bool allocate) const
 {
     if (native_.valid())
         native_->readData(data, allocate);
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture2DResource::isUsedByOtherResources
+(
+    const UPtrVector<Resource>& resources
+) const
+{
+    std::vector<const std::string*> usedBy(0);
+    for (auto& r : resources)
+    {
+        if (r->type() == Resource::Type::Cubemap)
+        {
+            auto cubemap = (const CubemapResource*)r.get();
+            auto faces = cubemap->faces();
+            for (int i=0; i<6; i++)
+            {
+                if (faces[i]->name() != name())
+                    continue;
+                return true;
+            }
+        }
+        else if 
+        (
+            r->type() == Resource::Type::AnimatedTexture2D
+        )
+        {
+            auto animation = 
+                (const AnimatedTexture2DResource*)r.get();
+            for (auto& frame : animation->unmanagedFrames())
+            {
+                if (frame->name() != name())
+                    continue;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+
+std::vector<const std::string*> Texture2DResource::clientResourceNames
+(
+    const UPtrVector<Resource>& resources
+) const
+{
+    std::vector<const std::string*> usedBy(0);
+    for (auto& r : resources)
+    {
+        if (r->type() == Resource::Type::Cubemap)
+        {
+            auto cubemap = (const CubemapResource*)r.get();
+            auto faces = cubemap->faces();
+            for (int i=0; i<6; i++)
+            {
+                if (faces[i]->name() != name())
+                    continue;
+                usedBy.emplace_back
+                (
+                    cubemap->namePtr()
+                );
+                break;
+            }
+        }
+        else if 
+        (
+            r->type() == Resource::Type::AnimatedTexture2D
+        )
+        {
+            auto animation = 
+                (const AnimatedTexture2DResource*)r.get();
+            for (auto& frame : animation->unmanagedFrames())
+            {
+                if (frame->name() != name())
+                    continue;
+                usedBy.emplace_back(r->namePtr());
+                break;
+            }
+        }
+    }
+    return usedBy;
 }
 
 //----------------------------------------------------------------------------//
@@ -581,6 +673,8 @@ UPtr<AnimatedTexture2DResource> AnimatedTexture2DResource::loadFrom
     return resource;
 }
 
+//----------------------------------------------------------------------------//
+
 void AnimatedTexture2DResource::update(const UpdateArgs& args)
 {
     if (isAnimationBoundToGlobalTime)
@@ -602,6 +696,13 @@ UPtr<CubemapResource> CubemapResource::create
     if (resource->set(faces))
         return resource;
     return vir::nullUniquePtr<CubemapResource>();
+}
+
+//----------------------------------------------------------------------------//
+
+CubemapResource::~CubemapResource()
+{
+
 }
 
 //----------------------------------------------------------------------------//
@@ -715,6 +816,13 @@ UPtr<Texture3DResource> Texture3DResource::create
     if (resource->set(width, height, depth, internalFormat))
         return resource;
     return vir::nullUniquePtr<Texture3DResource>();
+}
+
+//----------------------------------------------------------------------------//
+
+Texture3DResource::~Texture3DResource()
+{
+
 }
 
 //----------------------------------------------------------------------------//
@@ -853,3 +961,6 @@ bool LayerResource::set(WPtr<Layer> layer)
 }
 
 }
+
+template ShaderThing::TextureNDResource<vir::TextureBuffer2D>::~TextureNDResource();
+template ShaderThing::TextureNDResource<vir::TextureBuffer3D>::~TextureNDResource();

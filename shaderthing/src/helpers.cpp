@@ -252,6 +252,9 @@ std::string format(float value, unsigned int precision)
         return std::string(buffer);
     return "";
 }
+
+//----------------------------------------------------------------------------//
+
 // This approach is a modification of mine to the one proposed here
 // https://github.com/ocornut/imgui/issues/902#issuecomment-1103072284, which
 // did not result in pixel-perfect alignment with other lines rendered with the
@@ -329,6 +332,52 @@ void oneLineColorfulText
     }
     im_colors[ImGuiCol_Text] = default_color;
 }
+
+//----------------------------------------------------------------------------//
+
+void renderTextureMemoryEstimateGui
+(
+    uint64_t textureSize,
+    InternalFormat internalFormat,
+    bool is2D
+)
+{
+    double requiredMemory = textureSize;
+    double memoryPerPixel = 
+        vir::TextureBuffer::internalFormatToBytes.at(internalFormat);
+    requiredMemory *= memoryPerPixel;
+    // Show a warning for good measure when creating beefier textures,
+    // threshold arbitrarily set at 64 MiB of VRAM
+    if (requiredMemory >= 67108864)
+    {
+        // Mip maps occupy a theoretical maximum of an additional 
+        // 1/8 + 1/64 + 1/512 + 1/4096 + 1/... = 1/7 of the memory
+        // occupied by the base level of a 3D texture, while for
+        // 2D textures this is 1/4 + 1/16 + 1/32 + ... = 1/3 of the
+        // memory occupied by the base level
+        double mipmapsMemory = 
+            std::floor(requiredMemory/memoryPerPixel/(is2D?3:7))*memoryPerPixel;
+        auto uom1 = Helpers::autoRescaleMemoryValue(requiredMemory);
+        auto uom2 = Helpers::autoRescaleMemoryValue(mipmapsMemory);
+        ImGui::PushStyleColor(ImGuiCol_Text, {1.f,1.f,0.f,1.f});
+        ImGui::Text(
+R"(This texture will occupy at least 
+%.1f %s of free VRAM, and up to 
+an additional %.1f %s for mipmaps. 
+Please, make sure your system has 
+at least the reported amount of 
+free VRAM to avoid program and/or 
+system crashes)",
+            requiredMemory, 
+            uom1,
+            mipmapsMemory, 
+            uom2
+        );
+        ImGui::PopStyleColor();
+    }
+}
+
+//----------------------------------------------------------------------------//
 
 #define RETURN_SCALAR_FORMAT                                            \
     if (value == 0)                                                     \

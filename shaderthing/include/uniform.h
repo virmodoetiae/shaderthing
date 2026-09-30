@@ -158,6 +158,10 @@ public:
         float logarithmicZero = 1e-3f;
     };
     GUI gui;
+
+    // Render the button for editing uniform bounds, returns a flag indicating 
+    // whether the bounds have been changed during this frame
+    bool renderEditBoundsButtonGui(bool renderDragStepSlider = false);
 };
 
 }

@@ -31,12 +31,13 @@
 namespace ShaderThing
 {
 
-void Resource::renderActionsButtonGui
+bool Resource::renderActionsButtonGui
 (
     UPtrVector<Resource>& resources, 
     DeferredActionBuffer& dab
 )
 {
+    bool requestRecompilation = false;
     if (type_ == Resource::Type::Framebuffer)
     {
         if (ImGui::Button(ICON_FA_COG, ImVec2(-1,0)))
@@ -50,7 +51,7 @@ void Resource::renderActionsButtonGui
 
     if (ImGui::BeginPopup("##framebufferResourceSettings"))
     {
-        renderSettingsGui();
+        renderSettingsGui(resources);
         ImGui::EndPopup();
     }
     if (ImGui::BeginPopup("##resourceActions"))
@@ -72,21 +73,37 @@ void Resource::renderActionsButtonGui
         {
             ImGui::OpenPopup("##resourceSettings");
         }
+        if 
+        (
+            type_ == Type::Texture2D &&
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
+            ((Texture2DResource*)this)->isUsedByOtherResources(resources)
+        )
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text(
+R"(These settings only affect this texture and do not 
+affect any cubemaps or animations using this texture)");
+            ImGui::EndTooltip();
+        }
         if (ImGui::BeginPopup("##resourceSettings"))
         {
-            renderSettingsGui();
+            requestRecompilation = renderSettingsGui(resources);
             ImGui::EndPopup();
         }
         renderReplaceButtonGui(resources, dab);
         ImGui::EndPopup();
     }
+    return requestRecompilation;
 }
 
 //----------------------------------------------------------------------------//
 
-void Resource::renderSettingsGui()
+bool Resource::renderSettingsGui(const UPtrVector<Resource>& resources)
 {
-    auto size = ImVec2(12*ImGui::GetFontSize(), 0);
+    bool requestRecompilation = false;
+    std::vector<const std::string*> clientResources;
+    auto size = ImVec2(15*ImGui::GetFontSize(), 0);
     if (type_ == Resource::Type::AnimatedTexture2D)
     {
         auto animation = 
@@ -202,6 +219,8 @@ void Resource::renderSettingsGui()
         ImGui::PopItemWidth();
         ImGui::Separator();
     }
+    else
+        size.x = -1;
     std::string selectedWrapModeX = "";
     std::string selectedWrapModeY = "";
     std::string selectedMagFilterMode = "";
@@ -328,6 +347,7 @@ void Resource::renderSettingsGui()
     if (type_ == Resource::Type::Texture2D)
     {
         auto texture = (Texture2DResource*)this;
+        clientResources = texture->clientResourceNames(resources);
         if (usesMipmap)
         {
             ImGui::Text("Auto mipmap update  ");
@@ -344,24 +364,19 @@ void Resource::renderSettingsGui()
             )
                 texture->updateMipmap();
         }
-        /*if 
+        if 
         (
             texture->rawData() == nullptr ||
             texture->rawDataSize() == 0
         )
         {
-            bool disabled = inUseByCubemapOrAnimation.size() > 0;
+            bool disabled = clientResources.size() > 0;
             if (disabled)
                 ImGui::BeginDisabled();
-            createOrResizeOrReformatTexture2DGui
-            (
-                resource,
-                false,
-                settingsOpened
-            );
+            requestRecompilation = texture->renderResizeOrReformatGui();
             if (disabled)
                 ImGui::EndDisabled();
-        }*/
+        }
     }
     else if (type_ == Resource::Type::Texture3D)
     {
@@ -382,12 +397,7 @@ void Resource::renderSettingsGui()
             )
                 texture->updateMipmap();
         }
-        /*createOrResizeOrReformatTexture3DGui
-        (
-            resource,
-            false,
-            settingsOpened
-        );*/
+        requestRecompilation = texture->renderResizeOrReformatGui();
     }
     else if 
     (
@@ -407,13 +417,120 @@ void Resource::renderSettingsGui()
         // the way it's currently implemented in vir, it only 
         // updates the current animation frame)
     }
+    return requestRecompilation;
 }
 
 //----------------------------------------------------------------------------//
 
-void LayerResource::renderSettingsGui()
+bool LayerResource::renderSettingsGui(const UPtrVector<Resource>& resources)
 {
     layer_->renderFramebufferSettingsGui();
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+
+template<typename T>
+bool TextureNDResource<T>::EditorGuiData::renderInternalFormatSelectorGui()
+{
+    bool edited = false;
+    // RGB formats are not easy to work with due to memory-alignment 
+    // limitations so they are omitted
+    static constexpr InternalFormat supportedFormats[] = 
+    {
+        InternalFormat::R_UI_32,    InternalFormat::R_SF_32,
+        InternalFormat::RG_UI_32,   InternalFormat::RG_SF_32,
+        InternalFormat::RGBA_UI_32, InternalFormat::RGBA_SF_32
+    };
+    const auto& names = vir::TextureBuffer2D::internalFormatToName;
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##tndrFormat", 
+            names.at(internalFormat).c_str()
+        )
+    )
+    {
+        for (auto format : supportedFormats)
+            if 
+            (
+                ImGui::Selectable
+                (
+                    names.at(format).c_str(), 
+                    format == internalFormat
+                )
+            )
+            {
+                internalFormat = format;
+                edited = true;
+            }
+        ImGui::EndCombo();
+    }
+    return edited;
+}
+
+//----------------------------------------------------------------------------//
+
+template<typename T>
+bool TextureNDResource<T>::renderEditorGui(EditorGuiData& egd, int labelWidth)
+{
+    bool edited = false;
+    ImGui::Text("%-*s", labelWidth, "Resolution");
+    ImGui::SameLine();
+    edited = egd.renderResolutionEditorGui();
+    ImGui::Text("%-*s", labelWidth, "Format");
+    ImGui::SameLine();
+    edited = egd.renderInternalFormatSelectorGui();
+    return edited;
+}
+
+//----------------------------------------------------------------------------//
+
+template<typename T>
+bool TextureNDResource<T>::renderResizeOrReformatGui()
+{
+    if (ImGui::IsWindowAppearing())
+        edg_.reset(*this);
+    renderEditorGui(edg_, 20);
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("VRAM footprint      ");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("VRAM memory occupied by this texture");
+    ImGui::SameLine();
+    double footprint = this->maxMemoryFootprint();
+    auto uom = Helpers::autoRescaleMemoryValue(footprint);
+    ImGui::Text("%.1f %s", footprint, uom);
+    bool unedited = edg_.isUnedited(*this);
+    bool requestRecompilation = false;
+    ImGui::BeginDisabled(unedited);
+    if (ImGui::Button("Resize or reformat", ImVec2(-1, 0)))
+    {
+        auto wrapMode0 = this->wrapMode(0);
+        auto wrapMode1 = this->wrapMode(1);
+        auto wrapMode2 = this->wrapMode(2);
+        auto minFilterMode = this->minFilterMode();
+        auto magFilterMode = this->magFilterMode();
+        auto format0 = this->internalFormat();
+        this->set(edg_);
+        this->setWrapMode(0, wrapMode0);
+        this->setWrapMode(1, wrapMode1);
+        this->setWrapMode(2, wrapMode2);
+        this->setMinFilterMode(minFilterMode);
+        this->setMagFilterMode(magFilterMode);
+        requestRecompilation = 
+            this->internalFormat() != format0; //&& clientUniforms_.size() > 0;
+        edg_.reset(*this);
+    }
+    if (!unedited)
+        Helpers::renderTextureMemoryEstimateGui
+        (
+            edg_.nPixels(), 
+            edg_.internalFormat, 
+            true
+        );
+    ImGui::EndDisabled();
+    return requestRecompilation;
 }
 
 //----------------------------------------------------------------------------//
@@ -463,14 +580,62 @@ void Texture2DResource::renderReplaceButtonGui
 
 //----------------------------------------------------------------------------//
 
+void Texture2DResource::EditorGuiData::reset
+(
+    TextureNDResource<vir::TextureBuffer2D>& ref
+)
+{
+    resolution = {ref.width(), ref.height()};
+    internalFormat = ref.internalFormat();
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture2DResource::EditorGuiData::isUnedited
+(
+    TextureNDResource<vir::TextureBuffer2D>& ref
+)
+{
+    return resolution == glm::ivec2{ref.width(), ref.height()} && 
+        internalFormat == ref.internalFormat();
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture2DResource::EditorGuiData::renderResolutionEditorGui(int maxSize)
+{
+    bool modified = false;
+    if (ImGui::InputInt2("##t2drResolution", glm::value_ptr(resolution)))
+    {
+        resolution = glm::clamp(resolution, 1, maxSize);
+        modified = true;
+    }
+    return modified;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture2DResource::set
+(
+    TextureNDResource<vir::TextureBuffer2D>::EditorGuiData& edg
+)
+{
+    auto cedg = (Texture2DResource::EditorGuiData*)&edg;
+    return this->set
+    (
+        cedg->resolution.x, cedg->resolution.y, edg.internalFormat
+    );
+}
+
+//----------------------------------------------------------------------------//
+
 void AnimatedTexture2DResource::renderReplaceButtonGui
 (
     UPtrVector<Resource>& resources, 
     DeferredActionBuffer& dab
 )
 {
-    auto size = ImVec2(12*ImGui::GetFontSize(), 0);
-    if (ImGui::Button("Replace", size))
+    if (ImGui::Button("Replace", ImVec2(-1, 0)))
     {
         Resource::fileDialog.runOpenFileDialog
         (
@@ -508,4 +673,54 @@ void AnimatedTexture2DResource::renderReplaceButtonGui
 
 //----------------------------------------------------------------------------//
 
+void Texture3DResource::EditorGuiData::reset
+(
+    TextureNDResource<vir::TextureBuffer3D>& ref
+)
+{
+    resolution = {ref.width(), ref.height(), ref.depth()};
+    internalFormat = ref.internalFormat();
 }
+
+//----------------------------------------------------------------------------//
+
+bool Texture3DResource::EditorGuiData::isUnedited
+(
+    TextureNDResource<vir::TextureBuffer3D>& ref
+)
+{
+    return resolution == glm::ivec3{ref.width(), ref.height(), ref.depth()} && 
+        internalFormat == ref.internalFormat();
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture3DResource::EditorGuiData::renderResolutionEditorGui(int maxSize)
+{
+    if (ImGui::InputInt3("##t3drResolution", glm::value_ptr(resolution)))
+    {
+        resolution = glm::clamp(resolution, 1, maxSize);
+        return true;
+    }
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture3DResource::set
+(
+    TextureNDResource<vir::TextureBuffer3D>::EditorGuiData& edg
+)
+{
+    auto cedg = (Texture3DResource::EditorGuiData*)&edg;
+    return this->set
+    (
+        cedg->resolution.x, cedg->resolution.y, cedg->resolution.z, 
+        edg.internalFormat
+    );
+}
+
+}
+
+template class ShaderThing::TextureNDResource<vir::TextureBuffer2D>;
+template class ShaderThing::TextureNDResource<vir::TextureBuffer3D>;
