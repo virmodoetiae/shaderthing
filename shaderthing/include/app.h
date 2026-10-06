@@ -269,6 +269,10 @@ public:
     void renderCreateTexture2DButtonGui(float width);
 
     void renderCreateTexture3DButtonGui(float width);
+
+    // Menu bar
+
+    void renderExamplesMenuItem();
 };
 
 //----------------------------------------------------------------------------//

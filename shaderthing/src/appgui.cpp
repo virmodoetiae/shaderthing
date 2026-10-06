@@ -22,7 +22,9 @@
 #include "vir/include/vir.h"
 
 #include "shaderthing/include/app.h"
+#include "shaderthing/include/coderepository.h"
 #include "shaderthing/include/bytedata.h"
+#include "shaderthing/include/examples.h"
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/resource.h"
@@ -47,7 +49,7 @@ void App::renderControlPanelGui()
     
     vir::ImGuiRenderer::newFrame();
     
-    ImGui::SetNextWindowSize(ImVec2(750,750), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(768, 768), ImGuiCond_FirstUseEver);
     static ImGuiWindowFlags flags
     (
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
@@ -296,13 +298,10 @@ project exports)");
         }
         if (ImGui::BeginMenu("Help"))
         {
-            /* TODO
             CodeRepository::renderMenuItemGui();
-            if (ImGui::BeginMenu("Examples"))
-            {
-                Examples::renderGui(project_.exampleToBeLoaded);
-                ImGui::EndMenu();
-            }
+            renderExamplesMenuItem();
+            /*
+            // TODO
             if (ImGui::BeginMenu("About ShaderThing"))
             {
                 About::renderGui();
@@ -334,19 +333,15 @@ project exports)");
         ImGui::EndMenuBar();
     }
 
-    // TODO
     if (Resource::gui.isDetachedFromControlPanel)
         renderResourcesTableGui();
     if (sharedStorage->isGuiDetachedFromMenu())
         shadersRequireRecompilation = 
             sharedStorage->renderGui();
-    /* TODO
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
     
-    if (project_.exampleToBeLoaded != nullptr)
-        project_.action = Project::Action::LoadExample;
-
+    /* TODO
     if (project_.action == Project::Action::None)
     {
         if (Helpers::isCtrlKeyPressed(ImGuiKey_N) && !windowIconified)
@@ -2890,5 +2885,125 @@ the project)");
 }
 
 */
+
+//----------------------------------------------------------------------------//
+
+void App::renderExamplesMenuItem()
+{
+    if (ImGui::BeginMenu("Examples"))
+    {
+        bool loadExampleConfirmation = false;
+        static const std::string* preSelection = nullptr;
+        ImGui::Text
+        (
+R"(This is a collection of built-in project examples which 
+can be freely loaded, edited and used for learning 
+purposes or as starting points for other projects)"
+        );
+        ImGui::Separator();
+
+        int id = 0;
+
+        //--------------------------------- Bloom
+        /* TODO Re-enable once post-processing effects are available
+        ImGui::PushID(id++);
+        static std::string errorMessage;
+        static auto canRunOnDeviceInUse = []() -> bool
+        {
+            auto nativeBloom = vir::Bloomer::create();
+            bool result = nativeBloom->canRunOnDeviceInUse();
+            errorMessage = std::string(nativeBloom->errorMessage());
+            return result;
+        };
+        static bool bloom(canRunOnDeviceInUse());
+        if (!bloom)
+            ImGui::BeginDisabled();
+        if (ImGui::Button("Load"))
+        {
+            loadExampleConfirmation = true;
+            tmpSelection = &Examples::bloom0;
+        }
+        if (!bloom)
+        {
+            ImGui::EndDisabled();
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && 
+                ImGui::BeginTooltip()
+            )
+            {
+                ImGui::Text(errorMessage.c_str());
+                ImGui::EndTooltip();
+            }
+        }
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::Text("Bloom (post-processing effect)");
+        */
+        
+        //--------------------------------- Ray marching
+        ImGui::PushID(id++);
+        if (ImGui::Button("Load"))
+        {
+            loadExampleConfirmation = true;
+            preSelection = &Examples::rayMarching;
+        }
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::Text("Ray marcher (basic)");
+
+        //--------------------------------- Path marching
+        ImGui::PushID(id++);
+        if (ImGui::Button("Load"))
+        {
+            loadExampleConfirmation = true;
+            preSelection = &Examples::pathMarching;
+        }
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::Text("Monte Carlo path marcher (advanced)");
+
+        //----------------------------------------------------------------------
+        if (loadExampleConfirmation)
+            ImGui::OpenPopup("Load example project confirmation");
+        if 
+        (
+            ImGui::BeginPopupModal
+            (
+                "Load example project confirmation", 
+                nullptr, 
+                ImGuiWindowFlags_NoResize
+            )
+        )
+        {
+            ImGui::Text("Are you sure you want to load the selected project?");
+            ImGui::Text("Any unsaved edits to the current project will be lost!");
+            if (ImGui::Button("Confirm"))
+            {
+                auto selection = preSelection;
+                deferredActionBuffer.add
+                (
+                    [selection, this]()
+                    {
+                        project_.forceSaveAs = true;
+                        project_.filepath = Project{}.filepath;
+                        project_.filename = Project{}.filename;
+                        loadFrom(*selection, true);
+                    }
+                );
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                preSelection = nullptr;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::EndMenu();
+    }
+}
 
 }
