@@ -701,7 +701,7 @@ UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 (
     const unsigned char* fileData[6], 
-    uint32_t size,
+    uint32_t size[6],
     InternalFormat internalFormat
 )
 {
@@ -721,7 +721,7 @@ UniquePtr<CubeMapBuffer> CubeMapBuffer::create
             faceData[i] = stbi_load_from_memory
             (
                 fileData[i], 
-                size,
+                size[i],
                 &width, 
                 &height, 
                 &nChannels, 

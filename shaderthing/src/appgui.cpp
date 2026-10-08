@@ -2480,6 +2480,7 @@ void App::renderAddResourceButtonGui(int row)
         renderLoadResourceFromFileButtonGui(buttonWidth);
         renderCreateTexture2DButtonGui(buttonWidth);
         renderCreateTexture3DButtonGui(buttonWidth);
+        renderCreateCubemapButtonGui(buttonWidth);
         ImGui::EndPopup();
     }
     END_ROW(row)
@@ -2629,6 +2630,50 @@ the project)");
             editorGuiData.internalFormat,
             true
         );
+        ImGui::EndPopup();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::renderCreateCubemapButtonGui(float width)
+{
+    static CubemapResource::EditorGuiData editorGuiData = {};
+    if (ImGui::Button("Create cubemap", ImVec2(width, 0)))
+    {
+        ImGui::OpenPopup("##createCubemapPopup");
+        editorGuiData.faceResolution = {0, 0};
+        for (int i=0;i<6;i++)
+            editorGuiData.selectedTextureResources[i] = 
+                WPtr<Texture2DResource>();
+    }   
+    if (ImGui::BeginPopup("##createCubemapPopup"))
+    {
+        if 
+        (
+            CubemapResource::renderEditorButtonGui
+            (
+                editorGuiData, 
+                resources, 
+                "Create cubemap"
+            )
+        )
+        {
+            auto egd = editorGuiData;
+            deferredActionBuffer.add
+            (
+                [this, egd]()
+                {
+                    resources.emplace_back
+                    (
+                        CubemapResource::create
+                        (
+                            egd.selectedTextureResources
+                        )
+                    );
+                }
+            );
+        }
         ImGui::EndPopup();
     }
 }

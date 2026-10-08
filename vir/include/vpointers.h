@@ -340,11 +340,22 @@ public:
     // Throws std::bad_cast on failure
     template<typename D, typename = 
         std::enable_if_t<std::is_base_of_v<T, D> && !std::is_same_v<T, D>>>
-    UniquePtr<D>& dynamicDowncastTo() 
+    UniquePtr<D>& dynamicDowncastTo()
     {
         if (dynamic_cast<D*>(ptr_) == nullptr)
             throw std::bad_cast();
         return *reinterpret_cast<UniquePtr<D>*>(this);
+    }
+
+    // Dynamic cast of a UniquePtr<T>& to a UniquePtr<D>& if D derives from T.
+    // Throws std::bad_cast on failure
+    template<typename D, typename = 
+        std::enable_if_t<std::is_base_of_v<T, D> && !std::is_same_v<T, D>>>
+    const UniquePtr<D>& dynamicDowncastTo() const
+    {
+        if (dynamic_cast<D*>(ptr_) == nullptr)
+            throw std::bad_cast();
+        return *reinterpret_cast<const UniquePtr<D>*>(this);
     }
 
     // Return a weak-like ptr to safely access and check for the existence 

@@ -270,6 +270,8 @@ public:
 
     void renderCreateTexture3DButtonGui(float width);
 
+    void renderCreateCubemapButtonGui(float width);
+
     // Menu bar
 
     void renderExamplesMenuItem();

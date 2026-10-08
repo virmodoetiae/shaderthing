@@ -57,6 +57,10 @@ bool Resource::renderActionsButtonGui
     if (ImGui::BeginPopup("##resourceActions"))
     {
         auto size = ImVec2(12*ImGui::GetFontSize(), 0);
+        bool disableDelete = type_ == Type::Texture2D && 
+            ((Texture2DResource*)this)->clientResources().size() > 0;
+        if (disableDelete)
+            ImGui::BeginDisabled();
         if (ImGui::Button(ICON_FA_TRASH, size))
         {
             dab.add
@@ -69,6 +73,11 @@ bool Resource::renderActionsButtonGui
                 }
             );
         }
+        if (disableDelete)
+        {
+            ImGui::EndDisabled();
+            ((Texture2DResource*)this)->renderClientResourceLock();
+        }
         if (ImGui::Button(ICON_FA_COG, size))
         {
             ImGui::OpenPopup("##resourceSettings");
@@ -77,7 +86,7 @@ bool Resource::renderActionsButtonGui
         (
             type_ == Type::Texture2D &&
             ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
-            ((Texture2DResource*)this)->isUsedByOtherResources(resources)
+            ((Texture2DResource*)this)->clientResources().size() > 0
         )
         {
             ImGui::BeginTooltip();
@@ -102,7 +111,6 @@ affect any cubemaps or animations using this texture)");
 bool Resource::renderSettingsGui(const UPtrVector<Resource>& resources)
 {
     bool requestRecompilation = false;
-    std::vector<const std::string*> clientResources;
     auto size = ImVec2(15*ImGui::GetFontSize(), 0);
     if (type_ == Resource::Type::AnimatedTexture2D)
     {
@@ -219,8 +227,8 @@ bool Resource::renderSettingsGui(const UPtrVector<Resource>& resources)
         ImGui::PopItemWidth();
         ImGui::Separator();
     }
-    else
-        size.x = -1;
+    //else
+    //    size.x = -1;
     std::string selectedWrapModeX = "";
     std::string selectedWrapModeY = "";
     std::string selectedMagFilterMode = "";
@@ -347,7 +355,7 @@ bool Resource::renderSettingsGui(const UPtrVector<Resource>& resources)
     if (type_ == Resource::Type::Texture2D)
     {
         auto texture = (Texture2DResource*)this;
-        clientResources = texture->clientResourceNames(resources);
+        auto clientResources = texture->clientResources();
         if (usesMipmap)
         {
             ImGui::Text("Auto mipmap update  ");
@@ -537,11 +545,13 @@ bool TextureNDResource<T>::renderResizeOrReformatGui()
 
 void Texture2DResource::renderReplaceButtonGui
 (
-    UPtrVector<Resource>& resources, 
+    const UPtrVector<Resource>& resources, 
     DeferredActionBuffer& dab
 )
 {
     auto size = ImVec2(12*ImGui::GetFontSize(), 0);
+    if (clientResources_.size() > 0)
+        ImGui::BeginDisabled();
     if (ImGui::Button("Replace", size))
     {
         Resource::fileDialog.runOpenFileDialog
@@ -575,6 +585,37 @@ void Texture2DResource::renderReplaceButtonGui
                 return Resource::fileDialog.validSelection();
             }
         );
+    }
+    if (clientResources_.size() > 0)
+    {
+        ImGui::EndDisabled();
+        renderClientResourceLock();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void Texture2DResource::renderClientResourceLock()
+{
+    if 
+    (
+        ImGui::IsItemHovered
+        (
+            ImGuiHoveredFlags_AllowWhenDisabled
+        ) && ImGui::BeginTooltip()
+    )
+    {
+        std::string hoverText = 
+"This texture is in use by the following resources:\n";
+        for (int i=0; i<(int)clientResources_.size(); i++)
+            hoverText += 
+                "  "+std::to_string(i+1)+") "+
+                clientResources_[i]->name()+"\n";
+        hoverText += 
+"To delete or replace this texture, first delete \n"
+"or update the resources which use it";
+        ImGui::Text(hoverText.c_str());
+        ImGui::EndTooltip();
     }
 }
 
@@ -631,7 +672,7 @@ bool Texture2DResource::set
 
 void AnimatedTexture2DResource::renderReplaceButtonGui
 (
-    UPtrVector<Resource>& resources, 
+    const UPtrVector<Resource>& resources, 
     DeferredActionBuffer& dab
 )
 {
@@ -718,6 +759,165 @@ bool Texture3DResource::set
         cedg->resolution.x, cedg->resolution.y, cedg->resolution.z, 
         edg.internalFormat
     );
+}
+
+//----------------------------------------------------------------------------//
+
+bool CubemapResource::renderEditorButtonGui
+(
+    EditorGuiData& egd, 
+    const UPtrVector<Resource>& resources,
+    const std::string& label
+)
+{
+    static std::string labels[6] = 
+    {
+        "X+  ", "X-  ", "Y+  ", "Y-  ", "Z+  ", "Z-  "
+    };
+    int textureResourcei(0);
+    int nSelectedTextureResources(0);
+    for (int i=0; i<6; i++)
+    {
+        if (egd.selectedTextureResources[i] != nullptr)
+        {
+            nSelectedTextureResources++;
+            textureResourcei = i;
+        }
+    }
+    bool buttonPressed = false;
+    bool validFaces = true;
+    float buttonSize(ImGui::GetFontSize()*15.0);
+    for (int i=0; i<6; i++)
+    {
+        ImGui::Text(labels[i].c_str());
+        ImGui::SameLine();
+        std::string selectedTextureResourceName = 
+            egd.selectedTextureResources[i] != nullptr ?
+            egd.selectedTextureResources[i]->name() : "";
+        ImGui::PushItemWidth(-1);
+        std::string comboi = 
+            "##cubeMapFaceResourceSelector"+std::to_string(i);
+        if 
+        (
+            ImGui::BeginCombo
+            (
+                comboi.c_str(), 
+                selectedTextureResourceName.c_str()
+            )
+        )
+        {
+            for(int j=0; j<(int)resources.size()+1 ;j++)
+            {
+                if (j==0)
+                {
+                    if (ImGui::Selectable("-"))
+                    {
+                        egd.selectedTextureResources[i] = 
+                            WPtr<Texture2DResource>();
+                        if (nSelectedTextureResources == 1)
+                        {
+                            egd.faceResolution = {0, 0};
+                        }
+                    }
+                    continue;
+                }
+                else if (resources[j-1]->type() != Resource::Type::Texture2D)
+                    continue;
+                auto r = 
+                    resources[j-1].dynamicDowncastTo<Texture2DResource>()
+                    .getWeak();
+                if 
+                (
+                    !vir::CubeMapBuffer::validFace(r->native())
+                )
+                    continue;
+                if 
+                (
+                    egd.faceResolution.x != 0 && 
+                    egd.faceResolution.y != 0 && 
+                    (
+                        r->width() != egd.faceResolution.x || 
+                        r->height() != egd.faceResolution.y
+                    ) &&
+                    !(
+                        nSelectedTextureResources == 1 && 
+                        i == textureResourcei
+                    )
+                )
+                    continue;
+                if (ImGui::Selectable(r->name().c_str()))
+                {
+                    egd.selectedTextureResources[i] = r;
+                    egd.faceResolution = {r->width(), r->height()};
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
+        if (egd.selectedTextureResources[i] == nullptr)
+            validFaces = false;
+    }
+    if (!validFaces)
+    {
+        
+        ImGui::BeginDisabled();
+        ImGui::Button(label.c_str(), ImVec2(buttonSize, 0));
+        ImGui::EndDisabled();
+        if 
+        (
+            ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && 
+            ImGui::BeginTooltip()
+        )
+        {
+            ImGui::Text(
+R"(To generate a cube map, select a texture from the 
+loaded Texture2D resources for each of the 6 faces 
+of the cubemap. Said resources need to: 
+    1) have a square aspect ratio; 
+    2) have the same resolution; 
+    3) have a resoluton which is a power of 2. 
+The available textures are automatically filtered 
+among those loaded in the resource manager.)");
+            ImGui::EndTooltip();
+        }
+    }
+    else if (ImGui::Button(label.c_str(), ImVec2(buttonSize, 0)))
+    {
+        buttonPressed = true;
+    }
+    return buttonPressed;
+}
+
+//----------------------------------------------------------------------------//
+
+void CubemapResource::renderReplaceButtonGui
+(
+    const UPtrVector<Resource>& resources, 
+    DeferredActionBuffer& dab
+)
+{
+    if (ImGui::Button("Edit", ImVec2(-1, 0)))
+    {
+        ImGui::OpenPopup("##editCubemapPopup");
+        editorGuiData_.faceResolution = {0, 0};
+        for (int i=0;i<6;i++)
+            editorGuiData_.selectedTextureResources[i] = 
+                unmanagedFaces_[i].getWeak();
+    }   
+    if (ImGui::BeginPopup("##editCubemapPopup"))
+    {
+        if (renderEditorButtonGui(editorGuiData_, resources, "Edit cubemap"))
+        {
+            dab.add
+            (
+                [this]()
+                {
+                    set(editorGuiData_.selectedTextureResources);
+                }
+            );
+        }
+        ImGui::EndPopup();
+    }
 }
 
 }

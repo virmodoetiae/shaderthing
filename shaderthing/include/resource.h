@@ -162,7 +162,7 @@ public:
     );
     virtual void           renderReplaceButtonGui
     (
-        UPtrVector<Resource>& resources, 
+        const UPtrVector<Resource>& resources, 
         DeferredActionBuffer& dab
     ){}
     
@@ -329,6 +329,7 @@ class Texture2DResource : public TextureNDResource<vir::TextureBuffer2D>
     const unsigned char*  rawData_     = nullptr;
     unsigned int          rawDataSize_ = 0;
     std::string           originalFileExtension_;
+    mutable WPtrVector<Resource>  clientResources_;
     
     Texture2DResource() : TextureNDResource(Type::Texture2D, editorGuiData_) {}
     DELETE_COPY(Texture2DResource)
@@ -365,16 +366,12 @@ public:
     unsigned int rawDataSize() const {return rawDataSize_;}
     bool hasRawData() const {return rawData_ != nullptr;}
     
-    // TODO Disgusting, find another way
-    bool isUsedByOtherResources
-    (
-        const UPtrVector<Resource>& resources
-    ) const;
-
-    std::vector<const std::string*> clientResourceNames
-    (
-        const UPtrVector<Resource>& resources
-    ) const;
+    const WPtrVector<Resource>& clientResources() const 
+    {
+        return clientResources_;
+    }
+    void addClientResource(WPtr<Resource> resource) const;
+    void removeClientResource(WPtr<Resource> resource) const;
 
     // GUI ---------------------------------------------------------------------
 
@@ -399,15 +396,18 @@ public:
 
     void renderReplaceButtonGui
     (
-        UPtrVector<Resource>& resources, 
+        const UPtrVector<Resource>& resources, 
         DeferredActionBuffer& dab
     ) override;
+
+    void renderClientResourceLock();
 };
 
 //----------------------------------------------------------------------------//
 
 class AnimatedTexture2DResource : 
-    public ManagedResource<vir::AnimatedTextureBuffer2D>
+    public ManagedResource<vir::AnimatedTextureBuffer2D>, 
+    public vir::EnableWeakFromThis<AnimatedTexture2DResource>
 {
     const unsigned char*                 rawData_               = nullptr;
     unsigned int                         rawDataSize_           = 0;
@@ -462,14 +462,16 @@ public:
 
     void renderReplaceButtonGui
     (
-        UPtrVector<Resource>& resources, 
+        const UPtrVector<Resource>& resources, 
         DeferredActionBuffer& dab
     ) override;
 };
 
 //----------------------------------------------------------------------------//
 
-class CubemapResource : public ManagedResource<vir::CubeMapBuffer>
+class CubemapResource : 
+    public ManagedResource<vir::CubeMapBuffer>, 
+    public vir::EnableWeakFromThis<CubemapResource>
 {
     std::array<WPtr<Texture2DResource>, 6> unmanagedFaces_;
     
@@ -498,6 +500,33 @@ public:
     {
         return unmanagedFaces_;
     }
+
+    // GUI ---------------------------------------------------------------------
+
+    struct EditorGuiData
+    {
+        std::array<WPtr<Texture2DResource>, 6> selectedTextureResources;
+        glm::uvec2 faceResolution = {0, 0};
+    };
+
+protected:
+
+    EditorGuiData editorGuiData_;
+
+public:
+
+    static bool renderEditorButtonGui
+    (
+        EditorGuiData& egd, 
+        const UPtrVector<Resource>& resources,
+        const std::string& label
+    );
+
+    void renderReplaceButtonGui
+    (
+        const UPtrVector<Resource>& resources, 
+        DeferredActionBuffer& dab
+    ) override;
 };
 
 //----------------------------------------------------------------------------//

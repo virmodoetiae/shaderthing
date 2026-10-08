@@ -366,7 +366,7 @@ public:
     static UniquePtr<CubeMapBuffer> create
     (
         const unsigned char* fileData[6], 
-        uint32_t size,
+        uint32_t size[6],
         InternalFormat internalFormat = InternalFormat::Undefined
     );
     static UniquePtr<CubeMapBuffer> create

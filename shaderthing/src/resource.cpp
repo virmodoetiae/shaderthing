@@ -357,85 +357,22 @@ void Texture2DResource::readData(float*& data, bool allocate) const
 
 //----------------------------------------------------------------------------//
 
-bool Texture2DResource::isUsedByOtherResources
-(
-    const UPtrVector<Resource>& resources
-) const
+void Texture2DResource::addClientResource(WPtr<Resource> resource) const
 {
-    std::vector<const std::string*> usedBy(0);
-    for (auto& r : resources)
-    {
-        if (r->type() == Resource::Type::Cubemap)
-        {
-            auto cubemap = (const CubemapResource*)r.get();
-            auto faces = cubemap->faces();
-            for (int i=0; i<6; i++)
-            {
-                if (faces[i]->name() != name())
-                    continue;
-                return true;
-            }
-        }
-        else if 
-        (
-            r->type() == Resource::Type::AnimatedTexture2D
-        )
-        {
-            auto animation = 
-                (const AnimatedTexture2DResource*)r.get();
-            for (auto& frame : animation->unmanagedFrames())
-            {
-                if (frame->name() != name())
-                    continue;
-                return true;
-            }
-        }
-    }
-    return false;
+    auto it = 
+        std::find(clientResources_.begin(), clientResources_.end(), resource);
+    if (it == clientResources_.end())
+        clientResources_.emplace_back(resource);
 }
 
 //----------------------------------------------------------------------------//
 
-std::vector<const std::string*> Texture2DResource::clientResourceNames
-(
-    const UPtrVector<Resource>& resources
-) const
+void Texture2DResource::removeClientResource(WPtr<Resource> resource) const
 {
-    std::vector<const std::string*> usedBy(0);
-    for (auto& r : resources)
-    {
-        if (r->type() == Resource::Type::Cubemap)
-        {
-            auto cubemap = (const CubemapResource*)r.get();
-            auto faces = cubemap->faces();
-            for (int i=0; i<6; i++)
-            {
-                if (faces[i]->name() != name())
-                    continue;
-                usedBy.emplace_back
-                (
-                    cubemap->namePtr()
-                );
-                break;
-            }
-        }
-        else if 
-        (
-            r->type() == Resource::Type::AnimatedTexture2D
-        )
-        {
-            auto animation = 
-                (const AnimatedTexture2DResource*)r.get();
-            for (auto& frame : animation->unmanagedFrames())
-            {
-                if (frame->name() != name())
-                    continue;
-                usedBy.emplace_back(r->namePtr());
-                break;
-            }
-        }
-    }
-    return usedBy;
+    auto it = 
+        std::find(clientResources_.begin(), clientResources_.end(), resource);
+    if (it != clientResources_.end())
+        clientResources_.erase(it);
 }
 
 //----------------------------------------------------------------------------//
@@ -694,7 +631,9 @@ UPtr<CubemapResource> CubemapResource::create
 {
     auto resource = UPtr<CubemapResource>(new CubemapResource());
     if (resource->set(faces))
+    {
         return resource;
+    }
     return vir::nullUniquePtr<CubemapResource>();
 }
 
@@ -702,7 +641,12 @@ UPtr<CubemapResource> CubemapResource::create
 
 CubemapResource::~CubemapResource()
 {
-
+    auto thisWPtr = weakFromThis();
+    for (auto& r : unmanagedFaces_)
+    {
+        if (r.valid())
+            r->removeClientResource(thisWPtr);
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -716,34 +660,45 @@ bool CubemapResource::set
     for (int i=0; i<6; i++)
     {
         auto& face = faces[i];
-        if (!face.valid()) // At least one Texture2DResouce is invalidated, quit
+        if (!face.valid())
             return false; 
         nativeFaces[i] = face->native();
     }
     if (!vir::CubeMapBuffer::validFaces(nativeFaces))
         return false;
     const unsigned char* nativeFaceData[6];
-    unsigned int size = faces[0]->rawDataSize();
+    unsigned int sizes[6]; //= faces[0]->rawDataSize();
     for (int i=0; i<6; i++)
     {
         auto& face = faces[i];
         nativeFaceData[i] = face->rawData();
-        if (face->rawDataSize() != size) // All faces must have the same size
-            return false;
+        sizes[i] = face->rawDataSize();
     }
     
+    FilterMode minFilterMode0 = native_.valid() ? 
+        minFilterMode() : FilterMode::Nearest;
+    FilterMode magFilterMode0 = native_.valid() ? 
+        magFilterMode() : FilterMode::Linear;
     auto native = vir::CubeMapBuffer::create
     (
         nativeFaceData, 
-        size, 
+        sizes, 
         vir::TextureBuffer::InternalFormat::RGBA_UNI_8
     );
     if (native == nullptr)
         return false;
     native_ = std::move(native);
+    auto thisWPtr = weakFromThis();
     for (int i=0; i<6; i++)
+    {
+        if (unmanagedFaces_[i].valid())
+            unmanagedFaces_[i]->removeClientResource(thisWPtr);
         unmanagedFaces_[i] = faces[i];
+        unmanagedFaces_[i]->addClientResource(thisWPtr);
+    }
     setThisInClientUniforms();
+    setMinFilterMode(minFilterMode0);
+    setMagFilterMode(magFilterMode0);
     return true;
 }
 
