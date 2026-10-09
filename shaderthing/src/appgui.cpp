@@ -2480,6 +2480,7 @@ void App::renderAddResourceButtonGui(int row)
         renderLoadResourceFromFileButtonGui(buttonWidth);
         renderCreateTexture2DButtonGui(buttonWidth);
         renderCreateTexture3DButtonGui(buttonWidth);
+        renderCreateAnimatedTexture2DButtonGui(buttonWidth);
         renderCreateCubemapButtonGui(buttonWidth);
         ImGui::EndPopup();
     }
@@ -2636,6 +2637,49 @@ the project)");
 
 //----------------------------------------------------------------------------//
 
+void App::renderCreateAnimatedTexture2DButtonGui(float width)
+{
+    static AnimatedTexture2DResource::EditorGuiData editorGuiData = {};
+    if (ImGui::Button("Create animation", ImVec2(width, 0)))
+    {
+        ImGui::OpenPopup("##createAnimationPopup");
+        editorGuiData.frameResolution = {0u, 0u};
+    }   
+    if (ImGui::BeginPopup("##createAnimationPopup"))
+    {
+        if 
+        (
+            AnimatedTexture2DResource::renderEditorButtonGui
+            (
+                editorGuiData, 
+                resources, 
+                "Create"
+            )
+        )
+        {
+            auto* egd = &editorGuiData;
+            deferredActionBuffer.add
+            (
+                [this, egd]()
+                {
+                    resources.emplace_back
+                    (
+                        AnimatedTexture2DResource::create
+                        (
+                            egd->unmanagedFrames
+                        )
+                    );
+                    egd->unmanagedFrames.clear();
+                    egd->orderedUnmanagedFrameNames.clear();
+                }
+            );
+        }
+        ImGui::EndPopup();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
 void App::renderCreateCubemapButtonGui(float width)
 {
     static CubemapResource::EditorGuiData editorGuiData = {};
@@ -2655,7 +2699,7 @@ void App::renderCreateCubemapButtonGui(float width)
             (
                 editorGuiData, 
                 resources, 
-                "Create cubemap"
+                "Create"
             )
         )
         {

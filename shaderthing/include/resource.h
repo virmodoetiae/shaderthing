@@ -460,6 +460,29 @@ public:
         return unmanagedFrames_;
     }
 
+    // GUI ---------------------------------------------------------------------
+
+    struct EditorGuiData
+    {
+        std::vector<WPtr<Texture2DResource>> unmanagedFrames;
+        std::vector<std::string> orderedUnmanagedFrameNames;
+        glm::uvec2 frameResolution = {0, 0};
+    };
+
+protected:
+
+    EditorGuiData editorGuiData_;
+
+public:
+
+    static bool renderEditorButtonGui
+    (
+        EditorGuiData& egd, 
+        const UPtrVector<Resource>& resources,
+        const std::string& label
+    );
+
+
     void renderReplaceButtonGui
     (
         const UPtrVector<Resource>& resources, 

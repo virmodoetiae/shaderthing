@@ -501,6 +501,19 @@ bool AnimatedTexture2DResource::set
             const_cast<vir::TextureBuffer2D*>(frame->native())
         );
     }
+    // Preserve settings if possible
+    bool preserveSettings = native_.valid();
+    float fps;
+    WrapMode wrapModes[2];
+    FilterMode filterModes[2];
+    if (preserveSettings)
+    {
+        fps = native_->fps();
+        wrapModes[0] = wrapMode(0);
+        wrapModes[1] = wrapMode(1);
+        filterModes[0] = minFilterMode();
+        filterModes[1] = magFilterMode();
+    }
     auto native = vir::AnimatedTextureBuffer2D::create
     (
         nativeFrames,
@@ -515,6 +528,14 @@ bool AnimatedTexture2DResource::set
     native_ = std::move(native);
     rawDataSize_ = 0;
     setThisInClientUniforms();
+    if (preserveSettings)
+    {
+        native_->setFps(fps);
+        setWrapMode(0, wrapModes[0]);
+        setWrapMode(1, wrapModes[1]);
+        setMinFilterMode(filterModes[0]);
+        setMagFilterMode(filterModes[1]);
+    }
     return true;
 }
 
@@ -674,11 +695,13 @@ bool CubemapResource::set
         nativeFaceData[i] = face->rawData();
         sizes[i] = face->rawDataSize();
     }
-    
-    FilterMode minFilterMode0 = native_.valid() ? 
-        minFilterMode() : FilterMode::Nearest;
-    FilterMode magFilterMode0 = native_.valid() ? 
-        magFilterMode() : FilterMode::Linear;
+    bool preserveSettings = native_.valid();
+    FilterMode filterModes[2];
+    if (preserveSettings)
+    {
+        filterModes[0] = minFilterMode();
+        filterModes[1] = magFilterMode();
+    }
     auto native = vir::CubeMapBuffer::create
     (
         nativeFaceData, 
@@ -697,8 +720,11 @@ bool CubemapResource::set
         unmanagedFaces_[i]->addClientResource(thisWPtr);
     }
     setThisInClientUniforms();
-    setMinFilterMode(minFilterMode0);
-    setMagFilterMode(magFilterMode0);
+    if (preserveSettings)
+    {
+        setMinFilterMode(filterModes[0]);
+        setMagFilterMode(filterModes[1]);
+    }
     return true;
 }
 

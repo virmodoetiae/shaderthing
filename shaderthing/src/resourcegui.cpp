@@ -670,95 +670,217 @@ bool Texture2DResource::set
 
 //----------------------------------------------------------------------------//
 
+bool AnimatedTexture2DResource::renderEditorButtonGui
+(
+    EditorGuiData& egd, 
+    const UPtrVector<Resource>& resources,
+    const std::string& label
+)
+{
+    bool buttonPressed = false;
+    ImGui::SeparatorText("Animation frames");
+    int nFrames = egd.unmanagedFrames.size();
+    if (egd.frameResolution == glm::uvec2{0u, 0u} && nFrames == 1)
+        egd.frameResolution = 
+        {
+            egd.unmanagedFrames[0]->width(),
+            egd.unmanagedFrames[0]->height()
+        };
+    static bool reordered(false);
+    int iFrameToBeDeleted = -1;
+    auto renumber = [&egd]()
+    {
+        for (size_t k = 0; k < egd.unmanagedFrames.size(); k++)
+            egd.orderedUnmanagedFrameNames[k] =
+                std::to_string(k+1) + " - " + egd.unmanagedFrames[k]->name();
+    };
+    ImGui::BeginChild
+    (
+        "##framesChild", 
+        ImVec2
+        (
+            ImGui::GetContentRegionAvail().x, 
+            std::min
+            (
+                (float)std::max(nFrames, 1), 
+                15.f
+            )*
+            ImGui::GetTextLineHeightWithSpacing()
+        ), 
+        false
+    );
+    for (int i=0; i<nFrames; i++)
+    {
+        ImGui::PushID(i);
+        if (ImGui::SmallButton(ICON_FA_TRASH))
+            iFrameToBeDeleted = i;
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::Selectable
+        (
+            egd.orderedUnmanagedFrameNames[i].c_str(),
+            false,
+            ImGuiSelectableFlags_DontClosePopups
+        );
+        if (ImGui::IsItemActive())
+        {
+            float mouseY = ImGui::GetMousePos().y;
+            int dir =
+                mouseY < ImGui::GetItemRectMin().y ? -1 :
+                mouseY > ImGui::GetItemRectMax().y ? +1 : 0;
+            int j = i + dir;
+            if (dir != 0 && j >= 0 && j < nFrames)
+            {
+                std::swap(egd.unmanagedFrames[i], egd.unmanagedFrames[j]);
+                std::swap
+                (
+                    egd.orderedUnmanagedFrameNames[i],
+                    egd.orderedUnmanagedFrameNames[j]
+                );
+                reordered = true;
+            }
+        }
+    }
+    if (reordered && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    {
+        renumber();
+        reordered = false;
+    }
+    ImGui::EndChild();
+    if (iFrameToBeDeleted != -1)
+    {
+        egd.unmanagedFrames.erase
+        (
+            egd.unmanagedFrames.begin() + iFrameToBeDeleted
+        );
+        egd.orderedUnmanagedFrameNames.erase
+        (
+            egd.orderedUnmanagedFrameNames.begin() + iFrameToBeDeleted
+        );
+        renumber();
+    }
+    if
+    (
+        ImGui::BeginCombo
+        (
+            "##addAnimationFrameCombo",
+            "Select frame to add"
+        )
+    )
+    {
+        for (auto& r : resources)
+        {
+            if 
+            (
+                r->type() != Resource::Type::Texture2D ||
+                (
+                    egd.frameResolution.x * egd.frameResolution.y > 0 && 
+                    (
+                        r->width() != egd.frameResolution.x ||
+                        r->height() != egd.frameResolution.y
+                    )
+                )
+            )
+                continue;
+            if (ImGui::Selectable(r->name().c_str()))
+            {
+                egd.unmanagedFrames.emplace_back
+                (
+                    r.dynamicDowncastTo<Texture2DResource>().getWeak())
+                ;
+                egd.orderedUnmanagedFrameNames.emplace_back
+                (
+                    std::to_string(egd.unmanagedFrames.size()) +
+                    " - " + r->name()
+                );
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (nFrames == 0)
+        ImGui::BeginDisabled();
+    if (ImGui::Button(label.c_str(), ImVec2(-1,0)))
+        buttonPressed = true;
+    if (nFrames == 0)
+        ImGui::EndDisabled();
+
+    return buttonPressed;
+}
+
+//----------------------------------------------------------------------------//
+
 void AnimatedTexture2DResource::renderReplaceButtonGui
 (
     const UPtrVector<Resource>& resources, 
     DeferredActionBuffer& dab
 )
 {
-    if (ImGui::Button("Replace", ImVec2(-1, 0)))
+    bool fromFile = unmanagedFrames_.size() == 0;
+    if (ImGui::Button(fromFile ? "Replace" : "Edit", ImVec2(-1, 0)))
     {
-        Resource::fileDialog.runOpenFileDialog
-        (
-            "Select a GIF",
-            {
-                "Image files (.gif)", 
-                "**.gif"
-            },
-            "."
-        );
-        dab.add
-        (
-            [this, &resources]()
-            {
-                auto filepath = 
-                    Resource::fileDialog.selection().front();
-                dynamic_cast<AnimatedTexture2DResource*>(this)->
+        // If this animation was loaded from a file, render the file selector
+        if (fromFile)
+        {
+            Resource::fileDialog.runOpenFileDialog
+            (
+                "Select a GIF",
+                {
+                    "Image files (.gif)", 
+                    "**.gif"
+                },
+                "."
+            );
+            dab.add
+            (
+                [this, &resources]()
+                {
+                    auto filepath = 
+                        Resource::fileDialog.selection().front();
                     set(filepath);
-                std::string name = Helpers::filename(filepath);
-                Helpers::enforceUniqueName
-                (
-                    name, 
-                    resources, 
-                    (Resource*)this
-                );
-                setName(name);
-            },
-            []() -> bool
-            {
-                return Resource::fileDialog.validSelection();
-            }
-        );
+                    std::string name = Helpers::filename(filepath);
+                    Helpers::enforceUniqueName
+                    (
+                        name, 
+                        resources, 
+                        (Resource*)this
+                    );
+                    setName(name);
+                },
+                []() -> bool
+                {
+                    return Resource::fileDialog.validSelection();
+                }
+            );
+        }
+        else // if this animation is created by hand, render the editor
+        {
+            ImGui::OpenPopup("##editAnimationPopup");
+            editorGuiData_.frameResolution = {0u, 0u};
+            editorGuiData_.unmanagedFrames = unmanagedFrames_;
+            int nFrames = unmanagedFrames_.size();
+            editorGuiData_.orderedUnmanagedFrameNames.resize(nFrames);
+            for (int i=0; i<nFrames; i++)
+                editorGuiData_.orderedUnmanagedFrameNames[i] = 
+                    std::to_string(i+1) + " - " +
+                    unmanagedFrames_[i]->name();
+        }
     }
-}
-
-//----------------------------------------------------------------------------//
-
-void Texture3DResource::EditorGuiData::reset
-(
-    TextureNDResource<vir::TextureBuffer3D>& ref
-)
-{
-    resolution = {ref.width(), ref.height(), ref.depth()};
-    internalFormat = ref.internalFormat();
-}
-
-//----------------------------------------------------------------------------//
-
-bool Texture3DResource::EditorGuiData::isUnedited
-(
-    TextureNDResource<vir::TextureBuffer3D>& ref
-)
-{
-    return resolution == glm::ivec3{ref.width(), ref.height(), ref.depth()} && 
-        internalFormat == ref.internalFormat();
-}
-
-//----------------------------------------------------------------------------//
-
-bool Texture3DResource::EditorGuiData::renderResolutionEditorGui(int maxSize)
-{
-    if (ImGui::InputInt3("##t3drResolution", glm::value_ptr(resolution)))
+    if (ImGui::BeginPopup("##editAnimationPopup"))
     {
-        resolution = glm::clamp(resolution, 1, maxSize);
-        return true;
+        if (renderEditorButtonGui(editorGuiData_, resources, "Edit"))
+        {
+            dab.add
+            (
+                [this, &resources]()
+                {
+                    set(editorGuiData_.unmanagedFrames);
+                    editorGuiData_.unmanagedFrames.clear();
+                    editorGuiData_.orderedUnmanagedFrameNames.clear();
+                }
+            );
+        }
+        ImGui::EndPopup();
     }
-    return false;
-}
-
-//----------------------------------------------------------------------------//
-
-bool Texture3DResource::set
-(
-    TextureNDResource<vir::TextureBuffer3D>::EditorGuiData& edg
-)
-{
-    auto cedg = (Texture3DResource::EditorGuiData*)&edg;
-    return this->set
-    (
-        cedg->resolution.x, cedg->resolution.y, cedg->resolution.z, 
-        edg.internalFormat
-    );
 }
 
 //----------------------------------------------------------------------------//
@@ -918,6 +1040,55 @@ void CubemapResource::renderReplaceButtonGui
         }
         ImGui::EndPopup();
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void Texture3DResource::EditorGuiData::reset
+(
+    TextureNDResource<vir::TextureBuffer3D>& ref
+)
+{
+    resolution = {ref.width(), ref.height(), ref.depth()};
+    internalFormat = ref.internalFormat();
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture3DResource::EditorGuiData::isUnedited
+(
+    TextureNDResource<vir::TextureBuffer3D>& ref
+)
+{
+    return resolution == glm::ivec3{ref.width(), ref.height(), ref.depth()} && 
+        internalFormat == ref.internalFormat();
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture3DResource::EditorGuiData::renderResolutionEditorGui(int maxSize)
+{
+    if (ImGui::InputInt3("##t3drResolution", glm::value_ptr(resolution)))
+    {
+        resolution = glm::clamp(resolution, 1, maxSize);
+        return true;
+    }
+    return false;
+}
+
+//----------------------------------------------------------------------------//
+
+bool Texture3DResource::set
+(
+    TextureNDResource<vir::TextureBuffer3D>::EditorGuiData& edg
+)
+{
+    auto cedg = (Texture3DResource::EditorGuiData*)&edg;
+    return this->set
+    (
+        cedg->resolution.x, cedg->resolution.y, cedg->resolution.z, 
+        edg.internalFormat
+    );
 }
 
 }
