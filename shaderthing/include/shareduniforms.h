@@ -50,6 +50,7 @@ struct SharedUniforms
     float      iTimeDelta     = 0.f;
     float      iRandom        = 0.f;
     bool       iUserAction    = false;
+    bool       iExport        = true;
     glm::vec3  iWASD          = {0,0,-1};
     glm::vec3  iLook          = {0,0,1};
     glm::vec4  iMouse         = {0,0,0,0};

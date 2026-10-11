@@ -413,7 +413,6 @@ class AnimatedTexture2DResource :
     unsigned int                         rawDataSize_           = 0;
     std::string                          originalFileExtension_ = ".gif";
     std::vector<WPtr<Texture2DResource>> unmanagedFrames_;
-    float                                cachedTime_ = 0.f;
     
     AnimatedTexture2DResource() : ManagedResource(Type::AnimatedTexture2D) {}
     AnimatedTexture2DResource(const AnimatedTexture2DResource&)=delete;
@@ -422,9 +421,10 @@ class AnimatedTexture2DResource :
 
 public:
 
-    bool autoUpdateMipmap             = false;
-    bool isAnimationPaused            = false;
-    bool isAnimationBoundToGlobalTime = false;
+    bool  autoUpdateMipmap             = false;
+    bool  isAnimationPaused            = false;
+    bool  isAnimationBoundToGlobalTime = false;
+    float cachedTime                   = 0.f;
 
     static UPtr<AnimatedTexture2DResource> create(const std::string& filepath);
     static UPtr<AnimatedTexture2DResource> create

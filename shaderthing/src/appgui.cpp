@@ -126,9 +126,12 @@ void App::renderMenuBarGui()
                         return fileDialog.validSelection();
                     }
                 );
-            }//setProjectAction(Project::Action::Load, project_, fileDialog_);
+            }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
-                {}//setProjectAction(Project::Action::Save, project_, fileDialog_);
+            {
+                // TODO
+                //setProjectAction(Project::Action::Save, project_, fileDialog_);
+            }
             if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
             {
                 fileDialog.runSaveFileDialog
@@ -150,11 +153,11 @@ void App::renderMenuBarGui()
                         return fileDialog.validSelection();
                     }
                 );
-            }//setProjectAction(Project::Action::SaveAs,project_,fileDialog_);
+            }
             ImGui::Separator();
             if (ImGui::BeginMenu("Export"))
             {
-                //exporter_->renderGui(*sharedUniforms_, layers_);
+                renderExportGui();
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -178,8 +181,6 @@ void App::renderMenuBarGui()
                 )
                     setWindowResolution(resolution,false);
                 ImGui::PopItemWidth();
-                // TODO
-                
                 auto window = vir::Window::instance();
                 ImGui::Text("VSync              ");
                 ImGui::SameLine();
@@ -277,7 +278,6 @@ project exports)");
         }
         if (ImGui::BeginMenu("Resources"))
         {
-            // TODO
             renderResourcesMenuItemGui();
             shadersRequireRecompilation = 
                 sharedStorage->renderMenuItemGui();
@@ -379,7 +379,7 @@ project exports)");
         ImGui::Text("Any unsaved edits to the current project will be lost!");
         if (ImGui::Button("Confirm"))
         {
-            //setProjectAction(Project::Action::New, project_, fileDialog_);
+            // setProjectAction(Project::Action::New, project_, fileDialog_);
             deferredActionBuffer.add
             (
                 [this]()
@@ -400,16 +400,6 @@ project exports)");
 
 void App::renderLayersTabBarGui()
 {
-    /*
-    if (renderState.toggles.requestFullRecompilation)
-    {
-        for (auto& layer : layers)
-        {
-            layer->hasUncompiledEdits = true;
-        }
-        renderState.toggles.requestFullRecompilation = false;
-    }
-    */
     layersHaveUncompiledEdits = false;
     layersHaveCompilationErrors = false;
     for (auto& layer : layers)
@@ -2133,30 +2123,6 @@ bool App::renderUniformTableRowGui
             break;
         }
 
-        #define CHECK_RESOURCE_SELECTED                                        \
-        if (ImGui::Selectable(r->name().c_str()))                              \
-        {                                                                      \
-            if (resource != nullptr)                                           \
-            {                                                                  \
-                renderState.toggles.requestFullRecompilation =                 \
-                    renderState.toggles.requestFullRecompilation ||            \
-                    (resource->isInternalFormatUnsigned() !=                   \
-                    r->isInternalFormatUnsigned() && named);                   \
-                if (resource->isUsedByUniform(uniform.get()))                  \
-                    resource->removeClientUniform(uniform.get());              \
-            }                                                                  \
-            else if (named)                                                    \
-                renderState.toggles.requestFullRecompilation = true;           \
-            if (!r->isUsedByUniform(uniform.get()))                            \
-                r->addClientUniform(uniform.get());                            \
-            deferredActionBuffer.add                                           \
-            (                                                                  \
-                [&uniform, &r](){uniform->setResourcePtr(r);}                  \
-            );                                                                 \
-            su.iUserAction = true;                                             \
-            su.toggles.updateDataRangeII = true;                               \
-        }
-
         case vir::Uniform::Type::Sampler2D :
         case vir::Uniform::Type::Image2D :
         {
@@ -2177,7 +2143,8 @@ bool App::renderUniformTableRowGui
                         r->type() != Resource::Type::Framebuffer
                     )
                         continue;
-                    CHECK_RESOURCE_SELECTED
+                    if (ImGui::Selectable(r->name().c_str()))
+                        assignResourceToUniform(r, uniform);
                 }
                 ImGui::EndCombo();
             }
@@ -2198,7 +2165,8 @@ bool App::renderUniformTableRowGui
                 {
                     if (r->type() != Resource::Type::Texture3D)
                         continue;
-                    CHECK_RESOURCE_SELECTED
+                    if (ImGui::Selectable(r->name().c_str()))
+                        assignResourceToUniform(r, uniform);
                 }
                 ImGui::EndCombo();
             }
@@ -2219,7 +2187,8 @@ bool App::renderUniformTableRowGui
                 {
                     if (r->type() != Resource::Type::Cubemap)
                         continue;
-                    CHECK_RESOURCE_SELECTED
+                    if (ImGui::Selectable(r->name().c_str()))
+                        assignResourceToUniform(r, uniform);
                 }
                 ImGui::EndCombo();
             }
@@ -2347,8 +2316,14 @@ void App::renderResourcesTableRowGui(int row)
     int column = 0;
     START_ROW(row, column)
     START_COLUMN(column) // Actions column -------------------------------------
-    renderState.toggles.requestFullRecompilation = 
-        resource->renderActionsButtonGui(resources, deferredActionBuffer);
+    // The button returns true if any changes made require shade recompilation
+    if (resource->renderActionsButtonGui(resources, deferredActionBuffer))
+    {
+        deferredActionBuffer.add
+        (
+            [this](){for (auto& layer : layers) layer->compileShader();}
+        );
+    }
     END_COLUMN(column)
     START_COLUMN(column) // Type column ----------------------------------------
     std::string typeName = Resource::typeToName.at(resource->type());
@@ -2724,256 +2699,540 @@ void App::renderCreateCubemapButtonGui(float width)
 
 //----------------------------------------------------------------------------//
 
-/*
-
-void renderResourceMemoryEstimateWarning
-(
-    uint64_t textureSize,
-    InternalFormat internalFormat,
-    bool is2D
-)
+void App::renderExportGui()
 {
-    double requiredMemory = textureSize;
-    double memoryPerPixel = 
-        vir::TextureBuffer::internalFormatToBytes.at(internalFormat);
-    requiredMemory *= memoryPerPixel;
-    // Show a warning for good measure when creating beefier textures,
-    // threshold arbitrarily set at 64 MiB of VRAM
-    if (requiredMemory >= 67108864)
-    {
-        // Mip maps occupy a theoretical maximum of an additional 
-        // 1/8 + 1/64 + 1/512 + 1/4096 + 1/... = 1/7 of the memory
-        // occupied by the base level of a 3D texture, while for
-        // 2D textures this is 1/4 + 1/16 + 1/32 + ... = 1/3 of the
-        // memory occupied by the base level
-        double mipmapsMemory = 
-            std::floor(requiredMemory/memoryPerPixel/(is2D?3:7))*memoryPerPixel;
-        auto uom1 = Helpers::autoRescaleMemoryValue(requiredMemory);
-        auto uom2 = Helpers::autoRescaleMemoryValue(mipmapsMemory);
-        ImGui::PushStyleColor(ImGuiCol_Text, {1.f,1.f,0.f,1.f});
-        ImGui::Text(
-R"(This texture will occupy at least 
-%.1f %s of free VRAM, and up to 
-an additional %.1f %s for mipmaps. 
-Please, make sure your system has 
-at least the reported amount of 
-free VRAM to avoid program and/or 
-system crashes)",
-            requiredMemory, 
-            uom1,
-            mipmapsMemory, 
-            uom2
-        );
-        ImGui::PopStyleColor();
-    }
-}
+    auto& es = exportState;
+    float fontSize(ImGui::GetFontSize());
+    ImGui::Text("Export type                 ");
+    ImGui::SameLine();
 
-//----------------------------------------------------------------------------//
+    static std::map<ExportType, const char*> exportTypeToName = {
+        {ExportType::Image, "Image"},
+        {ExportType::GIF, "GIF"},
+        {ExportType::VideoFrames, "Video frames"}
+    };
 
-bool createOrResizeOrReformatTexture2DGui
-(
-    UPtr<Resource>& resource,
-    const bool enablePopup,
-    const bool resetValues,
-    const ImVec2 buttonSize
-)
-{
-    bool valid = false;
-    static glm::ivec2 resolution(1, 1);
-    static InternalFormat internalFormat = InternalFormat::RGBA_SF_32;
-    if (enablePopup && ImGui::Button("Create texture-2D", buttonSize))
-    {
-        ImGui::OpenPopup("##createTexturePopup");
-        resolution = {1,1};
-        internalFormat = InternalFormat::RGBA_SF_32;
-    }
-    if (resetValues && resource != nullptr)
-    {
-        resolution.x = resource->width();
-        resolution.y = resource->height();
-        internalFormat = resource->internalFormat();
-    }
-    if (ImGui::BeginPopup("##createTexturePopup") || !enablePopup)
-    {
-        if (resource == nullptr)
-        {
-            ImGui::Text(
-R"(Create a blank texture, useful for e.g., 
-shader data storage via imageLoad and
-imageStore operations. Data written to 
-these textures will not be saved within 
-the project)");
-            ImGui::Separator();
-        }
-        if (enablePopup)
-            ImGui::Text("Resolution ");
-        else
-            ImGui::Text("Resolution          ");
-        ImGui::SameLine();
-        float itemWidth = -1; //resource == nullptr ? -1 : 12*ImGui::GetFontSize();
-        ImGui::PushItemWidth(itemWidth);
-        if 
+    ImGui::PushItemWidth(-1);
+    if 
+    (
+        ImGui::BeginCombo
         (
-            ImGui::InputInt2
-            (
-                "##windowResolution", 
-                glm::value_ptr(resolution)
-            )
+            "##exportTypeSelector", 
+            exportTypeToName[es.type]
         )
+    )
+    {
+        for(auto e : exportTypeToName)
         {
-            resolution.x = std::min(std::max(resolution.x, 1), 4096);
-            resolution.y = std::min(std::max(resolution.y, 1), 4096);
-        }
-        ImGui::PopItemWidth();
-        if (enablePopup)
-            ImGui::Text("Format     ");
-        else
-            ImGui::Text("Format              ");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(itemWidth);
-        // RGB formats are not easy to work with due to memory-alignment 
-        // limitations so they are omitted
-        static std::vector<InternalFormat> supportedFormats = 
-        {
-            InternalFormat::R_UI_32,
-            InternalFormat::R_SF_32,
-            InternalFormat::RG_UI_32,
-            InternalFormat::RG_SF_32,
-            InternalFormat::RGBA_UI_32,
-            InternalFormat::RGBA_SF_32
-        };
-        if
-        (
-            ImGui::BeginCombo
+            bool disabled
             (
-                "##textureFormatCombo",
-                vir::TextureBuffer2D::internalFormatToName.at
+                e.first == ExportType::GIF && 
+                !es.gifEncoder->canRunOnDeviceInUse()
+            );
+            if (disabled)
+                ImGui::BeginDisabled();
+            if 
+            (
+                ImGui::Selectable
                 (
-                    internalFormat
-                ).c_str()
-            )
-        )
-        {
-            for (auto format : supportedFormats)
-            {
-                if 
-                (
-                    ImGui::Selectable
-                    (
-                        vir::TextureBuffer2D::internalFormatToName.at
-                        (
-                            format
-                        ).c_str()
-                    )
+                    disabled ? 
+                    "GIF (requires OpenGL v4.3 or above)" :
+                    e.second
                 )
-                {
-                    internalFormat = format;
-                }
-            }
-            ImGui::EndCombo();
-        }
-        ImGui::PopItemWidth();
-        bool disabled = false;
-        if (resource != nullptr)
-        {
-            ImGui::Text("VRAM footprint      ");
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+            )
             {
-                ImGui::Text("VRAM memory occupied by this texture");
+                es.type = e.first;
+                // Ensure valid GIF fps (can only be such that the resulting
+                // frame duration is an integer number of hundreds of a second)
+                if (es.type == ExportType::GIF)
+                    es.fps = 
+                        100.f/int(100.f/std::min(es.fps,100.f)+.5f);
+            }
+            if (disabled)
+                ImGui::EndDisabled();
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    if (es.type != ExportType::Image)
+    {
+        ImGui::Text("Start time                  ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        ImGui::InputFloat("##exporterStartTime", &es.startTime);
+        ImGui::PopItemWidth();
+        ImGui::Text("End time                    ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        ImGui::InputFloat("##exporterEndTime", &es.endTime);
+        ImGui::PopItemWidth();
+        ImGui::Text("Target FPS                  ");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+        bool fpsChanged = ImGui::InputFloat
+        (
+            "##exporterFps", 
+            &es.fps, 
+            0.0f, 
+            0.0f, 
+            "%.2f"
+        );
+        ImGui::PopItemWidth();
+        
+        ImGui::PushItemWidth(-1);
+        if (es.type == ExportType::GIF)
+        {
+            // Ensure valid GIF fps (can only be such that the resulting frame
+            // duration is an integer number of hundreds of a second)
+            if (fpsChanged)
+                es.fps = 
+                    100.f/int(100.f/std::min(es.fps,100.f)+.5f);
+            
+            ImGui::Text("Palette bit depth           ");
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                ImGui::BeginTooltip()
+            )
+            {
+                ImGui::Text(
+R"(Determines the GIF palette size. The number of colors in the palette is 
+2^(palette bit depth))");
                 ImGui::EndTooltip();
             }
             ImGui::SameLine();
-            double maxMemoryFootprint = resource->maxMemoryFootprint();
-            auto uom = Helpers::autoRescaleMemoryValue(maxMemoryFootprint);
-            ImGui::Text("%.1f %s", maxMemoryFootprint, uom);
-            
+            ImGui::PushItemWidth(-1);
+            ImGui::SliderInt
+            (
+                "##exporterGifPaletteBitDepth", 
+                (int*)&es.gifPaletteBitDepth, 
+                1, 
+                8
+            );
+            ImGui::PopItemWidth();
+
+            ImGui::Text("Palette mode                ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-1);
             if 
             (
-                (int)resource->width() == resolution.x && 
-                (int)resource->height() == resolution.y && 
-                resource->internalFormat() == internalFormat
-            )
-            {
-                ImGui::BeginDisabled();
-                disabled = true;
-            }
-        }
-        if 
-        (
-            ImGui::Button
-            (
-                resource == nullptr ? "Create texture-2D" : "Resize or reformat", 
-                ImVec2(-1, 0)
-            )
-        )
-        {
-            if (resource != nullptr)
-            {
-                auto wrapMode0 = resource->wrapMode(0);
-                auto wrapMode1 = resource->wrapMode(1);
-                auto minFilterMode = resource->minFilterMode();
-                auto magFilterMode = resource->magFilterMode();
-                auto format0 = resource->internalFormat();
-                if 
+                ImGui::BeginCombo
                 (
-                    ((Texture2DResource*)resource.get())->set
-                    (
-                        resolution.x, 
-                        resolution.y, 
-                        internalFormat
-                    )
+                    "##paletteModeSelector", 
+                    vir::GifEncoder::paletteModeToName[es.gifPaletteMode]
                 )
+            )
+            {
+                for(auto e : vir::GifEncoder::paletteModeToName)
                 {
-                    valid = true;
-                    auto format = resource->internalFormat();
-                    resource->setWrapMode(0, wrapMode0);
-                    resource->setWrapMode(1, wrapMode1);
-                    resource->setMinFilterMode(minFilterMode);
-                    resource->setMagFilterMode(magFilterMode);
-                    if (format != format0)
+                    if (ImGui::Selectable(e.second))
+                        es.gifPaletteMode = e.first;
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopItemWidth();
+            
+            ImGui::Text("Transparency cutoff         ");
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+                ImGui::BeginTooltip()
+            )
+            {
+                ImGui::Text(
+R"(Alpha channel threshold below which (threshold excluded) a pixel is considered
+as fully transparent. If set to 0, the output GIF file is fully opaque with no
+transparency)");
+                ImGui::EndTooltip();
+            }
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-1);
+            ImGui::SliderInt
+            (
+                "##exportToolAlphaCutoff", 
+                (int*)&es.gifAlphaCutoff, 
+                0, 
+                255
+            );
+            ImGui::PopItemWidth();
+            ImGui::Text("Color dithering             ");
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-1);
+            if 
+            (
+                ImGui::BeginCombo
+                (
+                    "##gifDitheringSelector", 
+                    vir::Quantizer::Settings::ditherModeToName.at
+                    (
+                        es.gifDitherMode
+                    ).c_str()
+                )
+            )
+            {
+                for(auto e : vir::Quantizer::Settings::ditherModeToName)
+                {
+                    if (ImGui::Selectable(e.second.c_str()))
                     {
-                        if (resource->clientUniforms_.size() > 0)
-                            Layer::Flags::requestRecompilation = true;
+                        es.gifDitherMode = e.first;
+                        break;
                     }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopItemWidth();
+        }
+    }
+    if (es.type != ExportType::Image)
+        ImGui::Text("Render passes per frame     ");
+    else
+        ImGui::Text("Render passes               ");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-1);
+    ImGui::InputInt("##nRenderPasses", (int*)&es.nRenderPasses);
+    es.nRenderPasses = 
+        std::min(std::max(1u, es.nRenderPasses), 32768u);
+    ImGui::PopItemWidth();
+    if (es.nRenderPasses > 1 && es.type != ExportType::Image)
+    {
+        ImGui::Text("Multi-pass first frame only ");
+        ImGui::SameLine();
+        ImGui::Checkbox
+        (
+            "##exportAreRenderPassesOnFirstFrameOnly", 
+            &es.areRenderPassesOnFirstFrameOnly
+        );
+    }
+
+    ImGui::Text("Reset iFrame after export   ");
+    ImGui::SameLine();
+    ImGui::Checkbox
+    (
+        "##resetFrameCounterAfterExport", 
+        &es.resetFrameCounterAfterExport
+    );
+
+    //--------------------------------------------------------------------------
+
+    auto window = vir::Window::instance();
+
+    ImGui::Separator();
+    ImGuiTableFlags flags = 
+        ImGuiTableFlags_BordersV | 
+        ImGuiTableFlags_BordersOuterH |
+        ImGuiTableFlags_SizingFixedFit;
+    if (ImGui::BeginTable("##exportResolutionTable", 3, flags))
+    {
+        // Declare columns
+        static ImGuiTableColumnFlags flags = 0;
+        ImGui::TableSetupColumn("Layer name", flags, 9.f*fontSize);
+        ImGui::TableSetupColumn("Export resolution", flags, 9.25f*fontSize);
+        ImGui::TableSetupColumn("Clear policy", flags, 9.5f*fontSize);
+        ImGui::TableHeadersRow();
+
+        glm::ivec2 outputResolution = es.outputResolution;
+        float& outputScale = es.outputResolutionScale;
+        bool& outputResolutionChanged = es.cache.outputResolutionChanged;
+        
+        // Actual table render -------------------------------------------------
+        int nRows = (int)layers.size();
+        for (int row = 0; row < nRows+1; row++)
+        {
+            int col = 0;
+            
+            ImGui::PushID(row);
+            ImGui::TableNextRow(0, 1.6*fontSize);
+            
+            if (row == 0) //
+            {
+                ImGui::TableSetColumnIndex(col++);
+                ImGui::Text("Output image");
+                
+                ImGui::TableSetColumnIndex(col++);
+                ImGui::PushItemWidth(6.75*fontSize);
+                glm::ivec2 outputResolution0 = outputResolution;
+                ImGui::InputInt2
+                (
+                    "##exportResolution", 
+                    glm::value_ptr(outputResolution)
+                );  
+                if (outputResolution0.x != outputResolution.x)
+                {
+                    outputResolution.y = 
+                        std::max(outputResolution.x/window->aspectRatio(), 1.f);
+                    outputResolutionChanged = true;
+                }
+                else if (outputResolution0.y != outputResolution.y)
+                {
+                    outputResolution.x = 
+                        std::max(outputResolution.y*window->aspectRatio(), 1.f);
+                    outputResolutionChanged = true;
+                }
+                outputResolution.x=std::max(outputResolution.x, 1);
+                outputResolution.y=std::max(outputResolution.y, 1);
+                if (outputResolutionChanged)
+                {
+                    outputScale = 
+                        outputResolution.x > outputResolution.y ?
+                        (float)outputResolution.x/window->width() :
+                        (float)outputResolution.y/window->height();
+                }
+                es.outputResolution = outputResolution;
+                ImGui::PopItemWidth();
+                ImGui::TableSetColumnIndex(col++);
+                ImGui::PopID();
+                continue;
+            }
+            
+            auto& layer = layers[row-1];
+            bool layerRendersToWindow
+            (
+                layer->renderingTarget() == Layer::RenderState::Target::Window
+            );
+            auto& les = layer->exportSettings;
+            auto& layerClearPolicy = les.clearPolicy;
+            auto& layerWindowResolutionScale = les.windowResolutionScale;
+            auto& layerExportResolution = les.resolution;
+            auto& layerExportScale = les.resolutionScale;
+            auto& layerRescale = les.rescaleWithOutput;
+
+            // Column 0 --------------------------------------------------------
+            ImGui::TableSetColumnIndex(col++);
+            ImGui::PushItemWidth(-1);
+            ImGui::Text(layer->name().c_str());
+            ImGui::PopItemWidth();
+
+            // Column 1 --------------------------------------------------------
+            ImGui::TableSetColumnIndex(col++);
+            ImGui::PushItemWidth(6.75*fontSize);
+            if (outputResolutionChanged)
+            {
+                layerWindowResolutionScale = outputScale;
+                if (layerRescale)
+                    layerExportResolution = 
+                        layer->resolution()*
+                        layerExportScale*outputScale + .5f;
+            }
+            else if (!layerRendersToWindow)
+            {
+                glm::ivec2 layerExportResolution0 = layerExportResolution;
+                bool layerExportResolutionChanged = 
+                    ImGui::InputInt2
+                    (
+                        "##exporterLayerResolution", 
+                        glm::value_ptr(layerExportResolution)
+                    );
+                if (layerExportResolution0.x != layerExportResolution.x)
+                {
+                    layerExportResolution.y = 
+                        std::max
+                        (
+                            layerExportResolution.x/layer->aspectRatio(),
+                            1.f
+                        );
+                }
+                else if (layerExportResolution0.y != layerExportResolution.y)
+                    layerExportResolution.x = 
+                        std::max
+                        (
+                            layerExportResolution.y*layer->aspectRatio(),
+                            1.f
+                        );
+                if (layerExportResolutionChanged)
+                {
+                    layerExportScale =
+                        layerExportResolution.x > layerExportResolution.y ?
+                        (float)layerExportResolution.x/outputScale/
+                            layer->resolution().x :
+                        (float)layerExportResolution.y/outputScale/
+                            layer->resolution().y;
                 }
             }
             else
             {
-                auto newResource = 
-                    Resource::create
-                    (
-                        resolution.x,
-                        resolution.y,
-                        internalFormat
-                    );
-                if (newResource != nullptr)
-                {
-                    resource = newResource;
-                    valid = true;
-                }
+                layerExportResolution = outputResolution;
+                ImGui::BeginDisabled();
+                ImGui::InputInt2
+                (
+                    "##exporterResolution", 
+                    glm::value_ptr(layerExportResolution)
+                );
+                ImGui::EndDisabled();
             }
-            resolution.x = resource->width();
-            resolution.y = resource->height();
-            internalFormat = ((Texture2DResource*)resource)->internalFormat();
-        }
-        if (!disabled || resource == nullptr)
-        {
-            createOrResizeOrReformatTextureMemoryEstimateGui
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-1);
+            bool layerRescale0(layerRescale);
+            if (layerRendersToWindow)
+                ImGui::BeginDisabled();
+            if 
             (
-                uint64_t(resolution.x)*uint64_t(resolution.y),
-                internalFormat,
-                true
-            );
-        }
-        if (disabled)
-            ImGui::EndDisabled();
-        if (enablePopup)
-            ImGui::EndPopup();
-    }
-    return valid;
-}
+                ImGui::Button
+                (
+                    layerRescale ? 
+                    ICON_FA_LOCK : 
+                    ICON_FA_LOCK_OPEN, 
+                    {-1,0}
+                )
+            )
+                layerRescale = !layerRescale;
+            if 
+            (
+                ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
+                ImGui::BeginTooltip()
+            )
+            {
+                if (layerRescale)
+                    ImGui::Text(
+ICON_FA_LOCK " - The layer resolution will rescale\nwith the output resolution"
+                    );
+                else
+                    ImGui::Text(
+ICON_FA_LOCK_OPEN " - The layer resolution will not rescale\nwith the output "
+"resolution"
+                    );
+                ImGui::EndTooltip();
+            }
+            if (layerRendersToWindow)
+                ImGui::EndDisabled();
+            if (layerRescale && !layerRescale0)
+            {
+                layerExportScale = 1;
+                layerExportResolution = 
+                    (glm::vec2)layer->resolution()*
+                    layerExportScale*outputScale + .5f;
+            }
+            ImGui::PopItemWidth();
 
-*/
+            // Column 2 --------------------------------------------------------
+            ImGui::TableSetColumnIndex(col++);
+            if (!layerRendersToWindow)
+            {
+                static std::map
+                <
+                    Layer::ExportSettings::FramebufferClearPolicy, 
+                    std::string
+                > frameBufferClearPolicyToName
+                {
+                    {
+                        Layer::ExportSettings::FramebufferClearPolicy::
+                        ClearOnEveryFrameExport, 
+                        "On every frame"
+                    },
+                    {
+                        Layer::ExportSettings::FramebufferClearPolicy::
+                        ClearOnFirstFrameExport, 
+                        "On first frame"
+                    },
+                    {Layer::ExportSettings::FramebufferClearPolicy::
+                        None, 
+                        "None"
+                    }
+                };
+                auto selectedExportClearPolicy = 
+                        frameBufferClearPolicyToName.at(layerClearPolicy);
+                ImGui::PushItemWidth(-1);
+                if 
+                (
+                    ImGui::BeginCombo
+                    (
+                        "##layerExportClearPolicy",
+                        selectedExportClearPolicy.c_str()
+                    )
+                )
+                {
+                    for (auto entry : frameBufferClearPolicyToName)
+                    {
+                        if (ImGui::Selectable(entry.second.c_str()))
+                            layerClearPolicy = entry.first;
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::PopItemWidth();
+            }
+            
+            ImGui::PopID();
+
+            layerExportResolution.x=std::max(layerExportResolution.x, 1);
+            layerExportResolution.y=std::max(layerExportResolution.y, 1);
+        }
+        outputResolutionChanged = false;
+        ImGui::EndTable();
+    }
+
+    //--------------------------------------------------------------------------
+
+    ImGui::Separator();
+
+    bool disableExportButton = es.isActive || renderState.isPaused;
+    if (disableExportButton)
+        ImGui::BeginDisabled();
+    if 
+    (
+        ImGui::Button
+        (
+            es.isActive ? 
+            (
+                es.gifPaletteMode == PaletteMode::StaticAveraged && 
+                !es.isAveragedPaletteReady ?
+                "Computing averaged palette..." :
+                "Exporting..." 
+            ) : 
+            "Export", 
+            {-1,0}
+        ))
+    {
+        std::vector<std::string> filters;
+        if (es.type == ExportType::GIF)
+            filters = {"Image files (*.gif)", "*.gif"};
+        else
+            filters = {"Image files (*.png)", "*.png"};
+        fileDialog.runSaveFileDialog("Export graphics to file", filters);
+
+        // Will begin export once the output filepath for the export is provided
+        deferredActionBuffer.add
+        (
+            [this]()
+            {
+                beginExport();
+            },
+            [this]()
+            {
+                return fileDialog.validSelection();
+            }
+        );
+    }
+    if (disableExportButton)
+        ImGui::EndDisabled();
+
+    if (es.isActive)
+    {   
+        float progress = 
+            (
+                (float)es.frameIndex +
+                (float)renderState.passIndex/es.nRenderPasses
+            )/std::max(es.nFrames, 1u);
+        float rate = 
+            1./
+            es.nFrames/
+            es.nRenderPasses/
+            std::max
+            (
+                vir::Window::instance()->time()->smoothOuterTimestep(), 
+                1e-4f
+            );
+        std::string text = 
+            Helpers::format(100.f*progress, 1)+" % | "+
+            Helpers::format((1.-progress)/rate, 1)+" s left";
+        ImGui::ProgressBar
+        (
+            progress, 
+            ImVec2(-1, 0.0f),
+            text.c_str()
+        );
+    }
+}
 
 //----------------------------------------------------------------------------//
 

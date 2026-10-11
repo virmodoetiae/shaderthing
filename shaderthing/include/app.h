@@ -67,9 +67,6 @@ struct RenderState
     struct Toggles
     {
         bool stepToNextFrame                  = false;
-        bool resetFrameCounterPreOrPostExport = true;
-        bool requestFullRecompilation         = false;
-        bool tiledRenderingPauseRequested     = false;
     };
     Toggles           toggles                 = {};
 };
@@ -84,19 +81,20 @@ struct RenderResult
 
 //----------------------------------------------------------------------------//
 
+enum class ExportType
+{
+    Image,
+    GIF,
+    VideoFrames
+};
+
 struct ExportState
 {
-    enum class ExportType
-    {
-        Image,
-        GIF,
-        VideoFrames
-    };
-    ExportType             exportType      = ExportType::Image;
+    ExportType             type      = ExportType::Image;
     
     UPtr<vir::Framebuffer> framebuffer;
     unsigned char*         framebufferData = nullptr;
-    vir::GifEncoder*       gifEncoder      = nullptr;
+    UPtr<vir::GifEncoder>  gifEncoder;
 
     bool         isActive                        = false;
     bool         isAveragedPaletteReady          = false;
@@ -120,6 +118,10 @@ struct ExportState
     struct Cache
     {
         std::string outputFilepathExtended;
+        bool        outputResolutionChanged      = false;
+        bool        wasVSyncEnabledBeforeExport; 
+        float       originalTime;
+        glm::vec2   originalResolution;
     };
     struct Toggles
     {
@@ -165,14 +167,15 @@ public:
 
     void createNewLayer(bool compileShader=true);
 
-    void preRenderUpdate();
+    RenderResult renderShaders();
+    
+    void update();
 
-    RenderResult renderShaders
-    (
-        vir::Framebuffer* target, 
-        const unsigned int nRenderPasses
-    );
-    void postRenderUpdate();
+    void beginExport();
+
+    void exportFrame();
+
+    void endExport();
     
     void setWindowResolution
     (
@@ -186,6 +189,12 @@ public:
     void addLayerToResources(WPtr<Layer> layer);
 
     void removeLayerFromResources(WPtr<Layer> layer);
+
+    void assignResourceToUniform
+    (
+        const UPtr<Resource>& resource, 
+        UPtr<Uniform>& uniform
+    );
 
     void toggleRenderingPaused(bool dueToFlowFps);
 
@@ -232,6 +241,10 @@ public:
 
     void renderMenuBarGui();
 
+    void renderExportGui();
+
+    void renderExamplesMenuItem();
+
     void renderLayersTabBarGui();
 
     // Uniforms
@@ -273,10 +286,6 @@ public:
     void renderCreateAnimatedTexture2DButtonGui(float width);
 
     void renderCreateCubemapButtonGui(float width);
-
-    // Menu bar
-
-    void renderExamplesMenuItem();
 };
 
 //----------------------------------------------------------------------------//

@@ -107,7 +107,8 @@ void Resource::setThisInClientUniforms()
 
 void Resource::addClientUniform(Uniform* u) 
 {
-    clientUniforms_.emplace_back(u);
+    if (!isUsedByUniform(u))
+        clientUniforms_.emplace_back(u);
 }
 
 //----------------------------------------------------------------------------//

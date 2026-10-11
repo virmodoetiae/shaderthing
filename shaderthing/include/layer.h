@@ -149,6 +149,8 @@ public:
 
     const glm::vec2& resolution() const {return resolution_;}
 
+    const float& aspectRatio() const {return aspectRatio_;}
+
     const float& depth() const {return depth_;}
 
     RenderState::Target renderingTarget() const {return renderState_.target;}

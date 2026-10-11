@@ -13,6 +13,8 @@
 
 */
 
+#include "thirdparty/stb/stb_image_write.h"
+
 #include "vir/include/vir.h"
 
 #include "shaderthing/include/app.h"
@@ -45,23 +47,11 @@ App::App()
         // GUI rendering (deferred actions, e.g., deleting layers, uniforms, 
         // etc.)
         renderControlPanelGui();
-        preRenderUpdate();
-        auto renderResult = renderShaders(nullptr, 1u);
-        postRenderUpdate();
-        /*
-        processProjectActions();
-        renderGui();
+        deferredActionBuffer.process();
+        auto renderResult = renderShaders();
         update();
-        auto result = Layer::renderShaders
-        (
-            layers_, 
-            exporter_->isRunning() ? exporter_->framebuffer().get() : nullptr, 
-            *sharedUniforms_,
-            exporter_->isRunning() ? exporter_->nRenderPasses() : 1
-        );
-        if (exporter_->isRunning() && result.renderPassesComplete)
-            exporter_->writeOutput();
-        */
+        if (exportState.isActive && renderResult.renderPassesComplete)
+            exportFrame();
         window->update(renderResult.flipWindowBuffer);
     }
 }
@@ -192,6 +182,10 @@ void App::initialize()
     font.imFont->Scale = 0.6;
     font.scale = &font.imFont->Scale;
 
+    //
+    exportState.gifEncoder = vir::makeUnique<vir::GifEncoder>();
+    exportState.outputResolution = sharedUniforms->iResolution;
+
     // Initialize shared uniforms
     sharedUniforms->initialize(renderState, exportState);
 
@@ -204,32 +198,6 @@ void App::initialize()
     if (firstTime)
         firstTime = false;
 };
-
-//----------------------------------------------------------------------------//
-
-void App::preRenderUpdate()
-{
-    deferredActionBuffer.process();
-    // To the best of my own knowledge, this flag is only used to request
-    // shader recompilation after changing the resource used by an image/sampler
-    // uniform when the resource is of different signed-ness compared to the
-    // pre-existing resource (i.e., chaning from usampler to sampler, or vice-
-    // versa, which needs to be automatically managed). Ideally, this whole
-    // things should be handled more elegantly in the CHECK_RESOURCE_SELECTED
-    // macro in gui.cpp by appending this layer->compileShader() command
-    // ONLY to layers that actually use the uniform that references said
-    // changed resource. The main issue is that I cannot currently invoke
-    // the recompilation of all layers from within in there anyway. So,
-    // this whole requestFullRecompilation flag is just a work-around
-    if (renderState.toggles.requestFullRecompilation)
-    {
-        for (auto& layer : layers)
-        {
-            layer->compileShader();
-        }
-        renderState.toggles.requestFullRecompilation = false;
-    }
-}
 
 //----------------------------------------------------------------------------//
 
@@ -292,7 +260,7 @@ void App::setWindowResolution
 
 //----------------------------------------------------------------------------//
 
-void App::postRenderUpdate()
+void App::update()
 {
     auto& su = *(sharedUniforms);
     
@@ -301,7 +269,7 @@ void App::postRenderUpdate()
 
     bool advanceFrame;
     float timeStep;
-    if (false)//(exporter_->isRunning())
+    if (exportState.isActive)
     {
         if 
         (
@@ -380,12 +348,6 @@ void App::postRenderUpdate()
     )
         ++renderState.frameIndex;
 
-    if (renderState.toggles.resetFrameCounterPreOrPostExport)
-    {
-        renderState.frameIndex = 0;
-        renderState.toggles.resetFrameCounterPreOrPostExport = false;
-    }
-
     // The shaderCamera has its own event listeners, but all of its updates are
     // deferred (just like here, nothing is processed/sent to the GPU in the
     // event callback), so we update it here and check whether the GPU data
@@ -440,9 +402,6 @@ void App::postRenderUpdate()
 
     for (auto& resource : resources)
         resource->update({sharedUniforms->iTime, timeStep});
-
-    // TODO
-    //Resource::       update( resources_, {sharedUniforms_->iTime(), timeStep});
     
     // Auto-save if applicable 
     /* TODO
@@ -503,6 +462,266 @@ void App::postRenderUpdate()
                 shouldStopRendering = true;
             }
         }
+    }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::beginExport()
+{
+    // Setup app state to begin performing an export
+    auto& es = exportState;
+    es.outputFilepath = fileDialog.selection().front();
+    fileDialog.clearSelection();
+    es.isActive = true;
+    es.frameIndex = 0;
+    if (es.type != ExportType::Image)
+    {
+        float Dt = es.endTime-es.startTime;
+        es.nFrames = std::max(es.fps*Dt+.5f, 1.f);
+        es.timeStep = Dt/es.nFrames;
+    }
+    else
+    {
+        es.nFrames = 1;
+        es.timeStep = 0.f;
+    }
+    es.framebuffer = vir::Framebuffer::create
+    (
+        es.outputResolution.x, 
+        es.outputResolution.y
+    );
+    if (es.framebufferData != nullptr)
+        delete[] es.framebufferData;
+    es.framebufferData = 
+        new unsigned char[es.framebuffer->colorBufferDataSize()];
+
+    es.cache.wasVSyncEnabledBeforeExport = vir::Window::instance()->VSync();
+    vir::Window::instance()->setVSync(false);
+
+    // From legacy sharedUniforms.prepareForExport(...)
+    bool setTime = es.type != ExportType::Image;
+    if (setTime && sharedUniforms->isTimePaused)
+        sharedUniforms->isTimePaused = false;
+    es.cache.originalTime = sharedUniforms->iTime;
+    
+    renderState.frameIndex = 0;
+    if (setTime)
+        sharedUniforms->iTime = es.startTime;
+    es.cache.originalResolution = sharedUniforms->iResolution;
+    setWindowResolution(es.outputResolution, false, true);
+    sharedUniforms->toggles.updateDataRangeII = true;
+
+    // From legacy Layer::prepareForExport(...)
+    if (renderState.isTiledRenderingEnabled)
+        setRenderingTiles(1);
+    for (auto& layer : layers)
+    {
+        layer->exportSettings.originalResolution = layer->resolution();
+        layer->setResolution
+        (
+            layer->exportSettings.resolution, 
+            false, 
+            false, 
+            false
+        );
+    }
+
+    // From legacy Resource::prepareAnimationsForExport(...)
+    bool forceResumeTime = es.type != ExportType::Image;
+    bool cacheTime = true;
+    for (auto& resource : resources)
+    {
+        if (resource->type() != Resource::Type::AnimatedTexture2D)
+            continue;
+        auto animation = (AnimatedTexture2DResource*)resource.get();
+        if (!animation->isAnimationBoundToGlobalTime)
+            continue;
+        if (animation->isAnimationPaused && !forceResumeTime)
+            continue;
+        if (cacheTime)
+            animation->cachedTime = animation->native()->time();
+        if (forceResumeTime)
+            animation->native()->setTime(es.startTime);
+    }
+
+    if (es.type == ExportType::GIF && !es.gifEncoder->isFileOpen())
+        es.gifEncoder->openFile
+        ( 
+            es.outputFilepath.c_str(),
+            es.outputResolution.x, 
+            es.outputResolution.y, 
+            es.gifPaletteBitDepth,
+            es.gifPaletteMode,
+            es.gifAlphaCutoff > 0 ?
+                vir::Quantizer::Settings::IndexMode::Alpha :
+                vir::Quantizer::Settings::IndexMode::Default
+        );
+
+
+    // In the current design, uniforms are submitted AFTER rendering (in the
+    // original ShaderThing, it used to be before). To make sure the first
+    // frame is rendered with the correct uniforms, force-submit all of them
+    // right on export start 
+    sharedUniforms->vertex.uniformBuffer->submitUniforms(true);
+    sharedUniforms->fragment.uniformBuffer->submitUniforms(true);
+}
+
+//----------------------------------------------------------------------------//
+
+void App::exportFrame()
+{
+    auto& es = exportState;
+    if (!es.isActive)
+        return;
+    ++es.frameIndex;
+    switch (es.type)
+    {
+        case (ExportType::Image) :
+        case (ExportType::VideoFrames) :
+        {
+            const char* filepath;
+            if (es.type == ExportType::VideoFrames)
+            {
+                // Save frame FPS and frame number in out path as well. If
+                // the FPS is not an integer, the '.' is replaced by a 'd'
+                // (for 'dot') so not to mess with the file extension
+                auto fps = Helpers::format(es.fps, 2);
+                std::replace(fps.begin(), fps.end(), '.', 'd');
+                fps = "_"+fps+"_"+std::to_string(es.frameIndex);
+                es.cache.outputFilepathExtended = 
+                    Helpers::appendToFilename
+                    (
+                        es.outputFilepath, 
+                        fps
+                    );
+                filepath = es.cache.outputFilepathExtended.c_str();
+            }
+            else
+                filepath = es.outputFilepath.c_str();
+            es.framebuffer->readColorBufferData
+            (
+                es.framebufferData, 
+                true, 
+                false
+            );
+            stbi_write_png
+            (
+                filepath, 
+                es.outputResolution.x,
+                es.outputResolution.y,
+                4, 
+                (const void*)es.framebufferData, 
+                4*es.outputResolution.x // <- stride
+            );
+            break;
+        }
+        case (ExportType::GIF) :
+        {
+            if 
+            (
+                es.gifPaletteMode == PaletteMode::StaticAveraged &&
+                !es.isAveragedPaletteReady
+            )
+                es.gifEncoder->cumulatePaletteForAveraging
+                (
+                    es.framebuffer.get()
+                );
+            else
+                es.gifEncoder->encodeFrame
+                (
+                    es.framebuffer.get(),
+                    {   // Encoding options
+                        std::max(int(100.0f/es.fps), 1), // fps
+                        true,                            // flip Y
+                        es.gifDitherMode,                // 
+                        0,                               // Dither thres.
+                        (int)es.gifAlphaCutoff
+                    }
+                );
+            break;
+        }
+    }
+    if (es.frameIndex == es.nFrames)
+        endExport();
+}
+
+//----------------------------------------------------------------------------//
+
+void App::endExport()
+{
+    auto& es = exportState;
+    es.frameIndex = 0;
+    if 
+    (
+        es.gifPaletteMode == PaletteMode::StaticAveraged && 
+        !es.isAveragedPaletteReady
+    )
+    {
+        renderState.frameIndex = 0;
+        sharedUniforms->iTime = es.startTime;
+        for (auto& resource : resources)
+        {
+            if (resource->type() != Resource::Type::AnimatedTexture2D)
+                continue;
+            auto animation = (AnimatedTexture2DResource*)resource.get();
+            if (!animation->isAnimationBoundToGlobalTime)
+                continue;
+            if (animation->isAnimationPaused)
+                continue;
+            animation->native()->setTime(es.startTime);
+        }
+        es.isAveragedPaletteReady = true;
+    }
+    else
+    {
+        es.isActive = false;
+        delete[] es.framebufferData;
+        es.framebufferData = nullptr;
+
+        if (es.gifEncoder->isFileOpen())
+            es.gifEncoder->closeFile();
+        
+        vir::Window::instance()->setVSync(es.cache.wasVSyncEnabledBeforeExport);
+        if (es.resetFrameCounterAfterExport)
+            renderState.frameIndex = 0;
+        sharedUniforms->iTime = es.cache.originalTime;
+        sharedUniforms->toggles.updateDataRangeII = true;
+
+        auto or0 = es.outputResolution;
+        auto ors0 = es.outputResolutionScale;
+        setWindowResolution(es.cache.originalResolution, false, false);
+        es.outputResolution = or0;
+        es.outputResolutionScale = ors0;
+
+        // Legacy from Layer::resetAfterExport(...)
+        for (auto& layer : layers)
+        {
+            layer->setResolution
+            (
+                layer->exportSettings.originalResolution, 
+                false, 
+                false, 
+                false
+            );
+        }
+        if (renderState.nTiles > 1)
+            setRenderingTiles(renderState.nTilesCache);
+
+        // Legacy from Resource::resetAnimationsAfterExport(...)
+        for (auto& resource : resources)
+        {
+            if (resource->type() != Resource::Type::AnimatedTexture2D)
+                continue;
+            auto animation = (AnimatedTexture2DResource*)resource.get();
+            if (!animation->isAnimationBoundToGlobalTime)
+                continue;
+            if (animation->isAnimationPaused)
+                continue;
+            animation->native()->setTime(animation->cachedTime);
+        }
+
+        es.isAveragedPaletteReady = false;
     }
 }
 
@@ -606,11 +825,7 @@ void App::setRenderingTiles(int nTiles)
 
 //----------------------------------------------------------------------------//
 
-RenderResult App::renderShaders
-(
-    vir::Framebuffer* target, 
-    const unsigned int nRenderPasses
-)
+RenderResult App::renderShaders()
 {
     static bool clearTarget = true;
     // TODO Fix behavior of stepping to next frame when tiled renderState is
@@ -619,6 +834,13 @@ RenderResult App::renderShaders
         !renderState.isPaused || 
         renderState.toggles.stepToNextFrame;
     bool frameRendered = true;
+    vir::Framebuffer* target = nullptr;
+    unsigned int nRenderPasses = 1u;
+    if (exportState.isActive)
+    {
+        target = exportState.framebuffer.get();
+        nRenderPasses = exportState.nRenderPasses;
+    }
     unsigned int iRenderPass = renderState.passIndex;
 
     if (renderFrame)
@@ -788,6 +1010,41 @@ void App::removeLayerFromResources(WPtr<Layer> layer)
 
 //----------------------------------------------------------------------------//
 
+void App::assignResourceToUniform
+(
+    const UPtr<Resource>& resource, 
+    UPtr<Uniform>& uniform
+)
+{
+    bool recompileShaders = false;
+    auto resource0 = uniform->getValuePtr<Resource>();
+    if (resource0 != nullptr)
+    {
+        recompileShaders =
+            (resource0->isInternalFormatUnsigned() !=
+             resource->isInternalFormatUnsigned() && 
+             uniform->name().size() > 0);
+    }
+    else if (uniform->name().size() > 0)
+        recompileShaders = true;
+    deferredActionBuffer.add
+    (
+        [this, &resource, &uniform, recompileShaders]()
+        {
+            uniform->setResourcePtr(resource);
+            if (recompileShaders)
+            {
+                for (auto& layer : layers)
+                    layer->compileShader();
+            }
+        }
+    );
+    sharedUniforms->iUserAction = true;
+    sharedUniforms->toggles.updateDataRangeII = true;
+}
+
+//----------------------------------------------------------------------------//
+
 void App::toggleKeyboardInputs()
 {
     sharedUniforms->isKeyboardInputEnabled = 
@@ -936,8 +1193,7 @@ void App::saveTo
     auto& su = *(sharedUniforms);
     io.writeObjectStart("sharedUniforms");
     io.write("windowResolution", su.iResolution);
-    // TODO
-    // io.write("exportWindowResolutionScale", su.exportData.resolutionScale);
+    io.write("exportWindowResolutionScale", exportState.outputResolutionScale);
     io.write("time", su.iTime);
     io.write("timePaused", 
         su.isTimePaused && su.isTimePausedBecauseRenderingPaused ? 
@@ -981,11 +1237,25 @@ void App::saveTo
     }
     io.writeObjectEnd(); // End of layers
 
-    /*
-    // Resource::       saveAll(resources_, project);
-    // sharedUniforms_->save   (            project);
-    // Layer::          saveAll(layers_,    project);
-    exporter_->      save   (            project);
+    io.writeObjectStart("exporter");
+    auto& es = exportState;
+    io.write("type", (int)es.type);
+    io.write("outputFilepath", es.outputFilepath);
+    io.write("outputFilepath", es.outputFilepath);
+    io.write("nRenderPasses", es.nRenderPasses);
+    io.write("areRenderPassesOnFirstFrameOnly", 
+        es.areRenderPassesOnFirstFrameOnly);
+    io.write("resetFrameCounterAfterExport", es.resetFrameCounterAfterExport);
+    io.write("startTime", es.startTime);
+    io.write("endTime", es.endTime);
+    io.write("fps", es.fps);
+    io.write("gifPaletteMode", (int)es.gifPaletteMode);
+    io.write("gifPaletteBitDepth", es.gifPaletteBitDepth);
+    io.write("gifAlphaCutoff", es.gifAlphaCutoff);
+    io.write("gifDitherMode", (int)es.gifDitherMode);
+    io.writeObjectEnd();
+
+    /* TODO
     PostProcess::    saveStaticData(     project);
     */
    
@@ -1130,15 +1400,19 @@ void App::loadFrom
 
     // Load SharedUniforms -----------------------------------------------------
 
+    glm::vec2 outputResolution;
+    float outputResolutionScale = 1.0;
     sharedUniforms.reset();
     sharedUniforms = vir::makeUnique<SharedUniforms>();
     sharedUniforms->initialize(renderState, exportState);
     auto su = sharedUniforms.get();
     auto ioSu = project.readObject("sharedUniforms");
     auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
+    if (ioSu.hasMember("exportWindowResolutionScale"))
+        outputResolutionScale = ioSu.read<float>("exportWindowResolutionScale");
+    outputResolution = outputResolutionScale * (glm::vec2)resolution;
     setWindowResolution(resolution, false);
     su->iTime = ioSu.read<float>("time");
-    //su->resetFrameCounter = false;
     su->iTimeUniform->gui.bounds = ioSu.read<glm::vec2>("timeBounds");
     su->iWASD = ioSu.read<glm::vec3>("iWASD");
     su->iLook = ioSu.read<glm::vec3>("iLook");
@@ -1318,15 +1592,40 @@ void App::loadFrom
         }
     }
 
-    // Finally, reset tiled rendering
+    // Reset tiled rendering
     unsigned int nTiles = 
         project.readOrDefault<unsigned int>("nRenderingTiles", 1);
     setRenderingTiles(nTiles);
 
-    /* TODO Reimplement
-    Exporter::      load   (project, exporter_                            );
-    PostProcess::   loadStaticData(project);
-    */
+    //TODO Reimplement
+    //PostProcess::   loadStaticData(project);
+
+    // Load Exporter -----------------------------------------------------------
+    exportState = ExportState();
+    exportState.gifEncoder = vir::makeUnique<vir::GifEncoder>();
+    if (!project.hasMember("exporter"))
+        return;
+    auto ioExport = project.readObject("exporter");
+    exportState.type = (ExportType)ioExport.read<int>("type");
+    exportState.outputResolution = outputResolution;
+    exportState.outputResolutionScale = outputResolutionScale;
+#define READ_ITEM(Name, Type)                                                 \
+    exportState.Name = ioExport.readOrDefault<Type>(TO_STRING(Name),          \
+                                                    exportState.Name);
+#define READ_ITEM2(Name, Type, Type2)                                         \
+    exportState.Name = (Type2)(ioExport.readOrDefault<Type>(TO_STRING(Name),  \
+                                              (Type)exportState.Name));
+    READ_ITEM(outputFilepath, std::string)
+    READ_ITEM(nRenderPasses, int)
+    READ_ITEM(areRenderPassesOnFirstFrameOnly, bool)
+    READ_ITEM(resetFrameCounterAfterExport, bool)
+    READ_ITEM(startTime, float)
+    READ_ITEM(endTime, float)
+    READ_ITEM(fps, float)
+    READ_ITEM2(gifPaletteMode, int, PaletteMode)
+    READ_ITEM(gifPaletteBitDepth, int)
+    READ_ITEM(gifAlphaCutoff, int)
+    READ_ITEM2(gifDitherMode, int, DitherMode)
 }
 
 //----------------------------------------------------------------------------//

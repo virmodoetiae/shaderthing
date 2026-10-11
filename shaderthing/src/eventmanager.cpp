@@ -73,6 +73,8 @@ void EventManager::onReceive(vir::Event::WindowResizeEvent& event)
     event.width = resolution.x;
     event.height = resolution.y;
 
+    app_.exportState.cache.outputResolutionChanged = true;
+
     for (auto& layer : app_.layers)
     {
         layer->setResolution

@@ -489,9 +489,15 @@ void Uniform::setResourcePtr(Resource* resource)
             return;
     }
 
+    auto resource0 = getValuePtr<Resource>();
+    if (resource0 != nullptr)
+        resource0->removeClientUniform(this);
+
     vir::Uniform::setValuePtr(resource, type(), false);
     if (resource == nullptr)
         return;
+
+    resource->addClientUniform(this);
 
     // Also set resolution uniform
     if (!resourceResolutionUniform_.valid())
