@@ -445,7 +445,7 @@ private:
     Coordinates sanitizeCoordinates(const Coordinates& aValue) const;
     void advance(Coordinates& aCoordinates) const;
     void deleteRange(const Coordinates& aStart, const Coordinates& aEnd);
-    int insertTextAt(Coordinates& aWhere, const char* aValue, bool aRedo=false);
+    int insertTextAt(Coordinates& aWhere, const char* aValue);
     void addUndo(UndoRecord& aValue);
     Coordinates screenPosToCoordinates(const ImVec2& aPosition) const;
     Coordinates findWordStartPos(const Coordinates& aFrom) const;
@@ -480,7 +480,7 @@ private:
     bool                   readOnly_              = false;
     bool                   scrollToCursor_        = false;
     bool                   scrollToTop_           = false;
-    bool                   textChanged_;
+    bool                   textChanged_           = false;
     bool                   useSetTextStart_       = false;
     bool                   withinRender_          = false;
     bool                   showWhitespaces_       = true;

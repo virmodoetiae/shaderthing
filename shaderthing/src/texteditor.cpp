@@ -14,6 +14,7 @@
 */
 
 #include <chrono>
+#include <cstring>
 #include <regex>
 
 #include "thirdparty/imgui/imgui.h"
@@ -137,9 +138,11 @@ std::string TextEditor::getText
         }
     }
 
-    if (!result.empty() && result[result.length()-1] == '\n')
-        result.erase(result.length()-1);
-
+    // Note: a trailing '\n' is part of the requested range whenever aEnd sits
+    // at column 0 of a line, and must be kept, otherwise cut/copy lose it and
+    // undo records of selection deletions are corrupted. The whole-document
+    // getText() avoids producing a spurious trailing '\n' by ending its range
+    // at the end of the last line instead
     return result;
 }
 
@@ -238,6 +241,27 @@ static inline int ImTextCharToUtf8(char* buf, int buf_size, unsigned int c)
 
 //----------------------------------------------------------------------------//
 
+// Returns a copy of aText with every tab replaced by four spaces and carriage
+// returns dropped, i.e., exactly the text that insertText will insert. Replaces
+// a per-call std::regex_replace
+static std::string expandTabs(const char* aText)
+{
+    std::string result;
+    if (aText == nullptr)
+        return result;
+    result.reserve(strlen(aText));
+    for (const char* c = aText; *c != '\0'; ++c)
+    {
+        if (*c == '\t')
+            result.append("    ");
+        else if (*c != '\r')
+            result.push_back(*c);
+    }
+    return result;
+}
+
+//----------------------------------------------------------------------------//
+
 void TextEditor::advance(Coordinates & aCoordinates) const
 {
     if (aCoordinates.line < (int)lines_.size())
@@ -307,8 +331,7 @@ void TextEditor::deleteRange
 int TextEditor::insertTextAt
 (
     Coordinates& aWhere, 
-    const char* aValue, 
-    bool aRedo
+    const char* aValue
 )
 {
     assert(!readOnly_);
@@ -322,31 +345,26 @@ int TextEditor::insertTextAt
             ++aValue;
         else if (*aValue == '\n')
         {
-            if (aRedo)
+            // Plain insertion only. Redo used to route new lines through
+            // enterCharacter, which re-applied auto-indentation (and could
+            // delete a still-active selection), so redone multi-line inserts
+            // did not match the original text. Enter key undo records now
+            // store their auto-indentation explicitly instead
+            if (cindex < (int)lines_[aWhere.line].size())
             {
-                auto cursor0 = getCursorPosition();
-                setCursorPosition(aWhere);
-                enterCharacter('\n', false, false);
-                setCursorPosition(cursor0);
+                auto& newLine = insertLine(aWhere.line + 1);
+                auto& line = lines_[aWhere.line];
+                newLine.insert
+                (
+                    newLine.begin(),
+                    line.begin() + cindex,
+                    line.end()
+                );
+                line.erase(line.begin() + cindex, line.end());
             }
             else
-            {
-                if (cindex < (int)lines_[aWhere.line].size())
-                {
-                    auto& newLine = insertLine(aWhere.line + 1);
-                    auto& line = lines_[aWhere.line];
-                    newLine.insert
-                    (
-                        newLine.begin(), 
-                        line.begin() + cindex, 
-                        line.end()
-                    );
-                    line.erase(line.begin() + cindex, line.end());
-                }
-                else
-                    insertLine(aWhere.line + 1);
-            }        
-               cindex = 0;
+                insertLine(aWhere.line + 1);
+            cindex = 0;
             ++aWhere.line;
             aWhere.column = 0;
             ++totalLines;
@@ -1657,16 +1675,24 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
 
     if (hasSelection())
     {
+        // Block indent/dedent. Shift+Tab is always routed here when there is
+        // a selection, even a single-line one: it used to fall through to the
+        // generic branch below, which deleted the selection without ever
+        // registering an undo record for it
         if 
         (
             aChar == '\t' && 
-            state_.selectionStart.line != state_.selectionEnd.line
+            (
+                aShift ||
+                state_.selectionStart.line != state_.selectionEnd.line
+            )
         )
         {
             auto start = state_.selectionStart;
             auto end = state_.selectionEnd;
             if (start > end)
                 std::swap(start, end);
+            const int undoIndex0 = undoIndex_;
             if (!aShift)
             {
                 for (int i = start.line; i <= end.line; i++)
@@ -1686,13 +1712,18 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
                     addUndo(uu);
                 }
                 state_.selectionStart = 
-                    Coordinates(start.line, start.column+4);
-                state_.selectionEnd = Coordinates(end.line, end.column+4);
+                    Coordinates(start.line, start.column+tabSize_);
+                state_.selectionEnd =
+                    Coordinates(end.line, end.column+tabSize_);
             }
             else
             {
                 int deltaStartCol = 0;
                 int deltaEndCol = 0;
+                // The first record actually registered must be the
+                // non-propagating head of the group, otherwise a single undo
+                // would also revert the unrelated edit preceding this one
+                bool isFirstRecord = true;
                 for (int i = start.line; i <= end.line; i++)
                 {
                     int nRemovedSpaces = 0;
@@ -1706,7 +1737,7 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
                     }
                     if (i == start.line)
                         deltaStartCol = nRemovedSpaces;
-                    else if (i == end.line)
+                    if (i == end.line)
                         deltaEndCol = nRemovedSpaces;
                     if (nRemovedSpaces == 0)
                         continue;
@@ -1715,7 +1746,8 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
                     uu.removed = spaces;
                     uu.removedStart.line = i;
                     uu.removedStart.column = 0;
-                    uu.propagate = i > start.line;
+                    uu.propagate = !isFirstRecord;
+                    isFirstRecord = false;
                     uu.before = state_;
                     auto lineStart = Coordinates(i, 0);
                     auto lineEnd = Coordinates(i, nRemovedSpaces);
@@ -1725,11 +1757,41 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
                     uu.after = state_;
                     addUndo(uu);
                 }
-                state_.selectionStart = 
-                    Coordinates(start.line, start.column-deltaStartCol);
-                state_.selectionEnd = 
-                    Coordinates(end.line, end.column-deltaEndCol);
+                // Clamp, as the selection may start/end within the removed
+                // indentation (e.g., at column 0)
+                state_.selectionStart = Coordinates
+                (
+                    start.line,
+                    std::max(0, start.column-deltaStartCol)
+                );
+                state_.selectionEnd = Coordinates
+                (
+                    end.line,
+                    std::max(0, end.column-deltaEndCol)
+                );
             }
+
+            // Keep the cursor and the interactive selection anchors attached
+            // to the shifted selection
+            auto remap = [&](Coordinates& c)
+            {
+                if (c == start)
+                    c = state_.selectionStart;
+                else if (c == end)
+                    c = state_.selectionEnd;
+            };
+            remap(state_.cursorPosition);
+            remap(interactiveStart_);
+            remap(interactiveEnd_);
+
+            // The per-line records captured their 'after' state before the
+            // selection was shifted, so redoing the group restored a selection
+            // whose columns could exceed the (now shorter) lines, and edits made
+            // on it afterwards registered corrupted undo records. Redo of the
+            // group ends with the last record's 'after', so give it the final
+            // state
+            if (undoIndex_ > undoIndex0)
+                undoBuffer_[undoIndex_-1].after = state_;
 
             textChanged_ = true;
             ensureCursorVisible();
@@ -1767,6 +1829,11 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
                 newLine.push_back(line[it]);
 
         const size_t whitespaceSize = newLine.size();
+        // Record the auto-indentation as part of the added text, so that redo
+        // (a plain insertion) reproduces exactly what was typed
+        u.added = (char)aChar;
+        for (size_t it = 0; it < whitespaceSize; ++it)
+            u.added += newLine[it].character;
         auto cindex = getCharacterIndex(coord);
         newLine.insert(newLine.end(), line.begin() + cindex, line.end());
         line.erase(line.begin() + cindex, line.begin() + line.size());
@@ -1778,27 +1845,43 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
                 getCharacterColumn(coord.line + 1, (int)whitespaceSize)
             )
         );
-        u.added = (char)aChar;
     }
     else
     {
         if (aChar == '\t')
         {
             auto coord = getCursorPosition();
-            int n = tabSize_-coord.column%tabSize_;
             u.propagate = false;
             u.before = state_;
             if (!aShift)
             {
-                for (int i=0;i<n;i++)
-                    enterCharacter(' ', aShift, false);
-                u.added = std::string(n, ' ');
+                // Insert the spaces directly: going through enterCharacter
+                // overwrote characters in overwrite mode without recording
+                // them in the undo record (i.e., unrecoverable text loss)
+                int n = tabSize_-coord.column%tabSize_;
+                std::string spaces(n, ' ');
+                auto where = coord;
+                insertTextAt(where, spaces.c_str());
+                setCursorPosition(where);
+                u.added = spaces;
                 u.addedEnd = getActualCursorCoordinates();
                 u.after = state_;
                 addUndo(u);
+                colorize(coord.line - 1, 3);
+                ensureCursorVisible();
             }
             else
             {
+                // Dedent to the previous tab stop. The amount was previously
+                // computed with the indent formula, which removed the wrong
+                // number of spaces and produced negative columns near the
+                // start of the line (e.g., at columns 0 and 1)
+                int n = coord.column%tabSize_;
+                if (n == 0)
+                    n = tabSize_;
+                n = std::min(n, coord.column);
+                if (n <= 0)
+                    return;
                 auto& line = lines_[coord.line];
                 bool allSpaces = true;
                 for (int i=0; i<coord.column; i++)
@@ -1834,12 +1917,28 @@ void TextEditor::enterCharacter(ImWchar aChar, bool aShift, bool aaddUndo)
             {
                 auto d = UTF8CharLength(line[cindex].character);
 
-                u.removedStart = state_.cursorPosition;
-                u.removedEnd = Coordinates
-                (
-                    coord.line, 
-                    getCharacterColumn(coord.line, cindex + d)
-                );
+                if (u.removed.empty())
+                {
+                    u.removedStart = state_.cursorPosition;
+                    u.removedEnd = Coordinates
+                    (
+                        coord.line,
+                        getCharacterColumn(coord.line, cindex + d)
+                    );
+                }
+                else
+                {
+                    // A selection was just deleted and the overwritten
+                    // character is appended to u.removed: extend the removed
+                    // range (in pre-edit coordinates) by that character, rather
+                    // than replacing it, otherwise redo only deleted the
+                    // overwritten character and left the selected text in place
+                    u.removedEnd = Coordinates
+                    (
+                        u.removedEnd.line,
+                        u.removedEnd.column + 1
+                    );
+                }
 
                 while (d-- > 0 && cindex < (int)line.size())
                 {
@@ -2002,17 +2101,7 @@ void TextEditor::insertText
     if (aValue == nullptr)
         return;
 
-    std::string sAValue = std::string(aValue);
-    std::string aValueNoTabs;
-    static std::regex const tab(R"(\t)");
-    std::regex_replace
-    (
-        std::back_inserter(aValueNoTabs), 
-        std::begin(sAValue), 
-        std::end(sAValue), 
-        tab,
-        "    "
-    );
+    std::string aValueNoTabs = expandTabs(aValue);
 
     UndoRecord u;
     if (aRegisterUndo)
@@ -2621,10 +2710,15 @@ void TextEditor::paste()
             deleteSelection();
         }
 
-        u.added = clipText;
+        // Record the text that is actually inserted (tabs expanded), not the
+        // raw clipboard content: redo used to re-insert raw tabs, which made
+        // the record's end coordinates wrong, so a subsequent undo would also
+        // delete text that followed the pasted block
+        std::string text = expandTabs(clipText);
+        u.added = text;
         u.addedStart = getActualCursorCoordinates();
 
-        insertText(clipText);
+        insertText(text);
 
         u.addedEnd = getActualCursorCoordinates();
         u.after = state_;
@@ -2769,7 +2863,14 @@ const TextEditor::Palette & TextEditor::getRetroBluePalette()
 
 std::string TextEditor::getText() const
 {
-    return getText(Coordinates(), Coordinates((int)lines_.size(), 0));
+    if (lines_.empty())
+        return "";
+    int lastLine = (int)lines_.size()-1;
+    return getText
+    (
+        Coordinates(),
+        Coordinates(lastLine, getLineMaxColumn(lastLine))
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -3126,7 +3227,11 @@ void TextEditor::colorizeInternal()
                         }
                     }
                 }
-                line[currentIndex].preprocessor = withinPreproc;
+                // Bounds check: within a string, a '\' at the very end of a
+                // line advances currentIndex past the last glyph, and this
+                // used to write out of bounds
+                if (currentIndex < (int)line.size())
+                    line[currentIndex].preprocessor = withinPreproc;
                 currentIndex += UTF8CharLength(c);
                 if (currentIndex >= (int)line.size())
                 {
@@ -3326,7 +3431,7 @@ void TextEditor::UndoRecord::redo(TextEditor * aEditor)
     if (!added.empty())
     {
         auto start = addedStart;
-        aEditor->insertTextAt(start, added.c_str(), true);
+        aEditor->insertTextAt(start, added.c_str());
         aEditor->colorize
         (
             addedStart.line-1, 
@@ -3336,6 +3441,190 @@ void TextEditor::UndoRecord::redo(TextEditor * aEditor)
 
     aEditor->state_ = after;
     aEditor->ensureCursorVisible();
+}
+
+//----------------------------------------------------------------------------//
+
+// Hand-written GLSL tokenizer. It reproduces, token for token, the result of
+// trying the GLSL tokenRegexStrings in order at each position (the regex
+// fallback in colorizeRange), without std::regex. The regex path ran several
+// std::regex_search calls at every character and, being slow, was throttled to
+// 10 lines per frame, so a freshly loaded shader took many frames to be fully
+// highlighted. With a tokenize callback, colorizeInternal processes up to 10000
+// lines per frame. Characters that match no token are returned as one-byte
+// Default tokens (the regex path skipped them, leaving them Default), so that
+// the regex fallback is never reached
+namespace
+{
+
+inline bool glslIsDigit(char c) {return c >= '0' && c <= '9';}
+inline bool glslIsAlpha_(char c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+}
+inline bool glslIsBlank(char c) {return c == ' ' || c == '\t';}
+
+// [ \t]*#[ \t]*[a-zA-Z_]+
+const char* glslMatchPreprocessor(const char* p, const char* e)
+{
+    while (p < e && glslIsBlank(*p))
+        ++p;
+    if (p == e || *p != '#')
+        return nullptr;
+    ++p;
+    while (p < e && glslIsBlank(*p))
+        ++p;
+    if (p == e || !glslIsAlpha_(*p))
+        return nullptr;
+    while (p < e && glslIsAlpha_(*p))
+        ++p;
+    return p;
+}
+
+// L?"(\\.|[^"])*"
+const char* glslMatchString(const char* p, const char* e)
+{
+    if (p < e && *p == 'L')
+        ++p;
+    if (p == e || *p != '\"')
+        return nullptr;
+    ++p;
+    // If there is no closing quote, the backtracking regex closes the string
+    // at the last escaped quote instead, if any
+    const char* lastEscapedQuote = nullptr;
+    while (p < e)
+    {
+        if (*p == '\\' && p+1 < e && p[1] != '\n' && p[1] != '\r')
+        {
+            if (p[1] == '\"')
+                lastEscapedQuote = p+1;
+            p += 2;
+        }
+        else if (*p == '\"')
+            return p+1;
+        else
+            ++p;
+    }
+    return lastEscapedQuote != nullptr ? lastEscapedQuote+1 : nullptr;
+}
+
+// '\\?[^']'
+const char* glslMatchCharLiteral(const char* p, const char* e)
+{
+    if (p == e || *p != '\'')
+        return nullptr;
+    if (e-p >= 4 && p[1] == '\\' && p[2] != '\'' && p[3] == '\'')
+        return p+4;
+    if (e-p >= 3 && p[1] != '\'' && p[2] == '\'')
+        return p+3;
+    return nullptr;
+}
+
+// [+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?
+// The remaining integer, octal and hexadecimal regexes can never match where
+// this one does not (they all start with a digit, which this one already
+// accepts), so they need no counterpart
+const char* glslMatchNumber(const char* p, const char* e)
+{
+    if (p < e && (*p == '+' || *p == '-'))
+        ++p;
+    if (p < e && glslIsDigit(*p))
+    {
+        while (p < e && glslIsDigit(*p))
+            ++p;
+        if (p < e && *p == '.')
+        {
+            ++p;
+            while (p < e && glslIsDigit(*p))
+                ++p;
+        }
+    }
+    else if (p+1 < e && *p == '.' && glslIsDigit(p[1]))
+    {
+        p += 2;
+        while (p < e && glslIsDigit(*p))
+            ++p;
+    }
+    else
+        return nullptr;
+    if (p < e && (*p == 'e' || *p == 'E'))
+    {
+        const char* q = p+1;
+        if (q < e && (*q == '+' || *q == '-'))
+            ++q;
+        if (q < e && glslIsDigit(*q))
+        {
+            while (q < e && glslIsDigit(*q))
+                ++q;
+            p = q;
+        }
+    }
+    if (p < e && (*p == 'f' || *p == 'F'))
+        ++p;
+    return p;
+}
+
+// [a-zA-Z_][a-zA-Z0-9_]*
+const char* glslMatchIdentifier(const char* p, const char* e)
+{
+    if (p == e || !glslIsAlpha_(*p))
+        return nullptr;
+    ++p;
+    while (p < e && (glslIsAlpha_(*p) || glslIsDigit(*p)))
+        ++p;
+    return p;
+}
+
+// [\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.]
+bool glslIsPunctuation(char c)
+{
+    switch (c)
+    {
+    case '[': case ']': case '{': case '}': case '!': case '%': case '^':
+    case '&': case '*': case '(': case ')': case '-': case '+': case '=':
+    case '~': case '|': case '<': case '>': case '?': case '/': case ';':
+    case ',': case '.':
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool tokenizeGLSL
+(
+    const char* inBegin,
+    const char* inEnd,
+    const char*& outBegin,
+    const char*& outEnd,
+    TextEditor::PaletteIndex& paletteIndex
+)
+{
+    if (inBegin >= inEnd)
+        return false;
+    const char* end = nullptr;
+    outBegin = inBegin;
+    if ((end = glslMatchPreprocessor(inBegin, inEnd)) != nullptr)
+        paletteIndex = TextEditor::PaletteIndex::Preprocessor;
+    else if ((end = glslMatchString(inBegin, inEnd)) != nullptr)
+        paletteIndex = TextEditor::PaletteIndex::String;
+    else if ((end = glslMatchCharLiteral(inBegin, inEnd)) != nullptr)
+        paletteIndex = TextEditor::PaletteIndex::CharLiteral;
+    else if ((end = glslMatchNumber(inBegin, inEnd)) != nullptr)
+        paletteIndex = TextEditor::PaletteIndex::Number;
+    else if ((end = glslMatchIdentifier(inBegin, inEnd)) != nullptr)
+        paletteIndex = TextEditor::PaletteIndex::Identifier;
+    else
+    {
+        end = inBegin+1;
+        paletteIndex =
+            glslIsPunctuation(*inBegin) ?
+            TextEditor::PaletteIndex::Punctuation :
+            TextEditor::PaletteIndex::Default;
+    }
+    outEnd = end;
+    return true;
+}
+
 }
 
 //----------------------------------------------------------------------------//
@@ -3353,7 +3642,7 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
             "dmat4x2", "dmat4x3", "dmat4x4", "discard", "default", "do", 
             "double", "dvec2", "dvec3", "dvec4", "else", "false", "flat", 
             "float", "for", "highp", "if", "in", "inout", "int", "int32_t", 
-            "int64_t" "invariant", "isampler1D", "isampler1DArray", 
+            "int64_t", "invariant", "isampler1D", "isampler1DArray", 
             "isampler2D", "isampler2DArray", "isampler2DMS", 
             "isampler2DMSArray", "isampler2DRect", "isampler3D", 
             "isamplerBuffer", "isamplerCube", "isamplerCubeArray", "ivec2", 
@@ -3426,6 +3715,10 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::GLSL()
         langDef.commentStart = "/*";
         langDef.commentEnd = "*/";
         langDef.singleLineComment = "//";
+
+        // Equivalent to (and much faster than) the token regexes above, which
+        // are kept as reference and as fallback
+        langDef.tokenize = tokenizeGLSL;
 
         langDef.caseSensitive = true;
         langDef.autoIndentation = true;
@@ -3509,7 +3802,9 @@ void TextEditor::FindReplaceTool::toggleGui(Mode mode)
 
 bool TextEditor::FindReplaceTool::checkShortcuts()
 {
-    auto io = ImGui::GetIO();
+    // By reference: a by-value copy duplicated the whole ImGuiIO struct (and
+    // heap-allocated a copy of its input queue) on every frame
+    const ImGuiIO& io = ImGui::GetIO();
     bool ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     bool ctrlF(ctrl && ImGui::IsKeyPressed(ImGuiKey_F, false));
     bool ctrlH(ctrl && ImGui::IsKeyPressed(ImGuiKey_H, false));
@@ -3669,7 +3964,19 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         editor.setHandleKeyboardInputs(false);
     else 
         editor.setHandleKeyboardInputs(true);
+    // Lengths in editor columns (i.e., UTF-8 code points, which is what editor
+    // Coordinates count) rather than in bytes, otherwise all positions on a
+    // line after a non-ASCII character are off
+    auto countColumns = [](const std::string& s)
+    {
+        int c = 0;
+        for (char ch : s)
+            if ((ch & 0xC0) != 0x80)
+                ++c;
+        return c;
+    };
     int n(textToBeFound_.size());
+    int nColumns(countColumns(textToBeFound_));
     if (replaceAll || replaceOne)
     {
         if 
@@ -3678,25 +3985,40 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
             textToBeFound_ != replaceTextWith_
         )
         {
+            // The column shift on a line only accumulates over matches that
+            // have actually been replaced. Previously, every earlier match on
+            // the same line contributed, even when skipped, so "replace one"
+            // on a non-first match of a line replaced the wrong text. Matches
+            // overlapping an already-replaced one (e.g., "aa" in "aaa") are
+            // skipped, since replacing them corrupted the text or produced
+            // negative columns
             int offset = 0;
-            int delta = replaceTextWith_.size()-textToBeFound_.size();
+            int lastLine = -1;
+            int lastEndColumn = 0;
+            int delta = countColumns(replaceTextWith_)-nColumns;
             Coordinates s0, s1;
             for (int i=0; i<(int)foundTextLineCols_.size(); i++)
             {
                 if (replaceOne && foundTextCounter_ != i)
                     continue;
                 Coordinates& fcp = foundTextLineCols_[i];
-                if (i > 0 && foundTextLineCols_[i-1].line == fcp.line)
-                    offset += delta;
-                else
+                if (fcp.line != lastLine)
+                {
+                    lastLine = fcp.line;
                     offset = 0;
+                    lastEndColumn = 0;
+                }
+                else if (fcp.column < lastEndColumn)
+                    continue;
                 s0 = {fcp.line, fcp.column+offset};
-                s1 = {fcp.line, fcp.column+n+offset};
+                s1 = {fcp.line, fcp.column+nColumns+offset};
                 editor.setSelection(s0,s1);
                 editor.remove(madeReplacements && replaceAll);
                 editor.setCursorPosition(s0);
                 editor.insertText(replaceTextWith_, true, true);
                 madeReplacements = true;
+                offset += delta;
+                lastEndColumn = fcp.column+nColumns;
                 if (replaceOne)
                     break;
             }
@@ -3718,7 +4040,7 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
             );
             auto lc = foundTextLineCols_[foundTextCounter_];
             Coordinates c0(lc.line, lc.column);
-            Coordinates c1(lc.line, lc.column+n);
+            Coordinates c1(lc.line, lc.column+nColumns);
             editor.setCursorPosition(c0);
             editor.setSelection(c0, c1);
             foundTextCounter0_ = foundTextCounter_;
@@ -3742,7 +4064,9 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
     nFound = 0;
     int line = 0;
     int column = 0;
-    int range(editorText.size()-n+1);
+    // An empty search string matches nothing (it used to match at every
+    // character)
+    int range(n > 0 ? (int)editorText.size()-n+1 : 0);
     for (int i=0; i<range; i++)
     {
         bool found = true;
@@ -3762,7 +4086,7 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
             line += 1;
             column = 0;
         }
-        else
+        else if ((ci0 & 0xC0) != 0x80) // Count code points, not bytes
             column += 1;
         if (!found)
             continue;
@@ -3772,17 +4096,20 @@ bool TextEditor::FindReplaceTool::renderGui(TextEditor& editor)
         );
         nFound++;
     }
+    // Clamp before indexing: the counter may still refer to a previous, longer
+    // list of results (e.g., after typing one more character in the search
+    // field), which was an out-of-bounds access
+    foundTextCounter_ = std::max(std::min(foundTextCounter_, nFound-1), 0);
     if (nFound > 0 && !forceSearch)
     {
         auto lc = foundTextLineCols_[foundTextCounter_];
         Coordinates c0(lc.line, lc.column);
-        Coordinates c1(lc.line, lc.column+n);
+        Coordinates c1(lc.line, lc.column+nColumns);
         editor.setCursorPosition(c0);
         editor.setSelection(c0, c1);
     }
     forceSearch = false;
     textToBeFound0_ = textToBeFound_;
-    foundTextCounter_ = std::max(std::min(foundTextCounter_, nFound-1), 0);
     foundTextCounter0_ = foundTextCounter_;
     return madeReplacements;
 }
