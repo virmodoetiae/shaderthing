@@ -31,15 +31,9 @@ namespace ShaderThing
 
 //----------------------------------------------------------------------------//
 
-void Layer::renderMenuItemGui()
+void Layer::renderMenuGui()
 {
-    if 
-    (
-        ImGui::BeginMenu
-        (
-            ("Layer ["+name_+"]###"+imGuiMenuId).c_str()
-        )
-    )
+    if (ImGui::BeginMenu(("Layer ["+name_+"]###"+imGuiMenuId).c_str()))
     {
         const float fontSize(ImGui::GetFontSize());
         const float entryWidth(14*fontSize);

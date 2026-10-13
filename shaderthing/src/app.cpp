@@ -264,9 +264,6 @@ void App::update()
 {
     auto& su = *(sharedUniforms);
     
-    // TODO
-    //exporter_->update(*sharedUniforms_, layers_, resources_);
-
     bool advanceFrame;
     float timeStep;
     if (exportState.isActive)
@@ -404,21 +401,22 @@ void App::update()
         resource->update({sharedUniforms->iTime, timeStep});
     
     // Auto-save if applicable 
-    /* TODO
     if 
     (
         project_.isAutoSaveEnabled && 
         project_.filepath.size() > 0 && 
-        !exporter_->isRunning()
+        !exportState.isActive
     )
     {
         if (project_.timeSinceLastSave > project_.autoSaveInterval)
-            saveProject(project_.filepath+".bak", true);
+            deferredActionBuffer.add
+            (
+                [this](){saveTo(project_.filepath+".bak", true);}
+            );
         else
             project_.timeSinceLastSave += 
                 vir::Window::instance()->time()->outerTimestep();
     }
-    */
 
     // Compute fps and set in window title, also, check if renderState should stop
     // if fps too low for too long
@@ -1263,6 +1261,7 @@ void App::saveTo
     io.writeContentsToDisk();
 
     project_.timeSinceLastSave = 0;
+    project_.forceSaveAs = false;
 
     StatusBar::queueTemporaryMessage
     (
@@ -1679,6 +1678,8 @@ void App::updateLayersDueToUniformTypeOrNameChanged
     }
 }
 
+//----------------------------------------------------------------------------//
+
 void App::updateLayersDueToUniformDeletion(UPtr<Uniform>& uniform)
 {
     // TODO Check if setting hasUncompiledEdits within the deferred action does
@@ -1721,6 +1722,70 @@ void App::updateLayersDueToUniformDeletion(UPtr<Uniform>& uniform)
             }
         );
     }
+}
+
+//----------------------------------------------------------------------------//
+
+void App::onLoadCallback()
+{
+    fileDialog.runOpenFileDialog
+    (
+        "Open project",
+        {"ShaderThing file (*.stf)", "*.stf *.stf.bak"},
+        ".",
+        false
+    );
+    deferredActionBuffer.add
+    (
+        [this]()
+        {
+            auto filepath = fileDialog.selection().front();
+            project_.forceSaveAs = true;
+            loadFrom(filepath, false);
+            project_.filepath = // Trim .bak if applicable
+                (
+                    filepath.size() >= 4 && 
+                    filepath.substr(filepath.size() - 4) == ".bak"
+                ) ? 
+                filepath.substr(0, filepath.size() - 4) : 
+                filepath;
+            project_.filename = Helpers::filename
+            (
+                project_.filepath
+            );
+            fileDialog.clearSelection();
+        },
+        [this](){return fileDialog.validSelection();}
+    );
+}
+
+//----------------------------------------------------------------------------//
+
+void App::onSaveAsCallback()
+{
+    fileDialog.runSaveFileDialog
+    (
+        "Save project",
+        {"ShaderThing file (*.stf)", "*.stf"},
+        project_.filepath.size() == 0 ? 
+        project_.filename.c_str() :
+        project_.filepath.c_str()
+    );
+    deferredActionBuffer.add
+    (
+        [this](){saveTo(fileDialog.selection().front());},
+        [this](){return fileDialog.validSelection();}
+    );
+}
+
+//----------------------------------------------------------------------------//
+
+void App::onSaveCallback()
+{
+    if (project_.filepath.size() == 0 || project_.forceSaveAs)
+        onSaveAsCallback();
+    else
+        deferredActionBuffer.add([this](){saveTo(project_.filepath);});
 }
 
 }

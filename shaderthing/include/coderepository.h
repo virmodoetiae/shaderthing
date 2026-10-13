@@ -1,6 +1,6 @@
 /*
  _____________________
-|                     |  This file is part of ShaderThingOld - A GUI-based live
+|                     |  This file is part of ShaderThing - A GUI-based live
 |   ___  _________    |  shader editor by Stefan Radman (a.k.a., virmodoetiae).
 |  /\  \/\__    __\   |  For more information, visit:
 |  \ \  \/__/\  \_/   |

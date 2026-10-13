@@ -233,6 +233,14 @@ public:
         UPtr<Uniform>& uniform
     );
 
+    // Project-related ---------------------------------------------------------
+
+    void onLoadCallback();
+
+    void onSaveAsCallback();
+
+    void onSaveCallback();
+
     // GUI ---------------------------------------------------------------------
 
     // General
@@ -241,9 +249,25 @@ public:
 
     void renderMenuBarGui();
 
-    void renderExportGui();
+    // Menu bar entries
 
-    void renderExamplesMenuItem();
+    void renderExportMenuGui();
+
+    void renderWindowPropertiesMenuGui();
+
+    void renderShaderLanguangeExtensionsMenuGui();
+
+    void renderFontPreferencesMenuGui();
+
+    void renderAutoSavePreferencesMenuGui();
+
+    void renderExamplesMenuGui();
+
+    void renderAboutShaderThingMenuGui();
+
+    void renderSystemInfoMenuGui();
+
+    // Main view
 
     void renderLayersTabBarGui();
 
@@ -251,13 +275,10 @@ public:
 
     void renderUniformsTabGui(Layer* layer);
 
-    // Render the default/built-in shared uniforms only as a table and return the
-    // row count
+    // Returns table row count
     int renderBuiltInSharedUniformsGui();
 
-    // Render the GUI of the provided uniform at the provided table row and return
-    // true if the uniform type is changed by user interation with this GUI, else
-    // falsethis->
+    // Returns status of rendered uniform row (true = modified)
     bool renderUniformTableRowGui
     (
         UPtr<Uniform>& uniform,
@@ -269,7 +290,7 @@ public:
 
     // Resources
 
-    void renderResourcesMenuItemGui();
+    void renderResourcesMenuGui();
 
     void renderResourcesTableGui();
 

@@ -205,7 +205,7 @@ public:
     
     // GUI ---------------------------------------------------------------------
 
-    void renderMenuItemGui();
+    void renderMenuGui();
 
     void renderFramebufferSettingsGui();
 

@@ -23,6 +23,7 @@
 
 #include "vir/include/vir.h"
 
+#include "shaderthing/include/statusbar.h"
 #include "shaderthing/include/texteditor.h"
 
 template<class InputIt1, class InputIt2, class BinaryPredicate>
@@ -1578,7 +1579,7 @@ void TextEditor::renderGui
         buf
     );
 
-    // StatusBar::renderGui(false);
+    StatusBar::renderGui(false);
 
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
