@@ -18,6 +18,7 @@
 #include "shaderthing/include/app.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/postprocess.h"
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/shareduniforms.h"
 #include "shaderthing/include/uniform.h"
@@ -343,19 +344,18 @@ UPtr<Layer> Layer::loadFrom
         framebufferData.read<int>("exportClearPolicy");
 
     // Initialize post-processing effects, if any were saved 
-    /* TODO
     if (io.hasMember("postProcesses"))
     {
         auto postProcessData = io.readObject("postProcesses");
         for (auto name : postProcessData.members())
         {
             ObjectIO data(postProcessData.readObject(name));
-            layer->rendering_.postProcesses.emplace_back
+            layer->renderState_.postProcesses.emplace_back
             (
-                PostProcess::load(data, layer)
+                PostProcess::loadFrom(data, layer.getWeak())
             );
         }
-    }*/
+    }
 
     //
     if (layer->renderState_.target != RenderState::Target::Window)
@@ -908,16 +908,13 @@ void Layer::saveTo(ObjectIO& io)
     io.writeObjectEnd(); // End of shaders
 
     // Write post-processing effects data, if any
-    // TODO
-    /*
-    if (layer->renderState.postProcesses.size() > 0)
+    if (renderState_.postProcesses.size() > 0)
     {
         io.writeObjectStart("postProcesses");
         for (auto& postProcess : renderState_.postProcesses)
-            postProcess->save(io);
+            postProcess->saveTo(io);
         io.writeObjectEnd(); // End of postProcesses
     }
-    */
     io.writeObjectEnd(); // End of 'gui_.name'
 }
 
@@ -1042,9 +1039,6 @@ void Layer::renderShader
             
             // Update resource resolution
             auto& ubo = uniformContainer.uniformBuffer;
-                /*u->isSharedByUser ? 
-                sharedUniforms.fragment.uniformBuffer.get() : 
-                layer->uniformBuffer.get();*/
             auto rru = u->resourceResolutionUniform();
             if (!rru.valid())
                 continue; // TODO log or handle
@@ -1087,16 +1081,15 @@ void Layer::renderShader
             {
                 vir::Framebuffer* sourceFramebuffer = 
                     renderState_.frontFramebuffer;
-                // TODO Add back when postProcessing implemented
-                // for (auto& postProcess : layer->renderState.postProcesses)
-                // {
-                //     if 
-                //     (
-                //         postProcess->isActive() && 
-                //         postProcess->outputFramebuffer() != nullptr
-                //     )
-                //         sourceFramebuffer = postProcess->outputFramebuffer();
-                // }
+                for (auto& postProcess : renderState_.postProcesses)
+                {
+                    if 
+                    (
+                        postProcess->isActive() && 
+                        postProcess->outputFramebuffer() != nullptr
+                    )
+                        sourceFramebuffer = postProcess->outputFramebuffer();
+                }
                 if (isSampler)
                 {
                     sourceFramebuffer->bindColorBuffer(textureUnit);
@@ -1212,13 +1205,12 @@ void Layer::renderShader
     if (!blendingEnabled)
         globalRendering->setBlending(true);
 
-    /* // TODO Post-processing
     // Apply post-processing effects, if any
     if (allowClearTargetAndPostProcess)
     {
-        for (auto& postProcess : renderState.postProcesses)
+        for (auto& postProcess : renderState_.postProcesses)
             postProcess->run();
-    }*/
+    }
 
     if 
     (

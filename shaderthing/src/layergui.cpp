@@ -23,6 +23,7 @@
 
 #include "shaderthing/include/app.h"
 #include "shaderthing/include/layer.h"
+#include "shaderthing/include/postprocess.h"
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/shareduniforms.h"
 
@@ -171,143 +172,11 @@ ICON_FA_LOCK_OPEN " - The aspect ratio is not locked\n"
         {
             ImGui::SeparatorText("Framebuffer settings");
             renderFramebufferSettingsGui();
-
-            // TODO
-            /*
             ImGui::SeparatorText("Post-processing effects");
-            int iDelete = -1;
-            int iSrc = -1; 
-            int iTrg = -1;
-            int nPostProcesses = rendering.postProcesses.size();
-            for (int i = 0; i < nPostProcesses; i++)
-            {
-                auto& postProcess = rendering.postProcesses[i];
-                ImGui::PushID(i);
-                if (ImGui::SmallButton(ICON_FA_TRASH))
-                    iDelete = i;
-                ImGui::SameLine();
-                if (i == 0)
-                    ImGui::BeginDisabled();
-                if (ImGui::SmallButton(ICON_FA_ARROW_UP))
-                {
-                    iSrc = i;
-                    iTrg = std::max(i-1, 0);
-                }
-                if (i == 0)
-                    ImGui::EndDisabled();
-                ImGui::SameLine();
-                if (i == nPostProcesses-1)
-                    ImGui::BeginDisabled();
-                if (ImGui::SmallButton(ICON_FA_ARROW_DOWN))
-                {
-                    iSrc = i;
-                    iTrg = std::min(i+1, nPostProcesses-1);
-                }
-                if (i == nPostProcesses-1)
-                    ImGui::EndDisabled();
-                ImGui::SameLine();
-                if 
-                (
-                    ImGui::BeginMenu
-                    (
-                        std::string
-                        (
-                            std::to_string(i+1)+" - "+postProcess->name()
-                        ).c_str()
-                    )
-                )
-                {
-                    // Render post-processing effect GUI
-                    if (postProcess->canRunOnDeviceInUse())
-                        postProcess->renderGui();
-                    else
-                    {
-                        ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
-                        ImGui::Text(postProcess->errorMessage().c_str());
-                        ImGui::PopTextWrapPos();
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::PopID();
-            }
-            if (iDelete != -1)
-                rendering.postProcesses.erase
-                (
-                    rendering.postProcesses.begin() + iDelete
-                );
-            else if (iSrc != iTrg)
-                std::swap
-                (
-                    rendering.postProcesses[iSrc], 
-                    rendering.postProcesses[iTrg]
-                );
-            
-            // Selector for adding a new post-processing effect with the 
-            // constraint that each layer may have at most one 
-            // tpost-processing effect of each ype
-            ImGui::PushItemWidth(-1);
-            if 
-            (
-                ImGui::BeginCombo
-                (
-                    "##postProcessingCombo", 
-                    "Add a post-processing effect"
-                )
-            )
-            {
-                static std::vector<vir::PostProcess::Type> allAvailableTypes(0);
-                if (allAvailableTypes.size() == 0)
-                {
-                    allAvailableTypes.reserve
-                    (
-                        vir::PostProcess::typeToName.size()
-                    );
-                    for (auto kv : vir::PostProcess::typeToName)
-                    {
-                        if (kv.first != vir::PostProcess::Type::Undefined)
-                            allAvailableTypes.push_back(kv.first);
-                    }
-                }
-                std::vector<vir::PostProcess::Type> 
-                    availableTypes(allAvailableTypes);
-                for (auto& postProcess : rendering.postProcesses)
-                {
-                    auto it = std::find
-                    (
-                        availableTypes.begin(), 
-                        availableTypes.end(), 
-                        postProcess->type()
-                    );
-                    if (it != availableTypes.end())
-                        availableTypes.erase(it);
-                }
-                for (auto type : availableTypes)
-                {
-                    if 
-                    (
-                        ImGui::Selectable
-                        (
-                            vir::PostProcess::typeToName.at(type).c_str()
-                        )
-                    )
-                    {
-                        auto postProcess = 
-                            PostProcess::create(this, type);
-                        if (postProcess != nullptr)
-                            rendering.postProcesses.emplace_back
-                            (
-                                std::move(postProcess)
-                            );
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::PopItemWidth();
-            */
+            renderPostProcessSettingsGui();
         }
         ImGui::EndMenu();
     }
-    //ImGui::PopID();
 }
 
 //----------------------------------------------------------------------------//
@@ -473,6 +342,140 @@ void Layer::renderFramebufferSettingsGui()
 
 //----------------------------------------------------------------------------//
 
+void Layer::renderPostProcessSettingsGui()
+{
+    int iDelete = -1;
+    int iSrc = -1; 
+    int iTrg = -1;
+    int nPostProcesses = renderState_.postProcesses.size();
+    for (int i = 0; i < nPostProcesses; i++)
+    {
+        auto& postProcess = renderState_.postProcesses[i];
+        ImGui::PushID(i);
+        if (ImGui::SmallButton(ICON_FA_TRASH))
+            iDelete = i;
+        ImGui::SameLine();
+        if (i == 0)
+            ImGui::BeginDisabled();
+        if (ImGui::SmallButton(ICON_FA_ARROW_UP))
+        {
+            iSrc = i;
+            iTrg = std::max(i-1, 0);
+        }
+        if (i == 0)
+            ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (i == nPostProcesses-1)
+            ImGui::BeginDisabled();
+        if (ImGui::SmallButton(ICON_FA_ARROW_DOWN))
+        {
+            iSrc = i;
+            iTrg = std::min(i+1, nPostProcesses-1);
+        }
+        if (i == nPostProcesses-1)
+            ImGui::EndDisabled();
+        ImGui::SameLine();
+        if 
+        (
+            ImGui::BeginMenu
+            (
+                std::string
+                (
+                    std::to_string(i+1)+" - "+postProcess->name()
+                ).c_str()
+            )
+        )
+        {
+            // Render post-processing effect GUI
+            if (postProcess->canRunOnDeviceInUse())
+                postProcess->renderGui();
+            else
+            {
+                ImGui::PushTextWrapPos(40.0f*ImGui::GetFontSize());
+                ImGui::Text(postProcess->errorMessage().c_str());
+                ImGui::PopTextWrapPos();
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::PopID();
+    }
+    if (iDelete != -1)
+        renderState_.postProcesses.erase
+        (
+            renderState_.postProcesses.begin() + iDelete
+        );
+    else if (iSrc != iTrg)
+        std::swap
+        (
+            renderState_.postProcesses[iSrc], 
+            renderState_.postProcesses[iTrg]
+        );
+    
+    // Selector for adding a new post-processing effect with the 
+    // constraint that each layer may have at most one 
+    // tpost-processing effect of each ype
+    ImGui::PushItemWidth(-1);
+    if 
+    (
+        ImGui::BeginCombo
+        (
+            "##postProcessingCombo", 
+            "Add a post-processing effect"
+        )
+    )
+    {
+        static std::vector<vir::PostProcess::Type> allAvailableTypes(0);
+        if (allAvailableTypes.size() == 0)
+        {
+            allAvailableTypes.reserve
+            (
+                vir::PostProcess::typeToName.size()
+            );
+            for (auto kv : vir::PostProcess::typeToName)
+            {
+                if (kv.first != vir::PostProcess::Type::Undefined)
+                    allAvailableTypes.push_back(kv.first);
+            }
+        }
+        std::vector<vir::PostProcess::Type> 
+            availableTypes(allAvailableTypes);
+        for (auto& postProcess : renderState_.postProcesses)
+        {
+            auto it = std::find
+            (
+                availableTypes.begin(), 
+                availableTypes.end(), 
+                postProcess->type()
+            );
+            if (it != availableTypes.end())
+                availableTypes.erase(it);
+        }
+        for (auto type : availableTypes)
+        {
+            if 
+            (
+                ImGui::Selectable
+                (
+                    vir::PostProcess::typeToName.at(type).c_str()
+                )
+            )
+            {
+                auto postProcess = 
+                    PostProcess::create(weakFromThis(), type);
+                if (postProcess != nullptr)
+                    renderState_.postProcesses.emplace_back
+                    (
+                        std::move(postProcess)
+                    );
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+}
+
+//----------------------------------------------------------------------------//
+
 void Layer::renderTabGui()
 {
     static unsigned int gActiveTabId = 0;
@@ -611,5 +614,7 @@ void Layer::renderCompilationErrorsGui()
         }
     }
 }
+
+//----------------------------------------------------------------------------//
 
 }

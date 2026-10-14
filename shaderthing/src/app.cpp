@@ -71,11 +71,7 @@ void App::initialize()
     sharedStorage = SharedStorage::create();
     sharedUniforms.reset();
     sharedUniforms = vir::makeUnique<SharedUniforms>();
-    //resources.clear();
-    for (auto& layer : layers)
-    {
-        removeLayerFromResources(layer.getWeak());
-    }
+    resources.clear();
     layers.clear();
 
     // Reset event manager
@@ -388,9 +384,6 @@ void App::update()
         su.toggles.updateDataRangeII = false;
     }
 
-    su.vertex.uniformBuffer->submitUniforms();
-    su.fragment.uniformBuffer->submitUniforms();
-
     if (su.iUserAction) // Always reset
     {
         su.toggles.updateDataRangeII = true;
@@ -555,14 +548,6 @@ void App::beginExport()
                 vir::Quantizer::Settings::IndexMode::Alpha :
                 vir::Quantizer::Settings::IndexMode::Default
         );
-
-
-    // In the current design, uniforms are submitted AFTER rendering (in the
-    // original ShaderThing, it used to be before). To make sure the first
-    // frame is rendered with the correct uniforms, force-submit all of them
-    // right on export start 
-    sharedUniforms->vertex.uniformBuffer->submitUniforms(true);
-    sharedUniforms->fragment.uniformBuffer->submitUniforms(true);
 }
 
 //----------------------------------------------------------------------------//
@@ -725,6 +710,19 @@ void App::endExport()
 
 //----------------------------------------------------------------------------//
 
+void App::restartRendering()
+{
+    renderState.frameIndex = 0;
+    if (sharedUniforms->isTimeResetOnFrameCounterReset)
+        sharedUniforms->iTime = 0;
+    for (auto& layer : layers)
+    {
+        layer->clearFramebuffers();
+    }
+}
+
+//----------------------------------------------------------------------------//
+
 void App::toggleRenderingPaused(bool dueToLowFps)
 {
     renderState.isPaused = 
@@ -840,6 +838,9 @@ RenderResult App::renderShaders()
         nRenderPasses = exportState.nRenderPasses;
     }
     unsigned int iRenderPass = renderState.passIndex;
+
+    sharedUniforms->vertex.uniformBuffer->submitUniforms();
+    sharedUniforms->fragment.uniformBuffer->submitUniforms();
 
     if (renderFrame)
     {
@@ -1309,6 +1310,7 @@ void App::loadFrom
     PostProcess::   loadStaticData(project);
     */
 
+    project_ = {};
     auto project = 
         fromMemory ? 
         ObjectIO(filepathOrData) : 
@@ -1327,6 +1329,8 @@ void App::loadFrom
         "autoSaveInterval", 
         Project{}.autoSaveInterval
     );
+    
+    renderState = {};
     renderState.isVSyncEnabled = 
         project.readOrDefault<bool>("vSyncEnabled", true);
     auto window = vir::Window::instance();
@@ -1409,7 +1413,7 @@ void App::loadFrom
     auto resolution = (glm::ivec2)ioSu.read<glm::vec2>("windowResolution");
     if (ioSu.hasMember("exportWindowResolutionScale"))
         outputResolutionScale = ioSu.read<float>("exportWindowResolutionScale");
-    outputResolution = outputResolutionScale * (glm::vec2)resolution;
+    outputResolution = outputResolutionScale * (glm::vec2)resolution  + .5f;
     setWindowResolution(resolution, false);
     su->iTime = ioSu.read<float>("time");
     su->iTimeUniform->gui.bounds = ioSu.read<glm::vec2>("timeBounds");
@@ -1596,7 +1600,7 @@ void App::loadFrom
         project.readOrDefault<unsigned int>("nRenderingTiles", 1);
     setRenderingTiles(nTiles);
 
-    //TODO Reimplement
+    // TODO Reimplement
     //PostProcess::   loadStaticData(project);
 
     // Load Exporter -----------------------------------------------------------

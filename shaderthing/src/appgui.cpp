@@ -150,7 +150,9 @@ void App::renderMenuBarGui()
     if (CodeRepository::isDetachedFromMenu)
         CodeRepository::renderGui();
     
-    if (Helpers::isCtrlKeyPressed(ImGuiKey_N) && !windowIconified)
+    if (Helpers::isCtrlKeyPressed(ImGuiKey_R)) // Ctrl+R
+        restartRendering();
+    else if (Helpers::isCtrlKeyPressed(ImGuiKey_N) && !windowIconified)
         newProjectConfirmation = true;
     else if (Helpers::isCtrlKeyPressed(ImGuiKey_O) && !windowIconified)
         onLoadCallback();
@@ -632,7 +634,6 @@ purposes or as starting points for other projects)"
         int id = 0;
 
         //--------------------------------- Bloom
-        /* TODO Re-enable once post-processing effects are available
         ImGui::PushID(id++);
         static std::string errorMessage;
         static auto canRunOnDeviceInUse = []() -> bool
@@ -648,7 +649,7 @@ purposes or as starting points for other projects)"
         if (ImGui::Button("Load"))
         {
             loadExampleConfirmation = true;
-            tmpSelection = &Examples::bloom0;
+            preSelection = &Examples::bloom;
         }
         if (!bloom)
         {
@@ -666,7 +667,6 @@ purposes or as starting points for other projects)"
         ImGui::PopID();
         ImGui::SameLine();
         ImGui::Text("Bloom (post-processing effect)");
-        */
         
         //--------------------------------- Ray marching
         ImGui::PushID(id++);
@@ -1291,19 +1291,7 @@ int App::renderBuiltInSharedUniformsGui()
     if (ImGui::Button(ICON_FA_UNDO, ImVec2(halfButtonSize, 0)))
     {
         // Restart rendering
-        deferredActionBuffer.add
-        (
-            [this]()
-            {
-                renderState.frameIndex = 0;
-                if (sharedUniforms->isTimeResetOnFrameCounterReset)
-                    sharedUniforms->iTime = 0;
-                for (auto& layer : layers)
-                {
-                    layer->clearFramebuffers();
-                }
-            }
-        );
+        deferredActionBuffer.add([this](){restartRendering();});
     }
     if 
     (

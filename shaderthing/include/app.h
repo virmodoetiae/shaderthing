@@ -196,6 +196,8 @@ public:
         UPtr<Uniform>& uniform
     );
 
+    void restartRendering();
+
     void toggleRenderingPaused(bool dueToFlowFps);
 
     void toggleKeyboardInputs();

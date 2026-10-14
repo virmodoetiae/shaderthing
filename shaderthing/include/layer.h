@@ -27,12 +27,14 @@
 namespace ShaderThing
 {
 
-struct App;
-struct SharedUniforms;
+class App;
+class PostProcess;
+class SharedUniforms;
 
 class Layer : public vir::EnableWeakFromThis<Layer> // : public UniformContainer, 
 {
 friend LayerResource;
+friend PostProcess;
 public :
 
     // Data --------------------------------------------------------------------
@@ -63,6 +65,7 @@ public :
         WPtr<Uniform>            iAspectRatioUniform;
         WPtr<Uniform>            iResolutionUniform;
         static UPtr<vir::Shader> textureMapperShader;
+        UPtrVector<PostProcess>  postProcesses;
     };
 
     struct ExportSettings
@@ -208,6 +211,8 @@ public:
     void renderMenuGui();
 
     void renderFramebufferSettingsGui();
+
+    void renderPostProcessSettingsGui();
 
     void renderTabGui();
 
