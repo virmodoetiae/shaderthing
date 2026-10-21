@@ -1209,10 +1209,12 @@ void App::renderUniformsTabGui(Layer* layer)
         auto& rs = renderState;
 
         // Then, render the user-created shared uniforms
-        int nSharedUniforms = 
-            su.fragment.uniforms.size()-
-            su.userUniformsStartIndex;
-        for (int i=0; i < nSharedUniforms; i++)
+        for 
+        (
+            int i=0; 
+            i < su.fragment.uniforms.size()-su.userUniformsStartIndex; 
+            i++
+        )
         {
             auto& uniform = su.fragment.uniforms
             [
@@ -1223,7 +1225,7 @@ void App::renderUniformsTabGui(Layer* layer)
                 uniform,
                 layer,
                 row++,
-                i == nSharedUniforms-1
+                i == su.fragment.uniforms.size()-su.userUniformsStartIndex-1
             );
         }
 
