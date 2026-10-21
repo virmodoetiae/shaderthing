@@ -1206,6 +1206,8 @@ void App::renderUniformsTabGui(Layer* layer)
         if (showSharedAndDefaultUniforms)
             row = renderBuiltInSharedUniformsGui();
 
+        auto& rs = renderState;
+
         // Then, render the user-created shared uniforms
         int nSharedUniforms = 
             su.fragment.uniforms.size()-
@@ -1417,9 +1419,9 @@ int App::renderBuiltInSharedUniformsGui()
     if (su.isTimePaused)
     {
         if (ImGui::Button(ICON_FA_STEP_FORWARD, {-1,0}))
-            renderState.toggles.stepToNextFrame = true;
+            su.toggles.stepToNextTimeStep = true;
         else 
-            renderState.toggles.stepToNextFrame = false;
+            su.toggles.stepToNextTimeStep = false;
     }
     if 
     (
@@ -1960,27 +1962,24 @@ bool App::renderUniformTableRowGui
         (
             ImGui::Button
             (
-                !uniform->isSharedByUser ?
-                ICON_FA_ARROW_UP :
-                ICON_FA_ARROW_DOWN,
+                uniform->isSharedByUser ?
+                ICON_FA_ARROW_DOWN :
+                ICON_FA_ARROW_UP,
                 {-1, 0}
             )
         )
         {
-            // TODO Test this approach of updating sharedness status
-            uniform->isSharedByUser = !uniform->isSharedByUser;
             deferredActionBuffer.add
             (
                 [&uniform, layer, this]()
                 {
-                    if (uniform->isSharedByUser)
+                    uniform->isSharedByUser = !uniform->isSharedByUser;
+                    if (uniform->isSharedByUser) // Status changed to shared
                         uniform->setOwner(&sharedUniforms->fragment);
-                    else 
+                    else // Status changed to not shared any longer
                         uniform->setOwner(&layer->fragment);
                     for (auto& l : layers)
-                    {
                         l->compileShader();
-                    }
                 }
             );
         }
@@ -2019,6 +2018,9 @@ bool App::renderUniformTableRowGui
                 uniform.get(),
                 true
             );
+            if (uniform->resourceResolutionUniform().valid())
+                uniform->resourceResolutionUniform()->name() = 
+                    uniform->name()+"Resolution";
             updateLayersDueToUniformTypeOrNameChanged
             (
                 uniform, 

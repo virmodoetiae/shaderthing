@@ -30,7 +30,7 @@ UPtr<vir::Shader> Layer::RenderState::textureMapperShader;
 
 TextEditor        Layer::sharedSourceEditor_;
 
-const std::string Layer::defaultSharedSource_ = 
+const std::string Layer::defaultSharedSource = 
 R"(// Common source code is shared by all fragment shaders across all layers and
 // has access to all shared in/out/uniform declarations
 
@@ -922,7 +922,7 @@ void Layer::saveTo(ObjectIO& io)
 
 void Layer::resetSharedSourceEditor()
 {
-    Layer::sharedSourceEditor_.setText(Layer::defaultSharedSource_);
+    Layer::sharedSourceEditor_.setText(Layer::defaultSharedSource);
     Layer::sharedSourceEditor_.resetTextChanged();
 }
 
@@ -1190,7 +1190,7 @@ void Layer::renderShader
     globalRendering->submit
     (
         *renderState_.quad,
-        renderState_.shader.get(), // TODO
+        renderState_.shader.get(),
         target,
         allowClearTargetAndPostProcess && 
         (

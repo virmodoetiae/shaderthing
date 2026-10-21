@@ -40,79 +40,80 @@ private:
 
 public:
 
-    void add(std::function<void()>&& execute, int priority=0)
+    void add(std::function<void()>&& execute, int priority = 0)
     {
-        deferredActions_.emplace_back
-        (
-            DeferredAction{priority, std::move(execute)}
-        );
-        if 
-        (
-            sorted_ && 
-            !deferredActions_.empty() && 
-            priority <= deferredActions_.back().priority
-        )
-            return;
-        sorted_ = deferredActions_.size() < 2;
+        add(std::move(execute), [](){ return true; }, priority);
     }
 
     void add
     (
-        std::function<void()>&& execute, 
-        std::function<bool()>&& condition, 
-        int priority=0
+        std::function<void()>&& execute,
+        std::function<bool()>&& condition,
+        int priority = 0
     )
     {
-        deferredActions_.emplace_back
-        (
-            DeferredAction{priority, std::move(execute), std::move(condition)}
-        );
+        // Kept sorted in descending priority; only a higher-priority insertion
+        // at the back breaks that
         if 
         (
-            sorted_ && 
             !deferredActions_.empty() && 
-            priority <= deferredActions_.back().priority
+            priority > deferredActions_.back().priority
         )
-            return;
-        sorted_ = deferredActions_.size() < 2;
+            sorted_ = false;
+        deferredActions_.push_back
+        (
+            {priority, std::move(execute), std::move(condition)}
+        );
     }
 
     void clear() {deferredActions_.clear();}
 
     void process()
     {
+        if (deferredActions_.empty())
+            return;
+
         if (!sorted_)
         {
-            //   stable_sort preserves insertion order of equal-priority actions
-            std::stable_sort 
+            std::stable_sort
             (
                 deferredActions_.begin(), 
                 deferredActions_.end(),
-                [](const DeferredAction& a, const DeferredAction& b) 
+                [](const DeferredAction& a, const DeferredAction& b)
                 {
                     return a.priority > b.priority;
                 }
             );
-            sorted_ = true;
         }
-        
-        // Execute all actions that can be executed and remove those after
-        // execution
-        auto it = std::remove_if
-        (
-            deferredActions_.begin(), 
-            deferredActions_.end(),
-            [](auto& da) 
-            {
-                if (da.condition()) 
-                {
-                    da.execute();
-                    return true;  // Mark for removal
-                }
-                return false;
-            }
-        );
-        deferredActions_.erase(it, deferredActions_.end());
+
+        // Take ownership of the current actions. Anything an action add()s
+        // while we run lands in the (now empty) member vector instead, so
+        // nothing we're iterating over can be reallocated or destroyed.
+        std::vector<DeferredAction> pending;
+        pending.swap(deferredActions_);
+        sorted_ = true;
+
+        std::vector<DeferredAction> kept;
+        for (auto& da : pending)
+        {
+            if (da.condition())
+                da.execute();
+            else
+                kept.push_back(std::move(da));
+        }
+
+        // Actions added during execution run on the next process() call
+        if (!deferredActions_.empty())
+        {
+            kept.insert
+            (
+                kept.end(),
+                std::make_move_iterator(deferredActions_.begin()),
+                std::make_move_iterator(deferredActions_.end())
+            );
+            sorted_ = false;
+        }
+        deferredActions_ = std::move(kept);
     }
 };
 

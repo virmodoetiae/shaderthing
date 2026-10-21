@@ -23,6 +23,7 @@
 #include "shaderthing/include/helpers.h"
 #include "shaderthing/include/layer.h"
 #include "shaderthing/include/objectio.h"
+#include "shaderthing/include/postprocess.h"
 #include "shaderthing/include/resource.h"
 #include "shaderthing/include/sharedstorage.h"
 #include "shaderthing/include/shareduniforms.h"
@@ -712,13 +713,25 @@ void App::endExport()
 
 void App::restartRendering()
 {
-    renderState.frameIndex = 0;
-    if (sharedUniforms->isTimeResetOnFrameCounterReset)
-        sharedUniforms->iTime = 0;
-    for (auto& layer : layers)
-    {
-        layer->clearFramebuffers();
-    }
+    deferredActionBuffer.add
+    (
+        [this]()
+        {
+            renderState.frameIndex = 0;
+            if (sharedUniforms->isTimeResetOnFrameCounterReset)
+                sharedUniforms->iTime = 0;
+            for (auto& layer : layers)
+            {
+                layer->clearFramebuffers();
+            }
+        },
+        [this]() -> bool
+        {
+            return renderState.isTiledRenderingEnabled ?
+                renderState.tileIndex == 0 : 
+                true;
+        }
+    );
 }
 
 //----------------------------------------------------------------------------//
@@ -824,8 +837,6 @@ void App::setRenderingTiles(int nTiles)
 RenderResult App::renderShaders()
 {
     static bool clearTarget = true;
-    // TODO Fix behavior of stepping to next frame when tiled renderState is
-    // enabled
     bool renderFrame = 
         !renderState.isPaused || 
         renderState.toggles.stepToNextFrame;
@@ -1228,6 +1239,23 @@ void App::saveTo
     }
     io.writeObjectEnd(); // End of uniforms
     io.writeObjectEnd(); // End of sharedUniforms
+    // Write OpenGL extensions, tiled rendering settings, shared fragment source
+    auto enabledExtensions = 
+        vir::Shader::extensionsInCurrentContextShadingLanguageDirectives();
+    if (enabledExtensions.size() > 0)
+        io.write("graphicsExtensions", enabledExtensions);
+    if (renderState.isTiledRenderingEnabled)
+        io.write("nRenderingTiles", renderState.nTiles);
+    auto sharedSource = Layer::sharedFragmentShaderSource();
+    if (Layer::defaultSharedSource != sharedSource)
+        io.write
+        (
+            "sharedFragmentSource", 
+            sharedSource.c_str(), 
+            sharedSource.size(), 
+            true
+        );
+    sharedStorage->saveTo(io);
     //
     io.writeObjectStart("layers");
     for (auto& layer : layers)
@@ -1254,11 +1282,8 @@ void App::saveTo
     io.write("gifDitherMode", (int)es.gifDitherMode);
     io.writeObjectEnd();
 
-    /* TODO
-    PostProcess::    saveStaticData(     project);
-    */
-   
-    // TODO Could display an error via ImGui on failure
+    PostProcess::saveStaticData(io);
+    
     io.writeContentsToDisk();
 
     project_.timeSinceLastSave = 0;
@@ -1280,36 +1305,6 @@ void App::loadFrom
     bool fromMemory
 )
 {
-    /*
-    auto project = 
-        fromMemory ? 
-        ObjectIO(filepathOrData) : 
-        ObjectIO(filepathOrData.c_str(), ObjectIO::Mode::Read);
-    if (!project.isValid())
-        return; // TODO Could display an error via ImGui
-    
-    *font_.fontScale = project.read<float>("UIScale");
-    project_.isAutoSaveEnabled = project.readOrDefault<bool>
-    (
-        "autoSaveEnabled", 
-        Project{}.isAutoSaveEnabled
-    );
-    project_.autoSaveInterval = project.readOrDefault<float>
-    (
-        "autoSaveInterval", 
-        Project{}.autoSaveInterval
-    );
-    windowSettings_.isVSyncEnabled = 
-        project.readOrDefault<bool>("vSyncEnabled", true);
-    vir::Window::instance()->setVSync(windowSettings_.isVSyncEnabled);
-    
-    Resource::      loadAll(project,                            resources_);
-    SharedUniforms::load   (project,           sharedUniforms_, resources_);
-    Layer::         loadAll(project, layers_, *sharedUniforms_, resources_);
-    Exporter::      load   (project, exporter_                            );
-    PostProcess::   loadStaticData(project);
-    */
-
     project_ = {};
     auto project = 
         fromMemory ? 
@@ -1449,14 +1444,6 @@ void App::loadFrom
     if (!ioSu.read<bool>("iKeyboardInputEnabled"))
         toggleKeyboardInputs();
     
-    // TODO Reimplement
-    /*
-    su->exportData_.resolutionScale = 
-        ioSu.read<float>("exportWindowResolutionScale");
-    su->exportData_.resolution = 
-        (glm::vec2)su->iResolution_*
-        su->exportData_.resolutionScale + .5f;
-    */
     if (ioSu.readOrDefault<bool>("cursorStatus", false))
         setMouseCaptured(true);
     std::map<Uniform*, std::string> uninitializedSharedResourceLayers = {};
@@ -1600,9 +1587,6 @@ void App::loadFrom
         project.readOrDefault<unsigned int>("nRenderingTiles", 1);
     setRenderingTiles(nTiles);
 
-    // TODO Reimplement
-    //PostProcess::   loadStaticData(project);
-
     // Load Exporter -----------------------------------------------------------
     exportState = ExportState();
     exportState.gifEncoder = vir::makeUnique<vir::GifEncoder>();
@@ -1629,6 +1613,9 @@ void App::loadFrom
     READ_ITEM(gifPaletteBitDepth, int)
     READ_ITEM(gifAlphaCutoff, int)
     READ_ITEM2(gifDitherMode, int, DitherMode)
+
+    // Load PostProcess custom data, if any
+    PostProcess::loadStaticData(project);
 }
 
 //----------------------------------------------------------------------------//
@@ -1690,10 +1677,10 @@ void App::updateLayersDueToUniformDeletion(UPtr<Uniform>& uniform)
     // not change anything, and if so, make the code more compact
     if (uniform->isSharedByUser)
     {
-        for (auto& layer : layers)
+        /*for (auto& layer : layers)
         {
             layer->hasUncompiledEdits = true;
-        }
+        }*/
         deferredActionBuffer.add
         (
             [&uniform, this]()
@@ -1708,7 +1695,7 @@ void App::updateLayersDueToUniformDeletion(UPtr<Uniform>& uniform)
     }
     else
     {
-        Layer* layer;
+        Layer* layer = nullptr;
         for (auto& l : layers)
         {
             if (&l->fragment != uniform->owner())
@@ -1716,6 +1703,8 @@ void App::updateLayersDueToUniformDeletion(UPtr<Uniform>& uniform)
             layer = l.get();
             break;
         }
+        if (layer == nullptr)
+            return; // Impossible by design, still
         layer->hasUncompiledEdits = true;
         deferredActionBuffer.add
         (

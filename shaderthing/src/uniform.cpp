@@ -66,7 +66,7 @@ void Uniform::loadAllFrom
     for(auto uniformName : uniformsData.members())
     {
         auto uniformData = uniformsData.readObject(uniformName);
-        auto& uniform = Uniform::create(owner);
+        auto uniform = Uniform::create(owner).get();
         // Mapping for compatibility with previous version .stf files
         std::string typeName = uniformData.read<std::string>("type");
         if (typeName == "texture2D")
@@ -84,7 +84,6 @@ void Uniform::loadAllFrom
     min = uniformData.read<float>("min");                                      \
     max = uniformData.read<float>("max");
 
-        bool setInUniformBuffer = true;
         switch (type)
         {
             case vir::Uniform::Type::Bool :
@@ -180,9 +179,8 @@ void Uniform::loadAllFrom
                 if (!found)
                     cache.insert
                     (
-                        {uniform.get(), resourceName}
+                        {uniform, resourceName}
                     );
-                setInUniformBuffer = false;
                 break;
             }
             default:
@@ -190,8 +188,9 @@ void Uniform::loadAllFrom
         }
         uniform->gui.bounds = {min, max};
         uniform->name() = uniformName;
-        if (setInUniformBuffer)
-            owner->uniformBuffer->addUniform(uniform);
+        if (uniform->resourceResolutionUniform().valid())
+            uniform->resourceResolutionUniform()->name() = 
+                uniform->name()+"Resolution";
     }
 }
 

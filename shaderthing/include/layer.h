@@ -96,35 +96,36 @@ public :
         std::map<Uniform*, std::string> uninitializedResourceLayers;
     };
 
-    static const unsigned int nMaxLayers = 32;
+    static const unsigned int     nMaxLayers = 32;
 
 public:
-    const unsigned int     id;
-    const std::string      imGuiMenuId;
-    const std::string      imGuiTabId;
-          UniformContainer fragment;
+           const unsigned int     id;
+           const std::string      imGuiMenuId;
+           const std::string      imGuiTabId;
+                 UniformContainer fragment;
+    static const std::string      defaultSharedSource;
 protected:
-          App&             app_;
-          unsigned int     activeGuiTabId_                = 0;
-          std::string      name_;
-          bool             isAspectRatioBoundToWindow_    = true;
-          bool             rescaleWithWindow_             = true;
-          glm::vec2        resolution_;
-          glm::vec2        resolutionRatio_               = {1.f, 1.f};
-          float            aspectRatio_;
-          float            depth_;
-          RenderState      renderState_;
-          TextEditor       sourceEditor_;
-static const std::string   defaultSharedSource_;
-   static TextEditor       sharedSourceEditor_;
-          std::string      sourceHeader_;
-          std::string      headerErrors_;
+                 App&             app_;
+                 unsigned int     activeGuiTabId_                = 0;
+                 std::string      name_;
+                 bool             isAspectRatioBoundToWindow_    = true;
+                 bool             rescaleWithWindow_             = true;
+                 glm::vec2        resolution_;
+                 glm::vec2        resolutionRatio_               = {1.f, 1.f};
+                 float            aspectRatio_;
+                 float            depth_;
+                 RenderState      renderState_;
+                 TextEditor       sourceEditor_;
+
+    static       TextEditor       sharedSourceEditor_;
+                 std::string      sourceHeader_;
+                 std::string      headerErrors_;
 public:
-          bool           hasUncompiledEdits            = false;
-          bool           isDeletionConfirmationPending = false;
-          ExportSettings exportSettings;
-          Cache          cache;
-    
+                 bool             hasUncompiledEdits            = false;
+                 bool             isDeletionConfirmationPending = false;
+                 ExportSettings   exportSettings;
+                 Cache            cache;
+   
 protected:
 
     // Ctor/creator/dtor -------------------------------------------------------
@@ -163,6 +164,11 @@ public:
     std::string vertexShaderSource() const;
 
     static std::string vertexShaderSource(const SharedUniforms& sharedUniforms);
+
+    static std::string sharedFragmentShaderSource() 
+    {
+        return sharedSourceEditor_.getText();
+    }
 
     bool hasCompilationErrors() const;
 

@@ -505,8 +505,8 @@ bool AnimatedTexture2DResource::set
     // Preserve settings if possible
     bool preserveSettings = native_.valid();
     float fps;
-    WrapMode wrapModes[2];
-    FilterMode filterModes[2];
+    WrapMode wrapModes[2] = {};
+    FilterMode filterModes[2] = {};
     if (preserveSettings)
     {
         fps = native_->fps();
@@ -697,7 +697,7 @@ bool CubemapResource::set
         sizes[i] = face->rawDataSize();
     }
     bool preserveSettings = native_.valid();
-    FilterMode filterModes[2];
+    FilterMode filterModes[2] = {};
     if (preserveSettings)
     {
         filterModes[0] = minFilterMode();

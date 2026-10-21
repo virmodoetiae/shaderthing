@@ -613,8 +613,6 @@ protected:
 
 class Layer;
 
-// A Layer resource is never managed/owned by a resource object
-// TODO leverage WPtr/UPtr for cleaner and safer implementation
 class LayerResource : public Resource
 {
     WPtr<Layer>        layer_;
