@@ -57,27 +57,6 @@ bool Resource::renderActionsButtonGui
     if (ImGui::BeginPopup("##resourceActions"))
     {
         auto size = ImVec2(12*ImGui::GetFontSize(), 0);
-        bool disableDelete = type_ == Type::Texture2D && 
-            ((Texture2DResource*)this)->clientResources().size() > 0;
-        if (disableDelete)
-            ImGui::BeginDisabled();
-        if (ImGui::Button(ICON_FA_TRASH, size))
-        {
-            dab.add
-            (
-                [this, &resources]()
-                {
-                    auto r = 
-                        std::find(resources.begin(), resources.end(), this);
-                    resources.erase(r);
-                }
-            );
-        }
-        if (disableDelete)
-        {
-            ImGui::EndDisabled();
-            ((Texture2DResource*)this)->renderClientResourceLock();
-        }
         if (ImGui::Button(ICON_FA_COG, size))
         {
             ImGui::OpenPopup("##resourceSettings");
@@ -101,6 +80,27 @@ affect any cubemaps or animations using this texture)");
             ImGui::EndPopup();
         }
         renderReplaceButtonGui(resources, dab);
+        bool disableDelete = type_ == Type::Texture2D && 
+            ((Texture2DResource*)this)->clientResources().size() > 0;
+        if (disableDelete)
+            ImGui::BeginDisabled();
+        if (ImGui::Button(ICON_FA_TRASH, size))
+        {
+            dab.add
+            (
+                [this, &resources]()
+                {
+                    auto r = 
+                        std::find(resources.begin(), resources.end(), this);
+                    resources.erase(r);
+                }
+            );
+        }
+        if (disableDelete)
+        {
+            ImGui::EndDisabled();
+            ((Texture2DResource*)this)->renderClientResourceLock();
+        }
         ImGui::EndPopup();
     }
     return requestRecompilation;

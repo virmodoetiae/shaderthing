@@ -285,9 +285,7 @@ public:
     (
         UPtr<Uniform>& uniform,
         Layer* layer,
-        int row,
-        const bool showSeparator = false,
-        const bool showSharedAndDefaultUniforms = true
+        int row
     );
 
     // Resources

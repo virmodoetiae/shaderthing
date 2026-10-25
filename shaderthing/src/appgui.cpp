@@ -1157,36 +1157,14 @@ void App::renderUniformsTabGui(Layer* layer)
 {
     //--------------------------------------------------------------------------
     auto& su = *(sharedUniforms);
-    float fontSize = ImGui::GetFontSize();
-    static bool showSharedAndDefaultUniforms = true;
-    if 
-    (
-        ImGui::Button
-        (
-            showSharedAndDefaultUniforms ? 
-            "Hide shared and default uniforms" : 
-            "Show shared and uniforms",
-            {-1,0}
-        )
-    )
-        showSharedAndDefaultUniforms = !showSharedAndDefaultUniforms;
 
     std::string uniformFrameName = "##uniformsFrame"+std::to_string(layer->id);
     ImGui::BeginChild(uniformFrameName.c_str(), ImVec2(-1, -1), false);
 
     int nColumns = 5;
-    if 
-    (
-        ImGui::BeginTable
-        (
-            "##uniformTable", 
-            nColumns, 
-            ImGuiTableFlags_BordersV | 
-            ImGuiTableFlags_BordersOuterH |
-            ImGuiTableFlags_SizingFixedFit
-        )
-    )
+    static auto tableColumnSetup = []()
     {
+        float fontSize = ImGui::GetFontSize();
         ImGui::TableSetupColumn("##actions", 0, 4*fontSize);
         ImGui::TableSetupColumn("Name", 0, 10*fontSize);
         ImGui::TableSetupColumn("Type", 0, 7*fontSize);
@@ -1197,52 +1175,33 @@ void App::renderUniformsTabGui(Layer* layer)
             0, 
             ImGui::GetContentRegionAvail().x
         );
+    };
+
+    if 
+    (
+        ImGui::BeginTable
+        (
+            "##layerUniformTable", 
+            nColumns, 
+            ImGuiTableFlags_BordersV | 
+            ImGuiTableFlags_BordersOuterH |
+            ImGuiTableFlags_SizingFixedFit
+        )
+    )
+    {
+        tableColumnSetup();
         ImGui::TableHeadersRow();
-        
         int row = 0;
         int column = 0;
-
-        // First, render the built-in shared uniforms
-        if (showSharedAndDefaultUniforms)
-            row = renderBuiltInSharedUniformsGui();
-
-        auto& rs = renderState;
-
-        // Then, render the user-created shared uniforms
-        for 
-        (
-            int i=0; 
-            i < su.fragment.uniforms.size()-su.userUniformsStartIndex; 
-            i++
-        )
+        for(auto& uniform : layer->fragment.uniforms)
         {
-            auto& uniform = su.fragment.uniforms
-            [
-                i + su.userUniformsStartIndex
-            ];
             renderUniformTableRowGui
             (
                 uniform,
                 layer,
-                row++,
-                i == su.fragment.uniforms.size()-su.userUniformsStartIndex-1
+                row++
             );
         }
-
-        // Finally, render the user-created layer-specific uniforms
-        for(unsigned int i=0; i<layer->fragment.uniforms.size(); i++)
-        {
-            auto& uniform = layer->fragment.uniforms[i];
-            renderUniformTableRowGui
-            (
-                uniform,
-                layer,
-                row++,
-                false,
-                showSharedAndDefaultUniforms
-            );
-        }
-
         // Render the "Create new uniform" button
         START_ROW(row, column)
         START_COLUMN(column)
@@ -1262,10 +1221,74 @@ void App::renderUniformsTabGui(Layer* layer)
         }
         END_COLUMN(column)
         END_ROW(row)
-
         ImGui::EndTable();
     }
 
+    auto nSharedUniforms = [&su]()
+    {
+        return (unsigned int)(su.fragment.uniforms.size()) - 
+            su.userUniformsStartIndex;
+    };
+    if 
+    (
+        nSharedUniforms() > 0 && 
+        ImGui::CollapsingHeader
+        (
+            "Shared uniforms", 
+            ImGuiTreeNodeFlags_DefaultOpen
+        )
+    )
+    {
+        if 
+        (
+            ImGui::BeginTable
+            (
+                "##sharedUniformTable", 
+                nColumns, 
+                ImGuiTableFlags_BordersV | 
+                ImGuiTableFlags_BordersOuterH |
+                ImGuiTableFlags_SizingFixedFit
+            )
+        )
+        {
+            tableColumnSetup();
+            for (unsigned int i=0; i < nSharedUniforms(); i++)
+            {
+                auto& uniform = su.fragment.uniforms[
+                    i+su.userUniformsStartIndex];
+                renderUniformTableRowGui(uniform, layer, i);
+            }
+            ImGui::EndTable();
+        }
+    }
+
+    if 
+    (
+        ImGui::CollapsingHeader
+        (
+            "Built-in uniforms", 
+            ImGuiTreeNodeFlags_DefaultOpen
+        )
+    )
+    {
+        if 
+        (
+            ImGui::BeginTable
+            (
+                "##sharedUniformTable", 
+                nColumns, 
+                ImGuiTableFlags_BordersV | 
+                ImGuiTableFlags_BordersOuterH |
+                ImGuiTableFlags_SizingFixedFit
+            )
+        )
+        {
+            tableColumnSetup();
+            renderBuiltInSharedUniformsGui();
+            ImGui::EndTable();
+        }
+    }
+    
     ImGui::EndChild();
 
     ImGui::SetCursorPosY
@@ -1811,7 +1834,6 @@ motion only if the left mouse button (LMB) is held)");
     END_ROW(row)
 
     // iWASD ---------------------------------------------------------------
-    float posY = 0;
     START_ROW(row, column)
     NEXT_COLUMN(column)
     if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1, 0)))
@@ -1835,36 +1857,13 @@ motion only if the left mouse button (LMB) is held)");
         ImGui::PopItemWidth();
         ImGui::EndPopup();
     }
-
-    bool showSeparator
-    (
-        su.fragment.uniforms.size() == 
-        su.userUniformsStartIndex
-    );
-    if (showSeparator)
-    {
-        posY = ImGui::GetCursorPosY();
-        ImGui::Separator();
-    }
     NEXT_COLUMN(column)
     ImGui::Text("iWASD");
-    if (showSeparator)
-    {
-        ImGui::SetCursorPosY(posY);
-        ImGui::Separator();
-    }
     NEXT_COLUMN(column)
     ImGui::Text(vir::Shader::uniformTypeToName[Type::Float3].c_str());
-    if (showSeparator)
-    {
-        ImGui::SetCursorPosY(posY);
-        ImGui::Separator();
-    }
     NEXT_COLUMN(column)
     bounds = &su.iWASDUniform->gui.bounds;
     boundsChanged = su.iWASDUniform->renderEditBoundsButtonGui();
-    if (showSeparator)
-        ImGui::Separator();
     NEXT_COLUMN(column)
     {
         glm::vec3 value = su.iWASD;
@@ -1907,8 +1906,6 @@ motion only if the left mouse button (LMB) is held)");
         }
         ImGui::PopItemWidth();
     }
-    if (showSeparator)
-        ImGui::Separator();
     END_ROW(row)
     return row;
 }
@@ -1919,22 +1916,13 @@ bool App::renderUniformTableRowGui
 (
     UPtr<Uniform>& uniform,
     Layer* layer,
-    int row,
-    const bool showSeparator,
-    const bool showSharedAndDefaultUniforms
+    int row
 )
 {
     float fontSize = ImGui::GetFontSize();
     int column;
-    bool managed
-    (
-        uniform->managedType != ManagedType::None
-    );
-    if 
-    (
-        (managed && !showSharedAndDefaultUniforms) ||
-        uniform->managedType == ManagedType::ResourceResolution
-    )
+    bool managed(uniform->managedType != ManagedType::None);
+    if (managed) // Do not show managed (e.g., resourceResolution) uniforms
         return false;
     bool typeChanged = false;
     auto& su = *(sharedUniforms);
@@ -1942,7 +1930,6 @@ bool App::renderUniformTableRowGui
     START_ROW(row, column)
 
     START_COLUMN(column) // Action column --------------------------------------
-    float y0 = 0;
     if (!managed)
     {
         float halfButtonSize(1.7*fontSize);
@@ -1965,8 +1952,8 @@ bool App::renderUniformTableRowGui
             ImGui::Button
             (
                 uniform->isSharedByUser ?
-                ICON_FA_ARROW_DOWN :
-                ICON_FA_ARROW_UP,
+                ICON_FA_ARROW_UP :
+                ICON_FA_ARROW_DOWN,
                 {-1, 0}
             )
         )
@@ -1999,10 +1986,7 @@ bool App::renderUniformTableRowGui
                 );
             ImGui::EndTooltip();
         }
-        y0 = ImGui::GetCursorPosY();
     }
-    if (showSeparator)
-        ImGui::Separator();
     END_COLUMN(column)
     
     START_COLUMN(column) // Name column ----------------------------------------
@@ -2031,8 +2015,6 @@ bool App::renderUniformTableRowGui
         }
     }
     bool named(uniform->name().size() > 0);
-    if (showSeparator)
-        ImGui::Separator();
     END_COLUMN(column)
 
     START_COLUMN(column) // Type column ----------------------------------------
@@ -2065,8 +2047,6 @@ bool App::renderUniformTableRowGui
         }
         ImGui::EndCombo();
     }
-    if (showSeparator)
-        ImGui::Separator();
     END_COLUMN(column)
 
     START_COLUMN(column) // Bounds column ------------------------------------------
@@ -2074,12 +2054,6 @@ bool App::renderUniformTableRowGui
     glm::vec2& bounds = uniform->gui.bounds;
     if (uniform->gui.showBounds)
         boundsChanged = uniform->renderEditBoundsButtonGui(true);
-    if (showSeparator)
-    {
-        if (y0 > 0)
-            ImGui::SetCursorPosY(y0);
-        ImGui::Separator();
-    }
     END_COLUMN(column)
 
     START_COLUMN(column) // Value column ---------------------------------------
@@ -2732,8 +2706,7 @@ bool App::renderUniformTableRowGui
         default:
             break;
     }
-    if (showSeparator)
-        ImGui::Separator();
+
     END_COLUMN(column)
     
     END_ROW(row)
