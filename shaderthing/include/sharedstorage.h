@@ -271,7 +271,7 @@ class SharedStorage
         bool isIconSet                       = false;
         bool isDocked                        = false;
         bool isOpen                          = false;
-        bool isDetachedFromMenu              = true;
+        bool isDetachedFromMenu              = false;
         bool isFloatDataAlsoShownAsColor     = false;
         int intDataViewStartIndex            = 0;
         int intDataViewEndIndex              = 5;

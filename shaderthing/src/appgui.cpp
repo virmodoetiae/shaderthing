@@ -1177,17 +1177,12 @@ void App::renderUniformsTabGui(Layer* layer)
         );
     };
 
-    if 
-    (
-        ImGui::BeginTable
-        (
-            "##layerUniformTable", 
-            nColumns, 
-            ImGuiTableFlags_BordersV | 
-            ImGuiTableFlags_BordersOuterH |
-            ImGuiTableFlags_SizingFixedFit
-        )
-    )
+    auto flags = 
+        ImGuiTableFlags_BordersV | 
+        ImGuiTableFlags_BordersOuterH |
+        ImGuiTableFlags_SizingFixedFit;
+
+    if (ImGui::BeginTable("##layerUniformTable", nColumns, flags))
     {
         tableColumnSetup();
         ImGui::TableHeadersRow();
@@ -1195,12 +1190,7 @@ void App::renderUniformsTabGui(Layer* layer)
         int column = 0;
         for(auto& uniform : layer->fragment.uniforms)
         {
-            renderUniformTableRowGui
-            (
-                uniform,
-                layer,
-                row++
-            );
+            renderUniformsTableRowGui(row++, uniform, layer);
         }
         // Render the "Create new uniform" button
         START_ROW(row, column)
@@ -1239,24 +1229,14 @@ void App::renderUniformsTabGui(Layer* layer)
         )
     )
     {
-        if 
-        (
-            ImGui::BeginTable
-            (
-                "##sharedUniformTable", 
-                nColumns, 
-                ImGuiTableFlags_BordersV | 
-                ImGuiTableFlags_BordersOuterH |
-                ImGuiTableFlags_SizingFixedFit
-            )
-        )
+        if (ImGui::BeginTable("##sharedUniformTable", nColumns, flags))
         {
             tableColumnSetup();
-            for (unsigned int i=0; i < nSharedUniforms(); i++)
+            for (unsigned int row=0; row < nSharedUniforms(); row++)
             {
                 auto& uniform = su.fragment.uniforms[
-                    i+su.userUniformsStartIndex];
-                renderUniformTableRowGui(uniform, layer, i);
+                    row + su.userUniformsStartIndex];
+                renderUniformsTableRowGui(row, uniform, layer);
             }
             ImGui::EndTable();
         }
@@ -1271,20 +1251,10 @@ void App::renderUniformsTabGui(Layer* layer)
         )
     )
     {
-        if 
-        (
-            ImGui::BeginTable
-            (
-                "##sharedUniformTable", 
-                nColumns, 
-                ImGuiTableFlags_BordersV | 
-                ImGuiTableFlags_BordersOuterH |
-                ImGuiTableFlags_SizingFixedFit
-            )
-        )
+        if (ImGui::BeginTable("##sharedUniformTable", nColumns, flags))
         {
             tableColumnSetup();
-            renderBuiltInSharedUniformsGui();
+            renderBuiltInUniformsGui();
             ImGui::EndTable();
         }
     }
@@ -1302,9 +1272,8 @@ void App::renderUniformsTabGui(Layer* layer)
 
 //----------------------------------------------------------------------------//
 
-// Render the default/built-in shared uniforms as a table and return the row
-// count
-int App::renderBuiltInSharedUniformsGui()
+// Render the default/built-in uniforms as a table and return the row count
+int App::renderBuiltInUniformsGui()
 {
     auto& su = *(sharedUniforms);
     int row = 0;
@@ -1912,11 +1881,11 @@ motion only if the left mouse button (LMB) is held)");
 
 //----------------------------------------------------------------------------//
 
-bool App::renderUniformTableRowGui
+bool App::renderUniformsTableRowGui
 (
+    int row,
     UPtr<Uniform>& uniform,
-    Layer* layer,
-    int row
+    Layer* layer
 )
 {
     float fontSize = ImGui::GetFontSize();
@@ -2756,7 +2725,7 @@ void App::renderResourcesTableGui()
         return;
     if (Resource::gui.isDetachedFromControlPanel)
     {
-        ImGui::SetNextWindowSize(ImVec2(900,350), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(768, 384), ImGuiCond_FirstUseEver);
         static ImGuiWindowFlags windowFlags(ImGuiWindowFlags_NoCollapse);
         ImGui::Begin("Resource manager", &Resource::gui.isOpen, windowFlags);
 
@@ -2783,21 +2752,29 @@ void App::renderResourcesTableGui()
         ImGuiTableFlags_BordersV | 
         ImGuiTableFlags_BordersOuterH |
         ImGuiTableFlags_SizingFixedFit;
+
+    /*
+        ImGui::TableSetupColumn("##actions", 0, 4*fontSize);
+        ImGui::TableSetupColumn("Name", 0, 10*fontSize);
+        ImGui::TableSetupColumn("Type", 0, 7*fontSize);
+        ImGui::TableSetupColumn("Bounds", 0, 3.5*fontSize);
+    */
+
     if (ImGui::BeginTable("##resourceTable", 6, flags, ImVec2(0., tableHeight)))
     {
         // Declare columns
         static ImGuiTableColumnFlags flags = 0;
-        ImGui::TableSetupColumn("##controls", flags, 8.0*fontSize);
-        ImGui::TableSetupColumn("Type", flags, 8.0*fontSize);
-        ImGui::TableSetupColumn("Preview", flags, 4.0*fontSize);
-        ImGui::TableSetupColumn("Name", flags, 8.0*fontSize);
-        ImGui::TableSetupColumn("Resolution", flags, 10.0*fontSize);
+        ImGui::TableSetupColumn("##resourceActions", flags, 4.0*fontSize);
+        ImGui::TableSetupColumn("Name", flags, 10.0*fontSize);
+        ImGui::TableSetupColumn("Type", flags, 7.0*fontSize);
+        ImGui::TableSetupColumn("View", flags, 3.5*fontSize);
+        ImGui::TableSetupColumn("Resolution", flags, 7.0*fontSize);
         ImGui::TableSetupColumn
         (
             "Aspect ratio", 
             flags, 
             Resource::gui.isDetachedFromControlPanel ? 
-            ImGui::GetContentRegionAvail().x : 8.0*fontSize
+            ImGui::GetContentRegionAvail().x : 7.0*fontSize
         );
         ImGui::TableHeadersRow();
 
@@ -2824,6 +2801,38 @@ void App::renderResourcesTableRowGui(int row)
     int column = 0;
     START_ROW(row, column)
     START_COLUMN(column) // Actions column -------------------------------------
+    bool disableDelete = resource->type() == Resource::Type::Texture2D && 
+        ((Texture2DResource*)resource.get())->clientResources().size() > 0;
+    if (disableDelete)
+        ImGui::BeginDisabled();
+    if (ImGui::Button(ICON_FA_TRASH, {1.7*ImGui::GetFontSize(), 0}))
+    {
+        auto ptr = resource.get();
+        deferredActionBuffer.add
+        (
+            [this, ptr]()
+            {
+                auto r = 
+                    std::find(resources.begin(), resources.end(), ptr);
+                resources.erase(r);
+            }
+        );
+    }
+    if (disableDelete)
+    {
+        ImGui::EndDisabled();
+        ((Texture2DResource*)resource.get())->renderClientResourceLock();
+    }
+    else if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
+    {
+        ImGui::Text("Delete this resource");
+        ImGui::EndTooltip();
+    }
+    ImGui::SameLine();
     // The button returns true if any changes made require shade recompilation
     if (resource->renderActionsButtonGui(resources, deferredActionBuffer))
     {
@@ -2832,6 +2841,35 @@ void App::renderResourcesTableRowGui(int row)
             [this](){for (auto& layer : layers) layer->compileShader();}
         );
     }
+    if 
+    (
+        resource->type() == Resource::Type::Texture2D &&
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
+        ((Texture2DResource*)resource.get())->clientResources().size() > 0
+    )
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text(
+R"(These settings only affect this texture and do not 
+affect any cubemaps or animations using this texture)");
+        ImGui::EndTooltip();
+    }
+    END_COLUMN(column)
+    START_COLUMN(column) // Name column ----------------------------------------
+    if (resource->type() != Resource::Type::Framebuffer)
+    {
+        if (ImGui::InputText("##resourceName", resource->namePtr()))
+        {
+            Helpers::enforceUniqueName
+            (
+                *(resource->namePtr()),
+                resources,
+                resource.get()
+            );
+        }
+    }
+    else
+        ImGui::Text(resource->name().c_str());
     END_COLUMN(column)
     START_COLUMN(column) // Type column ----------------------------------------
     std::string typeName = Resource::typeToName.at(resource->type());
@@ -2843,11 +2881,11 @@ void App::renderResourcesTableRowGui(int row)
         // resizing/reformatting) to "regular" image-loaded textures to 
         // remove such somewhat artificial distinctions altogether
         if (!texture->hasRawData())
-            typeName += " (S)";
+            typeName += "/S";
     }
     ImGui::Text(typeName.c_str());
     END_COLUMN(column)
-    START_COLUMN(column) // Preview column -------------------------------------
+    START_COLUMN(column) // View column -------------------------------------
     float x = resource->width();
     float y = resource->height();
     float aspectRatio = x/y;
@@ -2902,13 +2940,13 @@ ImGui::Image                                                            \
         resource->type() == Resource::Type::AnimatedTexture2D ||
         resource->type() == Resource::Type::Framebuffer
     )
-        previewTexture2D(resource.get(), 1.4*fontSize, 1.3*fontSize);
+        previewTexture2D(resource.get(), 1.5*fontSize, 1.05*fontSize);
     else if (resource->type() == Resource::Type::Cubemap)
     {
         auto cubemap = (CubemapResource*)resource.get();
         for (int i=0; i<6; i++)
         {
-            float offset = (i == 0 || i == 3) ? 0.75*fontSize : 0.0;
+            float offset = (i == 0 || i == 3) ? 0.5*fontSize : 0.0;
             previewTexture2D
             (
                 cubemap->faces()[i].get(), 
@@ -2920,22 +2958,6 @@ ImGui::Image                                                            \
         }
     }
     END_COLUMN(column)
-    START_COLUMN(column) // Name column ----------------------------------------
-    if (resource->type() != Resource::Type::Framebuffer)
-    {
-        if (ImGui::InputText("##resourceName", resource->namePtr()))
-        {
-            Helpers::enforceUniqueName
-            (
-                *(resource->namePtr()),
-                resources,
-                resource.get()
-            );
-        }
-    }
-    else
-        ImGui::Text(resource->name().c_str());
-    END_COLUMN(column)
     START_COLUMN(column) // Resolution column ----------------------------------
     if (resource->type() == Resource::Type::Texture3D)
         ImGui::Text("%d x %d x %d", (int)x, (int)y, (int)resource->depth());
@@ -2943,7 +2965,10 @@ ImGui::Image                                                            \
         ImGui::Text("%d x %d", (int)x, (int)y);
     END_COLUMN(column)
     START_COLUMN(column) // Aspect ratio column --------------------------------
-    ImGui::Text("%.3f", aspectRatio);
+    if (resource->type() != Resource::Type::Texture3D)
+        ImGui::Text("%.3f", aspectRatio);
+    else 
+        ImGui::Text("N/A");
     END_COLUMN(column)
     END_ROW(row)
 }

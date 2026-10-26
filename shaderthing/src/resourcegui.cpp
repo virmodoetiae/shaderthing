@@ -38,69 +38,22 @@ bool Resource::renderActionsButtonGui
 )
 {
     bool requestRecompilation = false;
-    if (type_ == Resource::Type::Framebuffer)
+    if (ImGui::Button(ICON_FA_COG, ImVec2(-1,0)))
+        ImGui::OpenPopup("##resourceSettings");
+    if 
+    (
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && 
+        ImGui::BeginTooltip()
+    )
     {
-        if (ImGui::Button(ICON_FA_COG, ImVec2(-1,0)))
-            ImGui::OpenPopup("##framebufferResourceSettings");
+        ImGui::Text("Settings");
+        ImGui::EndTooltip();
     }
-    else
+    if (ImGui::BeginPopup("##resourceSettings"))
     {
-        if (ImGui::Button(ICON_FA_EDIT, ImVec2(-1,0)))
-            ImGui::OpenPopup("##resourceActions");
-    }
-
-    if (ImGui::BeginPopup("##framebufferResourceSettings"))
-    {
-        renderSettingsGui(resources);
-        ImGui::EndPopup();
-    }
-    if (ImGui::BeginPopup("##resourceActions"))
-    {
-        auto size = ImVec2(12*ImGui::GetFontSize(), 0);
-        if (ImGui::Button(ICON_FA_COG, size))
-        {
-            ImGui::OpenPopup("##resourceSettings");
-        }
-        if 
-        (
-            type_ == Type::Texture2D &&
-            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) &&
-            ((Texture2DResource*)this)->clientResources().size() > 0
-        )
-        {
-            ImGui::BeginTooltip();
-            ImGui::Text(
-R"(These settings only affect this texture and do not 
-affect any cubemaps or animations using this texture)");
-            ImGui::EndTooltip();
-        }
-        if (ImGui::BeginPopup("##resourceSettings"))
-        {
-            requestRecompilation = renderSettingsGui(resources);
-            ImGui::EndPopup();
-        }
-        renderReplaceButtonGui(resources, dab);
-        bool disableDelete = type_ == Type::Texture2D && 
-            ((Texture2DResource*)this)->clientResources().size() > 0;
-        if (disableDelete)
-            ImGui::BeginDisabled();
-        if (ImGui::Button(ICON_FA_TRASH, size))
-        {
-            dab.add
-            (
-                [this, &resources]()
-                {
-                    auto r = 
-                        std::find(resources.begin(), resources.end(), this);
-                    resources.erase(r);
-                }
-            );
-        }
-        if (disableDelete)
-        {
-            ImGui::EndDisabled();
-            ((Texture2DResource*)this)->renderClientResourceLock();
-        }
+        requestRecompilation = renderSettingsGui(resources);
+        if (type_ != Resource::Type::Framebuffer)
+            renderReplaceButtonGui(resources, dab);
         ImGui::EndPopup();
     }
     return requestRecompilation;
@@ -225,7 +178,6 @@ bool Resource::renderSettingsGui(const UPtrVector<Resource>& resources)
             nativeAnimation->setFps(fps);
         }
         ImGui::PopItemWidth();
-        ImGui::Separator();
     }
     //else
     //    size.x = -1;
@@ -549,10 +501,9 @@ void Texture2DResource::renderReplaceButtonGui
     DeferredActionBuffer& dab
 )
 {
-    auto size = ImVec2(12*ImGui::GetFontSize(), 0);
     if (clientResources_.size() > 0)
         ImGui::BeginDisabled();
-    if (ImGui::Button("Replace", size))
+    if (ImGui::Button("Replace", {-1, 0}))
     {
         Resource::fileDialog.runOpenFileDialog
         (
@@ -608,9 +559,11 @@ void Texture2DResource::renderClientResourceLock()
         std::string hoverText = 
 "This texture is in use by the following resources:\n";
         for (int i=0; i<(int)clientResources_.size(); i++)
+        {
             hoverText += 
                 "  "+std::to_string(i+1)+") "+
                 clientResources_[i]->name()+"\n";
+        }
         hoverText += 
 "To delete or replace this texture, first delete \n"
 "or update the resources which use it";

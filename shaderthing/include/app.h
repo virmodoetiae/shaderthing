@@ -278,14 +278,14 @@ public:
     void renderUniformsTabGui(Layer* layer);
 
     // Returns table row count
-    int renderBuiltInSharedUniformsGui();
+    int renderBuiltInUniformsGui();
 
     // Returns status of rendered uniform row (true = modified)
-    bool renderUniformTableRowGui
+    bool renderUniformsTableRowGui
     (
+        int row,
         UPtr<Uniform>& uniform,
-        Layer* layer,
-        int row
+        Layer* layer
     );
 
     // Resources

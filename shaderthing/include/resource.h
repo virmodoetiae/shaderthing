@@ -147,7 +147,7 @@ public:
     struct GUI
     {
         bool isOpen = false;
-        bool isDetachedFromControlPanel = true;
+        bool isDetachedFromControlPanel = false;
     };
     static GUI gui;
 
