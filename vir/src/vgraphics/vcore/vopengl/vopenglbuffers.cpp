@@ -692,7 +692,7 @@ void OpenGLCubeMapBuffer::bindImage
         unit, 
         id_, 
         level, 
-        GL_FALSE, 
+        GL_TRUE, 
         0, 
         OpenGLImageBindMode(mode), 
         OpenGLInternalFormat(internalFormat_)

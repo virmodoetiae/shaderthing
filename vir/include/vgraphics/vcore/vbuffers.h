@@ -413,6 +413,20 @@ public:
         uint32_t depth,
         InternalFormat internalFormat
     );
+    // Create a texture object starting from file data loaded from an image file,
+    // currently only ktx2 files. A nullptr is returned if the creation fails
+    static UniquePtr<TextureBuffer3D> create
+    (
+        const unsigned char* fileData, 
+        uint32_t size,
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
+    // Create a texture object starting from a ktx2 filepath on disk
+    static UniquePtr<TextureBuffer3D> create
+    (
+        std::string filepath, 
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
     // Retrieve the texture data as unsigned char, and store it in the provided
     // array. If allocate is true, the array will be re-allocated with the 
     // correct size and data type

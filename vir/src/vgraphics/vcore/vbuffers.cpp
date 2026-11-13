@@ -2,11 +2,31 @@
 #include <cmath>
 
 #include "vgraphics/vcore/vopengl/vopenglbuffers.h"
+#include "vgraphics/vmisc/vktx2.h"
 
 #include "thirdparty/stb/stb_image.h"
 
 namespace vir
 {
+
+// Helpers -------------------------------------------------------------------//
+
+auto readFileData = []
+(
+    const std::string& filepath, 
+    std::vector<unsigned char>& data
+)
+{
+    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
+    if (!file)
+        return false;
+    std::streamoff size = file.tellg();
+    if (size <= 0 || uint64_t(size) > UINT32_MAX) // create() takes a uint32_t
+        return false;
+    data.resize(size_t(size));
+    file.seekg(0, std::ios::beg);
+    return bool(file.read(reinterpret_cast<char*>(data.data()), size));
+};
 
 // Buffer base ---------------------------------------------------------------//
 
@@ -187,6 +207,37 @@ UniquePtr<TextureBuffer2D> TextureBuffer2D::create
 {
     if (!GlobalPtr<Window>::valid())
         return nullUniquePtr<TextureBuffer2D>();
+    // If file is .ktx2, use ktx2 decoder
+    if (isKtx2(fileData, size))
+    {
+        ktx2::Texture ktx;
+        InternalFormat requestedFormat = internalFormat;
+        InternalFormat actualFormat = InternalFormat::Undefined;
+        std::string error;
+        if 
+        (
+            !decodeKtx2
+            (
+                fileData, 
+                size, 
+                2, 
+                requestedFormat, 
+                ktx, 
+                actualFormat, 
+                &error
+            )
+        )
+            return nullUniquePtr<TextureBuffer2D>();
+        return TextureBuffer2D::create
+        (
+            ktx.levels[0].data(),
+            ktx.width,
+            ktx.height,
+            (requestedFormat != InternalFormat::Undefined) ? requestedFormat : 
+                actualFormat
+        );
+    }
+    // else if file is .png/.jpg/.jpeg/.bmp, use stbi
     unsigned char* data = nullptr;
     UniquePtr<TextureBuffer2D> buffer;
     try
@@ -208,18 +259,13 @@ UniquePtr<TextureBuffer2D> TextureBuffer2D::create
                 "TextureBuffer2D::create - Invalid data"
             );
         ENFORCE_CHANNEL_FORMAT_CONSISTENCY
-    
-        switch(Window::instance()->context()->type())
-        {
-            case (GraphicsContext::Type::OpenGL) :
-                buffer = makeUnique<OpenGLTextureBuffer2D>
-                (
-                    data, 
-                    width, 
-                    height,
-                    internalFormat
-                );
-        }
+        buffer = TextureBuffer2D::create
+        (
+            data, 
+            width, 
+            height,
+            internalFormat
+        );
         stbi_image_free(data);
     }
     catch (...)
@@ -238,56 +284,32 @@ UniquePtr<TextureBuffer2D> TextureBuffer2D::create
 {
     if (!GlobalPtr<Window>::valid())
         return nullUniquePtr<TextureBuffer2D>();
-    unsigned char* data = nullptr;
-    UniquePtr<TextureBuffer2D> buffer;
+    std::vector<unsigned char> fileData;
     try
     {
-        int width = 0, height = 0, nChannels = 0;
-        stbi_set_flip_vertically_on_load(true);
-        data = stbi_load
-        (
-            filepath.c_str(), 
-            &width, 
-            &height, 
-            &nChannels, 
-            TextureBuffer2D::nChannels(internalFormat)
-        );
-        if (data == nullptr)
-            throw std::runtime_error
-            (
-                "TextureBuffer2D::create - Invalid data in "+filepath
-            );
-        ENFORCE_CHANNEL_FORMAT_CONSISTENCY
-    
-        switch(Window::instance()->context()->type())
-        {
-            case (GraphicsContext::Type::OpenGL) :
-                buffer = makeUnique<OpenGLTextureBuffer2D>
-                (
-                    data, 
-                    width, 
-                    height,
-                    internalFormat
-                );
-        }
-        stbi_image_free(data);
+        if (!readFileData(filepath, fileData))
+            return nullUniquePtr<TextureBuffer2D>();
     }
-    catch (...)
+    catch(...) // bad_alloc on absurdly large files
     {
-        if (data != nullptr)
-            stbi_image_free(data);
+        return nullUniquePtr<TextureBuffer2D>();
     }
-    return buffer;
+    return TextureBuffer2D::create
+    (
+        fileData.data(), 
+        uint32_t(fileData.size()), 
+        internalFormat
+    );
 }
 
 uint64_t TextureBuffer2D::maxMemoryFootprint() const
 {
     return (uint64_t)width_*
-            (uint64_t)height_*
-            (uint64_t)internalFormatToBytes.at(internalFormat_)*
-            (4./3.); // Account for mipmaps (in 2D, the mipmaps are 1./3. of
-                     // of the total base texture size as it converges like
-                     // 1/(2^n)^2)
+           (uint64_t)height_*
+           (uint64_t)internalFormatToBytes.at(internalFormat_)*
+           (4./3.); // Account for mipmaps (in 2D, the mipmaps are 1./3. of
+                    // of the total base texture size as it converges like
+                    // 1/(2^n)^2)
 }
 
 // AnimatedTexture2D ---------------------------------------------------------//
@@ -698,6 +720,7 @@ UniquePtr<CubeMapBuffer> CubeMapBuffer::create
     return buffer;
 }
 
+// TODO FIX SO THAT IT WORKS WITH KTX2 FILEDATA AS WELL, NOT JUST STBI
 UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 (
     const unsigned char* fileData[6], 
@@ -858,6 +881,75 @@ UniquePtr<TextureBuffer3D> TextureBuffer3D::create
     }
     catch(...){}
     return nullUniquePtr<TextureBuffer3D>();
+}
+
+UniquePtr<TextureBuffer3D> TextureBuffer3D::create
+(
+    const unsigned char* fileData, 
+    uint32_t size,
+    InternalFormat internalFormat
+)
+{
+    if (!GlobalPtr<Window>::valid())
+        return nullUniquePtr<TextureBuffer3D>();
+    if (isKtx2(fileData, size))
+    {
+        ktx2::Texture ktx;
+        InternalFormat requestedFormat = internalFormat;
+        InternalFormat actualFormat = InternalFormat::Undefined;
+        std::string error;
+        if 
+        (
+            !decodeKtx2
+            (
+                fileData, 
+                size, 
+                3, 
+                requestedFormat, 
+                ktx, 
+                actualFormat, 
+                &error
+            )
+        )
+            return nullUniquePtr<TextureBuffer3D>();
+        return TextureBuffer3D::create
+        (
+            ktx.levels[0].data(),
+            ktx.width,
+            ktx.height,
+            ktx.depth,
+            (requestedFormat != InternalFormat::Undefined) ? requestedFormat : 
+                actualFormat
+        );
+    }
+    return nullUniquePtr<TextureBuffer3D>();
+}
+
+
+UniquePtr<TextureBuffer3D> TextureBuffer3D::create
+(
+    std::string filepath, 
+    InternalFormat internalFormat
+)
+{
+    if (!GlobalPtr<Window>::valid())
+        return nullUniquePtr<TextureBuffer3D>();
+    std::vector<unsigned char> fileData;
+    try
+    {
+        if (!readFileData(filepath, fileData))
+            return nullUniquePtr<TextureBuffer3D>();
+    }
+    catch(...) // bad_alloc on absurdly large files
+    {
+        return nullUniquePtr<TextureBuffer3D>();
+    }
+    return TextureBuffer3D::create
+    (
+        fileData.data(), 
+        uint32_t(fileData.size()), 
+        internalFormat
+    );
 }
 
 uint32_t TextureBuffer3D::maxSideSize()

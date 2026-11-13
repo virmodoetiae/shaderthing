@@ -23,6 +23,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/glm)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/imguitexteditor)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stb)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/zstd)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/rapidjson)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/portable-file-dialogs)
 
@@ -45,6 +46,7 @@ add_library(thirdparty
 			imgui/imgui_extensions.cpp
 			imgui/imgui_internal_extensions.cpp
 			stb/stb.cpp
+			zstd/zstd.c
 			portable-file-dialogs/pfd_impl.cpp)
 
 target_link_libraries(thirdparty PUBLIC glfw)
