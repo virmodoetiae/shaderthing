@@ -358,20 +358,49 @@ protected:
     ):TextureBuffer2D(nullptr, width, height, internalFormat){}
 public:
     virtual ~CubeMapBuffer(){}
+    // Faces are always in the order +X, -X, +Y, -Y, +Z, -Z (as in
+    // GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), each starting from its top row.
+    // readData returns all six faces, one after the other.
+    // In all create functions, the internal format of the file data is used
+    // if internalFormat == InternalFormat::Undefined, otherwise the data is
+    // converted to internalFormat. A nullptr is returned if the creation fails
+ 
+    // Create a cube map from a KTX2 file on disk holding a whole cube map
+    // (all six faces). Any other file is rejected
     static UniquePtr<CubeMapBuffer> create
     (
-        std::string filepaths[6], 
+        std::string filepath,
         InternalFormat internalFormat = InternalFormat::Undefined
     );
+    // Same, from the data of such a file
     static UniquePtr<CubeMapBuffer> create
     (
-        const unsigned char* fileData[6], 
+        const unsigned char* fileData,
+        uint32_t size,
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
+    // Create a cube map from six image files on disk, one per face. Each can
+    // be a KTX2 file of a 2D texture or an image stb_image reads (.png, .jpg,
+    // etc.), shown as it would be in an image viewer. The faces must be
+    // square and of the same size. Without a requested internalFormat, the
+    // first face sets it and the others are converted to it; .png/.jpg faces
+    // cannot be converted to 32-bit formats
+    static UniquePtr<CubeMapBuffer> create
+    (
+        std::string filepaths[6],
+        InternalFormat internalFormat = InternalFormat::Undefined
+    );
+    // Same, from the data of six such files
+    static UniquePtr<CubeMapBuffer> create
+    (
+        const unsigned char* fileData[6],
         uint32_t size[6],
         InternalFormat internalFormat = InternalFormat::Undefined
     );
+    // Create a cube map from raw texel data, one pointer per face
     static UniquePtr<CubeMapBuffer> create
     (
-        const unsigned char* faceData[6], 
+        const unsigned char* faceData[6],
         uint32_t width,
         uint32_t height,
         InternalFormat internalFormat

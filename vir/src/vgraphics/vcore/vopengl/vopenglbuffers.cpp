@@ -786,25 +786,65 @@ void OpenGLCubeMapBuffer::setMinFilterMode
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
+// Read back all six faces of a cube map, one after the other in the order
+// +X, -X, +Y, -Y, +Z, -Z (GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), that is
+// 6*width*height*nChannels values in total. Each face starts from its top
+// row, as in OpenGL's cube map convention (the layout the constructor
+// uploads, with stbi_set_flip_vertically_on_load(false))
+template<typename DataType>
+static void readCubeMapFaces
+(
+    uint32_t id,
+    uint32_t width,
+    uint32_t height,
+    TextureBuffer::InternalFormat internalFormat,
+    DataType*& data,
+    bool allocate,
+    GLenum glDataType
+)
+{
+    const size_t faceSize =
+        size_t(width)*height*TextureBuffer::nChannels(internalFormat);
+    if (allocate)
+        data = new DataType[6*faceSize];
+    // Tightly packed rows: alignment 1 is right for every format
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, id);
+    for (int i=0; i<6; i++)
+        glGetTexImage
+        (
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X+i,
+            0,
+            OpenGLFormat(internalFormat),
+            glDataType,
+            data + i*faceSize
+        );
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4); // Default
+}
+
 void OpenGLCubeMapBuffer::readData(unsigned char*& data, bool allocate)
 {
-    (void)data;
-    (void)allocate;
-    throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
+    readCubeMapFaces
+    (
+        id_, width_, height_, internalFormat_, data, allocate, GL_UNSIGNED_BYTE
+    );
 }
 
 void OpenGLCubeMapBuffer::readData(unsigned int*& data, bool allocate)
 {
-    (void)data;
-    (void)allocate;
-    throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
+    readCubeMapFaces
+    (
+        id_, width_, height_, internalFormat_, data, allocate, GL_UNSIGNED_INT
+    );
 }
 
 void OpenGLCubeMapBuffer::readData(float*& data, bool allocate)
 {
-    (void)data;
-    (void)allocate;
-    throw std::runtime_error("OpenGLCubeMapBuffer::readData - Not implemented");
+    readCubeMapFaces
+    (
+        id_, width_, height_, internalFormat_, data, allocate, GL_FLOAT
+    );
 }
 
 void OpenGLCubeMapBuffer::updateMipmap(bool onlyIfRequiredByFilterMode)

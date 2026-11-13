@@ -640,10 +640,40 @@ bool encode
     if (size == 0 || size > SIZE_MAX)
         return fail(error, "encodeKtx2 - invalid texture size");
     ktx.levels.assign(1, std::vector<uint8_t>(size_t(size)));
-    readBaseLevel(texture, ktx.levels[0]);
-    // OpenGL row order: first row is the bottom one
-    ktx.metadata["KTXorientation"] = ktx.dimensions == 3 ? "rui" : "ru";
+    try
+    {
+        readBaseLevel(texture, ktx.levels[0]);
+    }
+    catch (const std::exception& e) // e.g. readData not implemented
+    {
+        return fail(error, std::string("encodeKtx2 - ") + e.what());
+    }
+    // OpenGL row order: the first row is the bottom one, except in cube map
+    // faces, where it is the top one
+    ktx.metadata["KTXorientation"] =
+        ktx.faces == 6 ? "rd" : ktx.dimensions == 3 ? "rui" : "ru";
     return ktx2::write(ktx, fileData, ktx2::WriteOptions(), error);
+}
+
+// What a file holds, for error messages
+std::string describe(const ktx2::Texture& t)
+{
+    const std::string kind = t.faces == 6 ?
+        "cube map" : std::to_string(t.dimensions) + "D texture";
+    if (t.layers != 0)
+        return "an array of " + std::to_string(t.layers) + " " + kind + "s";
+    return "a " + kind;
+}
+
+std::string describe(ktx2::Kind kind)
+{
+    switch (kind)
+    {
+        case ktx2::Kind::Texture2D : return "a 2D texture";
+        case ktx2::Kind::Texture3D : return "a 3D texture";
+        case ktx2::Kind::CubeMap :   return "a cube map";
+    }
+    return "?";
 }
 
 } // namespace
@@ -1139,10 +1169,31 @@ bool encodeKtx2
     std::string* error
 )
 {
+    // A cube map's readData returns six faces: never read it into a buffer
+    // sized for one
+    if (CubeMapBuffer* cubeMap = dynamic_cast<CubeMapBuffer*>(&texture))
+        return encodeKtx2(*cubeMap, fileData, error);
     ktx2::Texture ktx;
     ktx.dimensions = 2;
     ktx.width = texture.width();
     ktx.height = texture.height();
+    return encode(texture, std::move(ktx), fileData, error);
+}
+
+bool encodeKtx2
+(
+    CubeMapBuffer& texture,
+    std::vector<unsigned char>& fileData,
+    std::string* error
+)
+{
+    if (texture.width() != texture.height())
+        return fail(error, "encodeKtx2 - cube map faces must be square");
+    ktx2::Texture ktx;
+    ktx.dimensions = 2;
+    ktx.width = texture.width();
+    ktx.height = texture.height();
+    ktx.faces = 6;
     return encode(texture, std::move(ktx), fileData, error);
 }
 
@@ -1165,7 +1216,7 @@ bool decodeKtx2
 (
     const unsigned char* fileData,
     size_t size,
-    uint32_t dimensions,
+    ktx2::Kind kind,
     TextureBuffer::InternalFormat requestedFormat,
     ktx2::Texture& texture,
     TextureBuffer::InternalFormat& internalFormat,
@@ -1178,18 +1229,23 @@ bool decodeKtx2
         ktx2::Texture ktx;
         if (!ktx2::read(fileData, size, ktx, error))
             return false;
-        if (ktx.dimensions != dimensions || ktx.layers != 0 || ktx.faces != 1)
+        const bool isCubeMap = kind == ktx2::Kind::CubeMap;
+        const uint32_t dimensions = kind == ktx2::Kind::Texture3D ? 3 : 2;
+        if
+        (
+            ktx.dimensions != dimensions ||
+            ktx.layers != 0 ||
+            ktx.faces != (isCubeMap ? 6u : 1u)
+        )
             return fail
             (
                 error,
-                where + "expected a " + std::to_string(dimensions) +
-                "D texture, the file holds a different kind (" +
-                std::to_string(ktx.dimensions) + "D, " +
-                std::to_string(ktx.layers) + " layers, " +
-                std::to_string(ktx.faces) + " faces)"
+                where + "expected " + describe(kind) + ", the file holds " +
+                describe(ktx)
             );
-        // Flip before converting, while the data still has the file's layout
-        if (ktx2::isTopDown(ktx))
+        // To OpenGL row order (top-down only for cube map faces). Flip
+        // before converting, while the data still has the file's layout
+        if (ktx2::isTopDown(ktx) != isCubeMap)
             ktx2::flipY(ktx);
         const IF format = requestedFormat != IF::Undefined ?
             requestedFormat : nearestInternalFormat(ktx.format);

@@ -7,7 +7,7 @@
 //   vir::ktx2   Generic reader/writer for KTX 2.0 files holding uncompressed,
 //               lossless texel data. Knows nothing about GPUs or vir textures
 //   vir::       encodeKtx2, decodeKtx2, isKtx2: the bridge between KTX2 file
-//               data and vir's TextureBuffer2D/3D
+//               data and vir's TextureBuffer2D/3D and CubeMapBuffer
 //   Everything else lives in vktx2.cpp and is invisible to includers.
 //
 // SUPPORTED
@@ -38,7 +38,9 @@
 //   KTX's default orientation is "first row = top of the image", while
 //   OpenGL treats the first row as the bottom. The "KTXorientation" metadata
 //   records which one a file uses ("ru" = rows go up, i.e. OpenGL convention,
-//   "rd" = rows go down). encodeKtx2/decodeKtx2 handle this for you.
+//   "rd" = rows go down). Cube maps are the exception: OpenGL's cube map
+//   faces start from the top row, as KTX's do. encodeKtx2/decodeKtx2 handle
+//   all of this for you.
 
 #ifndef V_KTX2_H
 #define V_KTX2_H
@@ -135,6 +137,9 @@ struct Texture
     uint64_t levelSize(uint32_t level) const;
 };
 
+// The kinds of texture vir has, for decodeKtx2
+enum class Kind { Texture2D, Texture3D, CubeMap };
+
 // Maximum number of mip levels for a texture of the given base size
 uint32_t maxLevelCount(uint32_t width, uint32_t height=1, uint32_t depth=1);
 
@@ -226,17 +231,40 @@ bool writeFile
 //
 //   vir::ktx2::Texture ktx;
 //   vir::TextureBuffer::InternalFormat format;
-//   if (vir::decodeKtx2(fileData, size, 3, requested, ktx, format, &error))
+//   if
+//   (
+//       vir::decodeKtx2
+//       (
+//           fileData, size, vir::ktx2::Kind::Texture3D, requested,
+//           ktx, format, &error
+//       )
+//   )
 //       texture = vir::TextureBuffer3D::create
 //       (
 //           ktx.levels[0].data(), ktx.width, ktx.height, ktx.depth, format
 //       );
+//
+// Loading a cube map (faces are stored one after the other, in the order
+// +X, -X, +Y, -Y, +Z, -Z of GL_TEXTURE_CUBE_MAP_POSITIVE_X + i):
+//
+//   if (vir::decodeKtx2(fileData, size, vir::ktx2::Kind::CubeMap, ...))
+//   {
+//       const size_t faceSize = ktx.levels[0].size()/6;
+//       const unsigned char* faces[6];
+//       for (int i=0; i<6; i++)
+//           faces[i] = ktx.levels[0].data() + i*faceSize;
+//       cubeMap = vir::CubeMapBuffer::create
+//       (
+//           faces, ktx.width, ktx.height, format
+//       );
+//   }
 
 // Read back the current GPU-side content of a texture and encode it as KTX2
 // file data (zstd-compressed with the default WriteOptions), in OpenGL row
 // order. Supported internal formats: R, RG, RGBA in
 // _UNI_8, _UI_8, _UI_32, _SF_32 (not RGB). Only the base mip level is stored.
-// Returns false on failure, with an explanation in *error if given
+// Returns false on failure, with an explanation in *error if given.
+// A CubeMapBuffer passed as a TextureBuffer2D is encoded as a cube map
 bool encodeKtx2
 (
     TextureBuffer2D& texture,
@@ -249,13 +277,22 @@ bool encodeKtx2
     std::vector<unsigned char>& fileData,
     std::string* error = nullptr
 );
+// All six faces, through CubeMapBuffer::readData, which must return them one
+// after the other in the order +X, -X, +Y, -Y, +Z, -Z
+bool encodeKtx2
+(
+    CubeMapBuffer& texture,
+    std::vector<unsigned char>& fileData,
+    std::string* error = nullptr
+);
 
-// Decode KTX2 file data into texel data ready for TextureBuffer2D/3D::create.
-// Returns false on failure, with an explanation in *error if given;
-// 'texture' and 'internalFormat' are left untouched then.
+// Decode KTX2 file data into texel data ready for TextureBuffer2D::create,
+// TextureBuffer3D::create or CubeMapBuffer::create. Returns false on failure,
+// with an explanation in *error if given; 'texture' and 'internalFormat' are
+// left untouched then.
 //
-// dimensions: 2 or 3 (1 also works). Files holding another kind of texture
-//   (other dimensions, array textures, cube maps) are rejected.
+// kind: what the file must hold. Files holding something else (another
+//   kind, array textures, 1D textures) are rejected.
 //
 // requestedFormat:
 // - Undefined: keep the file's own format. 64-bit files, which OpenGL cannot
@@ -275,14 +312,15 @@ bool encodeKtx2
 // - internalFormat is the format of the decoded data (requestedFormat, or
 //   the file's nearest one if Undefined was requested)
 // - texture holds every mip level of the file in that format and in OpenGL
-//   row order; levels[0] is the base level. texture.format is the matching
-//   ktx2::Format, or Undefined for RGB internal formats, which KTX2 files
-//   here cannot hold (levels then contain 3 components per texel)
+//   row order; levels[0] is the base level (for cube maps, all six faces,
+//   see the example above). texture.format is the matching ktx2::Format,
+//   or Undefined for RGB internal formats, which KTX2 files here cannot hold
+//   (levels then contain 3 components per texel)
 bool decodeKtx2
 (
     const unsigned char* fileData,
     size_t size,
-    uint32_t dimensions,
+    ktx2::Kind kind,
     TextureBuffer::InternalFormat requestedFormat,
     ktx2::Texture& texture,
     TextureBuffer::InternalFormat& internalFormat,

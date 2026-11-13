@@ -220,7 +220,7 @@ UniquePtr<TextureBuffer2D> TextureBuffer2D::create
             (
                 fileData, 
                 size, 
-                2, 
+                ktx2::Kind::Texture2D, 
                 requestedFormat, 
                 ktx, 
                 actualFormat, 
@@ -656,136 +656,217 @@ void AnimatedTextureBuffer2D::advanceTime(float dt)
 
 // CubeMap -------------------------------------------------------------------//
 
+// One KTX2 cube map file, holding all six faces
 UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 (
-    std::string filepaths[6], 
+    std::string filepath,
     InternalFormat internalFormat
 )
 {
     if (!GlobalPtr<Window>::valid())
         return nullUniquePtr<CubeMapBuffer>();
-    UniquePtr<CubeMapBuffer> buffer;
-    const unsigned char* faceData[6] = 
-        {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-    int i = 0;
+    std::vector<unsigned char> fileData;
     try
     {
-        stbi_set_flip_vertically_on_load(false);
-        int width0 = 0, height0 = 0, nChannels0 = 0;
-        for (i=0; i<6; i++)
-        {
-            int width = 0, height = 0, nChannels = 0;
-            faceData[i] = stbi_load
-            (
-                filepaths[i].c_str(), 
-                &width, 
-                &height, 
-                &nChannels, 
-                TextureBuffer::nChannels(internalFormat)
-            );
-            if (i == 0)
-            {
-                width0 = width;
-                height0 = height;
-                ENFORCE_CHANNEL_FORMAT_CONSISTENCY
-                nChannels0 = nChannels;
-            }
-            else if 
-            (
-                width != width0 || 
-                height != height0 || 
-                nChannels != nChannels0 ||
-                !faceData[i]
-            )
-                throw std::runtime_error
-                (
-                    "CubeMapBuffer::create - Invalid file data"
-                );
-        }
-        buffer = CubeMapBuffer::create
-        (
-            faceData,
-            width0,
-            height0,
-            internalFormat
-        );
-        for (int j=0; j<6; j++)
-            stbi_image_free((void*)faceData[j]);
+        if (!readFileData(filepath, fileData))
+            return nullUniquePtr<CubeMapBuffer>();
     }
-    catch(...)
+    catch(...) // bad_alloc on absurdly large files
     {
-        for (int j=0; j<i; j++)
-            stbi_image_free((void*)faceData[j]);
+        return nullUniquePtr<CubeMapBuffer>();
     }
-    return buffer;
+    return CubeMapBuffer::create
+    (
+        fileData.data(),
+        uint32_t(fileData.size()),
+        internalFormat
+    );
 }
 
-// TODO FIX SO THAT IT WORKS WITH KTX2 FILEDATA AS WELL, NOT JUST STBI
 UniquePtr<CubeMapBuffer> CubeMapBuffer::create
 (
-    const unsigned char* fileData[6], 
+    const unsigned char* fileData,
+    uint32_t size,
+    InternalFormat internalFormat
+)
+{
+    if (!GlobalPtr<Window>::valid() || !isKtx2(fileData, size))
+        return nullUniquePtr<CubeMapBuffer>();
+    ktx2::Texture ktx;
+    InternalFormat actualFormat = InternalFormat::Undefined;
+    std::string error;
+    if
+    (
+        !decodeKtx2
+        (
+            fileData,
+            size,
+            ktx2::Kind::CubeMap,
+            internalFormat,
+            ktx,
+            actualFormat,
+            &error
+        )
+    )
+        return nullUniquePtr<CubeMapBuffer>();
+    // The six faces are stored one after the other in the base level
+    const size_t faceSize = ktx.levels[0].size()/6;
+    const unsigned char* faceData[6];
+    for (int i=0; i<6; i++)
+        faceData[i] = ktx.levels[0].data() + i*faceSize;
+    return CubeMapBuffer::create
+    (
+        faceData,
+        ktx.width,
+        ktx.height,
+        actualFormat
+    );
+}
+
+//----------------------------------------------------------------------------//
+// Six image files, one per face
+
+UniquePtr<CubeMapBuffer> CubeMapBuffer::create
+(
+    std::string filepaths[6],
+    InternalFormat internalFormat
+)
+{
+    if (!GlobalPtr<Window>::valid())
+        return nullUniquePtr<CubeMapBuffer>();
+    std::vector<unsigned char> fileData[6];
+    const unsigned char* data[6];
+    uint32_t size[6];
+    try
+    {
+        for (int i=0; i<6; i++)
+        {
+            if (!readFileData(filepaths[i], fileData[i]))
+                return nullUniquePtr<CubeMapBuffer>();
+            data[i] = fileData[i].data();
+            size[i] = uint32_t(fileData[i].size());
+        }
+    }
+    catch(...) // bad_alloc on absurdly large files
+    {
+        return nullUniquePtr<CubeMapBuffer>();
+    }
+    return CubeMapBuffer::create(data, size, internalFormat);
+}
+
+UniquePtr<CubeMapBuffer> CubeMapBuffer::create
+(
+    const unsigned char* fileData[6],
     uint32_t size[6],
     InternalFormat internalFormat
 )
 {
     if (!GlobalPtr<Window>::valid())
         return nullUniquePtr<CubeMapBuffer>();
-    UniquePtr<CubeMapBuffer> buffer;
-    const unsigned char* faceData[6] = 
-        {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-    int i = 0;
+    // Frees an stb_image result when it goes out of scope
+    struct StbiImage
+    {
+        unsigned char* data;
+        ~StbiImage() {stbi_image_free(data);}
+    };
+    // Decoded faces, each starting from its top row as OpenGL expects for
+    // cube maps. The first face sets the internal format (unless one was
+    // requested), and the following faces are converted to it
+    std::vector<unsigned char> faces[6];
+    uint32_t width0 = 0, height0 = 0;
     try
     {
         stbi_set_flip_vertically_on_load(false);
-        int width0 = 0, height0 = 0, nChannels0 = 0;
-        for (i=0; i<6; i++)
+        for (int i=0; i<6; i++)
         {
-            int width = 0, height = 0, nChannels = 0;
-            faceData[i] = stbi_load_from_memory
-            (
-                fileData[i], 
-                size[i],
-                &width, 
-                &height, 
-                &nChannels, 
-                TextureBuffer::nChannels(internalFormat)
-            );
-            ENFORCE_CHANNEL_FORMAT_CONSISTENCY
+            uint32_t width = 0, height = 0;
+            if (isKtx2(fileData[i], size[i])) // KTX2 file of a 2D texture
+            {
+                ktx2::Texture ktx;
+                InternalFormat actualFormat = InternalFormat::Undefined;
+                std::string error;
+                if
+                (
+                    !decodeKtx2
+                    (
+                        fileData[i],
+                        size[i],
+                        ktx2::Kind::Texture2D,
+                        internalFormat,
+                        ktx,
+                        actualFormat,
+                        &error
+                    )
+                )
+                    return nullUniquePtr<CubeMapBuffer>();
+                // decodeKtx2 returns 2D textures bottom row first, as OpenGL
+                // expects for 2D textures: flip back to top row first, so
+                // that the face shows the same picture as a .png would
+                ktx2::flipY(ktx);
+                internalFormat = actualFormat;
+                width = ktx.width;
+                height = ktx.height;
+                faces[i] = std::move(ktx.levels[0]);
+            }
+            else // .png, .jpg, ...
+            {
+                // stb_image only produces 8-bit data
+                if
+                (
+                    fileData[i] == nullptr ||
+                    size[i] > INT32_MAX ||
+                    (
+                        internalFormat != InternalFormat::Undefined &&
+                        TextureBuffer::internalFormatToDataType.at
+                        (
+                            internalFormat
+                        ) != TextureBuffer::DataType::UnsignedChar
+                    )
+                )
+                    return nullUniquePtr<CubeMapBuffer>();
+                int w = 0, h = 0, nChannels = 0;
+                StbiImage image
+                {
+                    stbi_load_from_memory
+                    (
+                        fileData[i],
+                        int(size[i]),
+                        &w,
+                        &h,
+                        &nChannels,
+                        TextureBuffer::nChannels(internalFormat)
+                    )
+                };
+                if (image.data == nullptr)
+                    return nullUniquePtr<CubeMapBuffer>();
+                ENFORCE_CHANNEL_FORMAT_CONSISTENCY
+                width = uint32_t(w);
+                height = uint32_t(h);
+                faces[i].assign
+                (
+                    image.data,
+                    image.data + size_t(width)*height*nChannels
+                );
+            }
             if (i == 0)
             {
+                if (width != height) // Cube map faces must be square
+                    return nullUniquePtr<CubeMapBuffer>();
                 width0 = width;
                 height0 = height;
-                nChannels0 = nChannels;
             }
-            else if 
-            (
-                width != width0 || 
-                height != height0 || 
-                nChannels != nChannels0 || 
-                !fileData[i] ||
-                !faceData[i]
-            )
-                throw std::runtime_error
-                (
-                    "CubeMapBuffer::create - Invalid data"
-                );
+            else if (width != width0 || height != height0)
+                return nullUniquePtr<CubeMapBuffer>();
         }
-        buffer = CubeMapBuffer::create
-        (
-            faceData,
-            width0,
-            height0,
-            internalFormat
-        );
-        for (int j=0; j<6; j++)
-            stbi_image_free((void*)faceData[j]);
     }
     catch(...)
     {
-        for (int j=0; j<i; j++)
-            stbi_image_free((void*)faceData[j]);
+        return nullUniquePtr<CubeMapBuffer>();
     }
-    return buffer;
+    const unsigned char* faceData[6];
+    for (int i=0; i<6; i++)
+        faceData[i] = faces[i].data();
+    return CubeMapBuffer::create(faceData, width0, height0, internalFormat);
 }
 
 UniquePtr<CubeMapBuffer> CubeMapBuffer::create
@@ -904,7 +985,7 @@ UniquePtr<TextureBuffer3D> TextureBuffer3D::create
             (
                 fileData, 
                 size, 
-                3, 
+                ktx2::Kind::Texture3D, 
                 requestedFormat, 
                 ktx, 
                 actualFormat, 
